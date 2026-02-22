@@ -4,41 +4,114 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Sophie Voice</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+margin:0;
+font-family:sans-serif;
+color:white;
+text-align:center;
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#0b0f14;
+position:relative;
+overflow:hidden;
+}
+
+/* Hintergrundbild */
+.bg{
+position:fixed;
+inset:0;
+background:url("/sophie.jpg") center/cover no-repeat;
+opacity:0;
+transition:opacity .5s ease;
+z-index:0;
+}
+
+/* dunkles Overlay */
+.overlay{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.55);
+opacity:0;
+transition:opacity .5s ease;
+z-index:1;
+}
+
+/* Aktiv-Zustand */
+.bg.active,
+.overlay.active{
+opacity:1;
+}
+
+/* Vordergrund */
+.wrap{
+position:relative;
+z-index:2;
+width:90%;
+max-width:420px;
+}
+
+/* Buttons */
+.btn{
+display:block;
+width:100%;
+margin:0 auto 15px;
+padding:18px 20px;
+font-size:20px;
+font-weight:600;
+border:none;
+border-radius:12px;
+cursor:pointer;
+}
+
+#start{
+background:#ffffff;
+color:#000;
+}
+
+#end{
+background:rgba(255,255,255,.15);
+color:#fff;
+border:1px solid rgba(255,255,255,.3);
+}
+
+.btn:disabled{
+opacity:.5;
+cursor:not-allowed;
+}
+
+.status{
+margin-bottom:20px;
+opacity:.85;
+}
+</style>
 </head>
 
-<body style="background:#0b0f14;color:white;font-family:sans-serif;text-align:center;padding-top:100px;">
+<body>
 
-<h2 id="headline">Sophie wartet.</h2>
-<div id="status" style="opacity:.8;margin-bottom:20px;">Bereit.</div>
+<div class="bg" id="bg"></div>
+<div class="overlay" id="overlay"></div>
 
-<!-- NUR NEU: Bild (standardmäßig aus) -->
-<div id="sophieBox" style="display:none;width:90%;max-width:420px;margin:20px auto;">
-  <img src="/sophie.jpg" alt="Sophie"
-       style="width:100%;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.6);display:block;">
+<div class="wrap">
+  <h2 id="headline">Sophie wartet.</h2>
+  <div class="status" id="status">Bereit.</div>
+
+  <button id="start" class="btn">Jetzt sprechen</button>
+  <button id="end" class="btn" disabled>Gespräch beenden</button>
 </div>
-
-<!-- Buttons: wie vorher, nur etwas größer -->
-<button id="start"
-  style="display:block;width:90%;max-width:420px;margin:0 auto 15px;
-         padding:18px 20px;font-size:20px;font-weight:600;border:none;
-         border-radius:10px;background:#fff;color:#000;cursor:pointer;">
-  Jetzt sprechen
-</button>
-
-<button id="end" disabled
-  style="display:block;width:90%;max-width:420px;margin:0 auto 15px;
-         padding:16px 18px;font-size:18px;font-weight:600;
-         border-radius:10px;background:rgba(255,255,255,.15);color:#fff;
-         border:1px solid rgba(255,255,255,.3);cursor:pointer;">
-  Gespräch beenden
-</button>
 
 <script>
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
 const statusEl = document.getElementById("status");
 const headline = document.getElementById("headline");
-const sophieBox = document.getElementById("sophieBox");
+const bg = document.getElementById("bg");
+const overlay = document.getElementById("overlay");
 
 let pc = null;
 let stream = null;
@@ -48,15 +121,24 @@ function setStatus(txt){
   statusEl.textContent = txt;
 }
 
-startBtn.onclick = async () => {
+function showBackground(on){
+  if(on){
+    bg.classList.add("active");
+    overlay.classList.add("active");
+  } else {
+    bg.classList.remove("active");
+    overlay.classList.remove("active");
+  }
+}
+
+async function startVoice(){
   startBtn.disabled = true;
   headline.textContent = "Sophie verbindet sich…";
   setStatus("Verbinde…");
 
-  // ✅ Bild EIN (sofort)
-  sophieBox.style.display = "block";
+  showBackground(true); // 🔥 Hintergrund einblenden
 
-  try {
+  try{
     const tokenRes = await fetch("/api/session");
     const data = await tokenRes.json();
 
@@ -90,14 +172,14 @@ startBtn.onclick = async () => {
     endBtn.disabled = false;
     setStatus("Live.");
     headline.textContent = "Sophie hört zu.";
-  } catch (err) {
+  } catch(err){
     console.error(err);
     setStatus("Fehler beim Start.");
     headline.textContent = "Sophie wartet.";
     startBtn.disabled = false;
     stopVoice();
   }
-};
+}
 
 function stopVoice(){
   endBtn.disabled = true;
@@ -117,15 +199,15 @@ function stopVoice(){
     audioEl = null;
   }
 
-  // ✅ Bild AUS
-  sophieBox.style.display = "none";
+  showBackground(false); // 🔥 Hintergrund ausblenden
 
   startBtn.disabled = false;
   headline.textContent = "Sophie wartet.";
   setStatus("Beendet.");
 }
 
-endBtn.onclick = stopVoice;
+startBtn.addEventListener("click", startVoice);
+endBtn.addEventListener("click", stopVoice);
 </script>
 
 </body>
