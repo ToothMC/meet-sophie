@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Sophie Voice</title>
+</head>
+<body style="background:#0b0f14;color:white;font-family:sans-serif;text-align:center;padding-top:100px;">
+<h2>Sophie spricht...</h2>
+<button id="start">Start Voice</button>
+
+<script>
+const btn = document.getElementById("start");
+
+btn.onclick = async () => {
+  const tokenRes = await fetch("/api/session");
+  const data = await tokenRes.json();
+
+  const pc = new RTCPeerConnection();
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+  const audio = document.createElement("audio");
+  audio.autoplay = true;
+  pc.ontrack = e => audio.srcObject = e.streams[0];
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  const baseUrl = "https://api.openai.com/v1/realtime";
+  const model = "gpt-4o-realtime-preview";
+
+  const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
+    method: "POST",
+    body: offer.sdp,
+    headers: {
+      Authorization: `Bearer ${data.client_secret.value}`,
+      "Content-Type": "application/sdp"
+    },
+  });
+
+  const answer = { type: "answer", sdp: await sdpRes.text() };
+  await pc.setRemoteDescription(answer);
+};
+</script>
+</body>
+</html>
