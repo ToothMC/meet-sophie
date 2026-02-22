@@ -1,46 +1,200 @@
 <!doctype html>
-<html>
+<html lang="de">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Sophie Voice</title>
+
+<style>
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:#0b0f14;
+    color:white;
+    font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    text-align:center;
+    padding:28px 16px 40px;
+  }
+
+  h2{
+    margin:18px 0 22px;
+    font-weight:650;
+    letter-spacing:.2px;
+  }
+
+  .wrap{
+    width:min(560px, 100%);
+    margin:0 auto;
+  }
+
+  .btn{
+    display:block;
+    width:100%;
+    max-width:520px;
+    margin:0 auto 12px;
+    border:0;
+    border-radius:16px;
+    padding:18px 20px;
+    font-size:18px;
+    font-weight:750;
+    letter-spacing:.2px;
+    cursor:pointer;
+    box-shadow:0 18px 40px rgba(0,0,0,.45);
+  }
+
+  #start{
+    background:#ffffff;
+    color:#000;
+  }
+
+  #end{
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:none;
+  }
+
+  .hint{
+    margin-top:14px;
+    font-size:13px;
+    opacity:.7;
+    line-height:1.4;
+  }
+
+  .status{
+    margin:10px 0 18px;
+    font-size:14px;
+    opacity:.85;
+    min-height:20px;
+  }
+
+  .btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+  }
+
+  @media (max-width:480px){
+    .btn{ padding:22px; font-size:20px; border-radius:18px; }
+  }
+</style>
 </head>
-<body style="background:#0b0f14;color:white;font-family:sans-serif;text-align:center;padding-top:100px;">
-<h2>Sophie spricht...</h2>
-<button id="start">Start Voice</button>
+
+<body>
+  <div class="wrap">
+    <h2>Sophie spricht…</h2>
+    <div class="status" id="status">Bereit.</div>
+
+    <button class="btn" id="start">🎙 Start Voice</button>
+    <button class="btn" id="end" disabled>⏹ Gespräch beenden</button>
+
+    <div class="hint">
+      Tipp: Wenn du fertig bist, immer „Gespräch beenden“ drücken – dann wird das Mikro sauber gestoppt.
+    </div>
+  </div>
 
 <script>
-const btn = document.getElementById("start");
+  const startBtn = document.getElementById("start");
+  const endBtn   = document.getElementById("end");
+  const statusEl = document.getElementById("status");
 
-btn.onclick = async () => {
-  const tokenRes = await fetch("/api/session");
-  const data = await tokenRes.json();
+  let pc = null;
+  let stream = null;
+  let audioEl = null;
 
-  const pc = new RTCPeerConnection();
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  stream.getTracks().forEach(track => pc.addTrack(track, stream));
+  function setStatus(txt){
+    statusEl.textContent = txt;
+  }
 
-  const audio = document.createElement("audio");
-  audio.autoplay = true;
-  pc.ontrack = e => audio.srcObject = e.streams[0];
+  async function startVoice(){
+    startBtn.disabled = true;
+    setStatus("Verbinde…");
 
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
+    try{
+      const tokenRes = await fetch("/api/session");
+      const data = await tokenRes.json();
 
-  const baseUrl = "https://api.openai.com/v1/realtime";
-  const model = "gpt-4o-realtime-preview";
+      pc = new RTCPeerConnection();
 
-  const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
-    method: "POST",
-    body: offer.sdp,
-    headers: {
-      Authorization: `Bearer ${data.client_secret.value}`,
-      "Content-Type": "application/sdp"
-    },
+      // Mic holen
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      // Audio output
+      audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      pc.ontrack = e => { audioEl.srcObject = e.streams[0]; };
+
+      // SDP Offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const baseUrl = "https://api.openai.com/v1/realtime";
+      const model = "gpt-4o-realtime-preview";
+
+      const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${data.client_secret.value}`,
+          "Content-Type": "application/sdp"
+        },
+      });
+
+      if(!sdpRes.ok){
+        throw new Error(`Realtime SDP Fehler: ${sdpRes.status}`);
+      }
+
+      const answer = { type: "answer", sdp: await sdpRes.text() };
+      await pc.setRemoteDescription(answer);
+
+      endBtn.disabled = false;
+      setStatus("Live. Mikro aktiv.");
+    } catch(err){
+      console.error(err);
+      setStatus("Fehler beim Start. Bitte neu laden und erneut versuchen.");
+      startBtn.disabled = false;
+      // Aufräumen falls halb gestartet
+      await stopVoice();
+    }
+  }
+
+  async function stopVoice(){
+    // Buttons
+    endBtn.disabled = true;
+
+    // Mic stoppen
+    if(stream){
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+
+    // PeerConnection schließen
+    if(pc){
+      try{ pc.ontrack = null; pc.close(); } catch(e){}
+      pc = null;
+    }
+
+    // Audio Element lösen
+    if(audioEl){
+      try{ audioEl.srcObject = null; } catch(e){}
+      audioEl = null;
+    }
+
+    startBtn.disabled = false;
+    setStatus("Beendet. Bereit.");
+  }
+
+  startBtn.addEventListener("click", startVoice);
+  endBtn.addEventListener("click", stopVoice);
+
+  // Optional: beim Tab schließen sauber stoppen
+  window.addEventListener("beforeunload", () => {
+    try{
+      if(stream) stream.getTracks().forEach(t => t.stop());
+      if(pc) pc.close();
+    } catch(e){}
   });
-
-  const answer = { type: "answer", sdp: await sdpRes.text() };
-  await pc.setRemoteDescription(answer);
-};
 </script>
 </body>
 </html>
