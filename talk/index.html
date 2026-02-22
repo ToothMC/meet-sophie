@@ -13,7 +13,7 @@ background:#0b0f14;
 color:white;
 font-family:sans-serif;
 text-align:center;
-padding-top:100px;
+padding-top:80px;
 }
 
 h2{
@@ -25,6 +25,26 @@ margin-bottom:20px;
 opacity:.8;
 }
 
+/* ---- NEU: Bild-Container ---- */
+.sophie-box{
+width:90%;
+max-width:420px;
+margin:20px auto;
+opacity:0;
+transition:opacity .4s ease;
+}
+
+.sophie-box.active{
+opacity:1;
+}
+
+.sophie-box img{
+width:100%;
+border-radius:14px;
+box-shadow:0 20px 50px rgba(0,0,0,.6);
+}
+
+/* ---- Buttons ---- */
 .btn{
 display:block;
 width:90%;
@@ -58,6 +78,11 @@ cursor:not-allowed;
 <h2 id="headline">Sophie wartet.</h2>
 <div class="status" id="status">Bereit.</div>
 
+<!-- 🔥 NEU: Bild -->
+<div class="sophie-box" id="sophieBox">
+  <img src="/sophie.jpg" alt="Sophie">
+</div>
+
 <button class="btn" id="start">Jetzt sprechen</button>
 <button class="btn" id="end" disabled>Gespräch beenden</button>
 
@@ -66,6 +91,7 @@ const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
 const statusEl = document.getElementById("status");
 const headline = document.getElementById("headline");
+const sophieBox = document.getElementById("sophieBox");
 
 let pc = null;
 let stream = null;
@@ -79,6 +105,9 @@ async function startVoice(){
   startBtn.disabled = true;
   headline.textContent = "Sophie verbindet sich…";
   setStatus("Verbinde…");
+
+  // 🔥 Bild einblenden
+  sophieBox.classList.add("active");
 
   try{
     const tokenRes = await fetch("/api/session");
@@ -140,6 +169,9 @@ function stopVoice(){
     try{ audioEl.srcObject = null; } catch(e){}
     audioEl = null;
   }
+
+  // 🔥 Bild ausblenden
+  sophieBox.classList.remove("active");
 
   startBtn.disabled = false;
   headline.textContent = "Sophie wartet.";
