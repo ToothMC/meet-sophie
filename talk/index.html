@@ -14,15 +14,17 @@ color:white;
 font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial,sans-serif;
 text-align:center;
 padding:28px 16px 40px;
+overflow-x:hidden;
 }
 
 .wrap{
 width:min(560px,100%);
 margin:0 auto;
+position:relative;
 }
 
 h2{
-margin:20px 0 12px;
+margin:20px 0 10px;
 font-weight:650;
 letter-spacing:.2px;
 }
@@ -34,6 +36,28 @@ margin-bottom:18px;
 min-height:20px;
 }
 
+/* SOPHIE IMAGE */
+.sophie-container{
+position:relative;
+width:100%;
+margin:20px auto 30px;
+opacity:0;
+transform:scale(.95);
+transition:all .6s ease;
+}
+
+.sophie-container.active{
+opacity:1;
+transform:scale(1);
+}
+
+.sophie-img{
+width:100%;
+border-radius:18px;
+box-shadow:0 20px 50px rgba(0,0,0,.55);
+}
+
+/* BUTTONS */
 .btn{
 display:block;
 width:100%;
@@ -44,22 +68,20 @@ border-radius:16px;
 padding:18px 20px;
 font-size:18px;
 font-weight:750;
-letter-spacing:.2px;
 cursor:pointer;
-box-shadow:0 18px 40px rgba(0,0,0,.45);
 transition:all .15s ease;
 }
 
 #start{
 background:#ffffff;
 color:#000;
+box-shadow:0 18px 40px rgba(0,0,0,.45);
 }
 
 #end{
 background:rgba(255,255,255,.12);
 color:#fff;
 border:1px solid rgba(255,255,255,.22);
-box-shadow:none;
 }
 
 .btn:disabled{
@@ -68,11 +90,7 @@ cursor:not-allowed;
 }
 
 @media (max-width:480px){
-.btn{
-padding:22px;
-font-size:20px;
-border-radius:18px;
-}
+.btn{padding:22px;font-size:20px;border-radius:18px;}
 }
 </style>
 </head>
@@ -83,8 +101,12 @@ border-radius:18px;
 <h2 id="headline">Sophie wartet.</h2>
 <div class="status" id="status">Bereit.</div>
 
-<button class="btn" id="start">🎙 Sprich mit Sophie</button>
-<button class="btn" id="end" disabled>⏹ Gespräch beenden</button>
+<div class="sophie-container" id="sophieBox">
+  <img src="sophie.jpg" class="sophie-img" />
+</div>
+
+<button class="btn" id="start">Jetzt sprechen</button>
+<button class="btn" id="end" disabled>Gespräch beenden</button>
 
 </div>
 
@@ -93,6 +115,7 @@ const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
 const statusEl = document.getElementById("status");
 const headline = document.getElementById("headline");
+const sophieBox = document.getElementById("sophieBox");
 
 let pc = null;
 let stream = null;
@@ -104,15 +127,14 @@ function setStatus(txt){
 
 async function startVoice(){
   startBtn.disabled = true;
-  setStatus("Verbinde…");
   headline.textContent = "Sophie verbindet sich…";
+  setStatus("Verbinde…");
 
   try{
     const tokenRes = await fetch("/api/session");
     const data = await tokenRes.json();
 
     pc = new RTCPeerConnection();
-
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
@@ -136,26 +158,23 @@ async function startVoice(){
       },
     });
 
-    if(!sdpRes.ok){
-      throw new Error(`Realtime SDP Fehler: ${sdpRes.status}`);
-    }
-
     const answer = { type: "answer", sdp: await sdpRes.text() };
     await pc.setRemoteDescription(answer);
+
+    sophieBox.classList.add("active");   // 🔥 Bild einblenden
 
     endBtn.disabled = false;
     setStatus("Live.");
     headline.textContent = "Sophie hört zu.";
   } catch(err){
     console.error(err);
-    setStatus("Fehler beim Start.");
     headline.textContent = "Sophie wartet.";
+    setStatus("Fehler beim Start.");
     startBtn.disabled = false;
-    await stopVoice();
   }
 }
 
-async function stopVoice(){
+function stopVoice(){
   endBtn.disabled = true;
 
   if(stream){
@@ -164,30 +183,28 @@ async function stopVoice(){
   }
 
   if(pc){
-    try{ pc.close(); } catch(e){}
+    pc.close();
     pc = null;
   }
 
   if(audioEl){
-    try{ audioEl.srcObject = null; } catch(e){}
+    audioEl.srcObject = null;
     audioEl = null;
   }
 
+  sophieBox.classList.remove("active");  // 🔥 Bild ausblenden
+
   startBtn.disabled = false;
-  setStatus("Beendet.");
   headline.textContent = "Sophie wartet.";
+  setStatus("Beendet.");
 }
 
 startBtn.addEventListener("click", startVoice);
 endBtn.addEventListener("click", stopVoice);
-
-window.addEventListener("beforeunload", () => {
-  try{
-    if(stream) stream.getTracks().forEach(t => t.stop());
-    if(pc) pc.close();
-  } catch(e){}
-});
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
