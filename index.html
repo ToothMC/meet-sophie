@@ -1,14 +1,87 @@
 <!doctype html>
-<html>
+<html lang="de">
 <head>
-<meta charset="utf-8" />
-<title>Meet Sophie</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evening Room — with Sophie</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:-apple-system,system-ui;background:#000;color:#fff}
+
+.hero{
+min-height:100vh;
+display:flex;
+flex-direction:column;
+justify-content:space-between;
+padding:20px;
+background:
+linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.65)),
+url("hero.jpg") center/cover no-repeat;
+}
+
+.top{
+font-size:14px;
+opacity:.85;
+}
+
+.center{
+text-align:center;
+margin-top:40px;
+}
+
+h1{
+font-weight:300;
+font-size:64px;
+line-height:1.05;
+margin:0;
+}
+
+.sub{
+margin-top:10px;
+font-weight:600;
+opacity:.85;
+}
+
+.tagline{
+text-align:center;
+margin:40px 0 15px;
+font-style:italic;
+opacity:.9;
+}
+
+.btn{
+display:block;
+width:92%;
+max-width:420px;
+margin:0 auto 20px;
+background:rgba(255,255,255,.92);
+color:#000;
+text-decoration:none;
+padding:14px;
+border-radius:10px;
+text-align:center;
+font-weight:600;
+font-size:16px;
+}
+</style>
 </head>
-<body style="background:#0b0f14;color:white;font-family:sans-serif;text-align:center;padding-top:100px;">
-<h1>Meet Sophie</h1>
-<p>Ruhig. Aufmerksam. Diskret.</p>
-<button onclick="window.location='/talk'" style="padding:15px 30px;font-size:18px;">
-🎙 Start Talking
-</button>
+
+<body>
+<main class="hero">
+
+<div class="top">meet-sophie.com</div>
+
+<div class="center">
+<h1>Evening<br>Room</h1>
+<div class="sub">with Sophie</div>
+</div>
+
+<div>
+<div class="tagline">Ein ruhiger Austausch für lange Abende</div>
+<a class="btn" href="/talk">Gespräch beginnen</a>
+</div>
+
+</main>
 </body>
 </html>
