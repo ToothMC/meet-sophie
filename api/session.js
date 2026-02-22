@@ -81,5 +81,3 @@ Keine internen Prozesse erwähnen.`,
     return res.status(500).json({ error: "Internal server error" });
   }
 }
-  }
-}
