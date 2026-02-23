@@ -225,12 +225,12 @@ function showBackground(on){
 
 function renderTimer(){
   if (isPremium) {
-    timerEl.textContent = "Premium: unbegrenzt";
+    timerEl.textContent = "Premium: unlimited";
     return;
   }
   const m = String(Math.floor(remainingSeconds/60)).padStart(2,"0");
   const s = String(remainingSeconds%60).padStart(2,"0");
-  timerEl.textContent = `Free-Zeit: ${m}:${s}`;
+  timerEl.textContent = `Free-Time: ${m}:${s}`;
 }
 renderTimer();
 
@@ -245,7 +245,7 @@ function startCountdown(){
     if (remainingSeconds <= 0) {
       clearInterval(countdown);
       countdown = null;
-      setStatus("Free-Zeit vorbei.");
+      setStatus("Free-Time limit reached.");
 
       track("free_limit_reached");
 
@@ -274,7 +274,7 @@ async function safeJson(res) {
 async function startVoice(){
   startBtn.disabled = true;
   logoutBtn.disabled = true;
-  headline.textContent = "Sophie verbindet sich…";
+  headline.textContent = "Sophie is connecting…";
   setStatus("Verbinde…");
   showBackground(true);
 
@@ -305,7 +305,7 @@ async function startVoice(){
     if (!tokenRes.ok) {
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
-      headline.textContent = "Sophie wartet.";
+      headline.textContent = "Sophie is waiting.";
       showBackground(false);
       startBtn.disabled = false;
       logoutBtn.disabled = false;
@@ -365,7 +365,7 @@ async function startVoice(){
 
     endBtn.disabled = false;
     setStatus("Live.");
-    headline.textContent = "Sophie hört zu.";
+    headline.textContent = "Sophie is listening.";
 
     // tracking: started
     talkStartedAt = Date.now();
@@ -378,8 +378,8 @@ async function startVoice(){
 
   } catch(err){
     console.error(err);
-    setStatus("Fehler beim Start.");
-    headline.textContent = "Sophie wartet.";
+    setStatus("Fail to Start.");
+    headline.textContent = "Sophie is waiting.";
     track("talk_start_exception", { message: String(err?.message || err) });
     stopVoice();
   }
@@ -426,8 +426,8 @@ async function stopVoice(){
 
   startBtn.disabled = false;
   logoutBtn.disabled = false;
-  headline.textContent = "Sophie wartet.";
-  setStatus("Beendet.");
+  headline.textContent = "Sophie is waiting.";
+  setStatus("Ended.");
 }
 
 // Logout: erst sauber stoppen (usage schreiben), dann signOut
