@@ -175,6 +175,7 @@ let audioEl = null;
 // Timer vars
 let countdown = null;
 let remainingSeconds = 15 * 60;
+let isPremium = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
@@ -189,6 +190,10 @@ function showBackground(on){
 }
 
 function renderTimer(){
+  if (isPremium) {
+    timerEl.textContent = "Premium: unbegrenzt";
+    return;
+  }
   const m = String(Math.floor(remainingSeconds/60)).padStart(2,"0");
   const s = String(remainingSeconds%60).padStart(2,"0");
   timerEl.textContent = `Free-Zeit: ${m}:${s}`;
@@ -196,6 +201,9 @@ function renderTimer(){
 renderTimer();
 
 function startCountdown(){
+  // Premium: kein Countdown
+  if (isPremium) return;
+
   if (countdown) clearInterval(countdown);
   countdown = setInterval(() => {
     remainingSeconds -= 1;
@@ -205,6 +213,7 @@ function startCountdown(){
       countdown = null;
       setStatus("Free-Zeit vorbei.");
       stopVoice();
+      window.location.href = "/pricing/";
     }
   }, 1000);
 }
@@ -239,6 +248,12 @@ async function startVoice(){
 
     const data = await safeJson(tokenRes);
 
+    // ✅ Paywall: Free Limit erreicht -> Pricing
+    if (tokenRes.status === 402) {
+      window.location.href = "/pricing/";
+      return;
+    }
+
     if (!tokenRes.ok) {
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
@@ -249,18 +264,20 @@ async function startVoice(){
       return;
     }
 
-    // ✅ Remaining Sekunden vom Server nutzen (falls vorhanden)
-    if (typeof data?.remaining_seconds === "number") {
+    // ✅ Premium Flag vom Server
+    isPremium = !!data?.is_premium;
+
+    // ✅ Remaining Sekunden vom Server nutzen (nur relevant bei Free)
+    if (!isPremium && typeof data?.remaining_seconds === "number") {
       remainingSeconds = Math.max(0, data.remaining_seconds);
-      renderTimer();
-      if (remainingSeconds <= 0) {
-        setStatus("Free-Zeit vorbei.");
-        headline.textContent = "Sophie wartet.";
-        showBackground(false);
-        startBtn.disabled = false;
-        logoutBtn.disabled = false;
-        return;
-      }
+    }
+
+    renderTimer();
+
+    // Wenn Free und schon 0 -> direkt Pricing
+    if (!isPremium && remainingSeconds <= 0) {
+      window.location.href = "/pricing/";
+      return;
     }
 
     pc = new RTCPeerConnection();
@@ -299,7 +316,7 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie hört zu.";
 
-    // ✅ Timer starten, sobald live
+    // ✅ Timer starten, sobald live (Premium: kein Countdown)
     startCountdown();
 
   } catch(err){
