@@ -8,7 +8,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview",
-        voice: "aria",
+        voice: "marin",
         instructions: `Du bist Sophie.
 Du sprichst Deutsch.
 Deine Stimme ist weich, ruhig und natürlich.
