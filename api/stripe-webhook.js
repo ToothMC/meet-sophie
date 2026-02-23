@@ -50,6 +50,7 @@ module.exports = async function handler(req, res) {
       const stripeCustomerId = session.customer || null;
       const stripeSubscriptionId = session.subscription || null;
 
+      // 1) Subscription aktiv setzen
       const { error } = await supabase
         .from("user_subscriptions")
         .upsert({
@@ -62,6 +63,23 @@ module.exports = async function handler(req, res) {
         });
 
       if (error) throw error;
+
+      // 2) ✅ Analytics Event: subscription_activated
+      const { error: aErr } = await supabase
+        .from("analytics_events")
+        .insert({
+          user_id: userId,
+          event_name: "subscription_activated",
+          meta: {
+            stripe_subscription_id: stripeSubscriptionId,
+            stripe_customer_id: stripeCustomerId,
+          },
+        });
+
+      if (aErr) {
+        // Tracking darf niemals Premium-Freischaltung blockieren
+        console.warn("Analytics insert failed:", aErr.message);
+      }
 
       return res.status(200).json({ received: true });
     }
