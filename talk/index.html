@@ -164,11 +164,13 @@ async function track(event_name, meta = {}) {
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ event_name, meta }),
+      keepalive: true,
     });
   } catch (_) {}
 }
 
 // --- Usage reporting helper (POST /api/usage) ---
+// WICHTIG: keepalive + await in stop/logout, sonst geht der Request gern verloren
 async function reportUsage(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -181,6 +183,7 @@ async function reportUsage(secondsUsed) {
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ seconds_used: secondsUsed }),
+      keepalive: true,
     });
   } catch (_) {}
 }
@@ -194,13 +197,6 @@ const headline = document.getElementById("headline");
 const bg = document.getElementById("bg");
 const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
-
-// Logout
-logoutBtn.onclick = async () => {
-  track("logout_clicked");
-  try { await supabase.auth.signOut(); } catch(e) {}
-  window.location.href = "/";
-};
 
 // Voice vars
 let pc = null;
@@ -253,14 +249,16 @@ function startCountdown(){
 
       track("free_limit_reached");
 
-      // Nutzungszeit beim Limit-Ende melden (falls Call nicht sauber beendet wurde)
+      // Nutzungszeit beim Limit-Ende melden
       if (talkStartedAt && !isPremium) {
         const durationSeconds = Math.round((Date.now() - talkStartedAt) / 1000);
         if (durationSeconds > 0) reportUsage(durationSeconds);
       }
 
-      stopVoice();
-      window.location.href = "/pricing/";
+      // Call beenden + Paywall
+      stopVoice().finally(() => {
+        window.location.href = "/pricing/";
+      });
     }
   }, 1000);
 }
@@ -387,19 +385,20 @@ async function startVoice(){
   }
 }
 
-function stopVoice(){
+// 🔥 stopVoice muss async sein, damit usage sicher weggeschrieben wird
+async function stopVoice(){
   endBtn.disabled = true;
 
-  const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : null;
+  const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
 
-  // ✅ Usage an Server melden (nur Free User)
-  if (durationSeconds && durationSeconds > 0 && !isPremium) {
-    reportUsage(durationSeconds);
+  // ✅ Usage an Server melden (nur Free User) — AWAIT, sonst geht's gerne verloren
+  if (durationSeconds > 0 && !isPremium) {
+    await reportUsage(durationSeconds);
   }
 
   // tracking: ended
   track("talk_ended", {
-    duration_seconds: durationSeconds,
+    duration_seconds: durationSeconds || null,
     is_premium: isPremium,
     remaining_seconds_at_end: isPremium ? null : remainingSeconds
   });
@@ -431,8 +430,22 @@ function stopVoice(){
   setStatus("Beendet.");
 }
 
+// Logout: erst sauber stoppen (usage schreiben), dann signOut
+logoutBtn.onclick = async () => {
+  try {
+    track("logout_clicked");
+
+    if (pc || stream || talkStartedAt) {
+      await stopVoice();
+    }
+  } catch(e) {}
+
+  try { await supabase.auth.signOut(); } catch(e) {}
+  window.location.href = "/";
+};
+
 startBtn.addEventListener("click", startVoice);
-endBtn.addEventListener("click", stopVoice);
+endBtn.addEventListener("click", () => stopVoice());
 </script>
 
 </body>
