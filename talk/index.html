@@ -205,13 +205,16 @@ function startCountdown(){
       countdown = null;
       setStatus("Free-Zeit vorbei.");
       stopVoice();
-      // später: Redirect /pricing oder Upgrade Overlay
     }
   }, 1000);
 }
 
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
+}
+
+async function safeJson(res) {
+  try { return await res.json(); } catch { return null; }
 }
 
 async function startVoice(){
@@ -233,10 +236,12 @@ async function startVoice(){
     const tokenRes = await fetch("/api/session", {
       headers: { Authorization: `Bearer ${session.access_token}` }
     });
-    const data = await tokenRes.json();
+
+    const data = await safeJson(tokenRes);
 
     if (!tokenRes.ok) {
-      setStatus(data?.error || "Kein Zugriff.");
+      const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
+      setStatus(msg);
       headline.textContent = "Sophie wartet.";
       showBackground(false);
       startBtn.disabled = false;
@@ -245,7 +250,7 @@ async function startVoice(){
     }
 
     // ✅ Remaining Sekunden vom Server nutzen (falls vorhanden)
-    if (typeof data.remaining_seconds === "number") {
+    if (typeof data?.remaining_seconds === "number") {
       remainingSeconds = Math.max(0, data.remaining_seconds);
       renderTimer();
       if (remainingSeconds <= 0) {
@@ -281,6 +286,11 @@ async function startVoice(){
         "Content-Type": "application/sdp"
       },
     });
+
+    if (!sdpRes.ok) {
+      const t = await sdpRes.text().catch(() => "");
+      throw new Error(`OpenAI SDP Fehler (HTTP ${sdpRes.status}): ${t.slice(0, 200)}`);
+    }
 
     const answer = { type: "answer", sdp: await sdpRes.text() };
     await pc.setRemoteDescription(answer);
