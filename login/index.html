@@ -4,54 +4,86 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Meet Sophie – Login</title>
+
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; }
-    input, button { width: 100%; padding: 12px; margin: 8px 0; }
-    button { cursor: pointer; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 520px;
+      margin: 60px auto;
+      padding: 0 16px;
+      background: #f9f9f9;
+    }
+
+    h2 { margin-bottom: 24px; }
+
+    .box {
+      background: white;
+      border: 1px solid #e5e5e5;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+    }
+
+    .primary { background: #111; color: white; }
+    .secondary { background: #eee; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
     .ok { color: #0a7; }
     .err { color: #c00; }
-    .box { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
-    .muted { opacity: .75; font-size: 14px; }
+
+    .muted {
+      font-size: 14px;
+      opacity: .7;
+      margin-top: 10px;
+    }
   </style>
 </head>
+
 <body>
   <h2>Sophie – Login</h2>
 
   <div class="box">
     <label>Email</label>
-    <input id="email" type="email" placeholder="you@example.com" autocomplete="email"/>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
 
     <label>Passwort</label>
-    <input id="password" type="password" placeholder="••••••••" autocomplete="current-password"/>
+    <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
 
     <div class="row">
-      <button id="signup" type="button">Registrieren</button>
-      <button id="signin" type="button">Login</button>
+      <button id="signup" class="secondary" type="button">Registrieren</button>
+      <button id="signin" class="primary" type="button">Login</button>
     </div>
 
-    <button id="signout" type="button" style="display:none;">Logout</button>
-
     <p id="status" class="muted"></p>
-    <pre id="user" style="white-space:pre-wrap;"></pre>
-
-    <p class="muted" style="margin-top:12px;">
-      Nach Login wirst du automatisch zu Sophie weitergeleitet.
-    </p>
   </div>
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+    const SUPABASE_ANON_KEY = "DEIN_PUBLIC_ANON_KEY_HIER";  // <-- deinen echten anon key einsetzen
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const $ = (id) => document.getElementById(id);
     const statusEl = $("status");
-    const userEl = $("user");
-    const signoutBtn = $("signout");
 
     function setStatus(msg, ok = true) {
       statusEl.textContent = msg;
@@ -59,117 +91,103 @@
       if (!ok) console.error(msg);
     }
 
-    async function refreshUI() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setStatus("Eingeloggt.", true);
-        userEl.textContent = JSON.stringify(
-          { id: session.user.id, email: session.user.email },
-          null,
-          2
-        );
-        signoutBtn.style.display = "block";
-      } else {
-        setStatus("Nicht eingeloggt.", true);
-        userEl.textContent = "";
-        signoutBtn.style.display = "none";
-      }
+    // -----------------------------------------
+    // Wenn bereits eingeloggt → direkt zu /talk
+    // -----------------------------------------
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      window.location.href = "/talk";
     }
 
-    async function ensureUserMemoryRow() {
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr) return setStatus("Auth Fehler: " + userErr.message, false);
-      if (!user) return;
+    // -----------------------------------------
+    // Hilfsfunktionen
+    // -----------------------------------------
 
-      const { data: existing, error: selErr } = await supabase
+    async function ensureUserMemoryRow(userId) {
+      const { data: existing } = await supabase
         .from("user_memory")
         .select("user_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
-      if (selErr) return setStatus("DB Fehler (select user_memory): " + selErr.message, false);
-
       if (!existing) {
-        const { error: insErr } = await supabase
-          .from("user_memory")
-          .insert({ user_id: user.id, profile_notes: "", relationship_summary: "" });
-
-        if (insErr) return setStatus("DB Fehler (insert user_memory): " + insErr.message, false);
+        await supabase.from("user_memory").insert({
+          user_id: userId,
+          profile_notes: "",
+          relationship_summary: ""
+        });
       }
     }
 
-    async function ensureUserUsageRow() {
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr) return setStatus("Auth Fehler: " + userErr.message, false);
-      if (!user) return;
-
-      const { data: existing, error: selErr } = await supabase
+    async function ensureUserUsageRow(userId) {
+      const { data: existing } = await supabase
         .from("user_usage")
         .select("user_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
-      if (selErr) return setStatus("DB Fehler (select user_usage): " + selErr.message, false);
-
       if (!existing) {
-        const { error: insErr } = await supabase
-          .from("user_usage")
-          .insert({ user_id: user.id, free_seconds_total: 900, free_seconds_used: 0 });
-
-        if (insErr) return setStatus("DB Fehler (insert user_usage): " + insErr.message, false);
+        await supabase.from("user_usage").insert({
+          user_id: userId,
+          free_seconds_total: 900,
+          free_seconds_used: 0
+        });
       }
     }
 
+    async function handleSuccessfulAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await ensureUserMemoryRow(user.id);
+      await ensureUserUsageRow(user.id);
+
+      setStatus("Login erfolgreich. Weiterleitung…", true);
+      window.location.href = "/talk";
+    }
+
+    // -----------------------------------------
+    // Registrierung
+    // -----------------------------------------
     $("signup").onclick = async () => {
       const email = $("email").value.trim();
       const password = $("password").value;
-      if (!email || !password) return setStatus("Email + Passwort eingeben.", false);
 
-      setStatus("Registriere…", true);
-
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) return setStatus("SignUp Fehler: " + error.message, false);
-
-      // Wenn Email-Confirmation AUS ist, bekommst du sofort eine Session
-      if (data.session) {
-        await ensureUserMemoryRow();
-        await ensureUserUsageRow();
-        await refreshUI();
-        setStatus("Registrierung ok (eingeloggt). Weiterleitung…", true);
-        window.location.href = "/talk";
-        return;
+      if (!email || !password) {
+        return setStatus("Email + Passwort eingeben.", false);
       }
 
-      await refreshUI();
-      setStatus("Registrierung ok. Bitte E-Mail bestätigen.", true);
+      setStatus("Registriere…");
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) return setStatus(error.message, false);
+
+      // Wenn Email-Confirmation deaktiviert ist → sofort eingeloggt
+      if (data.session) {
+        await handleSuccessfulAuth();
+      } else {
+        setStatus("Bitte Email bestätigen.", true);
+      }
     };
 
+    // -----------------------------------------
+    // Login
+    // -----------------------------------------
     $("signin").onclick = async () => {
       const email = $("email").value.trim();
       const password = $("password").value;
-      if (!email || !password) return setStatus("Email + Passwort eingeben.", false);
 
-      setStatus("Logge ein…", true);
+      if (!email || !password) {
+        return setStatus("Email + Passwort eingeben.", false);
+      }
+
+      setStatus("Logge ein…");
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return setStatus("Login Fehler: " + error.message, false);
+      if (error) return setStatus(error.message, false);
 
-      await ensureUserMemoryRow();
-      await ensureUserUsageRow();
-      await refreshUI();
-      setStatus("Login ok. Weiterleitung…", true);
-      window.location.href = "/talk";
+      await handleSuccessfulAuth();
     };
-
-    signoutBtn.onclick = async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) return setStatus("Logout Fehler: " + error.message, false);
-      await refreshUI();
-      setStatus("Logout ok.", true);
-    };
-
-    supabase.auth.onAuthStateChange(() => refreshUI());
-    await refreshUI();
   </script>
 </body>
 </html>
