@@ -5,7 +5,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    // --- 1) Supabase User über Bearer Token prüfen ---
+    // --- Supabase User über Bearer Token prüfen ---
     const authHeader = req.headers.authorization || "";
     const accessToken = authHeader.startsWith("Bearer ")
       ? authHeader.slice(7)
@@ -22,7 +22,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing Supabase server env vars" });
     }
 
-    // Supabase Auth: User aus Access Token holen
     const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -42,19 +41,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // --- 2) Stripe Checkout Session erstellen ---
+    // --- Stripe Checkout Session erstellen ---
     const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return res.status(500).json({ error: "Missing STRIPE_SECRET_KEY" });
-    }
+    const priceId = process.env.STRIPE_PRICE_ID;
 
-    // ✅ HIER EINTRAGEN: deine Stripe Price ID (price_...)
-    // Empfehlung: als ENV setzen -> STRIPE_PRICE_ID
-    const priceId = process.env.STRIPE_PRICE_ID || "price_XXXXX_REPLACE_ME";
-
-    if (!priceId || priceId.includes("REPLACE_ME")) {
-      return res.status(500).json({ error: "Missing STRIPE_PRICE_ID (price_...)" });
-    }
+    if (!stripeKey) return res.status(500).json({ error: "Missing STRIPE_SECRET_KEY" });
+    if (!priceId) return res.status(500).json({ error: "Missing STRIPE_PRICE_ID" });
 
     const origin = req.headers.origin || "https://meet-sophie.com";
     const successUrl = `${origin}/success`;
@@ -65,14 +57,10 @@ export default async function handler(req, res) {
     body.append("success_url", successUrl);
     body.append("cancel_url", cancelUrl);
 
-    // line_items[0]
     body.append("line_items[0][price]", priceId);
     body.append("line_items[0][quantity]", "1");
 
-    // Metadata: Supabase user id
     body.append("metadata[user_id]", userId);
-
-    // Optional: Kundenemail vorausfüllen
     if (user?.email) body.append("customer_email", user.email);
 
     const stripeResp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
@@ -87,13 +75,9 @@ export default async function handler(req, res) {
     const stripeJson = await stripeResp.json();
 
     if (!stripeResp.ok) {
-      return res.status(500).json({
-        error: "Stripe error",
-        detail: stripeJson,
-      });
+      return res.status(500).json({ error: "Stripe error", detail: stripeJson });
     }
 
-    // stripeJson.url ist die Checkout URL
     return res.status(200).json({ url: stripeJson.url });
   } catch (err) {
     console.error("create-checkout-session error:", err);
