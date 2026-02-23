@@ -165,9 +165,24 @@ async function track(event_name, meta = {}) {
       },
       body: JSON.stringify({ event_name, meta }),
     });
-  } catch (_) {
-    // tracking darf niemals die UX kaputt machen
-  }
+  } catch (_) {}
+}
+
+// --- Usage reporting helper (POST /api/usage) ---
+async function reportUsage(secondsUsed) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    await fetch("/api/usage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ seconds_used: secondsUsed }),
+    });
+  } catch (_) {}
 }
 
 // UI Elements
@@ -182,9 +197,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 // Logout
 logoutBtn.onclick = async () => {
-  // optional tracking
   track("logout_clicked");
-
   try { await supabase.auth.signOut(); } catch(e) {}
   window.location.href = "/";
 };
@@ -199,7 +212,7 @@ let countdown = null;
 let remainingSeconds = 15 * 60;
 let isPremium = false;
 
-// Session meta for tracking
+// Session meta for tracking/usage
 let talkStartedAt = null;
 
 function setStatus(txt){ statusEl.textContent = txt; }
@@ -226,20 +239,25 @@ function renderTimer(){
 renderTimer();
 
 function startCountdown(){
-  // Premium: kein Countdown
   if (isPremium) return;
 
   if (countdown) clearInterval(countdown);
   countdown = setInterval(() => {
     remainingSeconds -= 1;
     renderTimer();
+
     if (remainingSeconds <= 0) {
       clearInterval(countdown);
       countdown = null;
       setStatus("Free-Zeit vorbei.");
 
-      // tracking: free limit reached
       track("free_limit_reached");
+
+      // Nutzungszeit beim Limit-Ende melden (falls Call nicht sauber beendet wurde)
+      if (talkStartedAt && !isPremium) {
+        const durationSeconds = Math.round((Date.now() - talkStartedAt) / 1000);
+        if (durationSeconds > 0) reportUsage(durationSeconds);
+      }
 
       stopVoice();
       window.location.href = "/pricing/";
@@ -262,7 +280,6 @@ async function startVoice(){
   setStatus("Verbinde…");
   showBackground(true);
 
-  // tracking: intent
   track("talk_start_clicked");
 
   try{
@@ -296,7 +313,6 @@ async function startVoice(){
       logoutBtn.disabled = false;
 
       track("talk_start_failed", { http_status: tokenRes.status, message: msg });
-
       return;
     }
 
@@ -360,16 +376,13 @@ async function startVoice(){
       remaining_seconds_at_start: isPremium ? null : remainingSeconds
     });
 
-    // ✅ Timer starten, sobald live (Premium: kein Countdown)
     startCountdown();
 
   } catch(err){
     console.error(err);
     setStatus("Fehler beim Start.");
     headline.textContent = "Sophie wartet.";
-
     track("talk_start_exception", { message: String(err?.message || err) });
-
     stopVoice();
   }
 }
@@ -377,13 +390,20 @@ async function startVoice(){
 function stopVoice(){
   endBtn.disabled = true;
 
-  // tracking: ended
   const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : null;
+
+  // ✅ Usage an Server melden (nur Free User)
+  if (durationSeconds && durationSeconds > 0 && !isPremium) {
+    reportUsage(durationSeconds);
+  }
+
+  // tracking: ended
   track("talk_ended", {
     duration_seconds: durationSeconds,
     is_premium: isPremium,
     remaining_seconds_at_end: isPremium ? null : remainingSeconds
   });
+
   talkStartedAt = null;
 
   stopCountdown();
