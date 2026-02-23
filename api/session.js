@@ -78,7 +78,7 @@ export default async function handler(req, res) {
         voice: "alloy",
 
         // 🔥 RADIKAL MEHR VARIANZ
-        temperature: 1.15,
+        temperature: 1.3,
 
         instructions: `You are Sophie.
 You default to English, but if the user speaks another language, you naturally switch and continue in that language.
