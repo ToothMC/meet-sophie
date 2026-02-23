@@ -21,24 +21,52 @@ export default async function handler(req, res) {
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
-    // ✅ 4) Free-Limit prüfen (user_usage)
-    const { data: usage, error: usageErr } = await supabase
-      .from("user_usage")
-      .select("free_seconds_total, free_seconds_used")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // ✅ 4) Premium-Status prüfen (user_subscriptions)
+    let isPremium = false;
 
-    if (usageErr) return res.status(500).json({ error: usageErr.message });
+    try {
+      const { data: sub, error: subErr } = await supabase
+        .from("user_subscriptions")
+        .select("is_active, status")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    const freeTotal = usage?.free_seconds_total ?? 900;
-    const freeUsed = usage?.free_seconds_used ?? 0;
-    const remaining = Math.max(0, freeTotal - freeUsed);
-
-    if (remaining <= 0) {
-      return res.status(402).json({ error: "Free limit reached", remaining_seconds: 0 });
+      if (subErr) {
+        console.warn("Subscription lookup error:", subErr.message);
+      } else {
+        // robust: active/trialing zählen als Premium, oder is_active true
+        isPremium = !!sub?.is_active || sub?.status === "active" || sub?.status === "trialing";
+      }
+    } catch (e) {
+      console.warn("Subscription lookup crashed:", e?.message || e);
     }
 
-    // ✅ 5) OpenAI realtime session erstellen
+    // ✅ 5) Free-Limit prüfen (nur wenn NICHT Premium)
+    let remaining = 999999; // Premium: praktisch unlimited
+
+    if (!isPremium) {
+      const { data: usage, error: usageErr } = await supabase
+        .from("user_usage")
+        .select("free_seconds_total, free_seconds_used")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (usageErr) return res.status(500).json({ error: usageErr.message });
+
+      const freeTotal = usage?.free_seconds_total ?? 900;
+      const freeUsed = usage?.free_seconds_used ?? 0;
+      remaining = Math.max(0, freeTotal - freeUsed);
+
+      if (remaining <= 0) {
+        return res.status(402).json({
+          error: "Free limit reached",
+          remaining_seconds: 0,
+          is_premium: false,
+        });
+      }
+    }
+
+    // ✅ 6) OpenAI realtime session erstellen
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
@@ -131,8 +159,13 @@ Keine internen Prozesse erwähnen.`,
 
     const data = await response.json();
 
-    // ✅ Remaining Sekunden mit zurückgeben (UI Timer kann das nutzen)
-    return res.status(200).json({ ...data, remaining_seconds: remaining });
+    // ✅ Remaining Sekunden + Premium Flag zurückgeben (UI kann Paywall/Timer steuern)
+    return res.status(200).json({
+      ...data,
+      remaining_seconds: remaining,
+      is_premium: isPremium,
+      user_id: user.id,
+    });
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Internal server error" });
