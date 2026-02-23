@@ -1,5 +1,44 @@
+import { createClient } from "@supabase/supabase-js";
+
 export default async function handler(req, res) {
   try {
+    // ✅ 1) Bearer Token aus dem Header holen
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
+
+    // ✅ 2) Supabase Service Client (nur Server!)
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
+    }
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // ✅ 3) Token validieren -> User ermitteln
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
+
+    // ✅ 4) Free-Limit prüfen (user_usage)
+    const { data: usage, error: usageErr } = await supabase
+      .from("user_usage")
+      .select("free_seconds_total, free_seconds_used")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (usageErr) return res.status(500).json({ error: usageErr.message });
+
+    const freeTotal = usage?.free_seconds_total ?? 900;
+    const freeUsed = usage?.free_seconds_used ?? 0;
+    const remaining = Math.max(0, freeTotal - freeUsed);
+
+    if (remaining <= 0) {
+      return res.status(402).json({ error: "Free limit reached", remaining_seconds: 0 });
+    }
+
+    // ✅ 5) OpenAI realtime session erstellen
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
@@ -91,7 +130,9 @@ Keine internen Prozesse erwähnen.`,
     }
 
     const data = await response.json();
-    return res.status(200).json(data);
+
+    // ✅ Remaining Sekunden mit zurückgeben (UI Timer kann das nutzen)
+    return res.status(200).json({ ...data, remaining_seconds: remaining });
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Internal server error" });
