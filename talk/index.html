@@ -238,6 +238,9 @@ let dc = null;
 let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
 let partialAssistant = "";    // assistant chunks
 
+// ✅ NEW: buffer for user transcript deltas
+const userTranscriptBuffer = new Map(); // item_id -> string
+
 // Timer vars
 let countdown = null;
 let remainingSeconds = 15 * 60;
@@ -305,7 +308,7 @@ function attachChannel(ch) {
 
   dc.addEventListener("open", () => {
     try {
-      // ✅ Debug-stabil: Whisper + server_vad erzwingt Turns -> Transkription kann "completed" senden
+      // ✅ Ensure transcription is enabled (your logs confirm it works)
       dc.send(JSON.stringify({
         type: "session.update",
         session: {
@@ -316,32 +319,39 @@ function attachChannel(ch) {
     } catch (_) {}
   });
 
-  // ✅ NEU: robuster Message-Handler inkl. Delta/Completed + Debug output
+  // ✅ FIXED: delta buffer + completed only (no more user-only-assistant payload)
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
 
-      // 🔎 DEBUG: Für 1–2 Tests aktiv lassen. Wenn alles läuft, kannst du es löschen.
-      if (msg?.type) console.log("[oai-event]", msg.type, msg);
+      // =========================
+      // USER AUDIO TRANSCRIPTION
+      // =========================
 
-      // =========================
-      // USER AUDIO TRANSCRIPTION (delta + completed)
-      // =========================
+      // Delta -> buffer (DO NOT push to convoLog)
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
-        const delta = String(msg?.delta || msg?.transcript || "").trim();
-        if (delta) convoLog.push({ role: "user", text: delta });
+        const itemId = msg?.item_id;
+        const delta = String(msg?.delta || "").trim();
+        if (itemId && delta) {
+          const prev = userTranscriptBuffer.get(itemId) || "";
+          userTranscriptBuffer.set(itemId, (prev + delta).trim());
+        }
+        return;
       }
 
+      // Completed -> push one final user turn
       if (msg?.type === "conversation.item.input_audio_transcription.completed") {
+        const itemId = msg?.item_id;
         const t1 = String(msg?.transcript || "").trim();
-        const t2 = (msg?.item?.content && Array.isArray(msg.item.content))
-          ? msg.item.content.map(p => p?.transcript || p?.text || "").join(" ").trim()
-          : "";
-        const text = (t1 || t2 || "").trim();
+        const tBuf = itemId ? String(userTranscriptBuffer.get(itemId) || "").trim() : "";
+        const text = (t1 || tBuf).trim();
+
+        if (itemId) userTranscriptBuffer.delete(itemId);
         if (text) convoLog.push({ role: "user", text });
+        return;
       }
 
-      // Fallbacks (manchmal so geliefert)
+      // Fallback: sometimes user text appears on item.created/done content
       if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
         const item = msg?.item;
         if (item?.role === "user" && Array.isArray(item?.content)) {
@@ -351,26 +361,42 @@ function attachChannel(ch) {
       }
 
       // =========================
-      // ASSISTANT TEXT STREAM
+      // ASSISTANT TEXT
       // =========================
+
+      // In your logs, assistant comes as response.audio_transcript.*
+      if (msg?.type === "response.audio_transcript.delta") {
+        const chunk = String(msg?.delta || "").trim();
+        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        return;
+      }
+
+      if (msg?.type === "response.audio_transcript.done") {
+        const chunk = String(msg?.transcript || msg?.text || "").trim();
+        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        return;
+      }
+
+      // Backup text stream variants
       if (msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "").trim();
         if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        return;
       }
 
       if (msg?.type === "response.output_text.done") {
         const chunk = String(msg?.text || "").trim();
         if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        return;
       }
 
-      // Dein bisheriger Pfad bleibt auch drin
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
         const part = msg.part || {};
         const chunk = String(part.text || part.transcript || "").trim();
         if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
       }
 
-      // FINAL ASSISTANT MESSAGE
+      // Final assistant message
       if (msg?.type === "response.done") {
         const final = (partialAssistant || "").trim();
         if (final) convoLog.push({ role: "assistant", text: final });
@@ -396,6 +422,7 @@ async function startVoice(){
 
   convoLog = [];
   partialAssistant = "";
+  userTranscriptBuffer.clear();
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
