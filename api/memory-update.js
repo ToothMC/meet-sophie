@@ -23,8 +23,8 @@ module.exports = async function handler(req, res) {
     if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
 
     const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
+    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const openaiKey   = process.env.OPENAI_API_KEY;
 
     if (!supabaseUrl || !serviceKey) {
       return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" });
@@ -34,6 +34,22 @@ module.exports = async function handler(req, res) {
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Helpers: DB Fehler nicht verschlucken
+    async function mustInsert(table, row, label) {
+      const { error } = await supabase.from(table).insert(row);
+      if (error) {
+        console.error(`${label} insert failed:`, error.message, row);
+        throw new Error(`${label} insert failed: ${error.message}`);
+      }
+    }
+    async function mustUpdate(table, values, whereCol, whereVal, label) {
+      const { error } = await supabase.from(table).update(values).eq(whereCol, whereVal);
+      if (error) {
+        console.error(`${label} update failed:`, error.message, values);
+        throw new Error(`${label} update failed: ${error.message}`);
+      }
+    }
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
@@ -61,20 +77,24 @@ module.exports = async function handler(req, res) {
       .join("\n");
 
     // --- Base session (immer loggen) ---
-    // WICHTIG: Wenn du keine duration_seconds Spalte hast -> diese 2 Zeilen entfernen
+    // ⚠️ Wenn du KEINE duration_seconds Spalte hast: duration_seconds überall entfernen.
     const baseSession = {
       user_id: user.id,
       duration_seconds: secondsUsed,
+      // ⚠️ Wenn user_sessions eine NOT NULL session_date hat, diese Zeile drin lassen:
+      session_date: new Date().toISOString(),
     };
 
+    // Wenn kein Transcript: Session loggen & fertig
     if (!transcriptText || transcriptText.trim().length < 10) {
-      await supabase.from("user_sessions").insert({
+      await mustInsert("user_sessions", {
         ...baseSession,
         emotional_tone: "unknown",
         stress_level: null,
         closeness_level: null,
         short_summary: `No transcript captured. duration=${secondsUsed}s`,
-      });
+      }, "user_sessions(no_transcript)");
+
       return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
     }
 
@@ -84,7 +104,7 @@ module.exports = async function handler(req, res) {
       .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (relErr) return res.status(500).json({ error: relErr.message });
+    if (relErr) throw new Error(`user_relationship select failed: ${relErr.message}`);
 
     const system =
       "You update emotional relationship memory for Sophie. " +
@@ -114,12 +134,7 @@ ${transcriptText}
             emotional_patterns: { type: "string" },
             last_interaction_summary: { type: "string" },
           },
-          required: [
-            "tone_baseline",
-            "openness_level",
-            "emotional_patterns",
-            "last_interaction_summary",
-          ],
+          required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
         },
         session: {
           type: "object",
@@ -153,25 +168,27 @@ ${transcriptText}
           ],
           temperature: 0.2,
           text: {
-           format: {
-            type: "json_schema",
-            name: "sophie_memory_v1",
-            strict: true,
-            schema: schema,
-  },
-},          
+            format: {
+              type: "json_schema",
+              name: "sophie_memory_v1",
+              strict: true,
+              schema: schema,
+            },
+          },
           truncation: "auto",
         }),
       });
     } catch (e) {
       const msg = String(e?.message || e);
-      await supabase.from("user_sessions").insert({
+
+      await mustInsert("user_sessions", {
         ...baseSession,
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
         short_summary: `OpenAI fetch exception: ${msg} duration=${secondsUsed}s`.slice(0, 300),
-      });
+      }, "user_sessions(openai_fetch_exception)");
+
       return res.status(502).json({ error: "OpenAI fetch failed" });
     }
 
@@ -179,13 +196,13 @@ ${transcriptText}
       const errorText = await r.text().catch(() => "");
       const brief = String(errorText).replace(/\s+/g, " ").slice(0, 220);
 
-      await supabase.from("user_sessions").insert({
+      await mustInsert("user_sessions", {
         ...baseSession,
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
         short_summary: `Memory model error (HTTP ${r.status}). ${brief} duration=${secondsUsed}s`.slice(0, 300),
-      });
+      }, "user_sessions(openai_http_error)");
 
       return res.status(r.status).json({ error: errorText });
     }
@@ -200,39 +217,39 @@ ${transcriptText}
     try {
       parsed = JSON.parse(String(text || "").trim());
     } catch {
-      await supabase.from("user_sessions").insert({
+      await mustInsert("user_sessions", {
         ...baseSession,
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
         short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
-      });
+      }, "user_sessions(bad_json)");
+
       return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
     }
 
     const relationship = parsed.relationship || {};
     const sessionOut = parsed.session || {};
 
-    await supabase
-      .from("user_relationship")
-      .update({
-        tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
-        openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
-        emotional_patterns: String(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
-        last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+    const updateRel = {
+      tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
+      openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
+      emotional_patterns: String(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
+      last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
+      updated_at: new Date().toISOString(),
+    };
 
-    await supabase.from("user_sessions").insert({
+    await mustUpdate("user_relationship", updateRel, "user_id", user.id, "user_relationship");
+
+    await mustInsert("user_sessions", {
       user_id: user.id,
+      session_date: new Date().toISOString(), // falls NOT NULL
       emotional_tone: String(sessionOut.emotional_tone || "").slice(0, 50),
       stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
       closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
       short_summary: String(sessionOut.short_summary || "").slice(0, 300),
-      // wenn du keine duration_seconds Spalte hast -> entfernen
-      duration_seconds: secondsUsed,
-    });
+      duration_seconds: secondsUsed, // falls Spalte nicht existiert -> entfernen
+    }, "user_sessions(success)");
 
     return res.status(200).json({ ok: true });
   } catch (err) {
