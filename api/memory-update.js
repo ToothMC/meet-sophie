@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+const { createClient } = require("@supabase/supabase-js");
 
 /**
  * POST /api/memory-update
@@ -7,36 +7,43 @@ import { createClient } from "@supabase/supabase-js";
  *   seconds_used?: number
  * }
  */
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+    // Body robust lesen (je nach Vercel Runtime kann req.body string oder object sein)
+    let body = req.body;
+    if (typeof body === "string") {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    body = body && typeof body === "object" ? body : {};
 
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
 
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
       return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" });
     }
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openaiKey) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
-    const secondsUsed = Number(req.body?.seconds_used ?? 0) || 0;
+    const secondsUsed = Number(body.seconds_used ?? 0) || 0;
 
-    // -----------------------------
-    // Transcript normalisieren
-    // -----------------------------
-    const rawTranscript = req.body?.transcript;
+    // --- Transcript normalisieren: Array oder String akzeptieren ---
+    const rawTranscript = body.transcript;
 
-    /** @type {Array<{role:"user"|"assistant", text:string}>} */
     let transcriptArr = [];
-
     if (Array.isArray(rawTranscript)) {
       transcriptArr = rawTranscript
         .map((t) => ({
@@ -44,126 +51,34 @@ export default async function handler(req, res) {
           text: String(t?.text || "").trim(),
         }))
         .filter((t) => t.text.length > 0);
-    } else if (typeof rawTranscript === "string") {
-      const s = rawTranscript.trim();
-      if (s) transcriptArr = [{ role: "user", text: s }];
+    } else if (typeof rawTranscript === "string" && rawTranscript.trim()) {
+      transcriptArr = [{ role: "user", text: rawTranscript.trim() }];
     }
 
-    // für OpenAI: als Textblock
     const transcriptText = transcriptArr
       .slice(-30)
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
-    // -----------------------------
-    // Language preference (persisted)
-    // -----------------------------
-    function detectPreferredLanguageExplicit(transcriptArr) {
-      const t = (transcriptArr || [])
-        .filter((x) => x && x.role === "user")
-        .map((x) => String(x.text || "").toLowerCase())
-        .join("\n");
-
-      const wantsGerman =
-        /\b(bitte\s+deutsch|auf\s+deutsch|nur\s+deutsch|deutsch\s+bitte|sprich\s+deutsch)\b/.test(t) ||
-        /\b(please\s+in\s+german|in\s+german\s+please|speak\s+german)\b/.test(t);
-
-      const wantsEnglish =
-        /\b(bitte\s+englisch|auf\s+englisch|nur\s+englisch|englisch\s+bitte|sprich\s+englisch)\b/.test(t) ||
-        /\b(please\s+in\s+english|in\s+english\s+please|speak\s+english)\b/.test(t);
-
-      const wantsSpanish =
-        /\b(bitte\s+spanisch|auf\s+spanisch|nur\s+spanisch|spanisch\s+bitte|sprich\s+spanisch)\b/.test(t) ||
-        /\b(please\s+in\s+spanish|in\s+spanish\s+please|speak\s+spanish)\b/.test(t) ||
-        /\b(en\s+español|por\s+favor\s+en\s+español|habla\s+español)\b/.test(t);
-
-      const count = [wantsGerman, wantsEnglish, wantsSpanish].filter(Boolean).length;
-      if (count !== 1) return null;
-
-      if (wantsGerman) return "de";
-      if (wantsEnglish) return "en";
-      if (wantsSpanish) return "es";
-      return null;
-    }
-
-    function autoDetectLanguageFromLastUserText(transcriptArr) {
-      const lastUser = [...(transcriptArr || [])]
-        .reverse()
-        .find((x) => x?.role === "user" && typeof x?.text === "string" && x.text.trim().length > 0);
-
-      const txt = String(lastUser?.text || "").toLowerCase();
-      if (!txt) return null;
-
-      const hasGermanChars = /[äöüß]/.test(txt);
-      const hasSpanishChars = /[ñáéíóú¿¡]/.test(txt);
-
-      const germanWords = /\b(und|aber|doch|nicht|ich|du|wir|bitte|heute|genau|kannst|möchte)\b/.test(txt);
-      const spanishWords = /\b(hola|gracias|por favor|buenas|sí|no|yo|tú|nosotros|vale|claro)\b/.test(txt);
-      const englishWords = /\b(the|and|but|not|please|today|i|you|we|yeah|okay|really)\b/.test(txt);
-
-      const germanScore = (hasGermanChars ? 2 : 0) + (germanWords ? 1 : 0);
-      const spanishScore = (hasSpanishChars ? 2 : 0) + (spanishWords ? 1 : 0);
-      const englishScore = englishWords ? 1 : 0;
-
-      const max = Math.max(germanScore, spanishScore, englishScore);
-      if (max === 0) return null;
-
-      const winners = [
-        germanScore === max ? "de" : null,
-        spanishScore === max ? "es" : null,
-        englishScore === max ? "en" : null,
-      ].filter(Boolean);
-
-      if (winners.length !== 1) return null;
-      return winners[0];
-    }
-
-    let finalLang = detectPreferredLanguageExplicit(transcriptArr);
-    if (!finalLang && transcriptArr.length >= 2) {
-      finalLang = autoDetectLanguageFromLastUserText(transcriptArr);
-    }
-
-    if (finalLang) {
-      const { error: langErr } = await supabase
-        .from("user_profile")
-        .update({ preferred_language: finalLang })
-        .eq("user_id", user.id);
-
-      if (langErr) console.warn("preferred_language update failed:", langErr.message);
-    }
-
-    // -----------------------------
-    // Always: log a user session row (Fallback)
-    // -----------------------------
+    // --- Base session (immer loggen) ---
+    // WICHTIG: Wenn du keine duration_seconds Spalte hast -> diese 2 Zeilen entfernen
     const baseSession = {
       user_id: user.id,
-      emotional_tone: null,
-      stress_level: null,
-      closeness_level: null,
-      short_summary: null,
-      // falls die Spalte existiert, sonst entfernen:
       duration_seconds: secondsUsed,
     };
 
-    // Wenn kein Transcript: Session nur loggen, aber nicht crashen
     if (!transcriptText || transcriptText.trim().length < 10) {
       await supabase.from("user_sessions").insert({
         ...baseSession,
         emotional_tone: "unknown",
+        stress_level: null,
+        closeness_level: null,
         short_summary: `No transcript captured. duration=${secondsUsed}s`,
       });
-
-      return res.status(200).json({
-        ok: true,
-        skipped: true,
-        reason: "No transcript (session logged)",
-        preferred_language_set: finalLang || null,
-      });
+      return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
     }
 
-    // -----------------------------
-    // Relationship memory update
-    // -----------------------------
+    // --- Relationship read ---
     const { data: rel, error: relErr } = await supabase
       .from("user_relationship")
       .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
@@ -171,10 +86,9 @@ export default async function handler(req, res) {
       .maybeSingle();
     if (relErr) return res.status(500).json({ error: relErr.message });
 
-    const system = `
-You update emotional relationship memory for "Sophie" (quiet feminine evening presence).
-Be concise and non-creepy. Observations only. No diagnosis.
-`;
+    const system =
+      "You update emotional relationship memory for Sophie. " +
+      "Be concise and non-creepy. Observations only. No diagnosis.";
 
     const userMsg = `
 CURRENT relationship memory:
@@ -187,133 +101,123 @@ NEW transcript:
 ${transcriptText}
 `.trim();
 
- // ✅ Structured Outputs Schema (strict) — RESPONSES FORMAT (ohne json_schema wrapper)
-const schema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    relationship: {
+    const schema = {
       type: "object",
       additionalProperties: false,
       properties: {
-        tone_baseline: { type: "string" },
-        openness_level: { type: "string" },
-        emotional_patterns: { type: "string" },
-        last_interaction_summary: { type: "string" },
-      },
-      required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
-    },
-    session: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        emotional_tone: { type: "string" },
-        stress_level: { type: "integer", minimum: 0, maximum: 10 },
-        closeness_level: { type: "integer", minimum: 0, maximum: 10 },
-        short_summary: { type: "string" },
-      },
-      required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
-    },
-  },
-  required: ["relationship", "session"],
-};
-
-const r = await fetch("https://api.openai.com/v1/responses", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: process.env.MEMORY_MODEL || "gpt-4o-mini",
-    input: [
-      { role: "system", content: system },
-      { role: "user", content: userMsg },
-    ],
-    temperature: 0.2,
-    // ✅ Responses API: text.format mit strict + schema (ohne name/json_schema)
-    text: {
-      format: {
-        type: "json_schema",
-        strict: true,
-        schema,
-      },
-    },
-    // optional aber hilfreich gegen 400 bei langen Inputs:
-    truncation: "auto",
-  }),
-});
-    
-    const r = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.MEMORY_MODEL || "gpt-4o-mini",
-        input: [
-          { role: "system", content: system },
-          { role: "user", content: userMsg },
-        ],
-        temperature: 0.2,
-        // ✅ Responses API: JSON/Schema via text.format (nicht response_format)
-        text: {
-          format: { type: "json_schema", json_schema: schema },
+        relationship: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            tone_baseline: { type: "string" },
+            openness_level: { type: "string" },
+            emotional_patterns: { type: "string" },
+            last_interaction_summary: { type: "string" },
+          },
+          required: [
+            "tone_baseline",
+            "openness_level",
+            "emotional_patterns",
+            "last_interaction_summary",
+          ],
         },
-      }),
-    });
+        session: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            emotional_tone: { type: "string" },
+            stress_level: { type: "integer", minimum: 0, maximum: 10 },
+            closeness_level: { type: "integer", minimum: 0, maximum: 10 },
+            short_summary: { type: "string" },
+          },
+          required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
+        },
+      },
+      required: ["relationship", "session"],
+    };
+
+    // --- OpenAI call (Responses API) ---
+    let r;
+    try {
+      r = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: process.env.MEMORY_MODEL || "gpt-4o-mini",
+          input: [
+            { role: "system", content: system },
+            { role: "user", content: userMsg },
+          ],
+          temperature: 0.2,
+          text: {
+            format: { type: "json_schema", strict: true, schema },
+          },
+          truncation: "auto",
+        }),
+      });
+    } catch (e) {
+      const msg = String(e?.message || e);
+      await supabase.from("user_sessions").insert({
+        ...baseSession,
+        emotional_tone: "error",
+        stress_level: null,
+        closeness_level: null,
+        short_summary: `OpenAI fetch exception: ${msg} duration=${secondsUsed}s`.slice(0, 300),
+      });
+      return res.status(502).json({ error: "OpenAI fetch failed" });
+    }
 
     if (!r.ok) {
       const errorText = await r.text().catch(() => "");
-      const brief = String(errorText || "").replace(/\s+/g, " ").slice(0, 180);
+      const brief = String(errorText).replace(/\s+/g, " ").slice(0, 220);
 
       await supabase.from("user_sessions").insert({
         ...baseSession,
-        short_summary: `Memory model error (HTTP ${r.status}). ${brief} duration=${secondsUsed}s`,
+        emotional_tone: "error",
+        stress_level: null,
+        closeness_level: null,
+        short_summary: `Memory model error (HTTP ${r.status}). ${brief} duration=${secondsUsed}s`.slice(0, 300),
       });
 
       return res.status(r.status).json({ error: errorText });
     }
 
     const out = await r.json();
-
-    // Responses API liefert häufig output_text als Helper (aber wir bleiben robust)
     const text =
       out?.output_text ||
       out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
       "";
 
-    let parsed = null;
+    let parsed;
     try {
       parsed = JSON.parse(String(text || "").trim());
-    } catch (e) {
+    } catch {
       await supabase.from("user_sessions").insert({
         ...baseSession,
-        short_summary: `Bad JSON from model. duration=${secondsUsed}s`,
+        emotional_tone: "error",
+        stress_level: null,
+        closeness_level: null,
+        short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
       });
-
-      return res.status(200).json({
-        ok: false,
-        skipped: true,
-        reason: "Bad JSON from model",
-        raw: String(text || "").slice(0, 500),
-        preferred_language_set: finalLang || null,
-      });
+      return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
     }
 
-    const relationship = parsed?.relationship || {};
-    const sessionOut = parsed?.session || {};
+    const relationship = parsed.relationship || {};
+    const sessionOut = parsed.session || {};
 
-    const updateRel = {
-      tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
-      openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
-      emotional_patterns: String(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
-      last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
-      updated_at: new Date().toISOString(),
-    };
-
-    await supabase.from("user_relationship").update(updateRel).eq("user_id", user.id);
+    await supabase
+      .from("user_relationship")
+      .update({
+        tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
+        openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
+        emotional_patterns: String(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
+        last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
     await supabase.from("user_sessions").insert({
       user_id: user.id,
@@ -321,16 +225,13 @@ const r = await fetch("https://api.openai.com/v1/responses", {
       stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
       closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
       short_summary: String(sessionOut.short_summary || "").slice(0, 300),
-      // falls die Spalte existiert, sonst entfernen:
+      // wenn du keine duration_seconds Spalte hast -> entfernen
       duration_seconds: secondsUsed,
     });
 
-    return res.status(200).json({
-      ok: true,
-      preferred_language_set: finalLang || null,
-    });
+    return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("memory-update fatal:", err?.message || err, err?.stack || "");
+    return res.status(500).json({ error: String(err?.message || err || "Internal server error") });
   }
-}
+};
