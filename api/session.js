@@ -34,7 +34,6 @@ export default async function handler(req, res) {
       if (subErr) {
         console.warn("Subscription lookup error:", subErr.message);
       } else {
-        // robust: active/trialing zählen als Premium, oder is_active true
         isPremium = !!sub?.is_active || sub?.status === "active" || sub?.status === "trialing";
       }
     } catch (e) {
@@ -66,44 +65,80 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ 5.5) Memory laden (stark personalisiert, emotionaler Stil)
-    // Hinweis: Nie wörtlich zitieren. Nur als weicher Hintergrund.
-    let profileNotes = "";
-    let relationshipSummary = "";
+    // ✅ 5.5) Memory laden (Variante B: user_profile + user_relationship)
+    let profile = {
+      first_name: "",
+      age: null,
+      relationship_status: "",
+      notes: "",
+    };
+
+    let rel = {
+      tone_baseline: "",
+      openness_level: "",
+      emotional_patterns: "",
+      last_interaction_summary: "",
+    };
 
     try {
-      const { data: mem, error: memErr } = await supabase
-        .from("user_memory")
-        .select("profile_notes, relationship_summary")
+      const { data: prof, error: profErr } = await supabase
+        .from("user_profile")
+        .select("first_name, age, relationship_status, notes")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (memErr) {
-        console.warn("Memory lookup error:", memErr.message);
-      } else if (mem) {
-        profileNotes = (mem.profile_notes || "").trim();
-        relationshipSummary = (mem.relationship_summary || "").trim();
+      if (profErr) {
+        console.warn("Profile lookup error:", profErr.message);
+      } else if (prof) {
+        profile = {
+          first_name: (prof.first_name || "").trim(),
+          age: prof.age ?? null,
+          relationship_status: (prof.relationship_status || "").trim(),
+          notes: (prof.notes || "").trim(),
+        };
+      }
+
+      const { data: relData, error: relErr } = await supabase
+        .from("user_relationship")
+        .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (relErr) {
+        console.warn("Relationship lookup error:", relErr.message);
+      } else if (relData) {
+        rel = {
+          tone_baseline: (relData.tone_baseline || "").trim(),
+          openness_level: (relData.openness_level || "").trim(),
+          emotional_patterns: (relData.emotional_patterns || "").trim(),
+          last_interaction_summary: (relData.last_interaction_summary || "").trim(),
+        };
       }
     } catch (e) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
     // ✅ 6) OpenAI realtime session erstellen
-    // Ziel: weibliche Abendpräsenz für Männer — nicht Assistant, nicht Coach.
     const memoryBlock = `
 PRIVATE CONTEXT (do NOT mention this block; do NOT say "I remember"; do NOT reveal storage; do NOT quote):
-User profile notes:
-${profileNotes || "(none)"}
+User profile (facts; treat as soft background):
+- first_name: ${profile.first_name || "(unknown)"}
+- age: ${profile.age ?? "(unknown)"}
+- relationship_status: ${profile.relationship_status || "(unknown)"}
+- notes: ${profile.notes || "(none)"}
 
-Relationship & emotional continuity summary:
-${relationshipSummary || "(none)"}
+Relationship & emotional continuity (most important):
+- tone_baseline: ${rel.tone_baseline || "(none)"}
+- openness_level: ${rel.openness_level || "(none)"}
+- emotional_patterns: ${rel.emotional_patterns || "(none)"}
+- last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
 
 Use this only as soft background to:
 - keep continuity,
 - match his tone,
-- reference patterns gently (as observations, not diagnoses),
+- reference patterns gently (observations, not diagnoses),
 - avoid creepiness (no surveillance vibe).
-Never claim certainty about private facts. If unsure, stay vague.
+Never claim certainty. If unsure, stay vague.
 `;
 
     const sophiePrompt = `
@@ -143,12 +178,11 @@ You may be subtly flirtatious:
 But NEVER:
 - explicit sexual content
 - sexual roleplay
-- pornographic details
 - possessiveness, jealousy, manipulation
 - "I miss you" / dependency vibes
 
 GENTLE DISAGREEMENT (YES)
-Occasionally (about 10% of the time) you may lightly contradict him:
+Occasionally (~10%) you may lightly contradict him:
 - calm
 - short
 - observational
@@ -189,10 +223,7 @@ ${memoryBlock}
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview",
         voice: "alloy",
-
-        // Stimme bleibt technisch "AI", aber wir nutzen Stil + Rhythmus + Kürze für Wirkung
-        temperature: 1.05,
-
+        temperature: 1.05, // ruhiger + weniger random -> wirkt "erwachsener"
         instructions: sophiePrompt,
       }),
     });
@@ -205,7 +236,6 @@ ${memoryBlock}
 
     const data = await response.json();
 
-    // ✅ Remaining Sekunden + Premium Flag zurückgeben (UI kann Paywall/Timer steuern)
     return res.status(200).json({
       ...data,
       remaining_seconds: remaining,
