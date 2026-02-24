@@ -188,26 +188,29 @@ async function reportUsage(secondsUsed) {
 }
 
 // --- Memory update helper (POST /api/memory-update) ---
-// sendet die letzten Turns als Transcript an dein Backend
+// PATCH: sendet IMMER einen POST (auch wenn transcript leer ist) + debug logs
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
+    if (!session?.access_token) {
+      console.warn("sendMemoryUpdate: no access_token");
+      return;
+    }
 
     // offenen Assistant-Text flushen
-    const finalA = partialAssistant.trim();
+    const finalA = (partialAssistant || "").trim();
     if (finalA) {
       convoLog.push({ role: "assistant", text: finalA });
       partialAssistant = "";
     }
 
-    // zu wenig Inhalt? skip
-    if (convoLog.length < 2) return;
-
     // harte Begrenzung: letzte 30 Turns
-    const payload = convoLog.slice(-30);
+    const payload = (convoLog || []).slice(-30);
 
-    await fetch("/api/memory-update", {
+    console.log("sendMemoryUpdate: posting", { secondsUsed, turns: payload.length });
+    setStatus("Saving memory…");
+
+    const res = await fetch("/api/memory-update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -217,9 +220,20 @@ async function sendMemoryUpdate(secondsUsed) {
       keepalive: true,
     });
 
-    // reset
+    const txt = await res.text().catch(() => "");
+    console.log("sendMemoryUpdate: response", res.status, txt);
+
+    if (!res.ok) {
+      setStatus(`Memory save failed (${res.status})`);
+      return;
+    }
+
+    setStatus("Ended. (Memory saved)");
     convoLog = [];
-  } catch (_) {}
+  } catch (e) {
+    console.error("sendMemoryUpdate exception:", e);
+    setStatus("Ended. (Memory error)");
+  }
 }
 
 // UI Elements
@@ -237,7 +251,7 @@ let pc = null;
 let stream = null;
 let audioEl = null;
 
-// ✅ NEW: DataChannel + Transcript logging
+// ✅ DataChannel + Transcript logging
 let dc = null;
 let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
 let partialAssistant = "";    // sammelt assistant chunks
@@ -304,55 +318,61 @@ async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
-// ✅ helper: Realtime events parsen und transcript sammeln
+// PATCH: robustes DataChannel Handling (server-created + client-created)
+function attachChannel(ch) {
+  dc = ch;
+
+  dc.addEventListener("open", () => {
+    try {
+      dc.send(JSON.stringify({
+        type: "session.update",
+        session: { input_audio_transcription: { model: "whisper-1" } }
+      }));
+    } catch (_) {}
+  });
+
+  dc.addEventListener("message", (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+
+      // USER: kann transcript/text enthalten
+      if (msg.type === "conversation.item.created") {
+        const item = msg.item;
+        if (item?.role === "user" && Array.isArray(item?.content)) {
+          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
+          if (text) convoLog.push({ role: "user", text });
+        }
+      }
+
+      // ASSISTANT chunks
+      if (msg.type === "response.content_part.added" || msg.type === "response.content_part.done") {
+        const part = msg.part || {};
+        const chunk = String(part.text || part.transcript || "").trim();
+        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+      }
+
+      // ASSISTANT response done
+      if (msg.type === "response.done") {
+        const final = (partialAssistant || "").trim();
+        if (final) convoLog.push({ role: "assistant", text: final });
+        partialAssistant = "";
+      }
+    } catch (_) {}
+  });
+}
+
 function setupDataChannelLogging() {
+  // ✅ server-created channel
+  pc.ondatachannel = (e) => {
+    attachChannel(e.channel);
+  };
+
+  // ✅ client-created channel (fallback)
   try {
-    dc = pc.createDataChannel("oai-events");
-
-    dc.addEventListener("open", () => {
-      // Transcription einschalten (wenn vom Account/Model unterstützt)
-      // Wenn es nicht supported ist, passiert nichts Schlimmes.
-      try {
-        dc.send(JSON.stringify({
-          type: "session.update",
-          session: {
-            input_audio_transcription: { model: "whisper-1" }
-          }
-        }));
-      } catch (_) {}
-    });
-
-    dc.addEventListener("message", (ev) => {
-      try {
-        const msg = JSON.parse(ev.data);
-
-        // 1) User-Item created kann transcript/text enthalten
-        if (msg.type === "conversation.item.created") {
-          const item = msg.item;
-          if (item?.role === "user" && Array.isArray(item?.content)) {
-            const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-            if (text) convoLog.push({ role: "user", text });
-          }
-        }
-
-        // 2) Assistant content chunks (text/transcript)
-        if (msg.type === "response.content_part.added" || msg.type === "response.content_part.done") {
-          const part = msg.part || {};
-          const chunk = String(part.text || part.transcript || "").trim();
-          if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
-        }
-
-        // 3) Assistant response abgeschlossen -> finalisieren
-        if (msg.type === "response.done") {
-          const final = partialAssistant.trim();
-          if (final) convoLog.push({ role: "assistant", text: final });
-          partialAssistant = "";
-        }
-      } catch (_) {}
-    });
-  } catch (e) {
-    // DataChannel ist optional — Call darf trotzdem laufen
-    dc = null;
+    const ch = pc.createDataChannel("oai-events");
+    attachChannel(ch);
+  } catch (_) {
+    // ignore
   }
 }
 
@@ -422,7 +442,7 @@ async function startVoice(){
 
     pc = new RTCPeerConnection();
 
-    // ✅ NEW: DataChannel + transcript logging
+    // ✅ DataChannel + transcript logging
     setupDataChannelLogging();
 
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -480,19 +500,20 @@ async function startVoice(){
 
 // 🔥 stopVoice async, damit usage + memory update sicher ankommen
 async function stopVoice(triggeredByLimit = false){
+  console.log("stopVoice() called", { triggeredByLimit });
+
   endBtn.disabled = true;
 
   const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+  console.log("durationSeconds", durationSeconds);
 
   // ✅ Usage an Server melden (nur Free User) — AWAIT
   if (durationSeconds > 0 && !isPremium) {
     await reportUsage(durationSeconds);
   }
 
-  // ✅ Memory Update (für Free + Premium)
-  if (durationSeconds > 0) {
-    await sendMemoryUpdate(durationSeconds);
-  }
+  // ✅ Memory Update (für Free + Premium) — PATCH: auch bei 0 einmal senden (Debug)
+  await sendMemoryUpdate(durationSeconds);
 
   // tracking: ended
   track("talk_ended", {
