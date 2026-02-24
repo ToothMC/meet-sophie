@@ -460,7 +460,7 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
 
-    // 🔥 Soft goodbye before closing
+  // 🔥 Soft goodbye before closing
   if (dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
@@ -486,8 +486,6 @@ Max 12 words.
   const durationSeconds = talkStartedAt
     ? Math.round((Date.now() - talkStartedAt) / 1000)
     : 0;
-  
-  const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
 
   if (durationSeconds > 0 && !isPremium) {
     await reportUsage(durationSeconds);
