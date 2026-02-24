@@ -76,9 +76,52 @@ module.exports = async function handler(req, res) {
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
+    // -----------------------------
+    // Preferred Language Detection + Persist (user_profile.preferred_language)
+    // -----------------------------
+    function detectPreferredLanguage(transcriptArr) {
+      const text = (transcriptArr || [])
+        .map(t => String(t?.text || "").toLowerCase())
+        .join("\n");
+
+      // German
+      if (
+        /\b(bitte\s+deutsch|nur\s+deutsch|auf\s+deutsch|sprich\s+deutsch|zukünftig\s+nur\s+noch\s+deutsch)\b/.test(text) ||
+        /\b(please\s+in\s+german|in\s+german\s+please|speak\s+german)\b/.test(text)
+      ) return "de";
+
+      // English
+      if (
+        /\b(bitte\s+englisch|nur\s+englisch|auf\s+englisch|sprich\s+englisch|only\s+english)\b/.test(text) ||
+        /\b(please\s+in\s+english|in\s+english\s+please|speak\s+english)\b/.test(text)
+      ) return "en";
+
+      // Spanish
+      if (
+        /\b(bitte\s+spanisch|nur\s+spanisch|auf\s+spanisch|sprich\s+spanisch)\b/.test(text) ||
+        /\b(please\s+in\s+spanish|in\s+spanish\s+please|speak\s+spanish)\b/.test(text) ||
+        /\b(en\s+español|por\s+favor\s+en\s+español|habla\s+español)\b/.test(text)
+      ) return "es";
+
+      return null;
+    }
+
+    const finalLang = detectPreferredLanguage(transcriptArr);
+
+    if (finalLang) {
+      const { error: langErr } = await supabase
+        .from("user_profile")
+        .upsert(
+          { user_id: user.id, preferred_language: finalLang },
+          { onConflict: "user_id" }
+        );
+
+      if (langErr) console.warn("preferred_language upsert failed:", langErr.message);
+    }
+
     // --- Base session (immer loggen) ---
     // ✅ duration_seconds entfernt (Spalte existiert nicht)
-    // ✅ session_date gesetzt (falls NOT NULL)
+    // ✅ session_date gesetzt (UTC; Anzeige später lokal formatieren)
     const baseSession = {
       user_id: user.id,
       session_date: new Date().toISOString(),
@@ -94,7 +137,12 @@ module.exports = async function handler(req, res) {
         short_summary: `No transcript captured. duration=${secondsUsed}s`,
       }, "user_sessions(no_transcript)");
 
-      return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
+      return res.status(200).json({
+        ok: true,
+        skipped: true,
+        reason: "No transcript",
+        preferred_language_set: finalLang || null,
+      });
     }
 
     // --- Relationship read ---
@@ -224,7 +272,12 @@ ${transcriptText}
         short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
       }, "user_sessions(bad_json)");
 
-      return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
+      return res.status(200).json({
+        ok: false,
+        skipped: true,
+        reason: "Bad JSON",
+        preferred_language_set: finalLang || null,
+      });
     }
 
     const relationship = parsed.relationship || {};
@@ -249,7 +302,10 @@ ${transcriptText}
       short_summary: String(sessionOut.short_summary || "").slice(0, 300),
     }, "user_sessions(success)");
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({
+      ok: true,
+      preferred_language_set: finalLang || null,
+    });
   } catch (err) {
     console.error("memory-update fatal:", err?.message || err, err?.stack || "");
     return res.status(500).json({ error: String(err?.message || err || "Internal server error") });
