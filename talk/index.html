@@ -135,13 +135,10 @@ body{
 
   <button id="start" class="btn">Start talking</button>
   <button id="end" class="btn" disabled>End call</button>
-  <button id="forcePost" class="btn">Force POST test</button>
 </div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-document.title = "Sophie Voice (DEBUG v7)";
-document.getElementById("status").textContent = "DEBUG v7 loaded";
 
 // ✅ Supabase Config
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
@@ -191,29 +188,22 @@ async function reportUsage(secondsUsed) {
 }
 
 // --- Memory update helper (POST /api/memory-update) ---
-// PATCH: sendet IMMER einen POST (auch wenn transcript leer ist) + debug logs
+// Sends a POST even if transcript is empty (backend will log a session row anyway)
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      console.warn("sendMemoryUpdate: no access_token");
-      return;
-    }
+    if (!session?.access_token) return;
 
-    // offenen Assistant-Text flushen
+    // flush assistant text
     const finalA = (partialAssistant || "").trim();
     if (finalA) {
       convoLog.push({ role: "assistant", text: finalA });
       partialAssistant = "";
     }
 
-    // harte Begrenzung: letzte 30 Turns
     const payload = (convoLog || []).slice(-30);
 
-    console.log("sendMemoryUpdate: posting", { secondsUsed, turns: payload.length });
-    setStatus("Saving memory…");
-
-    const res = await fetch("/api/memory-update", {
+    await fetch("/api/memory-update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -223,20 +213,8 @@ async function sendMemoryUpdate(secondsUsed) {
       keepalive: true,
     });
 
-    const txt = await res.text().catch(() => "");
-    console.log("sendMemoryUpdate: response", res.status, txt);
-
-    if (!res.ok) {
-      setStatus(`Memory save failed (${res.status})`);
-      return;
-    }
-
-    setStatus("Ended. (Memory saved)");
     convoLog = [];
-  } catch (e) {
-    console.error("sendMemoryUpdate exception:", e);
-    setStatus("Ended. (Memory error)");
-  }
+  } catch (_) {}
 }
 
 // UI Elements
@@ -254,17 +232,17 @@ let pc = null;
 let stream = null;
 let audioEl = null;
 
-// ✅ DataChannel + Transcript logging
+// DataChannel + Transcript logging
 let dc = null;
 let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
-let partialAssistant = "";    // sammelt assistant chunks
+let partialAssistant = "";    // assistant chunks
 
 // Timer vars
 let countdown = null;
 let remainingSeconds = 15 * 60;
 let isPremium = false;
 
-// Session meta for tracking/usage
+// Session meta
 let talkStartedAt = null;
 
 function setStatus(txt){ statusEl.textContent = txt; }
@@ -305,7 +283,6 @@ function startCountdown(){
 
       track("free_limit_reached");
 
-      // Call beenden + Paywall (stopVoice macht usage + memory update)
       stopVoice(true).finally(() => {
         window.location.href = "/pricing/";
       });
@@ -321,7 +298,7 @@ async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
-// PATCH: robustes DataChannel Handling (server-created + client-created)
+// Robust DataChannel handling: server-created + client-created
 function attachChannel(ch) {
   dc = ch;
 
@@ -338,7 +315,7 @@ function attachChannel(ch) {
     try {
       const msg = JSON.parse(ev.data);
 
-      // USER: kann transcript/text enthalten
+      // USER transcript (if present)
       if (msg.type === "conversation.item.created") {
         const item = msg.item;
         if (item?.role === "user" && Array.isArray(item?.content)) {
@@ -365,18 +342,8 @@ function attachChannel(ch) {
 }
 
 function setupDataChannelLogging() {
-  // ✅ server-created channel
-  pc.ondatachannel = (e) => {
-    attachChannel(e.channel);
-  };
-
-  // ✅ client-created channel (fallback)
-  try {
-    const ch = pc.createDataChannel("oai-events");
-    attachChannel(ch);
-  } catch (_) {
-    // ignore
-  }
+  pc.ondatachannel = (e) => attachChannel(e.channel);
+  try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
 }
 
 async function startVoice(){
@@ -388,26 +355,22 @@ async function startVoice(){
 
   track("talk_start_clicked");
 
-  // reset transcript buffer
   convoLog = [];
   partialAssistant = "";
 
   try{
-    // ✅ immer frische Session holen (Token kann rotieren)
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       window.location.href = "/login/";
       return;
     }
 
-    // ✅ Token vom Server holen, mit Authorization Header
     const tokenRes = await fetch("/api/session", {
       headers: { Authorization: `Bearer ${session.access_token}` }
     });
 
     const data = await safeJson(tokenRes);
 
-    // ✅ Paywall: Free Limit erreicht -> Pricing
     if (tokenRes.status === 402) {
       track("free_limit_reached");
       window.location.href = "/pricing/";
@@ -421,22 +384,18 @@ async function startVoice(){
       showBackground(false);
       startBtn.disabled = false;
       logoutBtn.disabled = false;
-
       track("talk_start_failed", { http_status: tokenRes.status, message: msg });
       return;
     }
 
-    // ✅ Premium Flag vom Server
     isPremium = !!data?.is_premium;
 
-    // ✅ Remaining Sekunden vom Server nutzen (nur relevant bei Free)
     if (!isPremium && typeof data?.remaining_seconds === "number") {
       remainingSeconds = Math.max(0, data.remaining_seconds);
     }
 
     renderTimer();
 
-    // Wenn Free und schon 0 -> direkt Pricing
     if (!isPremium && remainingSeconds <= 0) {
       track("free_limit_reached");
       window.location.href = "/pricing/";
@@ -444,8 +403,6 @@ async function startVoice(){
     }
 
     pc = new RTCPeerConnection();
-
-    // ✅ DataChannel + transcript logging
     setupDataChannelLogging();
 
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -483,7 +440,6 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
-    // tracking: started
     talkStartedAt = Date.now();
     track("talk_started", {
       is_premium: isPremium,
@@ -501,24 +457,18 @@ async function startVoice(){
   }
 }
 
-// 🔥 stopVoice async, damit usage + memory update sicher ankommen
 async function stopVoice(triggeredByLimit = false){
-  console.log("stopVoice() called", { triggeredByLimit });
-
   endBtn.disabled = true;
 
   const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
-  console.log("durationSeconds", durationSeconds);
 
-  // ✅ Usage an Server melden (nur Free User) — AWAIT
   if (durationSeconds > 0 && !isPremium) {
     await reportUsage(durationSeconds);
   }
 
-  // ✅ Memory Update (für Free + Premium) — PATCH: auch bei 0 einmal senden (Debug)
+  // Always attempt memory-update (backend logs session even if transcript is empty)
   await sendMemoryUpdate(durationSeconds);
 
-  // tracking: ended
   track("talk_ended", {
     duration_seconds: durationSeconds || null,
     is_premium: isPremium,
@@ -530,7 +480,6 @@ async function stopVoice(triggeredByLimit = false){
 
   stopCountdown();
 
-  // DataChannel cleanup
   if (dc) {
     try { dc.close(); } catch(e){}
     dc = null;
@@ -559,11 +508,9 @@ async function stopVoice(triggeredByLimit = false){
   setStatus("Ended.");
 }
 
-// Logout: erst sauber stoppen (usage schreiben), dann signOut
 logoutBtn.onclick = async () => {
   try {
     track("logout_clicked");
-
     if (pc || stream || talkStartedAt) {
       await stopVoice(false);
     }
@@ -575,35 +522,6 @@ logoutBtn.onclick = async () => {
 
 startBtn.addEventListener("click", startVoice);
 endBtn.addEventListener("click", () => stopVoice(false));
-document.getElementById("forcePost").addEventListener("click", async () => {
-  setStatus("Force POST test…");
-
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    setStatus("Force POST: no session");
-    return;
-  }
-
-  const res = await fetch("/api/memory-update", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      transcript: [
-        { role: "user", text: "Force test." },
-        { role: "assistant", text: "Ok." }
-      ],
-      seconds_used: 1
-    }),
-  });
-
-  const t = await res.text().catch(()=> "");
-  setStatus(`Force POST: ${res.status}`);
-  console.log("Force POST result:", res.status, t);
-});
-
 </script>
 
 </body>
