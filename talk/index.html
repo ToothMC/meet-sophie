@@ -201,7 +201,8 @@ async function sendMemoryUpdate(secondsUsed) {
       partialAssistant = "";
     }
 
-    const payload = (convoLog || []).slice(-30);
+    // ✅ mehr Kontext behalten, damit Sprachwechsel nicht rausfällt
+    const payload = (convoLog || []).slice(-80);
 
     await fetch("/api/memory-update", {
       method: "POST",
@@ -304,35 +305,75 @@ function attachChannel(ch) {
 
   dc.addEventListener("open", () => {
     try {
+      // ✅ konsistent zum Server: gpt-4o-mini-transcribe
       dc.send(JSON.stringify({
         type: "session.update",
-        session: { input_audio_transcription: { model: "whisper-1" } }
+        session: { input_audio_transcription: { model: "gpt-4o-mini-transcribe" } }
       }));
     } catch (_) {}
   });
 
+  // ✅ NEU: robuster Message-Handler für USER Transkript + ASSISTANT Text
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
 
-      // USER transcript (if present)
-      if (msg.type === "conversation.item.created") {
-        const item = msg.item;
+      // =========================
+      // USER AUDIO TRANSCRIPTION
+      // =========================
+      if (
+        msg?.type === "conversation.item.input_audio_transcription.completed" ||
+        msg?.type === "input_audio_transcription.completed"
+      ) {
+        const t1 = String(msg?.transcript || "").trim();
+
+        const t2 = (msg?.item?.content && Array.isArray(msg.item.content))
+          ? msg.item.content
+              .map(p => p?.transcript || p?.text || "")
+              .join(" ")
+              .trim()
+          : "";
+
+        const text = (t1 || t2 || "").trim();
+        if (text) convoLog.push({ role: "user", text });
+      }
+
+      // Fallback: manchmal kommt es als conversation.item.created
+      if (msg?.type === "conversation.item.created") {
+        const item = msg?.item;
         if (item?.role === "user" && Array.isArray(item?.content)) {
-          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
+          const text = item.content
+            .map(p => p?.transcript || p?.text || "")
+            .join(" ")
+            .trim();
           if (text) convoLog.push({ role: "user", text });
         }
       }
 
-      // ASSISTANT chunks
-      if (msg.type === "response.content_part.added" || msg.type === "response.content_part.done") {
+      // =========================
+      // ASSISTANT TEXT STREAM
+      // =========================
+      if (
+        msg?.type === "response.content_part.added" ||
+        msg?.type === "response.content_part.done"
+      ) {
         const part = msg.part || {};
         const chunk = String(part.text || part.transcript || "").trim();
         if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
       }
 
-      // ASSISTANT response done
-      if (msg.type === "response.done") {
+      // Alternative Stream Events (häufig in Realtime)
+      if (msg?.type === "response.output_text.delta") {
+        const chunk = String(msg?.delta || "").trim();
+        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+      }
+      if (msg?.type === "response.output_text.done") {
+        const chunk = String(msg?.text || "").trim();
+        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+      }
+
+      // FINAL ASSISTANT MESSAGE
+      if (msg?.type === "response.done") {
         const final = (partialAssistant || "").trim();
         if (final) convoLog.push({ role: "assistant", text: final });
         partialAssistant = "";
