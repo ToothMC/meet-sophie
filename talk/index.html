@@ -257,16 +257,22 @@ function setupDataChannelLogging() {
 
 // ---------- Server: get ephemeral key ----------
 async function getEphemeralKey(){
-  // Erwartet einen Endpoint, der den Ephemeral Key liefert.
-  // Du hast sowas typischerweise als /api/session.js
-  const r = await fetch("/api/session", { method: "POST" });
-  if (!r.ok) throw new Error(`Session endpoint failed: ${r.status}`);
-  const j = await r.json();
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) throw new Error("No Supabase session token");
 
-  // toleriert mehrere Response-Formate:
-  // { client_secret: { value: "..." } }
-  // { client_secret: "..." }
-  // { ephemeral_key: "..." }
+  const r = await fetch("/api/session", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({}) // optional, aber sauber
+  });
+
+  if (!r.ok) throw new Error(`Session endpoint failed: ${r.status}`);
+
+  const j = await r.json();
   const k =
     j?.client_secret?.value ||
     j?.client_secret ||
