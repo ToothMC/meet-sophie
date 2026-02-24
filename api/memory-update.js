@@ -187,41 +187,63 @@ NEW transcript:
 ${transcriptText}
 `.trim();
 
-    // ✅ Structured Outputs Schema (strict)
-    const schema = {
-      name: "sophie_relationship_memory_v1",
-      strict: true,
-      schema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          relationship: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              tone_baseline: { type: "string" },
-              openness_level: { type: "string" },
-              emotional_patterns: { type: "string" },
-              last_interaction_summary: { type: "string" },
-            },
-            required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
-          },
-          session: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              emotional_tone: { type: "string" },
-              stress_level: { type: "integer", minimum: 0, maximum: 10 },
-              closeness_level: { type: "integer", minimum: 0, maximum: 10 },
-              short_summary: { type: "string" },
-            },
-            required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
-          },
-        },
-        required: ["relationship", "session"],
+ // ✅ Structured Outputs Schema (strict) — RESPONSES FORMAT (ohne json_schema wrapper)
+const schema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    relationship: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        tone_baseline: { type: "string" },
+        openness_level: { type: "string" },
+        emotional_patterns: { type: "string" },
+        last_interaction_summary: { type: "string" },
       },
-    };
+      required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
+    },
+    session: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        emotional_tone: { type: "string" },
+        stress_level: { type: "integer", minimum: 0, maximum: 10 },
+        closeness_level: { type: "integer", minimum: 0, maximum: 10 },
+        short_summary: { type: "string" },
+      },
+      required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
+    },
+  },
+  required: ["relationship", "session"],
+};
 
+const r = await fetch("https://api.openai.com/v1/responses", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: process.env.MEMORY_MODEL || "gpt-4o-mini",
+    input: [
+      { role: "system", content: system },
+      { role: "user", content: userMsg },
+    ],
+    temperature: 0.2,
+    // ✅ Responses API: text.format mit strict + schema (ohne name/json_schema)
+    text: {
+      format: {
+        type: "json_schema",
+        strict: true,
+        schema,
+      },
+    },
+    // optional aber hilfreich gegen 400 bei langen Inputs:
+    truncation: "auto",
+  }),
+});
+    
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
