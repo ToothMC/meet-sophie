@@ -460,6 +460,33 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
 
+    // 🔥 Soft goodbye before closing
+  if (dc && dc.readyState === "open") {
+    try {
+      dc.send(JSON.stringify({
+        type: "response.create",
+        response: {
+          instructions: `
+Say one short, soft goodbye line.
+Use the same language that was used in the last conversation.
+Match the emotional tone of the last exchange.
+Calm. Intimate. Low energy.
+No explanation. No repetition.
+Max 12 words.
+`,
+          modalities: ["audio", "text"]
+        }
+      }));
+
+      // kurze Pause damit Audio abgespielt wird
+      await new Promise(r => setTimeout(r, 900));
+    } catch (_) {}
+  }
+
+  const durationSeconds = talkStartedAt
+    ? Math.round((Date.now() - talkStartedAt) / 1000)
+    : 0;
+  
   const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
 
   if (durationSeconds > 0 && !isPremium) {
