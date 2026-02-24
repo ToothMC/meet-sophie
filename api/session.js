@@ -106,7 +106,6 @@ export default async function handler(req, res) {
     try {
       const { data: prof, error: profErr } = await supabase
         .from("user_profile")
-        // ⚠️ preferred_language wird hier NICHT zwingend gebraucht, ist aber ok wenn du es mitlädst
         .select("first_name, age, relationship_status, notes")
         .eq("user_id", user.id)
         .maybeSingle();
@@ -262,6 +261,13 @@ ${memoryBlock}
         voice: "alloy",
         temperature: 1.05,
         instructions: sophiePrompt,
+
+        // ✅ NEU: User-Audio Transkription aktivieren (sonst kommt nie role:"user" Text zurück)
+        // Modelle z.B.: whisper-1, gpt-4o-mini-transcribe, gpt-4o-transcribe ... :contentReference[oaicite:2]{index=2}
+        input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
+
+        // Optional, aber oft sinnvoll wenn du pcm16 sendest:
+        input_audio_format: "pcm16",
       }),
     });
 
