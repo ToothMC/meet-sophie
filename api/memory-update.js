@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * POST /api/memory-update
  * Body: {
- *   transcript: Array<{ role: "user"|"assistant", text: string }>,
+ *   transcript: Array<{ role: "user"|"assistant", text: string }> | string,
  *   seconds_used?: number
  * }
  */
@@ -27,17 +27,41 @@ export default async function handler(req, res) {
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
-    const transcript = Array.isArray(req.body?.transcript) ? req.body.transcript : [];
     const secondsUsed = Number(req.body?.seconds_used ?? 0) || 0;
+
+    // -----------------------------
+    // Transcript normalisieren
+    // -----------------------------
+    const rawTranscript = req.body?.transcript;
+
+    /** @type {Array<{role:"user"|"assistant", text:string}>} */
+    let transcriptArr = [];
+
+    if (Array.isArray(rawTranscript)) {
+      transcriptArr = rawTranscript
+        .map((t) => ({
+          role: t?.role === "assistant" ? "assistant" : "user",
+          text: String(t?.text || "").trim(),
+        }))
+        .filter((t) => t.text.length > 0);
+    } else if (typeof rawTranscript === "string") {
+      const s = rawTranscript.trim();
+      if (s) transcriptArr = [{ role: "user", text: s }];
+    }
+
+    // für OpenAI: als Textblock
+    const transcriptText = transcriptArr
+      .slice(-30)
+      .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
+      .join("\n");
 
     // -----------------------------
     // Language preference (persisted)
     // -----------------------------
-
     function detectPreferredLanguageExplicit(transcriptArr) {
       const t = (transcriptArr || [])
-        .filter(x => x && x.role === "user")
-        .map(x => String(x.text || "").toLowerCase())
+        .filter((x) => x && x.role === "user")
+        .map((x) => String(x.text || "").toLowerCase())
         .join("\n");
 
       const wantsGerman =
@@ -65,7 +89,7 @@ export default async function handler(req, res) {
     function autoDetectLanguageFromLastUserText(transcriptArr) {
       const lastUser = [...(transcriptArr || [])]
         .reverse()
-        .find(x => x?.role === "user" && typeof x?.text === "string" && x.text.trim().length > 0);
+        .find((x) => x?.role === "user" && typeof x?.text === "string" && x.text.trim().length > 0);
 
       const txt = String(lastUser?.text || "").toLowerCase();
       if (!txt) return null;
@@ -79,7 +103,7 @@ export default async function handler(req, res) {
 
       const germanScore = (hasGermanChars ? 2 : 0) + (germanWords ? 1 : 0);
       const spanishScore = (hasSpanishChars ? 2 : 0) + (spanishWords ? 1 : 0);
-      const englishScore = (englishWords ? 1 : 0);
+      const englishScore = englishWords ? 1 : 0;
 
       const max = Math.max(germanScore, spanishScore, englishScore);
       if (max === 0) return null;
@@ -94,9 +118,9 @@ export default async function handler(req, res) {
       return winners[0];
     }
 
-    let finalLang = detectPreferredLanguageExplicit(transcript);
-    if (!finalLang && transcript.length >= 2) {
-      finalLang = autoDetectLanguageFromLastUserText(transcript);
+    let finalLang = detectPreferredLanguageExplicit(transcriptArr);
+    if (!finalLang && transcriptArr.length >= 2) {
+      finalLang = autoDetectLanguageFromLastUserText(transcriptArr);
     }
 
     if (finalLang) {
@@ -109,18 +133,26 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------
-    // Always: log a user session row
+    // Always: log a user session row (Fallback)
     // -----------------------------
     const baseSession = {
       user_id: user.id,
-      emotional_tone: transcript.length ? null : "unknown",
+      emotional_tone: null,
       stress_level: null,
       closeness_level: null,
-      short_summary: transcript.length ? null : `No transcript captured. duration=${secondsUsed}s`,
+      short_summary: null,
+      // falls die Spalte existiert, sonst entfernen:
+      duration_seconds: secondsUsed,
     };
 
-    if (transcript.length === 0) {
-      await supabase.from("user_sessions").insert(baseSession);
+    // Wenn kein Transcript: Session nur loggen, aber nicht crashen
+    if (!transcriptText || transcriptText.trim().length < 10) {
+      await supabase.from("user_sessions").insert({
+        ...baseSession,
+        emotional_tone: "unknown",
+        short_summary: `No transcript captured. duration=${secondsUsed}s`,
+      });
+
       return res.status(200).json({
         ok: true,
         skipped: true,
@@ -139,30 +171,9 @@ export default async function handler(req, res) {
       .maybeSingle();
     if (relErr) return res.status(500).json({ error: relErr.message });
 
-    const trimmed = transcript.slice(-30).map(t => ({
-      role: t.role === "assistant" ? "assistant" : "user",
-      text: String(t.text || "").slice(0, 2000),
-    }));
-
     const system = `
 You update emotional relationship memory for "Sophie" (quiet feminine evening presence).
 Be concise and non-creepy. Observations only. No diagnosis.
-
-Return ONLY valid JSON:
-{
-  "relationship": {
-    "tone_baseline": "max 120 chars or empty",
-    "openness_level": "low|medium|high|mixed (or empty)",
-    "emotional_patterns": "semi-colon patterns max 240 chars or empty",
-    "last_interaction_summary": "2-4 short sentences max 420 chars"
-  },
-  "session": {
-    "emotional_tone": "1-3 words",
-    "stress_level": 0-10,
-    "closeness_level": 0-10,
-    "short_summary": "1-2 sentences max 240 chars"
-  }
-}
 `;
 
     const userMsg = `
@@ -173,8 +184,43 @@ emotional_patterns: ${rel?.emotional_patterns || ""}
 last_interaction_summary: ${rel?.last_interaction_summary || ""}
 
 NEW transcript:
-${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
-`;
+${transcriptText}
+`.trim();
+
+    // ✅ Structured Outputs Schema (strict)
+    const schema = {
+      name: "sophie_relationship_memory_v1",
+      strict: true,
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          relationship: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              tone_baseline: { type: "string" },
+              openness_level: { type: "string" },
+              emotional_patterns: { type: "string" },
+              last_interaction_summary: { type: "string" },
+            },
+            required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
+          },
+          session: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              emotional_tone: { type: "string" },
+              stress_level: { type: "integer", minimum: 0, maximum: 10 },
+              closeness_level: { type: "integer", minimum: 0, maximum: 10 },
+              short_summary: { type: "string" },
+            },
+            required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
+          },
+        },
+        required: ["relationship", "session"],
+      },
+    };
 
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -189,54 +235,42 @@ ${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
           { role: "user", content: userMsg },
         ],
         temperature: 0.2,
-        // ✅ harden: JSON-only output
-        response_format: { type: "json_object" },
+        // ✅ Responses API: JSON/Schema via text.format (nicht response_format)
+        text: {
+          format: { type: "json_schema", json_schema: schema },
+        },
       }),
     });
 
     if (!r.ok) {
-      const errorText = await r.text();
+      const errorText = await r.text().catch(() => "");
+      const brief = String(errorText || "").replace(/\s+/g, " ").slice(0, 180);
+
       await supabase.from("user_sessions").insert({
         ...baseSession,
-        short_summary: `Memory model error. duration=${secondsUsed}s`,
+        short_summary: `Memory model error (HTTP ${r.status}). ${brief} duration=${secondsUsed}s`,
       });
+
       return res.status(r.status).json({ error: errorText });
     }
 
     const out = await r.json();
+
+    // Responses API liefert häufig output_text als Helper (aber wir bleiben robust)
     const text =
-      out?.output?.[0]?.content?.find?.(c => c.type === "output_text")?.text ||
       out?.output_text ||
+      out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
       "";
 
-    // ✅ robust JSON extraction
-    function extractJsonObject(s) {
-      if (!s) return null;
-
-      const cleaned = String(s)
-        .replace(/```json/gi, "```")
-        .replace(/```/g, "")
-        .trim();
-
-      try { return JSON.parse(cleaned); } catch (_) {}
-
-      const firstBrace = cleaned.indexOf("{");
-      const lastBrace = cleaned.lastIndexOf("}");
-      if (firstBrace >= 0 && lastBrace > firstBrace) {
-        const slice = cleaned.slice(firstBrace, lastBrace + 1);
-        try { return JSON.parse(slice); } catch (_) {}
-      }
-
-      return null;
-    }
-
-    const parsed = extractJsonObject(text);
-
-    if (!parsed) {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(String(text || "").trim());
+    } catch (e) {
       await supabase.from("user_sessions").insert({
         ...baseSession,
         short_summary: `Bad JSON from model. duration=${secondsUsed}s`,
       });
+
       return res.status(200).json({
         ok: false,
         skipped: true,
@@ -265,6 +299,8 @@ ${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
       stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
       closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
       short_summary: String(sessionOut.short_summary || "").slice(0, 300),
+      // falls die Spalte existiert, sonst entfernen:
+      duration_seconds: secondsUsed,
     });
 
     return res.status(200).json({
