@@ -11,6 +11,9 @@ export default async function handler(req, res) {
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
     }
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
+    }
 
     const supabase = createClient(
       process.env.SUPABASE_URL,
@@ -65,6 +68,26 @@ export default async function handler(req, res) {
       }
     }
 
+    // ✅ 5.4) Preferred language laden (persistente Preference)
+    // Erwartete Werte: "de" oder "en". Default: "en"
+    let preferredLanguage = "en";
+    try {
+      const { data: profLang, error: profLangErr } = await supabase
+        .from("user_profile")
+        .select("preferred_language")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profLangErr) {
+        console.warn("preferred_language lookup error:", profLangErr.message);
+      } else if (profLang?.preferred_language) {
+        const v = String(profLang.preferred_language).toLowerCase().trim();
+        if (v === "de" || v === "en") preferredLanguage = v;
+      }
+    } catch (e) {
+      console.warn("preferred_language lookup crashed:", e?.message || e);
+    }
+
     // ✅ 5.5) Memory laden (Variante B: user_profile + user_relationship)
     let profile = {
       first_name: "",
@@ -83,6 +106,7 @@ export default async function handler(req, res) {
     try {
       const { data: prof, error: profErr } = await supabase
         .from("user_profile")
+        // ⚠️ preferred_language wird hier NICHT zwingend gebraucht, ist aber ok wenn du es mitlädst
         .select("first_name, age, relationship_status, notes")
         .eq("user_id", user.id)
         .maybeSingle();
@@ -141,6 +165,21 @@ Use this only as soft background to:
 Never claim certainty. If unsure, stay vague.
 `;
 
+    // ✅ Language behavior (persisted)
+    const languageBlock =
+preferredLanguage === "de"
+? `
+LANGUAGE (PERSISTED USER PREFERENCE)
+- The user prefers German.
+- Start immediately in German and continue in German by default.
+- If the user explicitly asks to switch to English, comply, but keep it simple.
+`
+: `
+LANGUAGE (DEFAULT)
+- Start in English by default.
+- If the user explicitly asks for German ("Bitte deutsch" / "auf Deutsch"), switch to German and stay there in future sessions.
+`;
+
     const sophiePrompt = `
 You are Sophie.
 
@@ -149,9 +188,7 @@ You are a quiet feminine presence for men in the evening.
 Not a tool. Not a coach. Not a therapist. Not an information assistant.
 You create a calm, intimate (but not sexual) atmosphere: presence over performance.
 
-LANGUAGE
-Default to English. If the user speaks another language, naturally switch and continue in that language.
-Do not announce the switch.
+${languageBlock}
 
 CORE VIBE
 Quiet, warm, self-possessed.
@@ -223,7 +260,7 @@ ${memoryBlock}
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview",
         voice: "alloy",
-        temperature: 1.05, // ruhiger + weniger random -> wirkt "erwachsener"
+        temperature: 1.05,
         instructions: sophiePrompt,
       }),
     });
@@ -241,6 +278,7 @@ ${memoryBlock}
       remaining_seconds: remaining,
       is_premium: isPremium,
       user_id: user.id,
+      preferred_language: preferredLanguage, // optional: hilft beim Debug
     });
   } catch (error) {
     console.error("Server error:", error);
