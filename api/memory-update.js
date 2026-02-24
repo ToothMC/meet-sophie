@@ -29,6 +29,38 @@ export default async function handler(req, res) {
 
     const transcript = Array.isArray(req.body?.transcript) ? req.body.transcript : [];
     const secondsUsed = Number(req.body?.seconds_used ?? 0) || 0;
+    
+// --- Language preference extraction (explicit only) ---
+function detectPreferredLanguageExplicit(transcriptArr) {
+  const t = (transcriptArr || [])
+    .filter(x => x && x.role === "user")
+    .map(x => String(x.text || "").toLowerCase())
+    .join("\n");
+
+  const wantsGerman =
+    /\b(bitte\s+deutsch|auf\s+deutsch|nur\s+deutsch|deutsch\s+bitte|sprich\s+deutsch)\b/.test(t) ||
+    /\b(please\s+in\s+german|in\s+german\s+please|speak\s+german)\b/.test(t);
+
+  const wantsEnglish =
+    /\b(bitte\s+englisch|auf\s+englisch|nur\s+englisch|englisch\s+bitte|sprich\s+englisch)\b/.test(t) ||
+    /\b(please\s+in\s+english|in\s+english\s+please|speak\s+english)\b/.test(t);
+
+  if (wantsGerman && !wantsEnglish) return "de";
+  if (wantsEnglish && !wantsGerman) return "en";
+  return null;
+}
+
+const langPref = detectPreferredLanguageExplicit(transcript);
+
+if (langPref) {
+  await supabase
+    .from("user_profile")
+    .update({
+      preferred_language: langPref,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+}    
 
     // ✅ IMMER: Session row schreiben (auch ohne transcript)
     const baseSession = {
