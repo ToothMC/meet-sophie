@@ -77,11 +77,10 @@ module.exports = async function handler(req, res) {
       .join("\n");
 
     // --- Base session (immer loggen) ---
-    // ⚠️ Wenn du KEINE duration_seconds Spalte hast: duration_seconds überall entfernen.
+    // ✅ duration_seconds entfernt (Spalte existiert nicht)
+    // ✅ session_date gesetzt (falls NOT NULL)
     const baseSession = {
       user_id: user.id,
-      duration_seconds: secondsUsed,
-      // ⚠️ Wenn user_sessions eine NOT NULL session_date hat, diese Zeile drin lassen:
       session_date: new Date().toISOString(),
     };
 
@@ -243,12 +242,11 @@ ${transcriptText}
 
     await mustInsert("user_sessions", {
       user_id: user.id,
-      session_date: new Date().toISOString(), // falls NOT NULL
+      session_date: new Date().toISOString(),
       emotional_tone: String(sessionOut.emotional_tone || "").slice(0, 50),
       stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
       closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
       short_summary: String(sessionOut.short_summary || "").slice(0, 300),
-      duration_seconds: secondsUsed, // falls Spalte nicht existiert -> entfernen
     }, "user_sessions(success)");
 
     return res.status(200).json({ ok: true });
