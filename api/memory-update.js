@@ -153,8 +153,13 @@ ${transcriptText}
           ],
           temperature: 0.2,
           text: {
-            format: { type: "json_schema", strict: true, schema },
-          },
+           format: {
+            type: "json_schema",
+            name: "sophie_memory_v1",
+            strict: true,
+            schema: schema,
+  },
+},          
           truncation: "auto",
         }),
       });
