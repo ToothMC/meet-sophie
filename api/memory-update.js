@@ -34,7 +34,6 @@ export default async function handler(req, res) {
     // Language preference (persisted)
     // -----------------------------
 
-    // Explicit language request detection (keyword-based, low risk)
     function detectPreferredLanguageExplicit(transcriptArr) {
       const t = (transcriptArr || [])
         .filter(x => x && x.role === "user")
@@ -54,7 +53,6 @@ export default async function handler(req, res) {
         /\b(please\s+in\s+spanish|in\s+spanish\s+please|speak\s+spanish)\b/.test(t) ||
         /\b(en\s+español|por\s+favor\s+en\s+español|habla\s+español)\b/.test(t);
 
-      // If user asks for multiple languages explicitly, don't guess
       const count = [wantsGerman, wantsEnglish, wantsSpanish].filter(Boolean).length;
       if (count !== 1) return null;
 
@@ -64,7 +62,6 @@ export default async function handler(req, res) {
       return null;
     }
 
-    // Very simple heuristic for auto-detecting the last user language (only if we have text)
     function autoDetectLanguageFromLastUserText(transcriptArr) {
       const lastUser = [...(transcriptArr || [])]
         .reverse()
@@ -73,7 +70,6 @@ export default async function handler(req, res) {
       const txt = String(lastUser?.text || "").toLowerCase();
       if (!txt) return null;
 
-      // Heuristics: good enough for de/en/es; avoids overwriting when mixed
       const hasGermanChars = /[äöüß]/.test(txt);
       const hasSpanishChars = /[ñáéíóú¿¡]/.test(txt);
 
@@ -85,7 +81,6 @@ export default async function handler(req, res) {
       const spanishScore = (hasSpanishChars ? 2 : 0) + (spanishWords ? 1 : 0);
       const englishScore = (englishWords ? 1 : 0);
 
-      // Require a clear winner, otherwise return null (don't overwrite preference)
       const max = Math.max(germanScore, spanishScore, englishScore);
       if (max === 0) return null;
 
@@ -99,10 +94,7 @@ export default async function handler(req, res) {
       return winners[0];
     }
 
-    // Determine which language (if any) to persist this session
     let finalLang = detectPreferredLanguageExplicit(transcript);
-
-    // If not explicit and we have enough transcript, try auto-detect
     if (!finalLang && transcript.length >= 2) {
       finalLang = autoDetectLanguageFromLastUserText(transcript);
     }
@@ -127,7 +119,6 @@ export default async function handler(req, res) {
       short_summary: transcript.length ? null : `No transcript captured. duration=${secondsUsed}s`,
     };
 
-    // If no transcript: just log session + return
     if (transcript.length === 0) {
       await supabase.from("user_sessions").insert(baseSession);
       return res.status(200).json({
@@ -198,6 +189,8 @@ ${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
           { role: "user", content: userMsg },
         ],
         temperature: 0.2,
+        // ✅ harden: JSON-only output
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -216,10 +209,30 @@ ${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
       out?.output_text ||
       "";
 
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
+    // ✅ robust JSON extraction
+    function extractJsonObject(s) {
+      if (!s) return null;
+
+      const cleaned = String(s)
+        .replace(/```json/gi, "```")
+        .replace(/```/g, "")
+        .trim();
+
+      try { return JSON.parse(cleaned); } catch (_) {}
+
+      const firstBrace = cleaned.indexOf("{");
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (firstBrace >= 0 && lastBrace > firstBrace) {
+        const slice = cleaned.slice(firstBrace, lastBrace + 1);
+        try { return JSON.parse(slice); } catch (_) {}
+      }
+
+      return null;
+    }
+
+    const parsed = extractJsonObject(text);
+
+    if (!parsed) {
       await supabase.from("user_sessions").insert({
         ...baseSession,
         short_summary: `Bad JSON from model. duration=${secondsUsed}s`,
@@ -228,13 +241,13 @@ ${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
         ok: false,
         skipped: true,
         reason: "Bad JSON from model",
-        raw: text.slice(0, 500),
+        raw: String(text || "").slice(0, 500),
         preferred_language_set: finalLang || null,
       });
     }
 
     const relationship = parsed?.relationship || {};
-    const session = parsed?.session || {};
+    const sessionOut = parsed?.session || {};
 
     const updateRel = {
       tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
@@ -248,10 +261,10 @@ ${trimmed.map(t => `${t.role.toUpperCase()}: ${t.text}`).join("\n")}
 
     await supabase.from("user_sessions").insert({
       user_id: user.id,
-      emotional_tone: String(session.emotional_tone || "").slice(0, 50),
-      stress_level: Number.isFinite(session.stress_level) ? session.stress_level : null,
-      closeness_level: Number.isFinite(session.closeness_level) ? session.closeness_level : null,
-      short_summary: String(session.short_summary || "").slice(0, 300),
+      emotional_tone: String(sessionOut.emotional_tone || "").slice(0, 50),
+      stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
+      closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
+      short_summary: String(sessionOut.short_summary || "").slice(0, 300),
     });
 
     return res.status(200).json({
