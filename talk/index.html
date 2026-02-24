@@ -7,7 +7,6 @@
 
 <style>
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
@@ -21,7 +20,6 @@ body{
   position:relative;
   overflow:hidden;
 }
-
 .topbar{
   position:fixed;
   top:0; left:0; right:0;
@@ -31,7 +29,6 @@ body{
   align-items:center;
   padding:14px 16px;
 }
-
 .topbar a,
 .topbar button{
   color:rgba(255,255,255,.9);
@@ -43,11 +40,7 @@ body{
   text-decoration:none;
   cursor:pointer;
 }
-
-.topbar button:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-}
+.topbar button:disabled{ opacity:.5; cursor:not-allowed; }
 
 .bg{
   position:fixed;
@@ -57,7 +50,6 @@ body{
   transition:opacity .5s ease;
   z-index:0;
 }
-
 .overlay{
   position:fixed;
   inset:0;
@@ -66,7 +58,6 @@ body{
   transition:opacity .5s ease;
   z-index:1;
 }
-
 .bg.active,
 .overlay.active{ opacity:1; }
 
@@ -77,7 +68,6 @@ body{
   max-width:420px;
   padding-top:40px;
 }
-
 .btn{
   display:block;
   width:100%;
@@ -89,23 +79,19 @@ body{
   border-radius:12px;
   cursor:pointer;
 }
-
 #start{ background:#ffffff; color:#000; }
 #end{
   background:rgba(255,255,255,.15);
   color:#fff;
   border:1px solid rgba(255,255,255,.3);
 }
-
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
-
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
 </style>
 </head>
 
 <body>
-
 <div class="bg" id="bg"></div>
 <div class="overlay" id="overlay"></div>
 
@@ -130,9 +116,42 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const { data: { session } } = await supabase.auth.getSession();
-if (!session?.user) window.location.href = "/login/";
+// ---------- UI ----------
+const $ = (id) => document.getElementById(id);
+const bg = $("bg");
+const overlay = $("overlay");
+const startBtn = $("start");
+const endBtn = $("end");
+const logoutBtn = $("logoutBtn");
+const statusEl = $("status");
+const timerEl = $("timer");
+const headlineEl = $("headline");
 
+function setStatus(t){ statusEl.textContent = t; }
+function setActiveCallUI(active){
+  bg.classList.toggle("active", active);
+  overlay.classList.toggle("active", active);
+  startBtn.disabled = active;
+  endBtn.disabled = !active;
+  headlineEl.textContent = active ? "Sophie is listening…" : "Sophie is waiting.";
+}
+
+// ---------- Auth ----------
+try{
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) window.location.href = "/login/";
+}catch(e){
+  console.error(e);
+  window.location.href = "/login/";
+}
+
+logoutBtn.addEventListener("click", async () => {
+  logoutBtn.disabled = true;
+  try { await supabase.auth.signOut(); } catch(_) {}
+  window.location.href = "/login/";
+});
+
+// ---------- Realtime state ----------
 let pc = null;
 let stream = null;
 let audioEl = null;
@@ -143,14 +162,39 @@ let partialAssistant = "";
 const userTranscriptBuffer = new Map();
 
 let countdown = null;
-let remainingSeconds = 15 * 60;
-let isPremium = false;
+let remainingSeconds = 15 * 60; // passt du später an (free/premium)
 let talkStartedAt = null;
+
+function fmtMMSS(s){
+  const m = String(Math.floor(s/60)).padStart(2,"0");
+  const r = String(s%60).padStart(2,"0");
+  return `${m}:${r}`;
+}
+function updateTimerUI(){
+  timerEl.textContent = `Free-Time: ${fmtMMSS(Math.max(0, remainingSeconds))}`;
+}
+function startCountdown(){
+  stopCountdown();
+  updateTimerUI();
+  countdown = setInterval(() => {
+    remainingSeconds -= 1;
+    updateTimerUI();
+    if (remainingSeconds <= 0){
+      setStatus("Free time used up.");
+      stopVoice().catch(()=>{});
+    }
+  }, 1000);
+}
+function stopCountdown(){
+  if (countdown) clearInterval(countdown);
+  countdown = null;
+}
 
 function attachChannel(ch) {
   dc = ch;
 
   dc.addEventListener("open", () => {
+    // Session-Settings (Transcription + VAD)
     try {
       dc.send(JSON.stringify({
         type: "session.update",
@@ -211,6 +255,135 @@ function setupDataChannelLogging() {
   try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
 }
 
+// ---------- Server: get ephemeral key ----------
+async function getEphemeralKey(){
+  // Erwartet einen Endpoint, der den Ephemeral Key liefert.
+  // Du hast sowas typischerweise als /api/session.js
+  const r = await fetch("/api/session", { method: "POST" });
+  if (!r.ok) throw new Error(`Session endpoint failed: ${r.status}`);
+  const j = await r.json();
+
+  // toleriert mehrere Response-Formate:
+  // { client_secret: { value: "..." } }
+  // { client_secret: "..." }
+  // { ephemeral_key: "..." }
+  const k =
+    j?.client_secret?.value ||
+    j?.client_secret ||
+    j?.ephemeral_key ||
+    j?.key;
+
+  if (!k) throw new Error("No ephemeral key in /api/session response");
+  return k;
+}
+
+// ---------- Start/Stop ----------
+async function startVoice(){
+  if (pc) return;
+
+  setStatus("Requesting microphone…");
+  startBtn.disabled = true;
+
+  // iOS/Autoplay safe: Audioelement vorab
+  audioEl = document.createElement("audio");
+  audioEl.autoplay = true;
+  audioEl.playsInline = true;
+  document.body.appendChild(audioEl);
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  }catch(e){
+    console.error(e);
+    setStatus("Microphone blocked.");
+    startBtn.disabled = false;
+    if (audioEl) audioEl.remove();
+    audioEl = null;
+    return;
+  }
+
+  try{
+    pc = new RTCPeerConnection();
+    setupDataChannelLogging();
+
+    // send mic
+    for (const t of stream.getTracks()) pc.addTrack(t, stream);
+
+    // receive audio
+    pc.addEventListener("track", (e) => {
+      if (!audioEl) return;
+      const [remoteStream] = e.streams;
+      audioEl.srcObject = remoteStream;
+    });
+
+    setStatus("Creating session…");
+    const ephemeralKey = await getEphemeralKey();
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // OpenAI Realtime SDP exchange
+    // Modell ggf. anpassen, wenn du ein anderes nutzt.
+    const model = "gpt-4o-realtime-preview";
+    const sdpResp = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${ephemeralKey}`,
+        "Content-Type": "application/sdp"
+      },
+      body: offer.sdp
+    });
+
+    if (!sdpResp.ok){
+      const txt = await sdpResp.text().catch(()=> "");
+      throw new Error(`Realtime SDP failed: ${sdpResp.status} ${txt}`);
+    }
+
+    const answerSdp = await sdpResp.text();
+    await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+
+    talkStartedAt = Date.now();
+    setActiveCallUI(true);
+    setStatus("Connected.");
+    startCountdown();
+
+  }catch(e){
+    console.error(e);
+    setStatus("Start failed (check Console).");
+    await stopVoice(true);
+  }
+}
+
+async function stopVoice(isError=false){
+  stopCountdown();
+
+  try { if (dc) dc.close(); } catch(_){}
+  dc = null;
+
+  try { if (pc) pc.close(); } catch(_){}
+  pc = null;
+
+  if (stream){
+    try{ stream.getTracks().forEach(t => t.stop()); } catch(_){}
+  }
+  stream = null;
+
+  if (audioEl){
+    try{ audioEl.pause(); } catch(_){}
+    try{ audioEl.srcObject = null; } catch(_){}
+    try{ audioEl.remove(); } catch(_){}
+  }
+  audioEl = null;
+
+  setActiveCallUI(false);
+  setStatus(isError ? "Disconnected." : "Call ended.");
+}
+
+// ---------- Buttons ----------
+startBtn.addEventListener("click", () => startVoice());
+endBtn.addEventListener("click", () => stopVoice());
+
+// init timer view
+updateTimerUI();
 </script>
 
 </body>
