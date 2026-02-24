@@ -135,6 +135,7 @@ body{
 
   <button id="start" class="btn">Start talking</button>
   <button id="end" class="btn" disabled>End call</button>
+  <button id="forcePost" class="btn">Force POST test</button>
 </div>
 
 <script type="module">
@@ -574,6 +575,35 @@ logoutBtn.onclick = async () => {
 
 startBtn.addEventListener("click", startVoice);
 endBtn.addEventListener("click", () => stopVoice(false));
+document.getElementById("forcePost").addEventListener("click", async () => {
+  setStatus("Force POST test…");
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    setStatus("Force POST: no session");
+    return;
+  }
+
+  const res = await fetch("/api/memory-update", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      transcript: [
+        { role: "user", text: "Force test." },
+        { role: "assistant", text: "Ok." }
+      ],
+      seconds_used: 1
+    }),
+  });
+
+  const t = await res.text().catch(()=> "");
+  setStatus(`Force POST: ${res.status}`);
+  console.log("Force POST result:", res.status, t);
+});
+
 </script>
 
 </body>
