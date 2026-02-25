@@ -270,7 +270,7 @@ ${memoryBlock}
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview",
         voice: "shimmer",
-        temperature: 1.05,
+        temperature: 1.15,
         instructions: sophiePrompt,
 
         // ✅ NEU: User-Audio Transkription aktivieren (sonst kommt nie role:"user" Text zurück)
