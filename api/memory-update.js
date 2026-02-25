@@ -174,6 +174,8 @@ module.exports = async function handler(req, res) {
       "1) relationship memory: observations only, non-creepy, no diagnosis.\n" +
       "2) user_profile patch: only store personal facts that improve conversation.\n\n" +
       "CRITICAL RULES FOR profile_patch:\n" +
+      "- preferred_addressing MUST be a nickname/name (e.g., 'Michi', 'Michael'). It must NEVER be 'du' or 'sie'.\n" +
+      "- preferred_pronoun is ONLY 'du' or 'sie'.\n" +      
       "- Only set/overwrite sensitive identity fields (preferred_addressing, preferred_pronoun, preferred_name) if the user explicitly states it (explicit=true).\n" +
       "- For topics_like/topics_avoid: only add items, never remove.\n" +
       "- Keep values short. No private addresses, no health/medical details, no employer names.\n" +
