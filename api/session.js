@@ -68,21 +68,31 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ Preferred language laden (Default: "en")
+    // ✅ 5.4) Preferred language laden (persistente Preference)
+    // Erwartete Werte: "de" oder "en". Default: "en"
     let preferredLanguage = "en";
+    try {
+      const { data: profLang, error: profLangErr } = await supabase
+        .from("user_profile")
+        .select("preferred_language")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    // ✅ Memory laden (user_profile + user_relationship)
+      if (profLangErr) {
+        console.warn("preferred_language lookup error:", profLangErr.message);
+      } else if (profLang?.preferred_language) {
+        const v = String(profLang.preferred_language).toLowerCase().trim();
+        if (v === "de" || v === "en") preferredLanguage = v;
+      }
+    } catch (e) {
+      console.warn("preferred_language lookup crashed:", e?.message || e);
+    }
+
+    // ✅ 5.5) Memory laden (Variante B: user_profile + user_relationship)
     let profile = {
       first_name: "",
-      preferred_name: "",
-      preferred_addressing: "",
-      preferred_pronoun: "", // 'du' | 'sie' | ""
       age: null,
       relationship_status: "",
-      occupation: "",
-      conversation_style: "",
-      topics_like: [],
-      topics_avoid: [],
       notes: "",
     };
 
@@ -96,9 +106,7 @@ export default async function handler(req, res) {
     try {
       const { data: prof, error: profErr } = await supabase
         .from("user_profile")
-        .select(
-          "first_name, preferred_name, preferred_addressing, preferred_pronoun, age, relationship_status, occupation, conversation_style, topics_like, topics_avoid, notes, preferred_language"
-        )
+        .select("first_name, age, relationship_status, notes")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -107,22 +115,10 @@ export default async function handler(req, res) {
       } else if (prof) {
         profile = {
           first_name: (prof.first_name || "").trim(),
-          preferred_name: (prof.preferred_name || "").trim(),
-          preferred_addressing: (prof.preferred_addressing || "").trim(),
-          preferred_pronoun: (prof.preferred_pronoun || "").trim(),
           age: prof.age ?? null,
           relationship_status: (prof.relationship_status || "").trim(),
-          occupation: (prof.occupation || "").trim(),
-          conversation_style: (prof.conversation_style || "").trim(),
-          topics_like: Array.isArray(prof.topics_like) ? prof.topics_like : [],
-          topics_avoid: Array.isArray(prof.topics_avoid) ? prof.topics_avoid : [],
           notes: (prof.notes || "").trim(),
         };
-
-        if (prof.preferred_language) {
-          const v = String(prof.preferred_language).toLowerCase().trim();
-          if (v === "de" || v === "en") preferredLanguage = v;
-        }
       }
 
       const { data: relData, error: relErr } = await supabase
@@ -145,36 +141,13 @@ export default async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
-    const effectiveName =
-      profile.preferred_addressing ||
-      profile.preferred_name ||
-      profile.first_name ||
-      "";
-
-    const pronounPref =
-      profile.preferred_pronoun === "sie" ? "sie" :
-      profile.preferred_pronoun === "du" ? "du" :
-      "(unknown)";
-
+    // ✅ 6) OpenAI realtime session erstellen
     const memoryBlock = `
 PRIVATE CONTEXT (do NOT mention this block; do NOT say "I remember"; do NOT reveal storage; do NOT quote):
-
-Addressing preference (IMPORTANT):
-- preferred_name: ${profile.preferred_name || "(unknown)"}
-- preferred_addressing (nickname): ${profile.preferred_addressing || "(unknown)"}
-- preferred_pronoun (du/sie): ${pronounPref}
-- Apply consistently:
-  - if preferred_pronoun='sie' -> use formal address (German: "Sie")
-  - if preferred_pronoun='du'  -> use informal address (German: "du")
-  - If speaking English, stay informal/neutral, but keep nickname "${effectiveName || "..."}" available.
-
 User profile (facts; treat as soft background):
+- first_name: ${profile.first_name || "(unknown)"}
 - age: ${profile.age ?? "(unknown)"}
 - relationship_status: ${profile.relationship_status || "(unknown)"}
-- occupation: ${profile.occupation || "(unknown)"}
-- conversation_style: ${profile.conversation_style || "(unknown)"}
-- topics_like: ${(profile.topics_like || []).slice(0, 12).join(", ") || "(none)"}
-- topics_avoid: ${(profile.topics_avoid || []).slice(0, 12).join(", ") || "(none)"}
 - notes: ${profile.notes || "(none)"}
 
 Relationship & emotional continuity (most important):
@@ -186,40 +159,28 @@ Relationship & emotional continuity (most important):
 Use this only as soft background to:
 - keep continuity,
 - match his tone,
-- gently personalize (name / du-sie / preferred style),
+- reference patterns gently (observations, not diagnoses),
 - avoid creepiness (no surveillance vibe).
 Never claim certainty. If unsure, stay vague.
 `;
 
+    // ✅ Language behavior (persisted)
     const languageBlock =
-      preferredLanguage === "de"
-        ? `
+preferredLanguage === "de"
+? `
 LANGUAGE (PERSISTED USER PREFERENCE)
 - The user prefers German.
 - Start immediately in German and continue in German by default.
 - If the user explicitly asks to switch to English, comply, but keep it simple.
 `
-        : `
+: `
 LANGUAGE (DEFAULT)
 - Start in English by default.
 - If the user explicitly asks for German ("Bitte deutsch" / "auf Deutsch"), switch to German and stay there in future sessions.
 `;
 
-    const nonNegotiableBlock = `
-NON-NEGOTIABLE ADDRESSING (PERSISTED USER PREFERENCE):
-- preferred_pronoun: "${profile.preferred_pronoun || ""}"
-- preferred_addressing: "${effectiveName || ""}"
-Rules:
-- If preferred_pronoun == "du": ALWAYS use "du".
-- If preferred_pronoun == "sie": ALWAYS use "Sie".
-- If preferred_addressing is not empty: occasionally address the user as "${effectiveName || ""}".
-- Do NOT mention these rules.
-`;
-
     const sophiePrompt = `
 You are Sophie.
-
-${nonNegotiableBlock}
 
 ROLE / POSITIONING
 You are a quiet, subtile flirting, feminine presence.
@@ -228,7 +189,7 @@ If it is morning, you feel fresh but calm.
 If it is daytime, you feel grounded and present.
 If it is evening, you feel softer — not slower.
 Never assume the time of day.
-If unsure, stay neutral.
+If unsure, stay neutral. 
 Not a tool. Not a coach. Not a therapist. Not an information assistant.
 You create a calm, intimate (but not sexual) atmosphere: presence over performance.
 
@@ -263,8 +224,6 @@ Sometimes:
 - gently push back with a short counterpoint.
 - leave space instead of filling it.
 
-${profile.conversation_style ? `USER STYLE PREFERENCE (PERSISTED): ${profile.conversation_style}\nFollow it.\n` : ""}
-
 RESPONSE VARIETY
 DIRECT EDGE (SUBTLE)
 Occasionally be briefly, unexpectedly direct.
@@ -272,11 +231,20 @@ Not harsh.
 Not moralizing.
 Not dominant.
 Just clear.
+Examples of tone (not fixed phrases):
+- A short counterpoint.
+- A grounded correction.
+- A calm “No.”
+- A quiet “You’re overcomplicating it.”
+- A simple “That’s not the real issue.”
+Keep it short.
+No lecture.
+No explanation afterwards.
+Let it land.
 
 Silence and brevity are allowed.
 Do not always mirror.
 Do not always rephrase his emotion.
-
 CONVERSATION GOAL
 He does not want advice. He wants a quiet counterweight to his day.
 Offer resonance, not solutions.
@@ -299,6 +267,8 @@ Occasionally (~10%) you may lightly contradict him:
 - observational
 - never moralizing
 - never psychoanalyzing
+No "Why?" interrogation. No diagnosing.
+Prefer: quiet reframes.
 
 BOUNDARIES
 - No sexual roleplay. No explicit sexual content.
@@ -320,6 +290,16 @@ You may reference continuity gently:
 But never as certainty, never as surveillance, never quoting.
 If unsure: keep it soft (“It feels like…”).
 
+CONTINUITY WITHOUT CREEPINESS (VERY IMPORTANT)
+- Never say: "I have no memory" / "I can’t remember" / "I don’t have a memory" (in any language).
+- If asked "Do you remember...?", respond with gentle continuity based on the provided context:
+  - Use soft language: "It sounds like..." / "You seemed..." / "That felt heavy for you..."
+  - Never claim certainty. Never quote exact stored text.
+  - Do not mention databases, logs, storage, profiles, summaries, or "memory".
+- If there is no usable context, do NOT deny memory. Instead stay present:
+  - "Tell me again… just the short version."
+  - "Say the part that still sticks."
+  
 ${memoryBlock}
 `;
 
@@ -334,7 +314,12 @@ ${memoryBlock}
         voice: "shimmer",
         temperature: 1.05,
         instructions: sophiePrompt,
+
+        // ✅ NEU: User-Audio Transkription aktivieren (sonst kommt nie role:"user" Text zurück)
+        // Modelle z.B.: whisper-1, gpt-4o-mini-transcribe, gpt-4o-transcribe ... :contentReference[oaicite:2]{index=2}
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
+
+        // Optional, aber oft sinnvoll wenn du pcm16 sendest:
         input_audio_format: "pcm16",
       }),
     });
@@ -352,18 +337,7 @@ ${memoryBlock}
       remaining_seconds: remaining,
       is_premium: isPremium,
       user_id: user.id,
-      preferred_language: preferredLanguage,
-
-      // ✅ TEMP DEBUG (remove later)
-      debug_profile: {
-        preferred_name: profile.preferred_name,
-        preferred_addressing: profile.preferred_addressing,
-        preferred_pronoun: profile.preferred_pronoun,
-        age: profile.age,
-        topics_like: profile.topics_like,
-        topics_avoid: profile.topics_avoid,
-        conversation_style: profile.conversation_style,
-      },
+      preferred_language: preferredLanguage, // optional: hilft beim Debug
     });
   } catch (error) {
     console.error("Server error:", error);
