@@ -9,9 +9,11 @@ const { createClient } = require("@supabase/supabase-js");
  */
 module.exports = async function handler(req, res) {
   try {
-    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
 
-    // Body robust lesen (je nach Vercel Runtime kann req.body string oder object sein)
+    // ---------- Body robust lesen ----------
     let body = req.body;
     if (typeof body === "string") {
       try { body = JSON.parse(body); } catch { body = {}; }
@@ -27,7 +29,7 @@ module.exports = async function handler(req, res) {
     const openaiKey   = process.env.OPENAI_API_KEY;
 
     if (!supabaseUrl || !serviceKey) {
-      return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" });
+      return res.status(500).json({ error: "Missing SUPABASE env vars" });
     }
     if (!openaiKey) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
@@ -35,31 +37,16 @@ module.exports = async function handler(req, res) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Helpers: DB Fehler nicht verschlucken
-    async function mustInsert(table, row, label) {
-      const { error } = await supabase.from(table).insert(row);
-      if (error) {
-        console.error(`${label} insert failed:`, error.message, row);
-        throw new Error(`${label} insert failed: ${error.message}`);
-      }
-    }
-    async function mustUpdate(table, values, whereCol, whereVal, label) {
-      const { error } = await supabase.from(table).update(values).eq(whereCol, whereVal);
-      if (error) {
-        console.error(`${label} update failed:`, error.message, values);
-        throw new Error(`${label} update failed: ${error.message}`);
-      }
-    }
-
+    // ---------- User validieren ----------
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
 
-    // --- Transcript normalisieren: Array oder String akzeptieren ---
+    // ---------- Transcript normalisieren ----------
     const rawTranscript = body.transcript;
-
     let transcriptArr = [];
+
     if (Array.isArray(rawTranscript)) {
       transcriptArr = rawTranscript
         .map((t) => ({
@@ -76,86 +63,33 @@ module.exports = async function handler(req, res) {
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
-    // -----------------------------
-    // Preferred Language Detection + Persist (user_profile.preferred_language)
-    // -----------------------------
-    function detectPreferredLanguage(transcriptArr) {
-      const text = (transcriptArr || [])
-        .map(t => String(t?.text || "").toLowerCase())
-        .join("\n");
-
-      // German
-      if (
-        /\b(bitte\s+deutsch|nur\s+deutsch|auf\s+deutsch|sprich\s+deutsch|zukünftig\s+nur\s+noch\s+deutsch)\b/.test(text) ||
-        /\b(please\s+in\s+german|in\s+german\s+please|speak\s+german)\b/.test(text)
-      ) return "de";
-
-      // English
-      if (
-        /\b(bitte\s+englisch|nur\s+englisch|auf\s+englisch|sprich\s+englisch|only\s+english)\b/.test(text) ||
-        /\b(please\s+in\s+english|in\s+english\s+please|speak\s+english)\b/.test(text)
-      ) return "en";
-
-      // Spanish
-      if (
-        /\b(bitte\s+spanisch|nur\s+spanisch|auf\s+spanisch|sprich\s+spanisch)\b/.test(text) ||
-        /\b(please\s+in\s+spanish|in\s+spanish\s+please|speak\s+spanish)\b/.test(text) ||
-        /\b(en\s+español|por\s+favor\s+en\s+español|habla\s+español)\b/.test(text)
-      ) return "es";
-
-      return null;
-    }
-
-    const finalLang = detectPreferredLanguage(transcriptArr);
-
-    if (finalLang) {
-      const { error: langErr } = await supabase
-        .from("user_profile")
-        .upsert(
-          { user_id: user.id, preferred_language: finalLang },
-          { onConflict: "user_id" }
-        );
-
-      if (langErr) console.warn("preferred_language upsert failed:", langErr.message);
-    }
-
-    // --- Base session (immer loggen) ---
-    // ✅ duration_seconds entfernt (Spalte existiert nicht)
-    // ✅ session_date gesetzt (UTC; Anzeige später lokal formatieren)
+    // ---------- Base Session ----------
     const baseSession = {
       user_id: user.id,
       session_date: new Date().toISOString(),
     };
 
-    // Wenn kein Transcript: Session loggen & fertig
-    if (!transcriptText || transcriptText.trim().length < 10) {
-      await mustInsert("user_sessions", {
+    if (!transcriptText || transcriptText.length < 10) {
+      await supabase.from("user_sessions").insert({
         ...baseSession,
         emotional_tone: "unknown",
         stress_level: null,
         closeness_level: null,
         short_summary: `No transcript captured. duration=${secondsUsed}s`,
-      }, "user_sessions(no_transcript)");
-
-      return res.status(200).json({
-        ok: true,
-        skipped: true,
-        reason: "No transcript",
-        preferred_language_set: finalLang || null,
       });
+
+      return res.status(200).json({ ok: true, skipped: true });
     }
 
-    // --- Relationship read ---
-    const { data: rel, error: relErr } = await supabase
+    // ---------- Relationship lesen ----------
+    const { data: rel } = await supabase
       .from("user_relationship")
       .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (relErr) throw new Error(`user_relationship select failed: ${relErr.message}`);
 
     const system =
-      "You update emotional relationship memory for Sophie. " +
-      "Be concise and non-creepy. Observations only. No diagnosis.";
+      "You update emotional relationship memory for Sophie. Be concise. Observations only.";
 
     const userMsg = `
 CURRENT relationship memory:
@@ -168,146 +102,90 @@ NEW transcript:
 ${transcriptText}
 `.trim();
 
-    const schema = {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        relationship: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            tone_baseline: { type: "string" },
-            openness_level: { type: "string" },
-            emotional_patterns: { type: "string" },
-            last_interaction_summary: { type: "string" },
-          },
-          required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
-        },
-        session: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            emotional_tone: { type: "string" },
-            stress_level: { type: "integer", minimum: 0, maximum: 10 },
-            closeness_level: { type: "integer", minimum: 0, maximum: 10 },
-            short_summary: { type: "string" },
-          },
-          required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
-        },
+    // ---------- OpenAI Call ----------
+    const r = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
       },
-      required: ["relationship", "session"],
-    };
-
-    // --- OpenAI call (Responses API) ---
-    let r;
-    try {
-      r = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openaiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: process.env.MEMORY_MODEL || "gpt-4o-mini",
-          input: [
-            { role: "system", content: system },
-            { role: "user", content: userMsg },
-          ],
-          temperature: 0.2,
-          text: {
-            format: {
-              type: "json_schema",
-              name: "sophie_memory_v1",
-              strict: true,
-              schema: schema,
-            },
-          },
-          truncation: "auto",
-        }),
-      });
-    } catch (e) {
-      const msg = String(e?.message || e);
-
-      await mustInsert("user_sessions", {
-        ...baseSession,
-        emotional_tone: "error",
-        stress_level: null,
-        closeness_level: null,
-        short_summary: `OpenAI fetch exception: ${msg} duration=${secondsUsed}s`.slice(0, 300),
-      }, "user_sessions(openai_fetch_exception)");
-
-      return res.status(502).json({ error: "OpenAI fetch failed" });
-    }
+      body: JSON.stringify({
+        model: process.env.MEMORY_MODEL || "gpt-4o-mini",
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: userMsg },
+        ],
+        temperature: 0.2,
+      }),
+    });
 
     if (!r.ok) {
-      const errorText = await r.text().catch(() => "");
-      const brief = String(errorText).replace(/\s+/g, " ").slice(0, 220);
-
-      await mustInsert("user_sessions", {
-        ...baseSession,
-        emotional_tone: "error",
-        stress_level: null,
-        closeness_level: null,
-        short_summary: `Memory model error (HTTP ${r.status}). ${brief} duration=${secondsUsed}s`.slice(0, 300),
-      }, "user_sessions(openai_http_error)");
-
-      return res.status(r.status).json({ error: errorText });
+      const t = await r.text().catch(() => "");
+      return res.status(500).json({ error: t });
     }
 
     const out = await r.json();
     const text =
       out?.output_text ||
-      out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
+      out?.output?.[0]?.content?.[0]?.text ||
       "";
 
     let parsed;
     try {
-      parsed = JSON.parse(String(text || "").trim());
+      parsed = JSON.parse(text);
     } catch {
-      await mustInsert("user_sessions", {
-        ...baseSession,
-        emotional_tone: "error",
-        stress_level: null,
-        closeness_level: null,
-        short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
-      }, "user_sessions(bad_json)");
-
-      return res.status(200).json({
-        ok: false,
-        skipped: true,
-        reason: "Bad JSON",
-        preferred_language_set: finalLang || null,
-      });
+      return res.status(200).json({ ok: false, skipped: true });
     }
 
     const relationship = parsed.relationship || {};
     const sessionOut = parsed.session || {};
 
-    const updateRel = {
-      tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
-      openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
-      emotional_patterns: String(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
-      last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
+    // ---------- 🔥 OPTION B: Laufende Kurz-Kontinuität ----------
+    function mergeContinuity(prev, next) {
+      const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
+      prev = clean(prev);
+      next = clean(next);
+
+      if (!next) return prev;
+      if (prev && prev.includes(next)) return prev;
+
+      let parts = prev ? prev.split(" • ").map(clean).filter(Boolean) : [];
+      parts = parts.filter((p) => p !== next);
+      parts.unshift(next);
+      parts = parts.slice(0, 3);
+
+      return parts.join(" • ").slice(0, 600);
+    }
+
+    const newContinuity = mergeContinuity(
+      rel?.last_interaction_summary || "",
+      relationship.last_interaction_summary || sessionOut.short_summary || ""
+    );
+
+    // ---------- Relationship Update ----------
+    await supabase.from("user_relationship").upsert({
+      user_id: user.id,
+      tone_baseline: relationship.tone_baseline || rel?.tone_baseline || "",
+      openness_level: relationship.openness_level || rel?.openness_level || "",
+      emotional_patterns: relationship.emotional_patterns || rel?.emotional_patterns || "",
+      last_interaction_summary: newContinuity,
       updated_at: new Date().toISOString(),
-    };
+    });
 
-    await mustUpdate("user_relationship", updateRel, "user_id", user.id, "user_relationship");
-
-    await mustInsert("user_sessions", {
+    // ---------- Session speichern ----------
+    await supabase.from("user_sessions").insert({
       user_id: user.id,
       session_date: new Date().toISOString(),
-      emotional_tone: String(sessionOut.emotional_tone || "").slice(0, 50),
-      stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
-      closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
-      short_summary: String(sessionOut.short_summary || "").slice(0, 300),
-    }, "user_sessions(success)");
-
-    return res.status(200).json({
-      ok: true,
-      preferred_language_set: finalLang || null,
+      emotional_tone: sessionOut.emotional_tone || "",
+      stress_level: sessionOut.stress_level ?? null,
+      closeness_level: sessionOut.closeness_level ?? null,
+      short_summary: sessionOut.short_summary || "",
     });
+
+    return res.status(200).json({ ok: true });
+
   } catch (err) {
-    console.error("memory-update fatal:", err?.message || err, err?.stack || "");
-    return res.status(500).json({ error: String(err?.message || err || "Internal server error") });
+    console.error("memory-update fatal:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
