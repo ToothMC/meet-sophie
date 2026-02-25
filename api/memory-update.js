@@ -286,4 +286,4 @@ ${transcriptText}
     console.error("memory-update fatal:", err?.message || err, err?.stack || "");
     return res.status(500).json({ error: String(err?.message || err || "Internal server error") });
   }
-};
+}

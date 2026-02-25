@@ -201,8 +201,17 @@ async function sendMemoryUpdate(secondsUsed) {
       partialAssistant = "";
     }
 
-    // ✅ mehr Kontext behalten, damit Sprachwechsel nicht rausfällt
-    const payload = (convoLog || []).slice(-80);
+    // ✅ Filter obvious junk (prevents "Bye." as user turn)
+    const cleaned = (convoLog || []).filter(t => {
+      const role = String(t?.role || "");
+      const text = String(t?.text || "").trim();
+      if (!text) return false;
+      if (role === "user" && text.toLowerCase() === "bye.") return false;
+      return true;
+    });
+
+    // ✅ keep more context, but not infinite
+    const payload = cleaned.slice(-80);
 
     await fetch("/api/memory-update", {
       method: "POST",
@@ -238,8 +247,11 @@ let dc = null;
 let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
 let partialAssistant = "";    // assistant chunks
 
-// ✅ NEW: buffer for user transcript deltas
+// ✅ buffer for user transcript deltas
 const userTranscriptBuffer = new Map(); // item_id -> string
+
+// ✅ NEW: de-dup for assistant final (prevents triple repeats)
+let lastAssistantFinal = "";
 
 // Timer vars
 let countdown = null;
@@ -249,7 +261,7 @@ let isPremium = false;
 // Session meta
 let talkStartedAt = null;
 
-// ✅ NEW: dynamic reset interval (anti "gets flat over time")
+// ✅ dynamic reset interval (anti "gets flat over time")
 let dynamicResetInterval = null;
 
 function setStatus(txt){ statusEl.textContent = txt; }
@@ -309,13 +321,11 @@ function stopDynamicResets(){
 }
 
 function triggerDynamicReset(){
-  // quiet micro-reset: keeps Sophie from drifting into "flat AI mode"
   if (dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
         type: "response.create",
         response: {
-          // IMPORTANT: do NOT force audio; do NOT restart; no visible meta
           modalities: ["text"],
           instructions: `
 Continue naturally.
@@ -334,7 +344,6 @@ Stay present, warm, and human.
 
 function startDynamicResets(){
   stopDynamicResets();
-  // every 3 minutes (safe default)
   dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
 }
 
@@ -348,18 +357,16 @@ function attachChannel(ch) {
 
   dc.addEventListener("open", () => {
     try {
-      // ✅ Ensure transcription is enabled (your logs confirm it works)
       dc.send(JSON.stringify({
         type: "session.update",
         session: {
-          input_audio_transcription: { model: "whisper-1" },
+          input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
           turn_detection: { type: "server_vad" }
         }
       }));
     } catch (_) {}
   });
 
-  // ✅ FIXED: delta buffer + completed only (no more user-only-assistant payload)
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
@@ -368,18 +375,16 @@ function attachChannel(ch) {
       // USER AUDIO TRANSCRIPTION
       // =========================
 
-      // Delta -> buffer (DO NOT push to convoLog)
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
-        const delta = String(msg?.delta || "").trim();
+        const delta = String(msg?.delta || "");
         if (itemId && delta) {
           const prev = userTranscriptBuffer.get(itemId) || "";
-          userTranscriptBuffer.set(itemId, (prev + delta).trim());
+          userTranscriptBuffer.set(itemId, (prev + delta));
         }
         return;
       }
 
-      // Completed -> push one final user turn
       if (msg?.type === "conversation.item.input_audio_transcription.completed") {
         const itemId = msg?.item_id;
         const t1 = String(msg?.transcript || "").trim();
@@ -391,7 +396,7 @@ function attachChannel(ch) {
         return;
       }
 
-      // Fallback: sometimes user text appears on item.created/done content
+      // Fallback user text on item.created/done
       if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
         const item = msg?.item;
         if (item?.role === "user" && Array.isArray(item?.content)) {
@@ -404,42 +409,47 @@ function attachChannel(ch) {
       // ASSISTANT TEXT
       // =========================
 
-      // In your logs, assistant comes as response.audio_transcript.*
+      // Delta -> append
       if (msg?.type === "response.audio_transcript.delta") {
-        const chunk = String(msg?.delta || "").trim();
-        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        const chunk = String(msg?.delta || "");
+        if (chunk) partialAssistant += chunk;
         return;
       }
 
+      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.audio_transcript.done") {
-        const chunk = String(msg?.transcript || msg?.text || "").trim();
-        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        const full = String(msg?.transcript || msg?.text || "").trim();
+        if (full) partialAssistant = full;
         return;
       }
 
       // Backup text stream variants
       if (msg?.type === "response.output_text.delta") {
-        const chunk = String(msg?.delta || "").trim();
-        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        const chunk = String(msg?.delta || "");
+        if (chunk) partialAssistant += chunk;
         return;
       }
 
+      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.output_text.done") {
-        const chunk = String(msg?.text || "").trim();
-        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        const full = String(msg?.text || "").trim();
+        if (full) partialAssistant = full;
         return;
       }
 
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
         const part = msg.part || {};
-        const chunk = String(part.text || part.transcript || "").trim();
-        if (chunk) partialAssistant += (partialAssistant ? " " : "") + chunk;
+        const chunk = String(part.text || part.transcript || "");
+        if (chunk) partialAssistant += chunk;
       }
 
-      // Final assistant message
+      // Final assistant message: push ONCE (de-dup)
       if (msg?.type === "response.done") {
-        const final = (partialAssistant || "").trim();
-        if (final) convoLog.push({ role: "assistant", text: final });
+        const final = String(partialAssistant || "").trim();
+        if (final && final !== lastAssistantFinal) {
+          convoLog.push({ role: "assistant", text: final });
+          lastAssistantFinal = final;
+        }
         partialAssistant = "";
       }
     } catch (_) {}
@@ -462,9 +472,9 @@ async function startVoice(){
 
   convoLog = [];
   partialAssistant = "";
+  lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  // ✅ ensure no leftover reset loop
   stopDynamicResets();
 
   try{
@@ -549,7 +559,6 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
-    // ✅ start subtle micro-resets (keeps her "fresh" over longer calls)
     startDynamicResets();
 
     talkStartedAt = Date.now();
@@ -571,11 +580,9 @@ async function startVoice(){
 
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
-
-  // ✅ stop micro-resets immediately
   stopDynamicResets();
 
-  // 🔥 Soft goodbye before closing
+  // Soft goodbye before closing
   if (dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
@@ -593,7 +600,6 @@ Max 12 words.
         }
       }));
 
-      // kurze Pause damit Audio abgespielt wird
       await new Promise(r => setTimeout(r, 900));
     } catch (_) {}
   }
@@ -606,7 +612,7 @@ Max 12 words.
     await reportUsage(durationSeconds);
   }
 
-  // Always attempt memory-update (backend logs session even if transcript is empty)
+  // Always attempt memory-update
   await sendMemoryUpdate(durationSeconds);
 
   track("talk_ended", {
