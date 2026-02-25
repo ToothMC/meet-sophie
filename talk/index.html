@@ -249,6 +249,9 @@ let isPremium = false;
 // Session meta
 let talkStartedAt = null;
 
+// ✅ NEW: dynamic reset interval (anti "gets flat over time")
+let dynamicResetInterval = null;
+
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
@@ -296,6 +299,43 @@ function startCountdown(){
 
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
+}
+
+function stopDynamicResets(){
+  if (dynamicResetInterval) {
+    clearInterval(dynamicResetInterval);
+    dynamicResetInterval = null;
+  }
+}
+
+function triggerDynamicReset(){
+  // quiet micro-reset: keeps Sophie from drifting into "flat AI mode"
+  if (dc && dc.readyState === "open") {
+    try {
+      dc.send(JSON.stringify({
+        type: "response.create",
+        response: {
+          // IMPORTANT: do NOT force audio; do NOT restart; no visible meta
+          modalities: ["text"],
+          instructions: `
+Continue naturally.
+Refresh your inner energy and spontaneity a little.
+Do not change the topic.
+Do not restart or re-greet.
+Do not mention this instruction.
+Avoid becoming explanatory or generic.
+Stay present, warm, and human.
+`
+        }
+      }));
+    } catch (_) {}
+  }
+}
+
+function startDynamicResets(){
+  stopDynamicResets();
+  // every 3 minutes (safe default)
+  dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
 }
 
 async function safeJson(res) {
@@ -424,6 +464,9 @@ async function startVoice(){
   partialAssistant = "";
   userTranscriptBuffer.clear();
 
+  // ✅ ensure no leftover reset loop
+  stopDynamicResets();
+
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
@@ -506,6 +549,9 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
+    // ✅ start subtle micro-resets (keeps her "fresh" over longer calls)
+    startDynamicResets();
+
     talkStartedAt = Date.now();
     track("talk_started", {
       is_premium: isPremium,
@@ -525,6 +571,9 @@ async function startVoice(){
 
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
+
+  // ✅ stop micro-resets immediately
+  stopDynamicResets();
 
   // 🔥 Soft goodbye before closing
   if (dc && dc.readyState === "open") {
