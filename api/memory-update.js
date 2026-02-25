@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    // Body robust lesen (je nach Vercel Runtime kann req.body string oder object sein)
+    // Body robust lesen
     let body = req.body;
     if (typeof body === "string") {
       try { body = JSON.parse(body); } catch { body = {}; }
@@ -35,7 +35,6 @@ module.exports = async function handler(req, res) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Helpers: DB Fehler nicht verschlucken
     async function mustInsert(table, row, label) {
       const { error } = await supabase.from(table).insert(row);
       if (error) {
@@ -56,7 +55,7 @@ module.exports = async function handler(req, res) {
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
 
-    // --- Transcript normalisieren: Array oder String akzeptieren ---
+    // --- Transcript normalisieren ---
     const rawTranscript = body.transcript;
 
     let transcriptArr = [];
@@ -77,26 +76,23 @@ module.exports = async function handler(req, res) {
       .join("\n");
 
     // -----------------------------
-    // Preferred Language Detection + Persist (user_profile.preferred_language)
+    // Preferred Language Detection + Persist
     // -----------------------------
     function detectPreferredLanguage(transcriptArr) {
       const text = (transcriptArr || [])
         .map(t => String(t?.text || "").toLowerCase())
         .join("\n");
 
-      // German
       if (
         /\b(bitte\s+deutsch|nur\s+deutsch|auf\s+deutsch|sprich\s+deutsch|zukünftig\s+nur\s+noch\s+deutsch)\b/.test(text) ||
         /\b(please\s+in\s+german|in\s+german\s+please|speak\s+german)\b/.test(text)
       ) return "de";
 
-      // English
       if (
         /\b(bitte\s+englisch|nur\s+englisch|auf\s+englisch|sprich\s+englisch|only\s+english)\b/.test(text) ||
         /\b(please\s+in\s+english|in\s+english\s+please|speak\s+english)\b/.test(text)
       ) return "en";
 
-      // Spanish
       if (
         /\b(bitte\s+spanisch|nur\s+spanisch|auf\s+spanisch|sprich\s+spanisch)\b/.test(text) ||
         /\b(please\s+in\s+spanish|in\s+spanish\s+please|speak\s+spanish)\b/.test(text) ||
@@ -115,13 +111,10 @@ module.exports = async function handler(req, res) {
           { user_id: user.id, preferred_language: finalLang },
           { onConflict: "user_id" }
         );
-
       if (langErr) console.warn("preferred_language upsert failed:", langErr.message);
     }
 
     // --- Base session (immer loggen) ---
-    // ✅ duration_seconds entfernt (Spalte existiert nicht)
-    // ✅ session_date gesetzt (UTC; Anzeige später lokal formatieren)
     const baseSession = {
       user_id: user.id,
       session_date: new Date().toISOString(),
@@ -153,9 +146,29 @@ module.exports = async function handler(req, res) {
       .maybeSingle();
     if (relErr) throw new Error(`user_relationship select failed: ${relErr.message}`);
 
+    // --- Profile read (NEU) ---
+    const { data: profile, error: profErr } = await supabase
+      .from("user_profile")
+      .select("user_id, first_name, age, relationship_status, notes, preferred_language, preferred_name, preferred_addressing, preferred_pronoun, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profErr) throw new Error(`user_profile select failed: ${profErr.message}`);
+
+    // --- Merge Helpers (NEU) ---
+    const uniq = (arr) => Array.from(new Set((arr || []).map(x => String(x || "").trim()).filter(Boolean)));
+    const mergeTopics = (oldArr, addArr) => uniq([...(oldArr || []), ...(addArr || [])]).slice(0, 30); // hard cap
+
+    // --- OpenAI prompt (erweitert) ---
     const system =
-      "You update emotional relationship memory for Sophie. " +
-      "Be concise and non-creepy. Observations only. No diagnosis.";
+      "You update Sophie memory.\n" +
+      "Output TWO things:\n" +
+      "1) relationship memory: observations only, non-creepy, no diagnosis.\n" +
+      "2) user_profile patch: only store personal facts that improve conversation.\n\n" +
+      "CRITICAL RULES FOR profile_patch:\n" +
+      "- Only set/overwrite sensitive identity fields (preferred_addressing, preferred_pronoun, preferred_name) if the user explicitly states it (explicit=true).\n" +
+      "- For topics_like/topics_avoid: only add items, never remove.\n" +
+      "- Keep values short. No private addresses, no health/medical details, no employer names.\n" +
+      "- If unsure, leave a field null and set confidence low.\n";
 
     const userMsg = `
 CURRENT relationship memory:
@@ -163,6 +176,19 @@ tone_baseline: ${rel?.tone_baseline || ""}
 openness_level: ${rel?.openness_level || ""}
 emotional_patterns: ${rel?.emotional_patterns || ""}
 last_interaction_summary: ${rel?.last_interaction_summary || ""}
+
+CURRENT user_profile (known facts):
+preferred_name: ${profile?.preferred_name || ""}
+preferred_addressing: ${profile?.preferred_addressing || ""}
+preferred_pronoun: ${profile?.preferred_pronoun || ""}
+first_name: ${profile?.first_name || ""}
+age: ${profile?.age ?? ""}
+relationship_status: ${profile?.relationship_status || ""}
+occupation: ${profile?.occupation || ""}
+conversation_style: ${profile?.conversation_style || ""}
+topics_like: ${(profile?.topics_like || []).join(", ")}
+topics_avoid: ${(profile?.topics_avoid || []).join(", ")}
+preferred_language: ${profile?.preferred_language || ""}
 
 NEW transcript:
 ${transcriptText}
@@ -194,11 +220,104 @@ ${transcriptText}
           },
           required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
+
+        // -------- NEU: profile patch --------
+        profile_patch: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            set: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                preferred_name: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "string" },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+                preferred_addressing: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "string" },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+                preferred_pronoun: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "string" },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+                age: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "integer", minimum: 10, maximum: 110 },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+                relationship_status: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "string" },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+                occupation: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "string" },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+                conversation_style: {
+                  type: ["object", "null"],
+                  additionalProperties: false,
+                  properties: {
+                    value: { type: "string" },
+                    explicit: { type: "boolean" },
+                    confidence: { type: "string", enum: ["low","medium","high"] }
+                  },
+                  required: ["value","explicit","confidence"]
+                },
+              }
+            },
+            add: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                topics_like: { type: "array", items: { type: "string" } },
+                topics_avoid: { type: "array", items: { type: "string" } },
+              }
+            }
+          },
+          required: ["set","add"]
+        }
       },
-      required: ["relationship", "session"],
+      required: ["relationship", "session", "profile_patch"],
     };
 
-    // --- OpenAI call (Responses API) ---
+    // --- OpenAI call ---
     let r;
     try {
       r = await fetch("https://api.openai.com/v1/responses", {
@@ -217,7 +336,7 @@ ${transcriptText}
           text: {
             format: {
               type: "json_schema",
-              name: "sophie_memory_v1",
+              name: "sophie_memory_v2",
               strict: true,
               schema: schema,
             },
@@ -282,7 +401,9 @@ ${transcriptText}
 
     const relationship = parsed.relationship || {};
     const sessionOut = parsed.session || {};
+    const patch = parsed.profile_patch || { set: {}, add: {} };
 
+    // --- Relationship update ---
     const updateRel = {
       tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
       openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
@@ -290,9 +411,105 @@ ${transcriptText}
       last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
       updated_at: new Date().toISOString(),
     };
-
     await mustUpdate("user_relationship", updateRel, "user_id", user.id, "user_relationship");
 
+    // --- Profile patch apply (NEU) ---
+    const existing = profile || { user_id: user.id };
+
+    // apply SET with rules
+    const setObj = patch.set || {};
+    const addObj = patch.add || {};
+
+    function applyField(key, opts, { requireExplicit = false } = {}) {
+      if (!opts || typeof opts !== "object") return { changed: false };
+      const val = opts.value;
+      const explicit = !!opts.explicit;
+      const conf = String(opts.confidence || "low");
+
+      if (requireExplicit && !explicit) return { changed: false };
+      if (val === null || val === undefined) return { changed: false };
+      const s = String(val).trim();
+      if (!s) return { changed: false };
+
+      // basic hard caps
+      const capped =
+        key === "occupation" ? s.slice(0, 80) :
+        key === "relationship_status" ? s.slice(0, 40) :
+        key === "conversation_style" ? s.slice(0, 120) :
+        s.slice(0, 80);
+
+      return { changed: true, value: capped, explicit, conf };
+    }
+
+    const updates = {};
+    let anyExplicit = false;
+    let confidenceToStore = existing.memory_confidence || "medium";
+
+    const addr = applyField("preferred_addressing", setObj.preferred_addressing, { requireExplicit: true });
+    if (addr.changed) { updates.preferred_addressing = addr.value; anyExplicit = anyExplicit || addr.explicit; confidenceToStore = addr.conf; }
+
+    const pname = applyField("preferred_name", setObj.preferred_name, { requireExplicit: true });
+    if (pname.changed) { updates.preferred_name = pname.value; anyExplicit = anyExplicit || pname.explicit; confidenceToStore = pname.conf; }
+
+    const pron = applyField("preferred_pronoun", setObj.preferred_pronoun, { requireExplicit: true });
+    if (pron.changed) {
+      const v = pron.value.toLowerCase();
+      if (v === "du" || v === "sie") {
+        updates.preferred_pronoun = v;
+        anyExplicit = anyExplicit || pron.explicit;
+        confidenceToStore = pron.conf;
+      }
+    }
+
+    // age: allow if explicit OR high confidence (but I keep it strict: explicit only)
+    if (setObj.age && typeof setObj.age === "object" && Number.isInteger(setObj.age.value)) {
+      if (setObj.age.explicit === true) {
+        updates.age = setObj.age.value;
+        anyExplicit = true;
+        confidenceToStore = String(setObj.age.confidence || "medium");
+      }
+    }
+
+    const occ = applyField("occupation", setObj.occupation, { requireExplicit: false });
+    if (occ.changed) { updates.occupation = occ.value; /* not explicit-required */ }
+
+    const cs = applyField("conversation_style", setObj.conversation_style, { requireExplicit: true });
+    if (cs.changed) { updates.conversation_style = cs.value; anyExplicit = anyExplicit || cs.explicit; confidenceToStore = cs.conf; }
+
+    const rs = applyField("relationship_status", setObj.relationship_status, { requireExplicit: false });
+    if (rs.changed) { updates.relationship_status = rs.value; }
+
+    // topics arrays: union add only
+    if (addObj.topics_like) {
+      updates.topics_like = mergeTopics(existing.topics_like, addObj.topics_like);
+    }
+    if (addObj.topics_avoid) {
+      updates.topics_avoid = mergeTopics(existing.topics_avoid, addObj.topics_avoid);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      if (anyExplicit) updates.last_confirmed_at = new Date().toISOString();
+      updates.memory_confidence = (confidenceToStore === "low" || confidenceToStore === "medium" || confidenceToStore === "high")
+        ? confidenceToStore
+        : (existing.memory_confidence || "medium");
+
+      const { data: up, error: upErr } = await supabase
+        .from("user_profile")
+        .upsert(
+          { user_id: user.id, ...updates },
+          { onConflict: "user_id" }
+        )
+        .select()
+        .maybeSingle();
+
+      if (upErr) console.warn("user_profile upsert failed:", upErr.message);
+      // optional: return updated profile
+      if (up) {
+        // overwrite existing for response
+      }
+    }
+
+    // --- Session log ---
     await mustInsert("user_sessions", {
       user_id: user.id,
       session_date: new Date().toISOString(),
@@ -305,6 +522,8 @@ ${transcriptText}
     return res.status(200).json({
       ok: true,
       preferred_language_set: finalLang || null,
+      profile_updated: Object.keys(updates).length > 0,
+      profile_fields_updated: Object.keys(updates),
     });
   } catch (err) {
     console.error("memory-update fatal:", err?.message || err, err?.stack || "");
