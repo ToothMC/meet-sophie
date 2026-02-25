@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    // Body robust lesen
+    // Body robust lesen (je nach Vercel Runtime kann req.body string oder object sein)
     let body = req.body;
     if (typeof body === "string") {
       try { body = JSON.parse(body); } catch { body = {}; }
@@ -35,6 +35,7 @@ module.exports = async function handler(req, res) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Helpers: DB Fehler nicht verschlucken
     async function mustInsert(table, row, label) {
       const { error } = await supabase.from(table).insert(row);
       if (error) {
@@ -55,7 +56,7 @@ module.exports = async function handler(req, res) {
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
 
-    // --- Transcript normalisieren ---
+    // --- Transcript normalisieren: Array oder String akzeptieren ---
     const rawTranscript = body.transcript;
 
     let transcriptArr = [];
@@ -76,23 +77,26 @@ module.exports = async function handler(req, res) {
       .join("\n");
 
     // -----------------------------
-    // Preferred Language Detection + Persist
+    // Preferred Language Detection + Persist (user_profile.preferred_language)
     // -----------------------------
     function detectPreferredLanguage(transcriptArr) {
       const text = (transcriptArr || [])
         .map(t => String(t?.text || "").toLowerCase())
         .join("\n");
 
+      // German
       if (
         /\b(bitte\s+deutsch|nur\s+deutsch|auf\s+deutsch|sprich\s+deutsch|zukünftig\s+nur\s+noch\s+deutsch)\b/.test(text) ||
         /\b(please\s+in\s+german|in\s+german\s+please|speak\s+german)\b/.test(text)
       ) return "de";
 
+      // English
       if (
         /\b(bitte\s+englisch|nur\s+englisch|auf\s+englisch|sprich\s+englisch|only\s+english)\b/.test(text) ||
         /\b(please\s+in\s+english|in\s+english\s+please|speak\s+english)\b/.test(text)
       ) return "en";
 
+      // Spanish
       if (
         /\b(bitte\s+spanisch|nur\s+spanisch|auf\s+spanisch|sprich\s+spanisch)\b/.test(text) ||
         /\b(please\s+in\s+spanish|in\s+spanish\s+please|speak\s+spanish)\b/.test(text) ||
@@ -111,10 +115,13 @@ module.exports = async function handler(req, res) {
           { user_id: user.id, preferred_language: finalLang },
           { onConflict: "user_id" }
         );
+
       if (langErr) console.warn("preferred_language upsert failed:", langErr.message);
     }
 
     // --- Base session (immer loggen) ---
+    // ✅ duration_seconds entfernt (Spalte existiert nicht)
+    // ✅ session_date gesetzt (UTC; Anzeige später lokal formatieren)
     const baseSession = {
       user_id: user.id,
       session_date: new Date().toISOString(),
@@ -154,11 +161,13 @@ module.exports = async function handler(req, res) {
       .maybeSingle();
     if (profErr) throw new Error(`user_profile select failed: ${profErr.message}`);
 
-    // --- Merge Helpers (NEU) ---
+    // --- Helpers für Patch Apply ---
     const uniq = (arr) => Array.from(new Set((arr || []).map(x => String(x || "").trim()).filter(Boolean)));
     const mergeTopics = (oldArr, addArr) => uniq([...(oldArr || []), ...(addArr || [])]).slice(0, 30); // hard cap
 
-    // --- OpenAI prompt (erweitert) ---
+    // -----------------------------
+    // OpenAI prompt + JSON Schema
+    // -----------------------------
     const system =
       "You update Sophie memory.\n" +
       "Output TWO things:\n" +
@@ -220,8 +229,6 @@ ${transcriptText}
           },
           required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
-
-        // -------- NEU: profile patch --------
         profile_patch: {
           type: "object",
           additionalProperties: false,
@@ -299,25 +306,35 @@ ${transcriptText}
                     confidence: { type: "string", enum: ["low","medium","high"] }
                   },
                   required: ["value","explicit","confidence"]
-                },
-              }
+                }
+              },
+              required: [
+                "preferred_name",
+                "preferred_addressing",
+                "preferred_pronoun",
+                "age",
+                "relationship_status",
+                "occupation",
+                "conversation_style"
+              ]
             },
             add: {
               type: "object",
               additionalProperties: false,
               properties: {
                 topics_like: { type: "array", items: { type: "string" } },
-                topics_avoid: { type: "array", items: { type: "string" } },
-              }
+                topics_avoid: { type: "array", items: { type: "string" } }
+              },
+              required: ["topics_like", "topics_avoid"]
             }
           },
-          required: ["set","add"]
+          required: ["set", "add"]
         }
       },
       required: ["relationship", "session", "profile_patch"],
     };
 
-    // --- OpenAI call ---
+    // --- OpenAI call (Responses API) ---
     let r;
     try {
       r = await fetch("https://api.openai.com/v1/responses", {
@@ -411,12 +428,12 @@ ${transcriptText}
       last_interaction_summary: String(relationship.last_interaction_summary || rel?.last_interaction_summary || "").slice(0, 600),
       updated_at: new Date().toISOString(),
     };
+
     await mustUpdate("user_relationship", updateRel, "user_id", user.id, "user_relationship");
 
-    // --- Profile patch apply (NEU) ---
+    // --- Profile patch apply ---
     const existing = profile || { user_id: user.id };
 
-    // apply SET with rules
     const setObj = patch.set || {};
     const addObj = patch.add || {};
 
@@ -428,10 +445,16 @@ ${transcriptText}
 
       if (requireExplicit && !explicit) return { changed: false };
       if (val === null || val === undefined) return { changed: false };
+
+      // age is number, other fields string
+      if (key === "age") {
+        if (!Number.isInteger(val)) return { changed: false };
+        return { changed: true, value: val, explicit, conf };
+      }
+
       const s = String(val).trim();
       if (!s) return { changed: false };
 
-      // basic hard caps
       const capped =
         key === "occupation" ? s.slice(0, 80) :
         key === "relationship_status" ? s.slice(0, 40) :
@@ -453,7 +476,7 @@ ${transcriptText}
 
     const pron = applyField("preferred_pronoun", setObj.preferred_pronoun, { requireExplicit: true });
     if (pron.changed) {
-      const v = pron.value.toLowerCase();
+      const v = String(pron.value).toLowerCase();
       if (v === "du" || v === "sie") {
         updates.preferred_pronoun = v;
         anyExplicit = anyExplicit || pron.explicit;
@@ -461,17 +484,11 @@ ${transcriptText}
       }
     }
 
-    // age: allow if explicit OR high confidence (but I keep it strict: explicit only)
-    if (setObj.age && typeof setObj.age === "object" && Number.isInteger(setObj.age.value)) {
-      if (setObj.age.explicit === true) {
-        updates.age = setObj.age.value;
-        anyExplicit = true;
-        confidenceToStore = String(setObj.age.confidence || "medium");
-      }
-    }
+    const age = applyField("age", setObj.age, { requireExplicit: true });
+    if (age.changed) { updates.age = age.value; anyExplicit = true; confidenceToStore = age.conf; }
 
     const occ = applyField("occupation", setObj.occupation, { requireExplicit: false });
-    if (occ.changed) { updates.occupation = occ.value; /* not explicit-required */ }
+    if (occ.changed) { updates.occupation = occ.value; }
 
     const cs = applyField("conversation_style", setObj.conversation_style, { requireExplicit: true });
     if (cs.changed) { updates.conversation_style = cs.value; anyExplicit = anyExplicit || cs.explicit; confidenceToStore = cs.conf; }
@@ -480,33 +497,28 @@ ${transcriptText}
     if (rs.changed) { updates.relationship_status = rs.value; }
 
     // topics arrays: union add only
-    if (addObj.topics_like) {
+    if (Array.isArray(addObj.topics_like)) {
       updates.topics_like = mergeTopics(existing.topics_like, addObj.topics_like);
     }
-    if (addObj.topics_avoid) {
+    if (Array.isArray(addObj.topics_avoid)) {
       updates.topics_avoid = mergeTopics(existing.topics_avoid, addObj.topics_avoid);
     }
 
     if (Object.keys(updates).length > 0) {
       if (anyExplicit) updates.last_confirmed_at = new Date().toISOString();
+
       updates.memory_confidence = (confidenceToStore === "low" || confidenceToStore === "medium" || confidenceToStore === "high")
         ? confidenceToStore
         : (existing.memory_confidence || "medium");
 
-      const { data: up, error: upErr } = await supabase
+      const { error: upErr } = await supabase
         .from("user_profile")
         .upsert(
           { user_id: user.id, ...updates },
           { onConflict: "user_id" }
-        )
-        .select()
-        .maybeSingle();
+        );
 
       if (upErr) console.warn("user_profile upsert failed:", upErr.message);
-      // optional: return updated profile
-      if (up) {
-        // overwrite existing for response
-      }
     }
 
     // --- Session log ---
