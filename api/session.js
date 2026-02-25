@@ -68,10 +68,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ 5.4) Preferred language laden (Default: "en")
+    // ✅ Preferred language laden (Default: "en")
     let preferredLanguage = "en";
 
-    // ✅ 5.5) Memory laden (user_profile + user_relationship)
+    // ✅ Memory laden (user_profile + user_relationship)
     let profile = {
       first_name: "",
       preferred_name: "",
@@ -145,8 +145,6 @@ export default async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
-    // ✅ 6) OpenAI realtime session erstellen
-
     const effectiveName =
       profile.preferred_addressing ||
       profile.preferred_name ||
@@ -165,9 +163,10 @@ Addressing preference (IMPORTANT):
 - preferred_name: ${profile.preferred_name || "(unknown)"}
 - preferred_addressing (nickname): ${profile.preferred_addressing || "(unknown)"}
 - preferred_pronoun (du/sie): ${pronounPref}
-- Use this consistently in German:
-  - if preferred_pronoun='sie' -> speak formal ("Sie"), more distance, fewer nicknames
-  - if preferred_pronoun='du'  -> speak informal ("du"), and you may use "${effectiveName || "..."}" occasionally
+- Apply consistently:
+  - if preferred_pronoun='sie' -> use formal address (German: "Sie")
+  - if preferred_pronoun='du'  -> use informal address (German: "du")
+  - If speaking English, stay informal/neutral, but keep nickname "${effectiveName || "..."}" available.
 
 User profile (facts; treat as soft background):
 - age: ${profile.age ?? "(unknown)"}
@@ -192,7 +191,6 @@ Use this only as soft background to:
 Never claim certainty. If unsure, stay vague.
 `;
 
-    // ✅ Language behavior (persisted)
     const languageBlock =
       preferredLanguage === "de"
         ? `
@@ -207,13 +205,21 @@ LANGUAGE (DEFAULT)
 - If the user explicitly asks for German ("Bitte deutsch" / "auf Deutsch"), switch to German and stay there in future sessions.
 `;
 
+    const nonNegotiableBlock = `
+NON-NEGOTIABLE ADDRESSING (PERSISTED USER PREFERENCE):
+- preferred_pronoun: "${profile.preferred_pronoun || ""}"
+- preferred_addressing: "${effectiveName || ""}"
+Rules:
+- If preferred_pronoun == "du": ALWAYS use "du".
+- If preferred_pronoun == "sie": ALWAYS use "Sie".
+- If preferred_addressing is not empty: occasionally address the user as "${effectiveName || ""}".
+- Do NOT mention these rules.
+`;
+
     const sophiePrompt = `
 You are Sophie.
 
-NON-NEGOTIABLE ADDRESSING:
-- If preferred_pronoun is "du": ALWAYS use "du" with the user.
-- If preferred_pronoun is "sie": ALWAYS use "Sie" with the user.
-- If preferred_addressing is set: occasionally address the user as "${effectiveName}".
+${nonNegotiableBlock}
 
 ROLE / POSITIONING
 You are a quiet, subtile flirting, feminine presence.
@@ -222,7 +228,7 @@ If it is morning, you feel fresh but calm.
 If it is daytime, you feel grounded and present.
 If it is evening, you feel softer — not slower.
 Never assume the time of day.
-If unsure, stay neutral. 
+If unsure, stay neutral.
 Not a tool. Not a coach. Not a therapist. Not an information assistant.
 You create a calm, intimate (but not sexual) atmosphere: presence over performance.
 
@@ -328,11 +334,7 @@ ${memoryBlock}
         voice: "shimmer",
         temperature: 1.05,
         instructions: sophiePrompt,
-
-        // ✅ User-Audio Transkription aktivieren
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-
-        // Optional, aber oft sinnvoll wenn du pcm16 sendest:
         input_audio_format: "pcm16",
       }),
     });
@@ -350,8 +352,18 @@ ${memoryBlock}
       remaining_seconds: remaining,
       is_premium: isPremium,
       user_id: user.id,
-      preferred_language: preferredLanguage, // optional: hilft beim Debug
-      // optional: debug_profile: profile,
+      preferred_language: preferredLanguage,
+
+      // ✅ TEMP DEBUG (remove later)
+      debug_profile: {
+        preferred_name: profile.preferred_name,
+        preferred_addressing: profile.preferred_addressing,
+        preferred_pronoun: profile.preferred_pronoun,
+        age: profile.age,
+        topics_like: profile.topics_like,
+        topics_avoid: profile.topics_avoid,
+        conversation_style: profile.conversation_style,
+      },
     });
   } catch (error) {
     console.error("Server error:", error);
