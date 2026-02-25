@@ -267,7 +267,7 @@ ${memoryBlock}
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview",
-        voice: "alloy",
+        voice: "verse",
         temperature: 1.05,
         instructions: sophiePrompt,
 
