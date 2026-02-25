@@ -78,7 +78,7 @@
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";  // <-- deinen echten anon key einsetzen
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -104,43 +104,78 @@
     // -----------------------------------------
 
     async function ensureUserMemoryRow(userId) {
-      const { data: existing } = await supabase
+      const { data: existing, error: selErr } = await supabase
         .from("user_memory")
         .select("user_id")
         .eq("user_id", userId)
         .maybeSingle();
 
+      if (selErr) throw new Error("DB Fehler (select user_memory): " + selErr.message);
+
       if (!existing) {
-        await supabase.from("user_memory").insert({
+        const { error: insErr } = await supabase.from("user_memory").insert({
           user_id: userId,
           profile_notes: "",
           relationship_summary: ""
         });
+        if (insErr) throw new Error("DB Fehler (insert user_memory): " + insErr.message);
       }
     }
 
     async function ensureUserUsageRow(userId) {
-      const { data: existing } = await supabase
+      const { data: existing, error: selErr } = await supabase
         .from("user_usage")
         .select("user_id")
         .eq("user_id", userId)
         .maybeSingle();
 
+      if (selErr) throw new Error("DB Fehler (select user_usage): " + selErr.message);
+
       if (!existing) {
-        await supabase.from("user_usage").insert({
+        const { error: insErr } = await supabase.from("user_usage").insert({
           user_id: userId,
           free_seconds_total: 900,
           free_seconds_used: 0
         });
+        if (insErr) throw new Error("DB Fehler (insert user_usage): " + insErr.message);
+      }
+    }
+
+    // ✅ NEU: user_relationship Row sicherstellen (damit /api/session immer Continuity lesen kann)
+    async function ensureUserRelationshipRow(userId) {
+      const { data: existing, error: selErr } = await supabase
+        .from("user_relationship")
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (selErr) throw new Error("DB Fehler (select user_relationship): " + selErr.message);
+
+      if (!existing) {
+        const { error: insErr } = await supabase.from("user_relationship").insert({
+          user_id: userId,
+          tone_baseline: "",
+          openness_level: "",
+          emotional_patterns: "",
+          last_interaction_summary: "",
+          updated_at: new Date().toISOString(),
+        });
+        if (insErr) throw new Error("DB Fehler (insert user_relationship): " + insErr.message);
       }
     }
 
     async function handleSuccessfulAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr) return setStatus("Auth Fehler: " + userErr.message, false);
       if (!user) return;
 
-      await ensureUserMemoryRow(user.id);
-      await ensureUserUsageRow(user.id);
+      try {
+        await ensureUserMemoryRow(user.id);
+        await ensureUserUsageRow(user.id);
+        await ensureUserRelationshipRow(user.id);
+      } catch (e) {
+        return setStatus(String(e?.message || e), false);
+      }
 
       setStatus("Login erfolgreich. Weiterleitung…", true);
       window.location.href = "/talk";
