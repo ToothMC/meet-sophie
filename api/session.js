@@ -161,8 +161,8 @@ export default async function handler(req, res) {
     let preferredLanguage =
       (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
 
-    // Start defaults only de/en; user can request anything else live
-    if (preferredLanguage !== "de" && preferredLanguage !== "en") preferredLanguage = "en";
+    // ✅ IMPORTANT: do NOT hard-trim languages to de/en; just ensure a default
+    if (!preferredLanguage) preferredLanguage = "en";
 
     // First session heuristic (unchanged)
     const isFirstSession =
@@ -191,11 +191,11 @@ If they give a name:
 Then:
 - "Is it okay if we keep it informal?"
 Then short personal intro (2–3 sentences max):
-- "Quickly about me: I’m Sophie, 32 years old, interior designer as freelancer."
+- "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
 - "I love warm spaces, soft light… and conversations that aren’t superficial."
 Transition:
 - "Alright." (pause)
-- "What about you?"
+- "And you." (pause)
 - "How are you — really?"
 
 LANGUAGE:
@@ -208,6 +208,7 @@ Do NOT run onboarding.
 Start naturally. Use the preferred name if known (but keep it subtle).
 `;
 
+    // Only apply a default start language for de/en; other languages will be handled by user request.
     const languageBlock = preferredLanguage === "de"
       ? `
 LANGUAGE DEFAULT:
@@ -230,6 +231,7 @@ Rules:
 - Use preferred_name naturally when addressing the user. If unknown, avoid using a name.
 - If preferred_addressing=formal -> formal tone. If informal -> informal tone.
 - If unknown, default to informal unless the user signals otherwise.
+- If preferred_pronoun is known, respect it in references to the user.
 `;
 
     const coreStyle = `
