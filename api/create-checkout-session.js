@@ -41,12 +41,26 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // --- Stripe Checkout Session erstellen ---
+    // --- Stripe Checkout Session erstellen (Starter/Plus) ---
     const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const priceId = process.env.STRIPE_PRICE_ID;
-
     if (!stripeKey) return res.status(500).json({ error: "Missing STRIPE_SECRET_KEY" });
-    if (!priceId) return res.status(500).json({ error: "Missing STRIPE_PRICE_ID" });
+
+    // plan aus Body lesen
+    const { plan } = req.body || {};
+    const p = String(plan || "").toLowerCase();
+
+    const priceId =
+      p === "starter"
+        ? process.env.STRIPE_PRICE_ID_STARTER
+        : p === "plus"
+        ? process.env.STRIPE_PRICE_ID_PLUS
+        : null;
+
+    if (!priceId) {
+      return res.status(400).json({
+        error: "Missing/invalid plan. Use { plan: 'starter' | 'plus' }",
+      });
+    }
 
     const origin = req.headers.origin || "https://meet-sophie.com";
     const successUrl = `${origin}/success`;
@@ -60,7 +74,10 @@ export default async function handler(req, res) {
     body.append("line_items[0][price]", priceId);
     body.append("line_items[0][quantity]", "1");
 
+    // metadata für webhook
     body.append("metadata[user_id]", userId);
+    body.append("metadata[plan]", p);
+
     if (user?.email) body.append("customer_email", user.email);
 
     const stripeResp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
