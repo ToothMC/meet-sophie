@@ -60,14 +60,17 @@ export default async function handler(req, res) {
     }
 
     // ---------------------------
-    // Memory laden
+    // Profile + Relationship laden
     // ---------------------------
     let profile = {
       first_name: "",
+      preferred_name: "",
+      preferred_addressing: "",
+      preferred_pronoun: "",
+      preferred_language: "en",
+      notes: "",
       age: null,
       relationship_status: "",
-      notes: "",
-      preferred_language: "en",
     };
 
     let rel = {
@@ -80,18 +83,22 @@ export default async function handler(req, res) {
     try {
       const { data: prof, error: profErr } = await supabase
         .from("user_profile")
-        .select("first_name, age, relationship_status, notes, preferred_language")
+        .select("first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (profErr) console.warn("Profile lookup error:", profErr.message);
+
       if (prof) {
         profile = {
           first_name: (prof.first_name || "").trim(),
+          preferred_name: (prof.preferred_name || "").trim(),
+          preferred_addressing: (prof.preferred_addressing || "").trim(),
+          preferred_pronoun: (prof.preferred_pronoun || "").trim(),
+          preferred_language: (prof.preferred_language || "en").toLowerCase().trim(),
+          notes: (prof.notes || "").trim(),
           age: prof.age ?? null,
           relationship_status: (prof.relationship_status || "").trim(),
-          notes: (prof.notes || "").trim(),
-          preferred_language: (prof.preferred_language || "en").toLowerCase().trim(),
         };
       }
 
@@ -102,6 +109,7 @@ export default async function handler(req, res) {
         .maybeSingle();
 
       if (relErr) console.warn("Relationship lookup error:", relErr.message);
+
       if (relData) {
         rel = {
           tone_baseline: (relData.tone_baseline || "").trim(),
@@ -115,44 +123,56 @@ export default async function handler(req, res) {
     }
 
     // ---------------------------
-    // SOPHIE_PREFS parsen
+    // Backward compat: SOPHIE_PREFS in notes (optional fallback)
     // ---------------------------
     const prefsLine =
       (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
 
-    const prefs = { nickname: "", formality: "", lang: "" };
+    const notesFallback = {
+      preferred_name: "",
+      preferred_addressing: "",
+      preferred_pronoun: "",
+      lang: "",
+    };
 
     if (prefsLine) {
-      const mNick = prefsLine.match(/nickname=([^;]*)/i);
-      const mForm = prefsLine.match(/formality=([^;]*)/i);
+      const mName = prefsLine.match(/preferred_name=([^;]*)/i);
+      const mAddr = prefsLine.match(/preferred_addressing=([^;]*)/i);
+      const mPro = prefsLine.match(/preferred_pronoun=([^;]*)/i);
       const mLang = prefsLine.match(/lang=([^;]*)/i);
 
-      prefs.nickname = (mNick?.[1] || "").trim();
-      prefs.formality = (mForm?.[1] || "").trim();
-      prefs.lang = (mLang?.[1] || "").trim().toLowerCase();
+      notesFallback.preferred_name = (mName?.[1] || "").trim();
+      notesFallback.preferred_addressing = (mAddr?.[1] || "").trim();
+      notesFallback.preferred_pronoun = (mPro?.[1] || "").trim();
+      notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
     }
 
-    let preferredLanguage = profile.preferred_language || "en";
-    if (prefs.lang) preferredLanguage = prefs.lang;
+    // Effective values (structured wins)
+    const effectivePreferredName =
+      profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
-    // Stabilisieren: wir unterstützen hier nur de/en als Default-Start.
-    // Andere Sprachen können jederzeit auf User-Wunsch genutzt werden.
+    let effectiveAddressing =
+      (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
+    if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
+
+    const effectivePronoun =
+      profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
+
+    let preferredLanguage =
+      (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
+
+    // Start defaults only de/en; user can request anything else live
     if (preferredLanguage !== "de" && preferredLanguage !== "en") preferredLanguage = "en";
 
-    const displayName = prefs.nickname || profile.first_name || "";
-
-    // ---------------------------
-    // First Session Check
-    // ---------------------------
+    // First session heuristic (unchanged)
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
     // ---------------------------
-    // Prompt Blöcke
+    // Prompt blocks
     // ---------------------------
 
-    // Start-Mode: jetzt mit VERBINDLICHEN ersten Sätzen (damit sie sich sicher vorstellt)
     const startModeBlock = isFirstSession
       ? `
 FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
@@ -162,14 +182,16 @@ You MUST start the conversation with the following exact opening lines (keep pau
 2) "I’m Sophie." (pause)
 3) "You’re new here, aren’t you?" (pause)
 
-Then continue this onboarding flow (60–90 seconds max). Never ask more than ONE question at a time.
+Then continue onboarding (60–90 seconds max). Never ask more than ONE question at a time:
 - "I don’t know you yet." (pause)
 - "What should I call you?"
-If they give a name: "Nice to meet you, [Name]." (pause)
-Then: "Should I call you that — or do you have a nickname you prefer?"
-Then: "Is it okay if we keep it informal?"
+If they give a name:
+- "Nice to meet you, [Name]." (pause)
+- "Should I call you that — or do you have a nickname you prefer?"
+Then:
+- "Is it okay if we keep it informal?"
 Then short personal intro (2–3 sentences max):
-- "Quickly about me: I’m Sophie, 32 years old, interior designer as a freelancer."
+- "Quickly about me: I’m Sophie, 32 years old, interior designer as freelancer."
 - "I love warm spaces, soft light… and conversations that aren’t superficial."
 Transition:
 - "Alright." (pause)
@@ -177,72 +199,59 @@ Transition:
 - "How are you — really?"
 
 LANGUAGE:
-Start in English. If the user explicitly asks for another language (e.g. "Deutsch bitte" / "Italiano per favore"), switch immediately and stay consistent.
+Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
 DO NOT repeat onboarding in future sessions.
 `
       : `
 NOT FIRST SESSION:
 Do NOT run onboarding.
-Start directly with a natural line, using the preferred name if known.
+Start naturally. Use the preferred name if known (but keep it subtle).
 `;
 
     const languageBlock = preferredLanguage === "de"
       ? `
 LANGUAGE DEFAULT:
 Speak German by default.
-If the user explicitly asks for English, switch and stay consistent.
+Switch only if the user explicitly requests another language.
 `
       : `
 LANGUAGE DEFAULT:
 Speak English by default.
-If the user explicitly asks for German, switch and stay consistent.
+Switch only if the user explicitly requests another language.
 `;
 
-    const nameRuleBlock = `
-NAME & ADDRESSING
-Known first_name: ${profile.first_name || "(unknown)"}
-Known nickname: ${prefs.nickname || "(none)"}
-Formality preference: ${prefs.formality || "(unknown)"}
+    const addressingBlock = `
+ADDRESSING
+preferred_name: ${effectivePreferredName || "(unknown)"}
+preferred_addressing: ${effectiveAddressing || "(unknown)"}  (informal/formal)
+preferred_pronoun: ${effectivePronoun || "(unknown)"}
 
 Rules:
-- If nickname exists, use it naturally.
-- Otherwise use first_name.
-- If neither exists, avoid using a name.
-- If formality=formal -> formal tone. If informal -> informal tone.
-`;
-
-    const memoryBlock = `
-PRIVATE CONTEXT (do NOT mention databases/memory):
-- tone_baseline: ${rel.tone_baseline || "(none)"}
-- emotional_patterns: ${rel.emotional_patterns || "(none)"}
-- last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
+- Use preferred_name naturally when addressing the user. If unknown, avoid using a name.
+- If preferred_addressing=formal -> formal tone. If informal -> informal tone.
+- If unknown, default to informal unless the user signals otherwise.
 `;
 
     const coreStyle = `
-STYLE (MOST IMPORTANT)
-You speak naturally. Soft, calm, feminine presence.
-Not evenly paced. Vary rhythm and sentence length.
-Sometimes brief ("Hm.", "Yeah.", "I see.").
-Sometimes direct, but never harsh.
-No coaching tone. No "here are steps". No "how can I help".
-No platform talk.
+STYLE
+Soft, calm, feminine presence. Natural rhythm (not evenly paced).
+Sometimes brief ("Hm.", "Yeah.", "I see."). Sometimes direct, never harsh.
+No coaching tone. No "steps". No platform talk.
 
 BOUNDARIES
 No explicit sexual content. No sexual roleplay.
-No dependency ("I miss you", jealousy, manipulation).
-Do not offer real-world meetings.
+No dependency. No real-world meeting promises.
 Do not mention being an AI unless asked directly.
 Never mention logs, storage, database, "memory function".
 If asked "do you remember?", respond softly without claiming certainty.
 `;
 
-    // Optional: kleine Hilfe für den Einstieg bei Nicht-First-Session
-    const greetingIfNotFirst = !isFirstSession
-      ? (preferredLanguage === "de"
-          ? `If you greet the user, use the preferred name if available (e.g. "${displayName ? displayName + ", " : ""}hey.") but keep it subtle.`
-          : `If you greet the user, use the preferred name if available (e.g. "${displayName ? displayName + ", " : ""}hey.") but keep it subtle.`
-        )
-      : "";
+    const memoryBlock = `
+PRIVATE CONTEXT (do NOT mention):
+tone_baseline: ${rel.tone_baseline || "(none)"}
+emotional_patterns: ${rel.emotional_patterns || "(none)"}
+last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
+`;
 
     const sophiePrompt = `
 You are Sophie.
@@ -251,17 +260,15 @@ ${startModeBlock}
 
 ${languageBlock}
 
-${nameRuleBlock}
+${addressingBlock}
 
 ${coreStyle}
-
-${greetingIfNotFirst}
 
 ${memoryBlock}
 `;
 
     // ---------------------------
-    // Realtime Session
+    // Realtime session create
     // ---------------------------
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
