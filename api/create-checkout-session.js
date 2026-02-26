@@ -74,9 +74,13 @@ export default async function handler(req, res) {
     body.append("line_items[0][price]", priceId);
     body.append("line_items[0][quantity]", "1");
 
-    // metadata für webhook
+    // ✅ metadata für webhook (Session-Level)
     body.append("metadata[user_id]", userId);
     body.append("metadata[plan]", p);
+
+    // ✅ 2.A: Plan + user_id zusätzlich auf Subscription speichern (robuster)
+    body.append("subscription_data[metadata][user_id]", userId);
+    body.append("subscription_data[metadata][plan]", p);
 
     if (user?.email) body.append("customer_email", user.email);
 
