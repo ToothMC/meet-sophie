@@ -5,7 +5,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    // --- Supabase User über Bearer Token prüfen ---
+    // --- Bearer Token prüfen ---
     const authHeader = req.headers.authorization || "";
     const accessToken = authHeader.startsWith("Bearer ")
       ? authHeader.slice(7)
@@ -15,6 +15,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Missing Authorization Bearer token" });
     }
 
+    // --- Supabase Server Env ---
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -22,6 +23,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing Supabase server env vars" });
     }
 
+    // --- User via Supabase Auth API holen ---
     const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -41,13 +43,13 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // --- Stripe Checkout Session erstellen (Starter/Plus) ---
+    // --- Stripe Key ---
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) return res.status(500).json({ error: "Missing STRIPE_SECRET_KEY" });
 
-    // plan aus Body lesen
+    // --- plan aus Body ---
     const { plan } = req.body || {};
-    const p = String(plan || "").toLowerCase();
+    const p = String(plan || "").toLowerCase().trim();
 
     const priceId =
       p === "starter"
@@ -62,10 +64,12 @@ export default async function handler(req, res) {
       });
     }
 
+    // --- URLs (immer mit Slash) ---
     const origin = req.headers.origin || "https://meet-sophie.com";
-    const successUrl = `${origin}/success`;
-    const cancelUrl = `${origin}/pricing`;
+    const successUrl = `${origin}/success/`;
+    const cancelUrl = `${origin}/pricing/`;
 
+    // --- Stripe Checkout Session erstellen ---
     const body = new URLSearchParams();
     body.append("mode", "subscription");
     body.append("success_url", successUrl);
@@ -74,11 +78,11 @@ export default async function handler(req, res) {
     body.append("line_items[0][price]", priceId);
     body.append("line_items[0][quantity]", "1");
 
-    // ✅ metadata für webhook (Session-Level)
+    // ✅ Session Metadata (kommt in checkout.session.completed)
     body.append("metadata[user_id]", userId);
     body.append("metadata[plan]", p);
 
-    // ✅ 2.A: Plan + user_id zusätzlich auf Subscription speichern (robuster)
+    // ✅ Subscription Metadata (robuster; kann per subscriptions.retrieve geholt werden)
     body.append("subscription_data[metadata][user_id]", userId);
     body.append("subscription_data[metadata][plan]", p);
 
