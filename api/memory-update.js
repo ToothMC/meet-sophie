@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
     }
 
     const transcriptText = transcriptArr
-      .slice(-30)
+      .slice(-40)
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
@@ -106,16 +106,32 @@ module.exports = async function handler(req, res) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (relErr) {
-      // nicht abbrechen, aber loggen
-      console.warn("user_relationship select error:", relErr.message);
-    }
+    if (relErr) console.warn("user_relationship select error:", relErr.message);
+
+    // ---------- Profile lesen (für Merge/Upsert) ----------
+    const { data: prof, error: profErr } = await supabase
+      .from("user_profile")
+      .select("first_name, notes, preferred_language")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profErr) console.warn("user_profile select error:", profErr.message);
+
+    const existingFirstName = String(prof?.first_name || "").trim();
+    const existingNotes = String(prof?.notes || "").trim();
+    const existingLang = String(prof?.preferred_language || "").trim().toLowerCase();
 
     const system =
-      "You update emotional relationship memory for Sophie. " +
-      "Be concise and non-creepy. Observations only. No diagnosis.";
+      "You extract and update lightweight user memory for Sophie. " +
+      "Be concise and non-creepy. Observations only. No diagnosis. " +
+      "If you are unsure about a profile field, return an empty string for it.";
 
     const userMsg = `
+CURRENT profile memory:
+first_name: ${existingFirstName}
+preferred_language: ${existingLang}
+notes: ${existingNotes}
+
 CURRENT relationship memory:
 tone_baseline: ${rel?.tone_baseline || ""}
 openness_level: ${rel?.openness_level || ""}
@@ -126,11 +142,22 @@ NEW transcript:
 ${transcriptText}
 `.trim();
 
-    // ---------- OpenAI Call (STABIL: JSON Schema erzwingen) ----------
+    // ---------- JSON Schema ----------
     const schema = {
       type: "object",
       additionalProperties: false,
       properties: {
+        profile: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            first_name: { type: "string" },
+            nickname: { type: "string" },
+            formality: { type: "string", description: "informal or formal (or empty)" },
+            preferred_language: { type: "string", description: "ISO-ish like en,de,it,fr,... or empty" },
+          },
+          required: ["first_name", "nickname", "formality", "preferred_language"],
+        },
         relationship: {
           type: "object",
           additionalProperties: false,
@@ -154,9 +181,10 @@ ${transcriptText}
           required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
       },
-      required: ["relationship", "session"],
+      required: ["profile", "relationship", "session"],
     };
 
+    // ---------- OpenAI Call ----------
     let r;
     try {
       r = await fetch("https://api.openai.com/v1/responses", {
@@ -175,7 +203,7 @@ ${transcriptText}
           text: {
             format: {
               type: "json_schema",
-              name: "sophie_memory_v1",
+              name: "sophie_memory_v2",
               strict: true,
               schema: schema,
             },
@@ -233,12 +261,59 @@ ${transcriptText}
       return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
     }
 
+    const profileOut = parsed.profile || {};
     const relationship = parsed.relationship || {};
     const sessionOut = parsed.session || {};
 
-    // ---------- OPTION B: Laufende Kurz-Kontinuität (letzte 3 Essenzen) ----------
+    // ---------- Profile merge & upsert ----------
+    const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
+    const newFirstName = clean(profileOut.first_name);
+    const newNickname = clean(profileOut.nickname);
+    const newFormality = clean(profileOut.formality);
+    const newLang = clean(profileOut.preferred_language).toLowerCase();
+
+    // only update first_name if we got something meaningful
+    const finalFirstName = newFirstName ? newFirstName.slice(0, 80) : existingFirstName;
+
+    // Keep language flexible: store whatever model outputs (but don’t overwrite with empty)
+    const finalLang = newLang ? newLang.slice(0, 12) : existingLang;
+
+    // Store nickname/formality in notes without needing schema changes
+    const marker = "SOPHIE_PREFS:";
+    const prefsLine =
+      `${marker} nickname=${newNickname || ""}; formality=${newFormality || ""}; lang=${finalLang || ""}`.trim();
+
+    let finalNotes = existingNotes;
+    if (!finalNotes) {
+      finalNotes = prefsLine;
+    } else {
+      // replace existing marker line if present, else append
+      if (finalNotes.includes(marker)) {
+        finalNotes = finalNotes
+          .split("\n")
+          .map((ln) => (ln.includes(marker) ? prefsLine : ln))
+          .join("\n")
+          .trim();
+      } else {
+        finalNotes = (finalNotes + "\n" + prefsLine).trim();
+      }
+    }
+
+    await mustUpsert(
+      "user_profile",
+      {
+        user_id: user.id,
+        first_name: finalFirstName,
+        preferred_language: finalLang || null,
+        notes: finalNotes.slice(0, 2000),
+        updated_at: new Date().toISOString(),
+      },
+      "user_id",
+      "user_profile"
+    );
+
+    // ---------- Relationship continuity ----------
     function mergeContinuity(prev, next) {
-      const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
       prev = clean(prev);
       next = clean(next);
 
@@ -260,24 +335,23 @@ ${transcriptText}
 
     const updateRel = {
       user_id: user.id,
-      tone_baseline: String(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
-      openness_level: String(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
-      emotional_patterns: String(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
-      last_interaction_summary: String(newContinuity || "").slice(0, 600),
+      tone_baseline: clean(relationship.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
+      openness_level: clean(relationship.openness_level || rel?.openness_level || "").slice(0, 50),
+      emotional_patterns: clean(relationship.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
+      last_interaction_summary: clean(newContinuity || "").slice(0, 600),
       updated_at: new Date().toISOString(),
     };
 
-    // Relationship upsert (Row wird ggf. angelegt)
     await mustUpsert("user_relationship", updateRel, "user_id", "user_relationship");
 
-    // Session speichern
+    // ---------- Session speichern ----------
     await mustInsert("user_sessions", {
       user_id: user.id,
       session_date: new Date().toISOString(),
-      emotional_tone: String(sessionOut.emotional_tone || "").slice(0, 50) || "unknown",
+      emotional_tone: clean(sessionOut.emotional_tone || "").slice(0, 50) || "unknown",
       stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
       closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
-      short_summary: String(sessionOut.short_summary || "").slice(0, 300) || "Session captured.",
+      short_summary: clean(sessionOut.short_summary || "").slice(0, 300) || "Session captured.",
     }, "user_sessions(success)");
 
     return res.status(200).json({ ok: true });
@@ -286,4 +360,4 @@ ${transcriptText}
     console.error("memory-update fatal:", err?.message || err, err?.stack || "");
     return res.status(500).json({ error: String(err?.message || err || "Internal server error") });
   }
-}
+};
