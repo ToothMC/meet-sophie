@@ -9,11 +9,9 @@ import { createClient } from "@supabase/supabase-js";
  */
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    // ---------- Body robust lesen ----------
+    // Body robust lesen
     let body = req.body;
     if (typeof body === "string") {
       try { body = JSON.parse(body); } catch { body = {}; }
@@ -31,18 +29,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // ---------- User validieren ----------
+    // User validieren
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
+    const nowIso = new Date().toISOString();
 
-    // ---------- Transcript normalisieren ----------
+    // Transcript normalisieren
     const rawTranscript = body.transcript;
     let transcriptArr = [];
 
@@ -58,69 +54,70 @@ export default async function handler(req, res) {
     }
 
     const transcriptText = transcriptArr
-      .slice(-50)
+      .slice(-60)
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
-    const nowIso = new Date().toISOString();
-
-    // ---------- Base Session ----------
-    const baseSession = {
-      user_id: user.id,
-      session_date: nowIso,
-    };
+    const baseSession = { user_id: user.id, session_date: nowIso };
 
     // Wenn kein Transcript: Session loggen & fertig
     if (!transcriptText || transcriptText.trim().length < 10) {
-      const { error } = await supabase.from("user_sessions").insert({
+      await supabase.from("user_sessions").insert({
         ...baseSession,
         emotional_tone: "unknown",
         stress_level: null,
         closeness_level: null,
         short_summary: `No transcript captured. duration=${secondsUsed}s`.slice(0, 300),
       });
-      if (error) console.error("user_sessions(no_transcript) insert failed:", error.message);
       return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
     }
 
-    // ---------- Relationship lesen ----------
-    const { data: rel, error: relErr } = await supabase
+    // Existing relationship/profile laden
+    const { data: rel } = await supabase
       .from("user_relationship")
       .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (relErr) console.warn("user_relationship select error:", relErr.message);
-
-    // ---------- Profile lesen (für Merge/Upsert) ----------
-    const { data: prof, error: profErr } = await supabase
+    const { data: prof } = await supabase
       .from("user_profile")
-      .select("first_name, notes, preferred_language")
+      .select("first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (profErr) console.warn("user_profile select error:", profErr.message);
-
-    const existingFirstName = String(prof?.first_name || "").trim();
-    const existingNotes = String(prof?.notes || "").trim();
-    const existingLang = String(prof?.preferred_language || "").trim().toLowerCase();
+    const existing = {
+      first_name: String(prof?.first_name || "").trim(),
+      preferred_name: String(prof?.preferred_name || "").trim(),
+      preferred_addressing: String(prof?.preferred_addressing || "").trim(),
+      preferred_pronoun: String(prof?.preferred_pronoun || "").trim(),
+      preferred_language: String(prof?.preferred_language || "").trim().toLowerCase(),
+      notes: String(prof?.notes || "").trim(),
+      tone_baseline: String(rel?.tone_baseline || "").trim(),
+      openness_level: String(rel?.openness_level || "").trim(),
+      emotional_patterns: String(rel?.emotional_patterns || "").trim(),
+      last_interaction_summary: String(rel?.last_interaction_summary || "").trim(),
+    };
 
     const system =
-      "You extract and update lightweight user memory for Sophie. " +
-      "Be concise and non-creepy. Observations only. No diagnosis. " +
-      "If unsure about a profile field, return an empty string.";
+      "Extract and update lightweight user memory for Sophie. " +
+      "Be concise, non-creepy, and factual. No diagnosis. " +
+      "If unsure about a field, return an empty string. " +
+      "preferred_addressing must be either 'informal' or 'formal' (or empty).";
 
     const userMsg = `
-CURRENT profile memory:
-first_name: ${existingFirstName}
-preferred_language: ${existingLang}
-notes: ${existingNotes}
+CURRENT structured profile:
+first_name: ${existing.first_name}
+preferred_name: ${existing.preferred_name}
+preferred_addressing: ${existing.preferred_addressing}
+preferred_pronoun: ${existing.preferred_pronoun}
+preferred_language: ${existing.preferred_language}
+notes: ${existing.notes}
 
 CURRENT relationship memory:
-tone_baseline: ${rel?.tone_baseline || ""}
-openness_level: ${rel?.openness_level || ""}
-emotional_patterns: ${rel?.emotional_patterns || ""}
-last_interaction_summary: ${rel?.last_interaction_summary || ""}
+tone_baseline: ${existing.tone_baseline}
+openness_level: ${existing.openness_level}
+emotional_patterns: ${existing.emotional_patterns}
+last_interaction_summary: ${existing.last_interaction_summary}
 
 NEW transcript:
 ${transcriptText}
@@ -135,11 +132,12 @@ ${transcriptText}
           additionalProperties: false,
           properties: {
             first_name: { type: "string" },
-            nickname: { type: "string" },
-            formality: { type: "string", description: "informal or formal (or empty)" },
-            preferred_language: { type: "string", description: "e.g. en,de,it,fr,... or empty" },
+            preferred_name: { type: "string", description: "Name Sophie should use to address the user (nickname if preferred)" },
+            preferred_addressing: { type: "string", description: "informal or formal (or empty)" },
+            preferred_pronoun: { type: "string", description: "e.g. he/him, she/her, they/them, or empty" },
+            preferred_language: { type: "string", description: "e.g. en,de,it,... or empty" }
           },
-          required: ["first_name", "nickname", "formality", "preferred_language"],
+          required: ["first_name", "preferred_name", "preferred_addressing", "preferred_pronoun", "preferred_language"]
         },
         relationship: {
           type: "object",
@@ -148,9 +146,9 @@ ${transcriptText}
             tone_baseline: { type: "string" },
             openness_level: { type: "string" },
             emotional_patterns: { type: "string" },
-            last_interaction_summary: { type: "string" },
+            last_interaction_summary: { type: "string" }
           },
-          required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"],
+          required: ["tone_baseline", "openness_level", "emotional_patterns", "last_interaction_summary"]
         },
         session: {
           type: "object",
@@ -159,15 +157,15 @@ ${transcriptText}
             emotional_tone: { type: "string" },
             stress_level: { type: "integer", minimum: 0, maximum: 10 },
             closeness_level: { type: "integer", minimum: 0, maximum: 10 },
-            short_summary: { type: "string" },
+            short_summary: { type: "string" }
           },
-          required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
-        },
+          required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"]
+        }
       },
-      required: ["profile", "relationship", "session"],
+      required: ["profile", "relationship", "session"]
     };
 
-    // ---------- OpenAI Call ----------
+    // OpenAI Responses API call
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -184,13 +182,13 @@ ${transcriptText}
         text: {
           format: {
             type: "json_schema",
-            name: "sophie_memory_v2",
+            name: "sophie_memory_structured_v1",
             strict: true,
-            schema,
-          },
+            schema
+          }
         },
-        truncation: "auto",
-      }),
+        truncation: "auto"
+      })
     });
 
     if (!r.ok) {
@@ -209,7 +207,6 @@ ${transcriptText}
     }
 
     const out = await r.json();
-
     const text =
       out?.output_text ||
       out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
@@ -234,23 +231,33 @@ ${transcriptText}
 
     const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
 
-    const profileOut = parsed.profile || {};
-    const relationshipOut = parsed.relationship || {};
-    const sessionOut = parsed.session || {};
+    const p = parsed.profile || {};
+    const rr = parsed.relationship || {};
+    const ss = parsed.session || {};
 
-    const newFirstName = clean(profileOut.first_name);
-    const newNickname = clean(profileOut.nickname);
-    const newFormality = clean(profileOut.formality);
-    const newLang = clean(profileOut.preferred_language).toLowerCase();
+    // ---- Merge / sanitize profile ----
+    const firstNameNew = clean(p.first_name);
+    const preferredNameNew = clean(p.preferred_name);
+    const addressingNew = clean(p.preferred_addressing).toLowerCase();
+    const pronounNew = clean(p.preferred_pronoun);
+    const langNew = clean(p.preferred_language).toLowerCase();
 
-    const finalFirstName = newFirstName ? newFirstName.slice(0, 80) : existingFirstName;
-    const finalLang = newLang ? newLang.slice(0, 12) : existingLang;
+    const finalFirstName = (firstNameNew || existing.first_name).slice(0, 80);
+    const finalPreferredName = (preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
 
-    // Store nickname/formality/lang in notes (no schema changes required)
+    const finalAddressing =
+      (addressingNew === "informal" || addressingNew === "formal")
+        ? addressingNew
+        : (existing.preferred_addressing || "");
+
+    const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
+
+    const finalLang = (langNew || existing.preferred_language).slice(0, 12);
+
+    // Optional: keep a marker line in notes for easy debugging/backward compat
     const marker = "SOPHIE_PREFS:";
-    const prefsLine = `${marker} nickname=${newNickname || ""}; formality=${newFormality || ""}; lang=${finalLang || ""}`.trim();
-
-    let finalNotes = existingNotes;
+    const prefsLine = `${marker} preferred_name=${finalPreferredName}; preferred_addressing=${finalAddressing}; preferred_pronoun=${finalPronoun}; lang=${finalLang}`.trim();
+    let finalNotes = existing.notes || "";
     if (!finalNotes) {
       finalNotes = prefsLine;
     } else if (finalNotes.includes(marker)) {
@@ -263,16 +270,19 @@ ${transcriptText}
       finalNotes = (finalNotes + "\n" + prefsLine).trim();
     }
 
-    // ---------- user_profile upsert ----------
-    // IMPORTANT: If your table does NOT have updated_at, remove it here.
+    // ---- Upsert user_profile (STRUCTURED) ----
     const profileRow = {
       user_id: user.id,
-      first_name: finalFirstName,
+      first_name: finalFirstName || null,
+      preferred_name: finalPreferredName || null,
+      preferred_addressing: finalAddressing || null,
+      preferred_pronoun: finalPronoun || null,
       preferred_language: finalLang || null,
       notes: finalNotes.slice(0, 2000),
-      updated_at: nowIso,
+      updated_at: nowIso, // falls deine Tabelle kein updated_at hat -> diese Zeile löschen
     };
 
+    // Upsert mit Fallback
     const { error: profUpErr } = await supabase
       .from("user_profile")
       .upsert(profileRow, { onConflict: "user_id" });
@@ -280,15 +290,9 @@ ${transcriptText}
     if (profUpErr) {
       console.error("user_profile upsert failed:", profUpErr.message, profileRow);
 
-      // Fallback: try update then insert (handles missing unique constraint sometimes)
       const { error: updErr } = await supabase
         .from("user_profile")
-        .update({
-          first_name: finalFirstName,
-          preferred_language: finalLang || null,
-          notes: finalNotes.slice(0, 2000),
-          updated_at: nowIso,
-        })
+        .update(profileRow)
         .eq("user_id", user.id);
 
       if (updErr) {
@@ -298,13 +302,11 @@ ${transcriptText}
           .from("user_profile")
           .insert(profileRow);
 
-        if (insErr) {
-          console.error("user_profile insert fallback failed:", insErr.message);
-        }
+        if (insErr) console.error("user_profile insert fallback failed:", insErr.message);
       }
     }
 
-    // ---------- Relationship merge ----------
+    // ---- Relationship merge (keep last 3 bullets) ----
     function mergeContinuity(prev, next) {
       prev = clean(prev);
       next = clean(next);
@@ -312,54 +314,50 @@ ${transcriptText}
       if (prev && prev.includes(next)) return prev;
 
       let parts = prev ? prev.split(" • ").map(clean).filter(Boolean) : [];
-      parts = parts.filter((p) => p !== next);
+      parts = parts.filter((x) => x !== next);
       parts.unshift(next);
-      parts = parts.slice(0, 3);
-      return parts.join(" • ").slice(0, 600);
+      return parts.slice(0, 3).join(" • ").slice(0, 600);
     }
 
     const newContinuity = mergeContinuity(
-      rel?.last_interaction_summary || "",
-      relationshipOut.last_interaction_summary || sessionOut.short_summary || ""
+      existing.last_interaction_summary,
+      clean(rr.last_interaction_summary || ss.short_summary)
     );
 
     const relRow = {
       user_id: user.id,
-      tone_baseline: clean(relationshipOut.tone_baseline || rel?.tone_baseline || "").slice(0, 200),
-      openness_level: clean(relationshipOut.openness_level || rel?.openness_level || "").slice(0, 50),
-      emotional_patterns: clean(relationshipOut.emotional_patterns || rel?.emotional_patterns || "").slice(0, 500),
-      last_interaction_summary: clean(newContinuity || "").slice(0, 600),
-      updated_at: nowIso,
+      tone_baseline: clean(rr.tone_baseline || existing.tone_baseline).slice(0, 200),
+      openness_level: clean(rr.openness_level || existing.openness_level).slice(0, 50),
+      emotional_patterns: clean(rr.emotional_patterns || existing.emotional_patterns).slice(0, 500),
+      last_interaction_summary: clean(newContinuity).slice(0, 600),
+      updated_at: nowIso, // falls Tabelle kein updated_at hat -> löschen
     };
 
     const { error: relUpErr } = await supabase
       .from("user_relationship")
       .upsert(relRow, { onConflict: "user_id" });
 
-    if (relUpErr) {
-      console.error("user_relationship upsert failed:", relUpErr.message, relRow);
-    }
+    if (relUpErr) console.error("user_relationship upsert failed:", relUpErr.message, relRow);
 
-    // ---------- Session speichern ----------
-    const { error: sessErr } = await supabase.from("user_sessions").insert({
+    // ---- user_sessions insert ----
+    await supabase.from("user_sessions").insert({
       user_id: user.id,
       session_date: nowIso,
-      emotional_tone: clean(sessionOut.emotional_tone || "").slice(0, 50) || "unknown",
-      stress_level: Number.isFinite(sessionOut.stress_level) ? sessionOut.stress_level : null,
-      closeness_level: Number.isFinite(sessionOut.closeness_level) ? sessionOut.closeness_level : null,
-      short_summary: clean(sessionOut.short_summary || "").slice(0, 300) || "Session captured.",
+      emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+      stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+      closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+      short_summary: clean(ss.short_summary).slice(0, 300) || "Session captured.",
     });
-
-    if (sessErr) console.error("user_sessions(success) insert failed:", sessErr.message);
 
     return res.status(200).json({
       ok: true,
       extracted: {
         first_name: finalFirstName,
-        nickname: newNickname,
-        formality: newFormality,
+        preferred_name: finalPreferredName,
+        preferred_addressing: finalAddressing,
+        preferred_pronoun: finalPronoun,
         preferred_language: finalLang,
-      },
+      }
     });
   } catch (err) {
     console.error("memory-update fatal:", err?.message || err, err?.stack || "");
