@@ -16,6 +16,7 @@ function includedSecondsForPlan(plan) {
   return 0;
 }
 
+
 function topupSecondsForPack(pack) {
   const k = Number(pack);
   // Conversion-first: großzügig. Später kannst du das enger machen.
