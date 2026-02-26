@@ -71,6 +71,14 @@ export default async function handler(req, res) {
       notes: "",
       age: null,
       relationship_status: "",
+
+      // ✅ Identity / Preference Extensions
+      occupation: "",
+      conversation_style: "",
+      topics_like: [],
+      topics_avoid: [],
+      memory_confidence: "",
+      last_confirmed_at: null,
     };
 
     let rel = {
@@ -83,7 +91,10 @@ export default async function handler(req, res) {
     try {
       const { data: prof, error: profErr } = await supabase
         .from("user_profile")
-        .select("first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status")
+        .select(
+          "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status, " +
+          "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at"
+        )
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -99,6 +110,13 @@ export default async function handler(req, res) {
           notes: (prof.notes || "").trim(),
           age: prof.age ?? null,
           relationship_status: (prof.relationship_status || "").trim(),
+
+          occupation: (prof.occupation || "").trim(),
+          conversation_style: (prof.conversation_style || "").trim(),
+          topics_like: Array.isArray(prof.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
+          topics_avoid: Array.isArray(prof.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
+          memory_confidence: (prof.memory_confidence || "").trim(),
+          last_confirmed_at: prof.last_confirmed_at ?? null,
         };
       }
 
@@ -234,6 +252,22 @@ Rules:
 - If preferred_pronoun is known, respect it in references to the user.
 `;
 
+    const identityBlock = `
+IDENTITY / PREFERENCES (PRIVATE)
+occupation: ${profile.occupation || "(unknown)"}
+conversation_style: ${profile.conversation_style || "(unknown)"}
+topics_like: ${Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"}
+topics_avoid: ${Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"}
+memory_confidence: ${profile.memory_confidence || "(unknown)"}
+last_confirmed_at: ${profile.last_confirmed_at || "(unknown)"}
+
+Rules:
+- If occupation is known, you MAY reference it occasionally and naturally when relevant.
+- If topics_like exist, weave them in gently when relevant. Do not force them.
+- Avoid topics_avoid unless the user reintroduces them.
+- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
+`;
+
     const coreStyle = `
 STYLE
 Soft, calm, feminine presence. Natural rhythm (not evenly paced).
@@ -263,6 +297,8 @@ ${startModeBlock}
 ${languageBlock}
 
 ${addressingBlock}
+
+${identityBlock}
 
 ${coreStyle}
 
