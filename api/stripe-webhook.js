@@ -6,8 +6,11 @@ module.exports.config = { api: { bodyParser: false } };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// ✅ Konsistent mit deinem Projekt: Free = 600 Sekunden
+const DEFAULT_FREE_SECONDS_TOTAL = 600;
+
 function includedSecondsForPlan(plan) {
-  const p = String(plan || "").toLowerCase();
+  const p = String(plan || "").toLowerCase().trim();
   if (p === "starter") return 120 * 60; // 120 min
   if (p === "plus") return 300 * 60;    // 300 min
   return 0;
@@ -15,16 +18,30 @@ function includedSecondsForPlan(plan) {
 
 function topupSecondsForPack(pack) {
   const k = Number(pack);
+  // Conversion-first: großzügig. Später kannst du das enger machen.
   if (k === 5) return 60 * 60;        // 60 min
   if (k === 10) return 140 * 60;      // 140 min
   if (k === 20) return 320 * 60;      // 320 min
   return 0;
 }
 
+// ✅ Bombensicherer Fallback: Plan aus Price-ID ableiten
+function planFromPriceId(priceId) {
+  const starter = process.env.STRIPE_PRICE_ID_STARTER;
+  const plus = process.env.STRIPE_PRICE_ID_PLUS;
+  if (starter && priceId === starter) return "starter";
+  if (plus && priceId === plus) return "plus";
+  return "";
+}
+
 async function safeTrack(supabase, userId, event_name, meta = {}) {
   try {
     if (!userId) return;
-    await supabase.from("analytics_events").insert({ user_id: userId, event_name, meta });
+    await supabase.from("analytics_events").insert({
+      user_id: userId,
+      event_name,
+      meta,
+    });
   } catch (e) {
     console.warn("Analytics insert failed:", e?.message || e);
   }
@@ -52,14 +69,17 @@ module.exports = async function handler(req, res) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
-    console.error("Missing Supabase env vars", { supabaseUrl: !!supabaseUrl, serviceKey: !!serviceKey });
+    console.error("Missing Supabase env vars", {
+      supabaseUrl: !!supabaseUrl,
+      serviceKey: !!serviceKey,
+    });
     return res.status(500).send("Missing Supabase server env vars");
   }
 
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
-    // 1) Checkout completed
+    // 1) Checkout completed (Subscription oder Top-up Payment)
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
@@ -72,24 +92,42 @@ module.exports = async function handler(req, res) {
       const mode = session.mode; // "subscription" | "payment"
       const stripeCustomerId = session.customer || null;
 
-      // A) Subscription
+      // A) Subscription Checkout
       if (mode === "subscription") {
         const stripeSubscriptionId = session.subscription || null;
 
-        // ✅ plan robust holen (Session metadata -> Subscription metadata fallback)
+        // ✅ Plan robust ermitteln:
+        // 1) Session metadata
         let plan = String(session?.metadata?.plan || "").toLowerCase().trim();
 
-        if (!plan && stripeSubscriptionId) {
+        // 2) Subscription metadata oder Price-ID fallback
+        if ((!plan || plan === "0") && stripeSubscriptionId) {
           try {
             const subObj = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
             plan = String(subObj?.metadata?.plan || "").toLowerCase().trim();
+
+            if (!plan || plan === "0") {
+              const item = subObj?.items?.data?.[0];
+              const priceId = item?.price?.id || "";
+              plan = planFromPriceId(priceId);
+            }
           } catch (e) {
-            console.warn("Could not retrieve subscription for plan fallback:", e?.message || e);
+            console.warn("Plan fallback failed:", e?.message || e);
           }
         }
 
         const includedSeconds = includedSecondsForPlan(plan);
 
+        if (!includedSeconds) {
+          console.warn("No included seconds resolved", {
+            userId,
+            plan,
+            stripeSubscriptionId,
+          });
+        }
+
+        // Subscription status setzen
         const { error: subErr } = await supabase
           .from("user_subscriptions")
           .upsert({
@@ -99,22 +137,24 @@ module.exports = async function handler(req, res) {
             status: "active",
             is_active: true,
             plan: plan || null,
-            current_period_end: null,
+            current_period_end: null, // wird per subscription.updated nachgezogen
           });
 
         if (subErr) throw subErr;
 
-        // Usage row sicherstellen + Monatskontingent setzen & used reset
-        const { data: usage } = await supabase
+        // Usage-Row sicherstellen + Monatskontingent setzen & used reset
+        const { data: usage, error: uFindErr } = await supabase
           .from("user_usage")
           .select("user_id")
           .eq("user_id", userId)
           .maybeSingle();
 
+        if (uFindErr) throw uFindErr;
+
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
-            free_seconds_total: 600,
+            free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
             free_seconds_used: 0,
             paid_seconds_total: includedSeconds,
             paid_seconds_used: 0,
@@ -142,7 +182,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ received: true });
       }
 
-      // B) Top-up
+      // B) Top-up Payment Checkout
       if (mode === "payment") {
         const pack = session?.metadata?.topup_pack;
         const addSeconds = topupSecondsForPack(pack);
@@ -153,6 +193,7 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ received: true });
         }
 
+        // Ensure usage row exists, then add to balance
         const { data: usage, error: uSelErr } = await supabase
           .from("user_usage")
           .select("topup_seconds_balance")
@@ -164,7 +205,7 @@ module.exports = async function handler(req, res) {
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
-            free_seconds_total: 600,
+            free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
             free_seconds_used: 0,
             paid_seconds_total: 0,
             paid_seconds_used: 0,
@@ -189,22 +230,24 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ received: true });
       }
 
+      // Unknown mode
       console.warn("checkout.session.completed unknown mode:", mode);
       await safeTrack(supabase, userId, "checkout_unknown_mode", { mode });
       return res.status(200).json({ received: true });
     }
 
-    // 2) Subscription Updated
+    // 2) Subscription Updated -> Status / Period End sync
     if (event.type === "customer.subscription.updated") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
       const stripeCustomerId = sub.customer || null;
-      const status = sub.status || null;
+      const status = sub.status || null; // active, trialing, past_due, canceled, unpaid...
       const isActive = status === "active" || status === "trialing";
       const currentPeriodEnd = sub.current_period_end
         ? new Date(sub.current_period_end * 1000).toISOString()
         : null;
 
+      // Find user by stripe_subscription_id
       const { data: row, error: findErr } = await supabase
         .from("user_subscriptions")
         .select("user_id, plan")
@@ -242,7 +285,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
-    // 3) Subscription Deleted
+    // 3) Subscription Deleted -> Deactivate
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -280,6 +323,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
+    // MVP: Rest ignorieren
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error("Webhook handling error:", err);
