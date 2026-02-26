@@ -199,7 +199,6 @@ FLOW
 5) Short about Sophie (max 2–3 sentences):
    "Quickly about me: I’m 32, freelance interior designer."
    "I love warm spaces, soft light… and conversations that aren’t superficial."
-   "What I don’t like? When people only half-listen."
 6) Transition:
    "Alright." (pause)
    "Let’s begin."
