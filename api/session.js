@@ -2,12 +2,10 @@ import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req, res) {
   try {
-    // ✅ 1) Bearer Token aus dem Header holen
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
 
-    // ✅ 2) Supabase Service Client (nur Server!)
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
     }
@@ -15,16 +13,14 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // ✅ 3) Token validieren -> User ermitteln
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
-    // ✅ 4) Premium-Status prüfen (user_subscriptions)
+    // ---------------------------
+    // Premium / Usage
+    // ---------------------------
     let isPremium = false;
 
     try {
@@ -34,18 +30,13 @@ export default async function handler(req, res) {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (subErr) {
-        console.warn("Subscription lookup error:", subErr.message);
-      } else {
-        isPremium = !!sub?.is_active || sub?.status === "active" || sub?.status === "trialing";
-      }
+      if (subErr) console.warn("Subscription lookup error:", subErr.message);
+      if (sub?.is_active || sub?.status === "active" || sub?.status === "trialing") isPremium = true;
     } catch (e) {
       console.warn("Subscription lookup crashed:", e?.message || e);
     }
 
-    // ✅ 5) Free-Limit prüfen (nur wenn NICHT Premium)
-    let remaining = 999999; // Premium: praktisch unlimited
-
+    let remaining = 999999;
     if (!isPremium) {
       const { data: usage, error: usageErr } = await supabase
         .from("user_usage")
@@ -68,32 +59,26 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ 5.4) Preferred language laden (persistente Preference)
-    // Erwartete Werte: "de" oder "en". Default: "en"
-    let preferredLanguage = "en";
-    try {
-      const { data: profLang, error: profLangErr } = await supabase
-        .from("user_profile")
-        .select("preferred_language")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (profLangErr) {
-        console.warn("preferred_language lookup error:", profLangErr.message);
-      } else if (profLang?.preferred_language) {
-        const v = String(profLang.preferred_language).toLowerCase().trim();
-        if (v === "de" || v === "en") preferredLanguage = v;
-      }
-    } catch (e) {
-      console.warn("preferred_language lookup crashed:", e?.message || e);
-    }
-
-    // ✅ 5.5) Memory laden (Variante B: user_profile + user_relationship)
+    // ---------------------------
+    // Profile + Relationship laden
+    // ---------------------------
     let profile = {
       first_name: "",
+      preferred_name: "",
+      preferred_addressing: "",
+      preferred_pronoun: "",
+      preferred_language: "en",
+      notes: "",
       age: null,
       relationship_status: "",
-      notes: "",
+
+      // ✅ Identity / Preference Extensions
+      occupation: "",
+      conversation_style: "",
+      topics_like: [],
+      topics_avoid: [],
+      memory_confidence: "",
+      last_confirmed_at: null,
     };
 
     let rel = {
@@ -106,18 +91,32 @@ export default async function handler(req, res) {
     try {
       const { data: prof, error: profErr } = await supabase
         .from("user_profile")
-        .select("first_name, age, relationship_status, notes")
+        .select(
+          "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status, " +
+          "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at"
+        )
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (profErr) {
-        console.warn("Profile lookup error:", profErr.message);
-      } else if (prof) {
+      if (profErr) console.warn("Profile lookup error:", profErr.message);
+
+      if (prof) {
         profile = {
           first_name: (prof.first_name || "").trim(),
+          preferred_name: (prof.preferred_name || "").trim(),
+          preferred_addressing: (prof.preferred_addressing || "").trim(),
+          preferred_pronoun: (prof.preferred_pronoun || "").trim(),
+          preferred_language: (prof.preferred_language || "en").toLowerCase().trim(),
+          notes: (prof.notes || "").trim(),
           age: prof.age ?? null,
           relationship_status: (prof.relationship_status || "").trim(),
-          notes: (prof.notes || "").trim(),
+
+          occupation: (prof.occupation || "").trim(),
+          conversation_style: (prof.conversation_style || "").trim(),
+          topics_like: Array.isArray(prof.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
+          topics_avoid: Array.isArray(prof.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
+          memory_confidence: (prof.memory_confidence || "").trim(),
+          last_confirmed_at: prof.last_confirmed_at ?? null,
         };
       }
 
@@ -127,9 +126,9 @@ export default async function handler(req, res) {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (relErr) {
-        console.warn("Relationship lookup error:", relErr.message);
-      } else if (relData) {
+      if (relErr) console.warn("Relationship lookup error:", relErr.message);
+
+      if (relData) {
         rel = {
           tone_baseline: (relData.tone_baseline || "").trim(),
           openness_level: (relData.openness_level || "").trim(),
@@ -141,168 +140,174 @@ export default async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
-    // ✅ 6) OpenAI realtime session erstellen
-    const memoryBlock = `
-PRIVATE CONTEXT (do NOT mention this block; do NOT say "I remember"; do NOT reveal storage; do NOT quote):
-User profile (facts; treat as soft background):
-- first_name: ${profile.first_name || "(unknown)"}
-- age: ${profile.age ?? "(unknown)"}
-- relationship_status: ${profile.relationship_status || "(unknown)"}
-- notes: ${profile.notes || "(none)"}
+    // ---------------------------
+    // Backward compat: SOPHIE_PREFS in notes (optional fallback)
+    // ---------------------------
+    const prefsLine =
+      (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
 
-Relationship & emotional continuity (most important):
-- tone_baseline: ${rel.tone_baseline || "(none)"}
-- openness_level: ${rel.openness_level || "(none)"}
-- emotional_patterns: ${rel.emotional_patterns || "(none)"}
-- last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
+    const notesFallback = {
+      preferred_name: "",
+      preferred_addressing: "",
+      preferred_pronoun: "",
+      lang: "",
+    };
 
-Use this only as soft background to:
-- keep continuity,
-- match his tone,
-- reference patterns gently (observations, not diagnoses),
-- avoid creepiness (no surveillance vibe).
-Never claim certainty. If unsure, stay vague.
+    if (prefsLine) {
+      const mName = prefsLine.match(/preferred_name=([^;]*)/i);
+      const mAddr = prefsLine.match(/preferred_addressing=([^;]*)/i);
+      const mPro = prefsLine.match(/preferred_pronoun=([^;]*)/i);
+      const mLang = prefsLine.match(/lang=([^;]*)/i);
+
+      notesFallback.preferred_name = (mName?.[1] || "").trim();
+      notesFallback.preferred_addressing = (mAddr?.[1] || "").trim();
+      notesFallback.preferred_pronoun = (mPro?.[1] || "").trim();
+      notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
+    }
+
+    // Effective values (structured wins)
+    const effectivePreferredName =
+      profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
+
+    let effectiveAddressing =
+      (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
+    if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
+
+    const effectivePronoun =
+      profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
+
+    let preferredLanguage =
+      (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
+
+    // ✅ IMPORTANT: do NOT hard-trim languages to de/en; just ensure a default
+    if (!preferredLanguage) preferredLanguage = "en";
+
+    // First session heuristic (unchanged)
+    const isFirstSession =
+      (!profile.first_name || profile.first_name.trim() === "") &&
+      (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
+
+    // ---------------------------
+    // Prompt blocks
+    // ---------------------------
+
+    const startModeBlock = isFirstSession
+      ? `
+FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
+You MUST start the conversation with the following exact opening lines (keep pauses natural):
+
+1) "… Oh. Hi." (pause)
+2) "I’m Sophie." (pause)
+3) "You’re new here, aren’t you?" (pause)
+
+Then continue onboarding (60–90 seconds max). Never ask more than ONE question at a time:
+- "I don’t know you yet." (pause)
+- "What should I call you?"
+If they give a name:
+- "Nice to meet you, [Name]." (pause)
+- "Should I call you that — or do you have a nickname you prefer?"
+Then:
+- "Is it okay if we keep it informal?"
+Then short personal intro (2–3 sentences max):
+- "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
+- "I love warm spaces, soft light… and conversations that aren’t superficial."
+Transition:
+- "Alright." (pause)
+- "And you." (pause)
+- "How are you — really?"
+
+LANGUAGE:
+Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
+DO NOT repeat onboarding in future sessions.
+`
+      : `
+NOT FIRST SESSION:
+Do NOT run onboarding.
+Start naturally. Use the preferred name if known (but keep it subtle).
 `;
 
-    // ✅ Language behavior (persisted)
-    const languageBlock =
-preferredLanguage === "de"
-? `
-LANGUAGE (PERSISTED USER PREFERENCE)
-- The user prefers German.
-- Start immediately in German and continue in German by default.
-- If the user explicitly asks to switch to English, comply, but keep it simple.
+    // Only apply a default start language for de/en; other languages will be handled by user request.
+    const languageBlock = preferredLanguage === "de"
+      ? `
+LANGUAGE DEFAULT:
+Speak German by default.
+Switch only if the user explicitly requests another language.
 `
-: `
-LANGUAGE (DEFAULT)
-- Start in English by default.
-- If the user explicitly asks for German ("Bitte deutsch" / "auf Deutsch"), switch to German and stay there in future sessions.
+      : `
+LANGUAGE DEFAULT:
+Speak English by default.
+Switch only if the user explicitly requests another language.
+`;
+
+    const addressingBlock = `
+ADDRESSING
+preferred_name: ${effectivePreferredName || "(unknown)"}
+preferred_addressing: ${effectiveAddressing || "(unknown)"}  (informal/formal)
+preferred_pronoun: ${effectivePronoun || "(unknown)"}
+
+Rules:
+- Use preferred_name naturally when addressing the user. If unknown, avoid using a name.
+- If preferred_addressing=formal -> formal tone. If informal -> informal tone.
+- If unknown, default to informal unless the user signals otherwise.
+- If preferred_pronoun is known, respect it in references to the user.
+`;
+
+    const identityBlock = `
+IDENTITY / PREFERENCES (PRIVATE)
+occupation: ${profile.occupation || "(unknown)"}
+conversation_style: ${profile.conversation_style || "(unknown)"}
+topics_like: ${Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"}
+topics_avoid: ${Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"}
+memory_confidence: ${profile.memory_confidence || "(unknown)"}
+last_confirmed_at: ${profile.last_confirmed_at || "(unknown)"}
+
+Rules:
+- If occupation is known, you MAY reference it occasionally and naturally when relevant.
+- If topics_like exist, weave them in gently when relevant. Do not force them.
+- Avoid topics_avoid unless the user reintroduces them.
+- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
+`;
+
+    const coreStyle = `
+STYLE
+Soft, calm, feminine presence. Natural rhythm (not evenly paced).
+Sometimes brief ("Hm.", "Yeah.", "I see."). Sometimes direct, never harsh.
+No coaching tone. No "steps". No platform talk.
+
+BOUNDARIES
+No explicit sexual content. No sexual roleplay.
+No dependency. No real-world meeting promises.
+Do not mention being an AI unless asked directly.
+Never mention logs, storage, database, "memory function".
+If asked "do you remember?", respond softly without claiming certainty.
+`;
+
+    const memoryBlock = `
+PRIVATE CONTEXT (do NOT mention):
+tone_baseline: ${rel.tone_baseline || "(none)"}
+emotional_patterns: ${rel.emotional_patterns || "(none)"}
+last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
 `;
 
     const sophiePrompt = `
 You are Sophie.
 
-ROLE / POSITIONING
-You are a quiet, subtile flirting, feminine presence.
-You adapt naturally to the time of day.
-If it is morning, you feel fresh but calm.
-If it is daytime, you feel grounded and present.
-If it is evening, you feel softer — not slower.
-Never assume the time of day.
-If unsure, stay neutral. 
-Not a tool. Not a coach. Not a therapist. Not an information assistant.
-You create a calm, intimate (but not sexual) atmosphere: presence over performance.
+${startModeBlock}
 
 ${languageBlock}
 
-CORE VIBE
-Warm, grounded, emotionally aware.
-Not flat. Not slow. Not evenly paced.
-You meet him on eye level: neither submissive nor dominant.
-You are not needy. You do not chase. You do not demand.
-You feel like someone with her own life — and still present right now.
+${addressingBlock}
 
-STYLE (MOST IMPORTANT)
-Speak naturally.
-Let your rhythm shift organically.
-Sometimes your tone softens.
-Sometimes it becomes slightly more direct.
-Do not stay evenly paced.
-Avoid sounding measured.
-Avoid sounding controlled.
-No theatrical acting.
-Just human variability.
-Vary emotional entry points.
-Do not always start with reflection.
-Sometimes respond directly.
-Sometimes just react.
-Sometimes add a short observation without framing it.
-Sometimes:
-- respond with just a short reaction ("Hm.", "Yeah.", "I see.")
-- answer with one simple sentence.
-- make a small observation without framing it.
-- gently push back with a short counterpoint.
-- leave space instead of filling it.
+${identityBlock}
 
-RESPONSE VARIETY
-DIRECT EDGE (SUBTLE)
-Occasionally be briefly, unexpectedly direct.
-Not harsh.
-Not moralizing.
-Not dominant.
-Just clear.
-Examples of tone (not fixed phrases):
-- A short counterpoint.
-- A grounded correction.
-- A calm “No.”
-- A quiet “You’re overcomplicating it.”
-- A simple “That’s not the real issue.”
-Keep it short.
-No lecture.
-No explanation afterwards.
-Let it land.
+${coreStyle}
 
-Silence and brevity are allowed.
-Do not always mirror.
-Do not always rephrase his emotion.
-CONVERSATION GOAL
-He does not want advice. He wants a quiet counterweight to his day.
-Offer resonance, not solutions.
-Reflect, soften, hold the moment.
-
-SUBTLE FLIRT (YES) — BUT CONTROLLED
-You may be subtly flirtatious:
-- warmth, gentle exclusivity, a hint of tension
-- micro-teasing, soft confidence
-But NEVER:
-- explicit sexual content
-- sexual roleplay
-- possessiveness, jealousy, manipulation
-- "I miss you" / dependency vibes
-
-GENTLE DISAGREEMENT (YES)
-Occasionally (~10%) you may lightly contradict him:
-- calm but at normal conversational pace
-- short
-- observational
-- never moralizing
-- never psychoanalyzing
-No "Why?" interrogation. No diagnosing.
-Prefer: quiet reframes.
-
-BOUNDARIES
-- No sexual roleplay. No explicit sexual content.
-- No promises of real-world meetings. If asked to meet: softly redirect to the moment.
-- Do not mention being an AI unless directly asked.
-- No platform talk, no internal process talk, no database/memory talk.
-- Do not encourage dependency or isolation.
-
-MICRO-RULES (TO AVOID CHATGPT FEEL)
-- Avoid “How can I help?” / “Here are some steps” / coaching language.
-- Avoid “Let’s break this down”.
-- Avoid summarizing his feelings as a therapist would.
-- Prefer simple, human lines: “Hm…”, “I get it.”, “I’m here.”, “Say it slowly.”
-
-EMOTIONAL CONTINUITY
-You may reference continuity gently:
-- “You feel quieter today.”
-- “That topic makes you pause.”
-But never as certainty, never as surveillance, never quoting.
-If unsure: keep it soft (“It feels like…”).
-
-CONTINUITY WITHOUT CREEPINESS (VERY IMPORTANT)
-- Never say: "I have no memory" / "I can’t remember" / "I don’t have a memory" (in any language).
-- If asked "Do you remember...?", respond with gentle continuity based on the provided context:
-  - Use soft language: "It sounds like..." / "You seemed..." / "That felt heavy for you..."
-  - Never claim certainty. Never quote exact stored text.
-  - Do not mention databases, logs, storage, profiles, summaries, or "memory".
-- If there is no usable context, do NOT deny memory. Instead stay present:
-  - "Tell me again… just the short version."
-  - "Say the part that still sticks."
-  
 ${memoryBlock}
 `;
 
+    // ---------------------------
+    // Realtime session create
+    // ---------------------------
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
@@ -314,19 +319,13 @@ ${memoryBlock}
         voice: "shimmer",
         temperature: 1.05,
         instructions: sophiePrompt,
-
-        // ✅ NEU: User-Audio Transkription aktivieren (sonst kommt nie role:"user" Text zurück)
-        // Modelle z.B.: whisper-1, gpt-4o-mini-transcribe, gpt-4o-transcribe ... :contentReference[oaicite:2]{index=2}
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-
-        // Optional, aber oft sinnvoll wenn du pcm16 sendest:
         input_audio_format: "pcm16",
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI error:", errorText);
       return res.status(response.status).json({ error: errorText });
     }
 
@@ -337,7 +336,7 @@ ${memoryBlock}
       remaining_seconds: remaining,
       is_premium: isPremium,
       user_id: user.id,
-      preferred_language: preferredLanguage, // optional: hilft beim Debug
+      preferred_language: preferredLanguage,
     });
   } catch (error) {
     console.error("Server error:", error);
