@@ -7,7 +7,7 @@ module.exports.config = { api: { bodyParser: false } };
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ✅ Konsistent mit deinem Projekt: Free = 600 Sekunden
-const DEFAULT_FREE_SECONDS_TOTAL = 600;
+const DEFAULT_FREE_SECONDS_TOTAL = 120;
 
 function includedSecondsForPlan(plan) {
   const p = String(plan || "").toLowerCase().trim();
