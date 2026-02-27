@@ -253,6 +253,20 @@ const userTranscriptBuffer = new Map(); // item_id -> string
 // ✅ NEW: de-dup for assistant final (prevents triple repeats)
 let lastAssistantFinal = "";
 
+// ✅ NEW: reliable "Sophie speaks first" start trigger (no text, session.js controls content)
+let startSent = false;
+function maybeStartSophie() {
+  if (startSent) return;
+  if (!dc || dc.readyState !== "open") return;
+  startSent = true;
+  try {
+    dc.send(JSON.stringify({
+      type: "response.create",
+      response: { modalities: ["audio","text"] }
+    }));
+  } catch (_) {}
+}
+
 // Timer vars
 let countdown = null;
 let remainingSeconds = 15 * 60;
@@ -320,23 +334,13 @@ function stopDynamicResets(){
   }
 }
 
+// ✅ SAFER: no prompt text in frontend (prevents "instruction leakage")
 function triggerDynamicReset(){
   if (dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
         type: "response.create",
-        response: {
-          modalities: ["text"],
-          instructions: `
-Continue naturally.
-Refresh your inner energy and spontaneity a little.
-Do not change the topic.
-Do not restart or re-greet.
-Do not mention this instruction.
-Avoid becoming explanatory or generic.
-Stay present, warm, and human.
-`
-        }
+        response: { modalities: ["text"] }
       }));
     } catch (_) {}
   }
@@ -365,6 +369,9 @@ function attachChannel(ch) {
         }
       }));
     } catch (_) {}
+
+    // ✅ ensure Sophie speaks first
+    maybeStartSophie();
   });
 
   dc.addEventListener("message", (ev) => {
@@ -475,6 +482,9 @@ async function startVoice(){
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
+  // ✅ reset "sophie speaks first" guard
+  startSent = false;
+
   stopDynamicResets();
 
   try{
@@ -555,6 +565,9 @@ async function startVoice(){
     const answer = { type: "answer", sdp: await sdpRes.text() };
     await pc.setRemoteDescription(answer);
 
+    // ✅ Try start after handshake; if DC isn't open yet, dc.open will trigger it
+    setTimeout(() => maybeStartSophie(), 250);
+
     endBtn.disabled = false;
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
@@ -581,28 +594,6 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
-
-  // Soft goodbye before closing
-  if (dc && dc.readyState === "open") {
-    try {
-      dc.send(JSON.stringify({
-        type: "response.create",
-        response: {
-          instructions: `
-Say one short, soft goodbye line.
-Use the same language that was used in the last conversation.
-Match the emotional tone of the last exchange.
-Calm. Intimate. Low energy.
-No explanation. No repetition.
-Max 12 words.
-`,
-          modalities: ["audio", "text"]
-        }
-      }));
-
-      await new Promise(r => setTimeout(r, 900));
-    } catch (_) {}
-  }
 
   const durationSeconds = talkStartedAt
     ? Math.round((Date.now() - talkStartedAt) / 1000)
