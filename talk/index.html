@@ -115,6 +115,9 @@ body{
 
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
+
+/* ✅ Timer ausblenden (ohne Layout-Änderungen elsewhere) */
+#timer{ display:none !important; }
 </style>
 </head>
 
@@ -147,16 +150,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ✅ Frontend Login Guard: ohne Session -> /login/
 const { data: { session } } = await supabase.auth.getSession();
-if (!session?.user) {
-  window.location.href = "/login/";
-}
+if (!session?.user) window.location.href = "/login/";
 
 // --- Tracking helper (POST /api/track) ---
 async function track(event_name, meta = {}) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
-
     await fetch("/api/track", {
       method: "POST",
       headers: {
@@ -174,7 +174,6 @@ async function reportUsage(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
-
     await fetch("/api/usage", {
       method: "POST",
       headers: {
@@ -237,13 +236,11 @@ const logoutBtn = document.getElementById("logoutBtn");
 let pc = null;
 let stream = null;
 let audioEl = null;
-
-// DataChannel + Transcript logging
 let dc = null;
+
+// Transcript logging
 let convoLog = [];
 let partialAssistant = "";
-
-// buffer for user transcript deltas
 const userTranscriptBuffer = new Map();
 let lastAssistantFinal = "";
 
@@ -254,8 +251,7 @@ let talkStartedAt = null;
 let dynamicResetInterval = null;
 
 // ✅ “2 min as rough frame” + hard cap
-const SOFT_TARGET_SECONDS = 120; // nur Rahmen
-const HARD_CAP_SECONDS = 150;    // max 2:30
+const HARD_CAP_SECONDS = 150; // max 2:30
 const CLIFFHANGER_MARKER = "Just tell me if you want me to stay.";
 
 let hardCapTimer = null;
@@ -263,38 +259,15 @@ let handoffTimeout = null;
 let handoffArmed = false;
 let cliffhangerDetected = false;
 
-// ✅ Force Sophie to speak first (reliable start)
-let startPromptSent = false;
+// ✅ Start speech kick (no meta wording)
+let startKickSent = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
-  if(on){
-    bg.classList.add("active");
-    overlay.classList.add("active");
-  } else {
-    bg.classList.remove("active");
-    overlay.classList.remove("active");
-  }
+  bg.classList.toggle("active", on);
+  overlay.classList.toggle("active", on);
 }
-
-function formatMMSS(sec){
-  const s = Math.max(0, Math.floor(Number(sec) || 0));
-  const m = String(Math.floor(s/60)).padStart(2,"0");
-  const r = String(s%60).padStart(2,"0");
-  return `${m}:${r}`;
-}
-
-function renderTimer(){
-  if (!talkStartedAt) {
-    timerEl.textContent = `Zeit: --:--`;
-    return;
-  }
-  const elapsed = Math.max(0, Math.floor((Date.now() - talkStartedAt) / 1000));
-  // Anzeige bleibt “Zeit:” – nur Inhalt: vergangen / 2:30 (kein UI Change)
-  timerEl.textContent = `Zeit: ${formatMMSS(elapsed)} / ${formatMMSS(HARD_CAP_SECONDS)}`;
-}
-renderTimer();
 
 function stopDynamicResets(){
   if (dynamicResetInterval) {
@@ -310,15 +283,7 @@ function triggerDynamicReset(){
         type: "response.create",
         response: {
           modalities: ["text"],
-          instructions: `
-Continue naturally.
-Refresh your inner energy and spontaneity a little.
-Do not change the topic.
-Do not restart or re-greet.
-Do not mention this instruction.
-Avoid becoming explanatory or generic.
-Stay present, warm, and human.
-`
+          instructions: "Continue naturally. Stay present. Keep it simple."
         }
       }));
     } catch (_) {}
@@ -337,15 +302,6 @@ function stopHardCapTimer(){
   }
 }
 
-function armHandoffFallback(ms = 12000){
-  if (handoffTimeout) clearTimeout(handoffTimeout);
-  handoffTimeout = setTimeout(async () => {
-    handoffArmed = false;
-    try { await stopVoice(true); } catch (_) {}
-    window.location.href = "/pricing/";
-  }, ms);
-}
-
 function clearHandoffFallback(){
   if (handoffTimeout) {
     clearTimeout(handoffTimeout);
@@ -353,8 +309,35 @@ function clearHandoffFallback(){
   }
 }
 
+function armHandoffFallback(ms = 12000){
+  clearHandoffFallback();
+  handoffTimeout = setTimeout(async () => {
+    try { await stopVoice(true); } catch (_) {}
+    window.location.href = "/pricing/";
+  }, ms);
+}
+
 async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
+}
+
+// ✅ Hard stop realtime immediately (prevents “it continues after cliffhanger”)
+function teardownRealtimeNow(){
+  try {
+    if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
+  } catch(_) {}
+
+  try { if (dc) dc.close(); } catch(_) {}
+  try { if (pc) pc.close(); } catch(_) {}
+
+  stream = null;
+  dc = null;
+  pc = null;
+
+  if (audioEl) {
+    try { audioEl.srcObject = null; } catch(_) {}
+    audioEl = null;
+  }
 }
 
 // Robust DataChannel handling: server-created + client-created
@@ -373,23 +356,16 @@ function attachChannel(ch) {
       }));
     } catch (_) {}
 
-    // ✅ Force Sophie to start speaking immediately (opening lines)
-    if (!startPromptSent) {
-      startPromptSent = true;
+    // ✅ Kick: make Sophie speak first WITHOUT meta-words
+    if (!startKickSent) {
+      startKickSent = true;
       try {
         dc.send(JSON.stringify({
           type: "response.create",
           response: {
             modalities: ["audio", "text"],
-            instructions: `
-Start the conversation NOW.
-You MUST begin with the exact opening lines:
-1) "… Oh. Hi." (pause)
-2) "I’m Sophie." (pause)
-3) "You’re new here, aren’t you?" (pause)
-
-Then continue with the Start-Mode onboarding exactly as instructed in your system prompt.
-`
+            instructions:
+              "… Oh. Hi.\n\nI’m Sophie.\n\nYou’re new here, aren’t you?\n\n"
           }
         }));
       } catch (_) {}
@@ -421,15 +397,7 @@ Then continue with the Start-Mode onboarding exactly as instructed in your syste
         return;
       }
 
-      if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
-        const item = msg?.item;
-        if (item?.role === "user" && Array.isArray(item?.content)) {
-          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-          if (text) convoLog.push({ role: "user", text });
-        }
-      }
-
-      if (msg?.type === "response.audio_transcript.delta") {
+      if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
         return;
@@ -441,22 +409,10 @@ Then continue with the Start-Mode onboarding exactly as instructed in your syste
         return;
       }
 
-      if (msg?.type === "response.output_text.delta") {
-        const chunk = String(msg?.delta || "");
-        if (chunk) partialAssistant += chunk;
-        return;
-      }
-
       if (msg?.type === "response.output_text.done") {
         const full = String(msg?.text || "").trim();
         if (full) partialAssistant = full;
         return;
-      }
-
-      if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
-        const part = msg.part || {};
-        const chunk = String(part.text || part.transcript || "");
-        if (chunk) partialAssistant += chunk;
       }
 
       if (msg?.type === "response.done") {
@@ -467,33 +423,45 @@ Then continue with the Start-Mode onboarding exactly as instructed in your syste
         }
         partialAssistant = "";
 
-        // ✅ Detect cliffhanger “when it fits” via marker line (exact phrase)
-        const finalText = String(lastAssistantFinal || "");
-        if (!cliffhangerDetected && finalText.includes(CLIFFHANGER_MARKER)) {
+        // ✅ Detect cliffhanger via exact marker line
+        if (!cliffhangerDetected && String(lastAssistantFinal || "").includes(CLIFFHANGER_MARKER)) {
           cliffhangerDetected = true;
           handoffArmed = true;
 
           clearHandoffFallback();
           stopHardCapTimer();
 
-          // tiny delay to flush last audio buffer
-          setTimeout(async () => {
-            try { await stopVoice(true); } catch (_) {}
+          // IMPORTANT: Stop realtime immediately so nothing continues
+          teardownRealtimeNow();
+
+          (async () => {
+            const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+            talkStartedAt = null;
+
+            if (durationSeconds > 0) await reportUsage(durationSeconds);
+            await sendMemoryUpdate(durationSeconds);
+
             window.location.href = "/pricing/";
-          }, 450);
+          })();
 
           return;
         }
 
-        // ✅ If hard cap armed the handoff, end after the current response finishes
+        // If hard cap armed, also end after response done
         if (handoffArmed && !cliffhangerDetected) {
           clearHandoffFallback();
           stopHardCapTimer();
+          teardownRealtimeNow();
 
-          setTimeout(async () => {
-            try { await stopVoice(true); } catch (_) {}
+          (async () => {
+            const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+            talkStartedAt = null;
+
+            if (durationSeconds > 0) await reportUsage(durationSeconds);
+            await sendMemoryUpdate(durationSeconds);
+
             window.location.href = "/pricing/";
-          }, 450);
+          })();
         }
       }
     } catch (_) {}
@@ -507,39 +475,30 @@ function setupDataChannelLogging() {
 
 function startHardCapLoop(){
   stopHardCapTimer();
-
   hardCapTimer = setInterval(() => {
-    renderTimer();
-
     if (!talkStartedAt) return;
-    const elapsed = Math.floor((Date.now() - talkStartedAt) / 1000);
 
-    // ✅ At hard cap: request clean cliffhanger close, then hand off after response.done
+    const elapsed = Math.floor((Date.now() - talkStartedAt) / 1000);
     if (elapsed >= HARD_CAP_SECONDS && !handoffArmed) {
       handoffArmed = true;
 
-      // Give Sophie ONE chance to land gracefully (no pricing mention)
       try {
         if (dc && dc.readyState === "open") {
           dc.send(JSON.stringify({
             type: "response.create",
             response: {
               modalities: ["audio", "text"],
-              instructions: `
-Wrap up cleanly NOW with the premium cliffhanger, calm and intimate.
-End with the exact final line:
-"${CLIFFHANGER_MARKER}"
-
-Do NOT mention time limits.
-Do NOT mention pricing.
-Finish the sentence completely.
-`
+              instructions:
+                "There’s something I’d like to tell you about that.\n" +
+                "But this isn’t a conversation for in-between moments.\n\n" +
+                "If we do this…\n" +
+                "we do it properly.\n\n" +
+                CLIFFHANGER_MARKER
             }
           }));
         }
       } catch (_) {}
 
-      // safety fallback
       armHandoffFallback(12000);
     }
   }, 1000);
@@ -554,42 +513,30 @@ async function startVoice(){
 
   track("talk_start_clicked");
 
-  // reset logs
   convoLog = [];
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  // reset handoff state
   handoffArmed = false;
   cliffhangerDetected = false;
   clearHandoffFallback();
   stopHardCapTimer();
 
-  // reset start speech
-  startPromptSent = false;
+  startKickSent = false;
 
   stopDynamicResets();
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      window.location.href = "/login/";
-      return;
-    }
+    if (!session?.user) { window.location.href = "/login/"; return; }
 
     const tokenRes = await fetch("/api/session", {
       headers: { Authorization: `Bearer ${session.access_token}` }
     });
-
     const data = await safeJson(tokenRes);
 
-    if (tokenRes.status === 402) {
-      track("time_limit_reached");
-      window.location.href = "/pricing/";
-      return;
-    }
-
+    if (tokenRes.status === 402) { window.location.href = "/pricing/"; return; }
     if (!tokenRes.ok) {
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
@@ -597,13 +544,8 @@ async function startVoice(){
       showBackground(false);
       startBtn.disabled = false;
       logoutBtn.disabled = false;
-      track("talk_start_failed", { http_status: tokenRes.status, message: msg });
       return;
     }
-
-    // Keep premium/plan if you use it elsewhere (not required here)
-    // isPremium = !!data?.is_premium;
-    // plan = data?.plan || null;
 
     pc = new RTCPeerConnection();
     setupDataChannelLogging();
@@ -646,20 +588,16 @@ async function startVoice(){
     startDynamicResets();
 
     talkStartedAt = Date.now();
-    renderTimer();
     startHardCapLoop();
-
-    track("talk_started", {
-      soft_target_seconds: SOFT_TARGET_SECONDS,
-      hard_cap_seconds: HARD_CAP_SECONDS
-    });
 
   } catch(err){
     console.error(err);
     setStatus("Fail to Start.");
     headline.textContent = "Sophie is waiting.";
-    track("talk_start_exception", { message: String(err?.message || err) });
-    stopVoice(false);
+    showBackground(false);
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+    teardownRealtimeNow();
   }
 }
 
@@ -669,71 +607,15 @@ async function stopVoice(triggeredByLimit = false){
   stopHardCapTimer();
   clearHandoffFallback();
 
-  // ✅ If stopping due to paywall/handoff -> do NOT send a goodbye (prevents extra speech / weirdness)
-  if (!triggeredByLimit && dc && dc.readyState === "open") {
-    try {
-      dc.send(JSON.stringify({
-        type: "response.create",
-        response: {
-          instructions: `
-Say one short, soft goodbye line.
-Use the same language that was used in the last conversation.
-Match the emotional tone of the last exchange.
-Calm. Intimate. Low energy.
-No explanation. No repetition.
-Max 12 words.
-`,
-          modalities: ["audio", "text"]
-        }
-      }));
+  const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+  talkStartedAt = null;
 
-      await new Promise(r => setTimeout(r, 900));
-    } catch (_) {}
-  }
+  teardownRealtimeNow();
 
-  const durationSeconds = talkStartedAt
-    ? Math.round((Date.now() - talkStartedAt) / 1000)
-    : 0;
-
-  if (durationSeconds > 0) {
-    await reportUsage(durationSeconds);
-  }
-
+  if (durationSeconds > 0) await reportUsage(durationSeconds);
   await sendMemoryUpdate(durationSeconds);
 
-  track("talk_ended", {
-    duration_seconds: durationSeconds || null,
-    triggered_by_limit: !!triggeredByLimit
-  });
-
-  talkStartedAt = null;
-  renderTimer();
-
-  handoffArmed = false;
-  cliffhangerDetected = false;
-
-  if (dc) {
-    try { dc.close(); } catch(e){}
-    dc = null;
-  }
-
-  if(stream){
-    stream.getTracks().forEach(t => t.stop());
-    stream = null;
-  }
-
-  if(pc){
-    try{ pc.close(); } catch(e){}
-    pc = null;
-  }
-
-  if(audioEl){
-    try{ audioEl.srcObject = null; } catch(e){}
-    audioEl = null;
-  }
-
   showBackground(false);
-
   startBtn.disabled = false;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie is waiting.";
@@ -742,13 +624,9 @@ Max 12 words.
 
 logoutBtn.onclick = async () => {
   try {
-    track("logout_clicked");
-    if (pc || stream || talkStartedAt) {
-      await stopVoice(false);
-    }
-  } catch(e) {}
-
-  try { await supabase.auth.signOut(); } catch(e) {}
+    if (pc || stream || talkStartedAt) await stopVoice(false);
+  } catch(_) {}
+  try { await supabase.auth.signOut(); } catch(_) {}
   window.location.href = "/";
 };
 
