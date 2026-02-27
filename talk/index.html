@@ -264,6 +264,9 @@ let cliffhangerTriggered = false;
 let handoffArmed = false;
 let handoffTimeout = null;
 
+// ✅ Force Sophie to speak first
+let startPromptSent = false;
+
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
@@ -335,6 +338,7 @@ function attachChannel(ch) {
   dc = ch;
 
   dc.addEventListener("open", () => {
+    // Ensure transcription + VAD
     try {
       dc.send(JSON.stringify({
         type: "session.update",
@@ -344,6 +348,28 @@ function attachChannel(ch) {
         }
       }));
     } catch (_) {}
+
+    // ✅ Force Sophie to start speaking immediately (opening lines)
+    if (!startPromptSent) {
+      startPromptSent = true;
+      try {
+        dc.send(JSON.stringify({
+          type: "response.create",
+          response: {
+            modalities: ["audio", "text"],
+            instructions: `
+Start the conversation NOW.
+You MUST begin with the exact opening lines:
+1) "… Oh. Hi." (pause)
+2) "I’m Sophie." (pause)
+3) "You’re new here, aren’t you?" (pause)
+
+Then continue with the Start-Mode onboarding exactly as instructed in your system prompt.
+`
+          }
+        }));
+      } catch (_) {}
+    }
   });
 
   dc.addEventListener("message", (ev) => {
@@ -527,10 +553,11 @@ async function startVoice(){
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  // ✅ reset cliffhanger + handoff
+  // ✅ reset cliffhanger + handoff + start prompt
   cliffhangerTriggered = false;
   handoffArmed = false;
   if (handoffTimeout) { clearTimeout(handoffTimeout); handoffTimeout = null; }
+  startPromptSent = false;
 
   stopDynamicResets();
 
@@ -643,7 +670,7 @@ async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
 
-  // ✅ If we are stopping due to limit/paywall handoff -> do NOT send a goodbye (prevents extra speech + cutoffs)
+  // ✅ If stopping due to limit/paywall handoff -> do NOT send a goodbye (prevents extra speech + cutoffs)
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
