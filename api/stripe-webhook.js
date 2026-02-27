@@ -1,12 +1,18 @@
+// api/stripe-webhook.js
+// Vercel Serverless Function (Node/CommonJS)
+// Handles Stripe webhooks and writes subscription/usage into Supabase.
+
 const Stripe = require("stripe");
 const { buffer } = require("micro");
 const { createClient } = require("@supabase/supabase-js");
 
 module.exports.config = { api: { bodyParser: false } };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2026-01-28.clover",
+});
 
-// ✅ Konsistent mit deinem Projekt: Free = 600 Sekunden
+// ✅ Free = 120 Sekunden (2 Minuten)
 const DEFAULT_FREE_SECONDS_TOTAL = 120;
 
 function includedSecondsForPlan(plan) {
@@ -16,17 +22,16 @@ function includedSecondsForPlan(plan) {
   return 0;
 }
 
-
 function topupSecondsForPack(pack) {
   const k = Number(pack);
   // Conversion-first: großzügig. Später kannst du das enger machen.
-  if (k === 5) return 60 * 60;        // 60 min
-  if (k === 10) return 140 * 60;      // 140 min
-  if (k === 20) return 320 * 60;      // 320 min
+  if (k === 5) return 60 * 60;     // 60 min
+  if (k === 10) return 140 * 60;   // 140 min
+  if (k === 20) return 320 * 60;   // 320 min
   return 0;
 }
 
-// ✅ Bombensicherer Fallback: Plan aus Price-ID ableiten
+// ✅ Fallback: Plan aus Price-ID ableiten
 function planFromPriceId(priceId) {
   const starter = process.env.STRIPE_PRICE_ID_STARTER;
   const plus = process.env.STRIPE_PRICE_ID_PLUS;
@@ -54,32 +59,37 @@ module.exports = async function handler(req, res) {
     return res.status(405).send("Method Not Allowed");
   }
 
+  // Basic env validation (fails loudly)
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) return res.status(500).send("Missing STRIPE_WEBHOOK_SECRET");
-
-  let event;
-  try {
-    const rawBody = await buffer(req);
-    const sig = req.headers["stripe-signature"];
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     console.error("Missing Supabase env vars", {
-      supabaseUrl: !!supabaseUrl,
-      serviceKey: !!serviceKey,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!serviceKey,
     });
     return res.status(500).send("Missing Supabase server env vars");
+  }
+
+  let event;
+  try {
+    const rawBody = await buffer(req);
+    const sig = req.headers["stripe-signature"];
+    if (!sig) return res.status(400).send("Missing stripe-signature header");
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err?.message || err);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   const supabase = createClient(supabaseUrl, serviceKey);
 
   try {
+    // Helpful log for debugging (keeps secrets out)
+    console.log("✅ Stripe event received:", { type: event.type, id: event.id });
+
     // 1) Checkout completed (Subscription oder Top-up Payment)
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
@@ -87,15 +97,16 @@ module.exports = async function handler(req, res) {
       const userId = session?.metadata?.user_id;
       if (!userId) {
         console.warn("checkout.session.completed without metadata.user_id");
+        // return 200 so Stripe doesn't retry forever on missing metadata
         return res.status(200).json({ received: true });
       }
 
-      const mode = session.mode; // "subscription" | "payment"
-      const stripeCustomerId = session.customer || null;
+      const mode = session?.mode; // "subscription" | "payment"
+      const stripeCustomerId = session?.customer || null;
 
       // A) Subscription Checkout
       if (mode === "subscription") {
-        const stripeSubscriptionId = session.subscription || null;
+        const stripeSubscriptionId = session?.subscription || null;
 
         // ✅ Plan robust ermitteln:
         // 1) Session metadata
@@ -120,28 +131,42 @@ module.exports = async function handler(req, res) {
 
         const includedSeconds = includedSecondsForPlan(plan);
 
+        // ✅ Wichtig: wenn wir keinen Plan/Seconds sicher haben, NICHT still 200 geben.
+        // Dann sieht Stripe "Failed" und retried — und du siehst den Fehler.
         if (!includedSeconds) {
-          console.warn("No included seconds resolved", {
+          console.error("No included seconds resolved - refusing activation", {
             userId,
             plan,
             stripeSubscriptionId,
           });
+          await safeTrack(supabase, userId, "subscription_activation_failed", {
+            plan: plan || null,
+            stripe_subscription_id: stripeSubscriptionId,
+            reason: "no_included_seconds",
+          });
+          return res.status(500).send("No included seconds resolved");
         }
 
-        // Subscription status setzen
+        // Subscription status setzen (UPSERt on user_id)
         const { error: subErr } = await supabase
           .from("user_subscriptions")
-          .upsert({
-            user_id: userId,
-            stripe_customer_id: stripeCustomerId,
-            stripe_subscription_id: stripeSubscriptionId,
-            status: "active",
-            is_active: true,
-            plan: plan || null,
-            current_period_end: null, // wird per subscription.updated nachgezogen
-          });
+          .upsert(
+            {
+              user_id: userId,
+              stripe_customer_id: stripeCustomerId,
+              stripe_subscription_id: stripeSubscriptionId,
+              status: "active",
+              is_active: true,
+              plan: plan || null,
+              current_period_end: null, // wird per subscription.updated nachgezogen
+            },
+            { onConflict: "user_id" }
+          );
 
-        if (subErr) throw subErr;
+        if (subErr) {
+          console.error("Supabase upsert user_subscriptions failed:", subErr);
+          return res.status(500).send("Supabase write failed (user_subscriptions)");
+        }
 
         // Usage-Row sicherstellen + Monatskontingent setzen & used reset
         const { data: usage, error: uFindErr } = await supabase
@@ -150,7 +175,10 @@ module.exports = async function handler(req, res) {
           .eq("user_id", userId)
           .maybeSingle();
 
-        if (uFindErr) throw uFindErr;
+        if (uFindErr) {
+          console.error("Supabase select user_usage failed:", uFindErr);
+          return res.status(500).send("Supabase read failed (user_usage)");
+        }
 
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
@@ -161,7 +189,10 @@ module.exports = async function handler(req, res) {
             paid_seconds_used: 0,
             topup_seconds_balance: 0,
           });
-          if (uInsErr) throw uInsErr;
+          if (uInsErr) {
+            console.error("Supabase insert user_usage failed:", uInsErr);
+            return res.status(500).send("Supabase write failed (user_usage insert)");
+          }
         } else {
           const { error: uUpdErr } = await supabase
             .from("user_usage")
@@ -170,7 +201,11 @@ module.exports = async function handler(req, res) {
               paid_seconds_used: 0,
             })
             .eq("user_id", userId);
-          if (uUpdErr) throw uUpdErr;
+
+          if (uUpdErr) {
+            console.error("Supabase update user_usage failed:", uUpdErr);
+            return res.status(500).send("Supabase write failed (user_usage update)");
+          }
         }
 
         await safeTrack(supabase, userId, "subscription_activated", {
@@ -201,7 +236,10 @@ module.exports = async function handler(req, res) {
           .eq("user_id", userId)
           .maybeSingle();
 
-        if (uSelErr) throw uSelErr;
+        if (uSelErr) {
+          console.error("Supabase select user_usage failed:", uSelErr);
+          return res.status(500).send("Supabase read failed (user_usage)");
+        }
 
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
@@ -212,14 +250,21 @@ module.exports = async function handler(req, res) {
             paid_seconds_used: 0,
             topup_seconds_balance: addSeconds,
           });
-          if (uInsErr) throw uInsErr;
+          if (uInsErr) {
+            console.error("Supabase insert user_usage failed:", uInsErr);
+            return res.status(500).send("Supabase write failed (user_usage insert)");
+          }
         } else {
           const newBal = (usage.topup_seconds_balance || 0) + addSeconds;
           const { error: uUpdErr } = await supabase
             .from("user_usage")
             .update({ topup_seconds_balance: newBal })
             .eq("user_id", userId);
-          if (uUpdErr) throw uUpdErr;
+
+          if (uUpdErr) {
+            console.error("Supabase update user_usage failed:", uUpdErr);
+            return res.status(500).send("Supabase write failed (user_usage update)");
+          }
         }
 
         await safeTrack(supabase, userId, "topup_completed", {
@@ -255,7 +300,10 @@ module.exports = async function handler(req, res) {
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
-      if (findErr) throw findErr;
+      if (findErr) {
+        console.error("Supabase find subscription failed:", findErr);
+        return res.status(500).send("Supabase read failed (user_subscriptions)");
+      }
 
       if (!row?.user_id) {
         console.warn("subscription.updated: no user found for subscription", stripeSubscriptionId);
@@ -274,7 +322,10 @@ module.exports = async function handler(req, res) {
         })
         .eq("user_id", userId);
 
-      if (updErr) throw updErr;
+      if (updErr) {
+        console.error("Supabase update subscription failed:", updErr);
+        return res.status(500).send("Supabase write failed (user_subscriptions)");
+      }
 
       await safeTrack(supabase, userId, "subscription_updated", {
         status,
@@ -297,7 +348,10 @@ module.exports = async function handler(req, res) {
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
-      if (findErr) throw findErr;
+      if (findErr) {
+        console.error("Supabase find subscription failed:", findErr);
+        return res.status(500).send("Supabase read failed (user_subscriptions)");
+      }
 
       if (!row?.user_id) {
         console.warn("subscription.deleted: no user found for subscription", stripeSubscriptionId);
@@ -315,7 +369,10 @@ module.exports = async function handler(req, res) {
         })
         .eq("user_id", userId);
 
-      if (updErr) throw updErr;
+      if (updErr) {
+        console.error("Supabase update subscription failed:", updErr);
+        return res.status(500).send("Supabase write failed (user_subscriptions)");
+      }
 
       await safeTrack(supabase, userId, "subscription_deleted", {
         stripe_subscription_id: stripeSubscriptionId,
