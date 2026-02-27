@@ -115,9 +115,6 @@ body{
 
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
-
-/* ✅ Timer ausblenden (ohne Layout-Änderungen elsewhere) */
-#timer{ display:none !important; }
 </style>
 </head>
 
@@ -134,7 +131,7 @@ body{
 <div class="wrap">
   <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Whenever you’re ready.</div>
-  <div class="timer" id="timer">Zeit: --:--</div>
+  <div class="timer" id="timer">Free-Zeit: --:--</div>
 
   <button id="start" class="btn">Enter the Room</button>
   <button id="end" class="btn" disabled>Leave the Room</button>
@@ -150,13 +147,16 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ✅ Frontend Login Guard: ohne Session -> /login/
 const { data: { session } } = await supabase.auth.getSession();
-if (!session?.user) window.location.href = "/login/";
+if (!session?.user) {
+  window.location.href = "/login/";
+}
 
 // --- Tracking helper (POST /api/track) ---
 async function track(event_name, meta = {}) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
+
     await fetch("/api/track", {
       method: "POST",
       headers: {
@@ -174,6 +174,7 @@ async function reportUsage(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
+
     await fetch("/api/usage", {
       method: "POST",
       headers: {
@@ -187,17 +188,20 @@ async function reportUsage(secondsUsed) {
 }
 
 // --- Memory update helper (POST /api/memory-update) ---
+// Sends a POST even if transcript is empty (backend will log a session row anyway)
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
 
+    // flush assistant text
     const finalA = (partialAssistant || "").trim();
     if (finalA) {
       convoLog.push({ role: "assistant", text: finalA });
       partialAssistant = "";
     }
 
+    // ✅ Filter obvious junk (prevents "Bye." as user turn)
     const cleaned = (convoLog || []).filter(t => {
       const role = String(t?.role || "");
       const text = String(t?.text || "").trim();
@@ -206,6 +210,7 @@ async function sendMemoryUpdate(secondsUsed) {
       return true;
     });
 
+    // ✅ keep more context, but not infinite
     const payload = cleaned.slice(-80);
 
     await fetch("/api/memory-update", {
@@ -236,37 +241,76 @@ const logoutBtn = document.getElementById("logoutBtn");
 let pc = null;
 let stream = null;
 let audioEl = null;
-let dc = null;
 
-// Transcript logging
-let convoLog = [];
-let partialAssistant = "";
-const userTranscriptBuffer = new Map();
+// DataChannel + Transcript logging
+let dc = null;
+let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
+let partialAssistant = "";    // assistant chunks
+
+// ✅ buffer for user transcript deltas
+const userTranscriptBuffer = new Map(); // item_id -> string
+
+// ✅ NEW: de-dup for assistant final (prevents triple repeats)
 let lastAssistantFinal = "";
+
+// Timer vars
+let countdown = null;
+let remainingSeconds = 15 * 60;
+let isPremium = false;
 
 // Session meta
 let talkStartedAt = null;
 
-// dynamic reset interval
+// ✅ dynamic reset interval (anti "gets flat over time")
 let dynamicResetInterval = null;
-
-// ✅ “2 min as rough frame” + hard cap
-const HARD_CAP_SECONDS = 150; // max 2:30
-const CLIFFHANGER_MARKER = "Just tell me if you want me to stay.";
-
-let hardCapTimer = null;
-let handoffTimeout = null;
-let handoffArmed = false;
-let cliffhangerDetected = false;
-
-// ✅ Start speech kick (no meta wording)
-let startKickSent = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
-  bg.classList.toggle("active", on);
-  overlay.classList.toggle("active", on);
+  if(on){
+    bg.classList.add("active");
+    overlay.classList.add("active");
+  } else {
+    bg.classList.remove("active");
+    overlay.classList.remove("active");
+  }
+}
+
+function renderTimer(){
+  if (isPremium) {
+    timerEl.textContent = "Premium: unlimited";
+    return;
+  }
+  const m = String(Math.floor(remainingSeconds/60)).padStart(2,"0");
+  const s = String(remainingSeconds%60).padStart(2,"0");
+  timerEl.textContent = `Free-Time: ${m}:${s}`;
+}
+renderTimer();
+
+function startCountdown(){
+  if (isPremium) return;
+
+  if (countdown) clearInterval(countdown);
+  countdown = setInterval(() => {
+    remainingSeconds -= 1;
+    renderTimer();
+
+    if (remainingSeconds <= 0) {
+      clearInterval(countdown);
+      countdown = null;
+      setStatus("Free-Time limit reached.");
+
+      track("free_limit_reached");
+
+      stopVoice(true).finally(() => {
+        window.location.href = "/pricing/";
+      });
+    }
+  }, 1000);
+}
+
+function stopCountdown(){
+  if (countdown) { clearInterval(countdown); countdown = null; }
 }
 
 function stopDynamicResets(){
@@ -283,7 +327,15 @@ function triggerDynamicReset(){
         type: "response.create",
         response: {
           modalities: ["text"],
-          instructions: "Continue naturally. Stay present. Keep it simple."
+          instructions: `
+Continue naturally.
+Refresh your inner energy and spontaneity a little.
+Do not change the topic.
+Do not restart or re-greet.
+Do not mention this instruction.
+Avoid becoming explanatory or generic.
+Stay present, warm, and human.
+`
         }
       }));
     } catch (_) {}
@@ -295,49 +347,8 @@ function startDynamicResets(){
   dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
 }
 
-function stopHardCapTimer(){
-  if (hardCapTimer) {
-    clearInterval(hardCapTimer);
-    hardCapTimer = null;
-  }
-}
-
-function clearHandoffFallback(){
-  if (handoffTimeout) {
-    clearTimeout(handoffTimeout);
-    handoffTimeout = null;
-  }
-}
-
-function armHandoffFallback(ms = 12000){
-  clearHandoffFallback();
-  handoffTimeout = setTimeout(async () => {
-    try { await stopVoice(true); } catch (_) {}
-    window.location.href = "/pricing/";
-  }, ms);
-}
-
 async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
-}
-
-// ✅ Hard stop realtime immediately (prevents “it continues after cliffhanger”)
-function teardownRealtimeNow(){
-  try {
-    if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
-  } catch(_) {}
-
-  try { if (dc) dc.close(); } catch(_) {}
-  try { if (pc) pc.close(); } catch(_) {}
-
-  stream = null;
-  dc = null;
-  pc = null;
-
-  if (audioEl) {
-    try { audioEl.srcObject = null; } catch(_) {}
-    audioEl = null;
-  }
 }
 
 // Robust DataChannel handling: server-created + client-created
@@ -345,7 +356,6 @@ function attachChannel(ch) {
   dc = ch;
 
   dc.addEventListener("open", () => {
-    // Ensure transcription + VAD
     try {
       dc.send(JSON.stringify({
         type: "session.update",
@@ -355,26 +365,15 @@ function attachChannel(ch) {
         }
       }));
     } catch (_) {}
-
-    // ✅ Kick: make Sophie speak first WITHOUT meta-words
-    if (!startKickSent) {
-      startKickSent = true;
-      try {
-        dc.send(JSON.stringify({
-          type: "response.create",
-          response: {
-            modalities: ["audio", "text"],
-            instructions:
-              "… Oh. Hi.\n\nI’m Sophie.\n\nYou’re new here, aren’t you?\n\n"
-          }
-        }));
-      } catch (_) {}
-    }
   });
 
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
+
+      // =========================
+      // USER AUDIO TRANSCRIPTION
+      // =========================
 
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
@@ -397,24 +396,54 @@ function attachChannel(ch) {
         return;
       }
 
-      if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
+      // Fallback user text on item.created/done
+      if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
+        const item = msg?.item;
+        if (item?.role === "user" && Array.isArray(item?.content)) {
+          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
+          if (text) convoLog.push({ role: "user", text });
+        }
+      }
+
+      // =========================
+      // ASSISTANT TEXT
+      // =========================
+
+      // Delta -> append
+      if (msg?.type === "response.audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
         return;
       }
 
+      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.audio_transcript.done") {
         const full = String(msg?.transcript || msg?.text || "").trim();
         if (full) partialAssistant = full;
         return;
       }
 
+      // Backup text stream variants
+      if (msg?.type === "response.output_text.delta") {
+        const chunk = String(msg?.delta || "");
+        if (chunk) partialAssistant += chunk;
+        return;
+      }
+
+      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.output_text.done") {
         const full = String(msg?.text || "").trim();
         if (full) partialAssistant = full;
         return;
       }
 
+      if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
+        const part = msg.part || {};
+        const chunk = String(part.text || part.transcript || "");
+        if (chunk) partialAssistant += chunk;
+      }
+
+      // Final assistant message: push ONCE (de-dup)
       if (msg?.type === "response.done") {
         const final = String(partialAssistant || "").trim();
         if (final && final !== lastAssistantFinal) {
@@ -422,47 +451,6 @@ function attachChannel(ch) {
           lastAssistantFinal = final;
         }
         partialAssistant = "";
-
-        // ✅ Detect cliffhanger via exact marker line
-        if (!cliffhangerDetected && String(lastAssistantFinal || "").includes(CLIFFHANGER_MARKER)) {
-          cliffhangerDetected = true;
-          handoffArmed = true;
-
-          clearHandoffFallback();
-          stopHardCapTimer();
-
-          // IMPORTANT: Stop realtime immediately so nothing continues
-          teardownRealtimeNow();
-
-          (async () => {
-            const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
-            talkStartedAt = null;
-
-            if (durationSeconds > 0) await reportUsage(durationSeconds);
-            await sendMemoryUpdate(durationSeconds);
-
-            window.location.href = "/pricing/";
-          })();
-
-          return;
-        }
-
-        // If hard cap armed, also end after response done
-        if (handoffArmed && !cliffhangerDetected) {
-          clearHandoffFallback();
-          stopHardCapTimer();
-          teardownRealtimeNow();
-
-          (async () => {
-            const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
-            talkStartedAt = null;
-
-            if (durationSeconds > 0) await reportUsage(durationSeconds);
-            await sendMemoryUpdate(durationSeconds);
-
-            window.location.href = "/pricing/";
-          })();
-        }
       }
     } catch (_) {}
   });
@@ -471,37 +459,6 @@ function attachChannel(ch) {
 function setupDataChannelLogging() {
   pc.ondatachannel = (e) => attachChannel(e.channel);
   try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
-}
-
-function startHardCapLoop(){
-  stopHardCapTimer();
-  hardCapTimer = setInterval(() => {
-    if (!talkStartedAt) return;
-
-    const elapsed = Math.floor((Date.now() - talkStartedAt) / 1000);
-    if (elapsed >= HARD_CAP_SECONDS && !handoffArmed) {
-      handoffArmed = true;
-
-      try {
-        if (dc && dc.readyState === "open") {
-          dc.send(JSON.stringify({
-            type: "response.create",
-            response: {
-              modalities: ["audio", "text"],
-              instructions:
-                "There’s something I’d like to tell you about that.\n" +
-                "But this isn’t a conversation for in-between moments.\n\n" +
-                "If we do this…\n" +
-                "we do it properly.\n\n" +
-                CLIFFHANGER_MARKER
-            }
-          }));
-        }
-      } catch (_) {}
-
-      armHandoffFallback(12000);
-    }
-  }, 1000);
 }
 
 async function startVoice(){
@@ -518,25 +475,27 @@ async function startVoice(){
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  handoffArmed = false;
-  cliffhangerDetected = false;
-  clearHandoffFallback();
-  stopHardCapTimer();
-
-  startKickSent = false;
-
   stopDynamicResets();
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { window.location.href = "/login/"; return; }
+    if (!session?.user) {
+      window.location.href = "/login/";
+      return;
+    }
 
     const tokenRes = await fetch("/api/session", {
       headers: { Authorization: `Bearer ${session.access_token}` }
     });
+
     const data = await safeJson(tokenRes);
 
-    if (tokenRes.status === 402) { window.location.href = "/pricing/"; return; }
+    if (tokenRes.status === 402) {
+      track("free_limit_reached");
+      window.location.href = "/pricing/";
+      return;
+    }
+
     if (!tokenRes.ok) {
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
@@ -544,6 +503,21 @@ async function startVoice(){
       showBackground(false);
       startBtn.disabled = false;
       logoutBtn.disabled = false;
+      track("talk_start_failed", { http_status: tokenRes.status, message: msg });
+      return;
+    }
+
+    isPremium = !!data?.is_premium;
+
+    if (!isPremium && typeof data?.remaining_seconds === "number") {
+      remainingSeconds = Math.max(0, data.remaining_seconds);
+    }
+
+    renderTimer();
+
+    if (!isPremium && remainingSeconds <= 0) {
+      track("free_limit_reached");
+      window.location.href = "/pricing/";
       return;
     }
 
@@ -588,34 +562,92 @@ async function startVoice(){
     startDynamicResets();
 
     talkStartedAt = Date.now();
-    startHardCapLoop();
+    track("talk_started", {
+      is_premium: isPremium,
+      remaining_seconds_at_start: isPremium ? null : remainingSeconds
+    });
+
+    startCountdown();
 
   } catch(err){
     console.error(err);
     setStatus("Fail to Start.");
     headline.textContent = "Sophie is waiting.";
-    showBackground(false);
-    startBtn.disabled = false;
-    logoutBtn.disabled = false;
-    teardownRealtimeNow();
+    track("talk_start_exception", { message: String(err?.message || err) });
+    stopVoice(false);
   }
 }
 
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
-  stopHardCapTimer();
-  clearHandoffFallback();
 
-  const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
-  talkStartedAt = null;
+  // Soft goodbye before closing
+  if (dc && dc.readyState === "open") {
+    try {
+      dc.send(JSON.stringify({
+        type: "response.create",
+        response: {
+          instructions: `
+Say one short, soft goodbye line.
+Use the same language that was used in the last conversation.
+Match the emotional tone of the last exchange.
+Calm. Intimate. Low energy.
+No explanation. No repetition.
+Max 12 words.
+`,
+          modalities: ["audio", "text"]
+        }
+      }));
 
-  teardownRealtimeNow();
+      await new Promise(r => setTimeout(r, 900));
+    } catch (_) {}
+  }
 
-  if (durationSeconds > 0) await reportUsage(durationSeconds);
+  const durationSeconds = talkStartedAt
+    ? Math.round((Date.now() - talkStartedAt) / 1000)
+    : 0;
+
+  if (durationSeconds > 0 && !isPremium) {
+    await reportUsage(durationSeconds);
+  }
+
+  // Always attempt memory-update
   await sendMemoryUpdate(durationSeconds);
 
+  track("talk_ended", {
+    duration_seconds: durationSeconds || null,
+    is_premium: isPremium,
+    remaining_seconds_at_end: isPremium ? null : remainingSeconds,
+    triggered_by_limit: !!triggeredByLimit
+  });
+
+  talkStartedAt = null;
+
+  stopCountdown();
+
+  if (dc) {
+    try { dc.close(); } catch(e){}
+    dc = null;
+  }
+
+  if(stream){
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+
+  if(pc){
+    try{ pc.close(); } catch(e){}
+    pc = null;
+  }
+
+  if(audioEl){
+    try{ audioEl.srcObject = null; } catch(e){}
+    audioEl = null;
+  }
+
   showBackground(false);
+
   startBtn.disabled = false;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie is waiting.";
@@ -624,9 +656,13 @@ async function stopVoice(triggeredByLimit = false){
 
 logoutBtn.onclick = async () => {
   try {
-    if (pc || stream || talkStartedAt) await stopVoice(false);
-  } catch(_) {}
-  try { await supabase.auth.signOut(); } catch(_) {}
+    track("logout_clicked");
+    if (pc || stream || talkStartedAt) {
+      await stopVoice(false);
+    }
+  } catch(e) {}
+
+  try { await supabase.auth.signOut(); } catch(e) {}
   window.location.href = "/";
 };
 
