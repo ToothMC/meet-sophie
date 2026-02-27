@@ -134,7 +134,7 @@
       if (!existing) {
         const { error: insErr } = await supabase.from("user_usage").insert({
           user_id: userId,
-          free_seconds_total: 900,
+          free_seconds_total: 120,   // ✅ changed from 900 → 120 (2 minutes)
           free_seconds_used: 0
         });
         if (insErr) throw new Error("DB Fehler (insert user_usage): " + insErr.message);

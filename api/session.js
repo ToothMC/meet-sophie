@@ -19,44 +19,57 @@ export default async function handler(req, res) {
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     // ---------------------------
-    // Premium / Usage
+    // Subscription status (nur UI/Status)
     // ---------------------------
     let isPremium = false;
+    let plan = null;
 
     try {
       const { data: sub, error: subErr } = await supabase
         .from("user_subscriptions")
-        .select("is_active, status")
+        .select("is_active, status, plan")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (subErr) console.warn("Subscription lookup error:", subErr.message);
-      if (sub?.is_active || sub?.status === "active" || sub?.status === "trialing") isPremium = true;
+
+      const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
+      isPremium = active;
+      plan = sub?.plan || null;
     } catch (e) {
       console.warn("Subscription lookup crashed:", e?.message || e);
     }
 
-    let remaining = 999999;
-    if (!isPremium) {
-      const { data: usage, error: usageErr } = await supabase
-        .from("user_usage")
-        .select("free_seconds_total, free_seconds_used")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    // ---------------------------
+    // Usage / Remaining seconds (für ALLE)
+    // ---------------------------
+    const { data: usage, error: usageErr } = await supabase
+      .from("user_usage")
+      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-      if (usageErr) return res.status(500).json({ error: usageErr.message });
+    if (usageErr) return res.status(500).json({ error: usageErr.message });
 
-      const freeTotal = usage?.free_seconds_total ?? 900;
-      const freeUsed = usage?.free_seconds_used ?? 0;
-      remaining = Math.max(0, freeTotal - freeUsed);
+    const freeTotal = usage?.free_seconds_total ?? 120;
+    const freeUsed = usage?.free_seconds_used ?? 0;
+    const freeRemaining = Math.max(0, freeTotal - freeUsed);
 
-      if (remaining <= 0) {
-        return res.status(402).json({
-          error: "Free limit reached",
-          remaining_seconds: 0,
-          is_premium: false,
-        });
-      }
+    const paidTotal = usage?.paid_seconds_total ?? 0;
+    const paidUsed = usage?.paid_seconds_used ?? 0;
+    const paidRemaining = Math.max(0, paidTotal - paidUsed);
+
+    const topupRemaining = Math.max(0, usage?.topup_seconds_balance ?? 0);
+
+    const remaining = freeRemaining + paidRemaining + topupRemaining;
+
+    if (remaining <= 0) {
+      return res.status(402).json({
+        error: "No remaining time",
+        remaining_seconds: 0,
+        is_premium: isPremium,
+        plan: plan,
+      });
     }
 
     // ---------------------------
@@ -72,7 +85,6 @@ export default async function handler(req, res) {
       age: null,
       relationship_status: "",
 
-      // ✅ Identity / Preference Extensions
       occupation: "",
       conversation_style: "",
       topics_like: [],
@@ -178,11 +190,8 @@ export default async function handler(req, res) {
 
     let preferredLanguage =
       (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
-
-    // ✅ IMPORTANT: do NOT hard-trim languages to de/en; just ensure a default
     if (!preferredLanguage) preferredLanguage = "en";
 
-    // First session heuristic (unchanged)
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
@@ -226,7 +235,6 @@ Do NOT run onboarding.
 Start naturally. Use the preferred name if known (but keep it subtle).
 `;
 
-    // Only apply a default start language for de/en; other languages will be handled by user request.
     const languageBlock = preferredLanguage === "de"
       ? `
 LANGUAGE DEFAULT:
@@ -335,6 +343,7 @@ ${memoryBlock}
       ...data,
       remaining_seconds: remaining,
       is_premium: isPremium,
+      plan: plan,
       user_id: user.id,
       preferred_language: preferredLanguage,
     });

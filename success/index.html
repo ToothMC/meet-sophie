@@ -12,6 +12,16 @@
 <body>
   <h1>Payment successful ✅</h1>
   <p>Your Premium access is active. Continue your conversation with Sophie.</p>
-  <p><a href="/talk">Enter the Room</a></p>
+
+  <p id="wait">One moment… activating.</p>
+  <p><a id="go" href="/talk/" style="display:none;">Enter the Room</a></p>
+
+  
+  <script>
+    setTimeout(() => {
+      document.getElementById("wait").textContent = "Ready.";
+      document.getElementById("go").style.display = "inline-block";
+    }, 1500);
+  </script>
 </body>
 </html>

@@ -4,34 +4,321 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sophie – Upgrade</title>
+
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
-    .card { border: 1px solid #ddd; border-radius: 14px; padding: 18px; }
-    button { width: 100%; padding: 14px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 700; }
-    button:disabled { opacity: .6; cursor: not-allowed; }
-    .muted { opacity: .7; }
-    a { color: inherit; }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:white;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#0b0f14;
+      position:relative;
+      overflow:hidden;
+    }
+
+    
+    /* Subtle background glow */
+    .bg{
+      position:absolute; inset:-40px;
+      background:
+        radial-gradient(900px 500px at 20% 25%, rgba(140,180,255,.18), transparent 60%),
+        radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
+        radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
+      filter: blur(0px);
+      opacity:1;
+      pointer-events:none;
+    }
+
+    .wrap{
+      width:min(980px, 92vw);
+      position:relative;
+      z-index:2;
+      padding:28px 0;
+    }
+
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      opacity:.95;
+      user-select:none;
+    }
+
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:rgba(255,255,255,.85);
+      box-shadow:0 0 18px rgba(255,255,255,.25);
+    }
+
+    .back a{
+      color:rgba(255,255,255,.9);
+      text-decoration:none;
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .back a:hover{ background:rgba(255,255,255,.14); }
+
+    .hero{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      align-items:stretch;
+      margin-bottom:18px;
+    }
+
+    @media (max-width: 860px){
+      .hero{ grid-template-columns: 1fr; }
+    }
+
+    .panel{
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      padding:20px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:26px;
+      letter-spacing:.2px;
+    }
+
+    .lead{
+      margin:0;
+      color:rgba(255,255,255,.78);
+      line-height:1.45;
+      font-size:15px;
+    }
+
+    .note{
+      margin-top:14px;
+      padding:12px 12px;
+      border-radius:16px;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      color:rgba(255,255,255,.80);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .plans{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+
+    @media (max-width: 860px){
+      .plans{ grid-template-columns: 1fr; }
+    }
+
+    .plan{
+      position:relative;
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      padding:18px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+
+    .plan::before{
+      content:"";
+      position:absolute; inset:-60px -60px auto auto;
+      width:240px; height:240px;
+      border-radius:999px;
+      background:radial-gradient(circle at 30% 30%, rgba(140,180,255,.18), transparent 60%);
+      transform: rotate(10deg);
+      pointer-events:none;
+    }
+
+    .badge{
+      position:absolute;
+      top:14px; right:14px;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.10);
+      color:rgba(255,255,255,.9);
+    }
+
+    .plan h2{
+      margin:0 0 6px;
+      font-size:18px;
+      letter-spacing:.2px;
+    }
+
+    .price{
+      display:flex;
+      align-items:flex-end;
+      gap:8px;
+      margin:10px 0 12px;
+    }
+    .price .amt{
+      font-size:34px;
+      font-weight:800;
+      line-height:1;
+    }
+    .price .per{
+      font-size:13px;
+      opacity:.75;
+      padding-bottom:4px;
+    }
+
+    ul{
+      margin:0 0 14px;
+      padding-left:18px;
+      color:rgba(255,255,255,.82);
+      line-height:1.55;
+      font-size:14px;
+    }
+    li{ margin:6px 0; }
+
+    button{
+      width:100%;
+      padding:14px 14px;
+      border:0;
+      border-radius:16px;
+      cursor:pointer;
+      font-weight:800;
+      letter-spacing:.2px;
+      background:rgba(255,255,255,.92);
+      color:#0b0f14;
+      transition: transform .05s ease, opacity .2s ease;
+    }
+    button:hover{ opacity:.95; }
+    button:active{ transform: scale(.99); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .btn-secondary{
+      background:rgba(255,255,255,.14);
+      color:white;
+      border:1px solid rgba(255,255,255,.16);
+    }
+
+    .msg{
+      margin-top:10px;
+      color:rgba(255,255,255,.78);
+      font-size:13px;
+      min-height:18px;
+    }
+
+    .footer{
+      margin-top:14px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      color:rgba(255,255,255,.62);
+      font-size:12px;
+    }
+    .footer a{ color:rgba(255,255,255,.82); text-decoration:none; }
+    .footer a:hover{ text-decoration:underline; }
   </style>
 </head>
+
 <body>
-  <h1>Sophie Premium</h1>
-  <p class="muted">Your free time has ended. Stay with Sophie without interruption.</p>
+  <div class="bg"></div>
 
-  <div class="card">
-    <h2>Premium</h2>
-    <ul>
-      <li>Unlimited conversations</li>
-      <li>Priority access</li>
-      <li>Cancel anytime</li>
-    </ul>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="dot"></div>
+        <div style="font-weight:800; letter-spacing:.2px;">Sophie</div>
+      </div>
+      <div class="back">
+        <a href="/">Zur Landingpage</a>
+      </div>
+    </div>
 
-    <button id="upgradeBtn">Continue with Premium</button>
-    <p class="muted" id="msg"></p>
+    <div class="hero">
+      <div class="panel">
+        <h1>Bleib bei Sophie.</h1>
+        <p class="lead">
+          Deine freie Zeit ist aufgebraucht. Wenn du willst, sprechen wir einfach weiter –
+          ohne Unterbrechungen. Ganz ruhig. In deinem Tempo.
+        </p>
+        <div class="note">
+          <strong>Hinweis:</strong> Voice kostet pro Minute echtes Geld. Deshalb sind die Gespräche bei Sophie
+          in Minutenpaketen enthalten – so bleibt alles fair und stabil.
+        </div>
+        <p class="msg" id="globalMsg"></p>
+      </div>
+
+      <div class="panel" style="display:flex; flex-direction:column; justify-content:center;">
+        <div style="font-weight:800; font-size:16px; margin-bottom:8px;">Was du bekommst</div>
+        <div style="color:rgba(255,255,255,.78); font-size:14px; line-height:1.55;">
+          • Sofort weiterreden<br/>
+          • Memory & persönlicher Verlauf (wenn aktiv)<br/>
+          • Kündbar jederzeit (Abo läuft bis Periodenende)
+        </div>
+      </div>
+    </div>
+
+    <div class="plans">
+      <!-- Starter -->
+      <div class="plan">
+        <h2>Starter</h2>
+        <div class="price">
+          <div class="amt">9,90€</div>
+          <div class="per">pro Monat</div>
+        </div>
+        <ul>
+          <li><strong>120 Minuten</strong> inklusive</li>
+          <li>Perfekt für den täglichen Check-in</li>
+          <li>Jederzeit kündbar</li>
+        </ul>
+
+        <button id="btnStarter">Starter wählen</button>
+        <div class="msg" id="msgStarter"></div>
+      </div>
+
+      <!-- Plus -->
+      <div class="plan">
+        <div class="badge">Beliebt</div>
+        <h2>Plus</h2>
+        <div class="price">
+          <div class="amt">19,90€</div>
+          <div class="per">pro Monat</div>
+        </div>
+        <ul>
+          <li><strong>300 Minuten</strong> inklusive</li>
+          <li>Mehr Raum für echte Gespräche</li>
+          <li>Jederzeit kündbar</li>
+        </ul>
+
+        <button id="btnPlus">Plus wählen</button>
+        <div class="msg" id="msgPlus"></div>
+
+        <button class="btn-secondary" id="btnLogin" style="margin-top:10px;">Ich bin nicht eingeloggt</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>© Sophie</div>
+      <div>
+        <a href="/login/">Login</a>
+        &nbsp;·&nbsp;
+        <a href="/talk/">Zurück zu Sophie</a>
+      </div>
+    </div>
   </div>
-
-  <p class="muted" style="margin-top:16px;">
-    <a href="/login/">Zurück</a>
-  </p>
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -40,8 +327,24 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const msg = document.getElementById("msg");
-    const btn = document.getElementById("upgradeBtn");
+    const globalMsg = document.getElementById("globalMsg");
+    const btnStarter = document.getElementById("btnStarter");
+    const btnPlus = document.getElementById("btnPlus");
+    const btnLogin = document.getElementById("btnLogin");
+
+    const msgStarter = document.getElementById("msgStarter");
+    const msgPlus = document.getElementById("msgPlus");
+
+    function setLoading(which, isLoading) {
+      if (which === "starter") {
+        btnStarter.disabled = isLoading;
+        msgStarter.textContent = isLoading ? "Einen Moment…" : "";
+      }
+      if (which === "plus") {
+        btnPlus.disabled = isLoading;
+        msgPlus.textContent = isLoading ? "Einen Moment…" : "";
+      }
+    }
 
     async function track(event_name, meta = {}) {
       try {
@@ -59,12 +362,12 @@
       } catch (_) {}
     }
 
-    // Optional: Page view tracken
-    track("pricing_viewed");
+    track("pricing_viewed_v2");
 
-    btn.onclick = async () => {
-      msg.textContent = "";
-      btn.disabled = true;
+    async function startCheckout(plan) {
+      globalMsg.textContent = "";
+      msgStarter.textContent = "";
+      msgPlus.textContent = "";
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
@@ -72,27 +375,45 @@
         return;
       }
 
-      // ✅ Tracking: Checkout Klick
-      track("checkout_clicked");
+      track("checkout_clicked", { plan });
 
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ plan }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data?.url) {
-        msg.textContent = data?.error ? `Fehler: ${data.error}` : "Fehler beim Starten des Checkouts.";
-        btn.disabled = false;
-        track("checkout_start_failed", { http_status: res.status, error: data?.error || null });
+        const txt = data?.error ? `Fehler: ${data.error}` : "Fehler beim Starten des Checkouts.";
+        globalMsg.textContent = txt;
+        track("checkout_start_failed", { plan, http_status: res.status, error: data?.error || null });
         return;
       }
 
-      // ✅ Tracking: Checkout Session erstellt
-      track("checkout_session_created");
+      track("checkout_session_created", { plan });
 
       window.location.href = data.url;
+    }
+
+    btnStarter.onclick = async () => {
+      setLoading("starter", true);
+      try { await startCheckout("starter"); }
+      finally { setLoading("starter", false); }
+    };
+
+    btnPlus.onclick = async () => {
+      setLoading("plus", true);
+      try { await startCheckout("plus"); }
+      finally { setLoading("plus", false); }
+    };
+
+    btnLogin.onclick = () => {
+      window.location.href = "/login/";
     };
   </script>
 </body>
