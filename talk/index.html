@@ -266,7 +266,7 @@ function elapsedSeconds(){
 
 function safeMomentToInsert(){
   const now = Date.now();
-  const userQuiet = (now - lastUserSpokeAt) > 2000;       // 2s Ruhe nach User
+  const userQuiet = (now - lastUserSpokeAt) > 2000;          // 2s Ruhe nach User
   const assistantQuiet = (now - lastAssistantDoneAt) > 2000; // 2s Ruhe nach Sophie
   return userQuiet && assistantQuiet;
 }
@@ -289,7 +289,6 @@ function sendOpening(){
   if (openingSent) return;
   openingSent = true;
 
-  // exact 3 lines, then onboarding (as text, no meta wording)
   sendAssistantSpeech(
 `… Oh. Hi.
 
@@ -323,14 +322,10 @@ function startFlowLoop(){
   flowLoop = setInterval(() => {
     const e = elapsedSeconds();
 
-    // only consider cliffhanger after soft window starts
     if (!cliffhangerSent && e >= SOFT_FROM_SECONDS && e < HARD_CAP_SECONDS) {
-      if (safeMomentToInsert()) {
-        sendCliffhanger();
-      }
+      if (safeMomentToInsert()) sendCliffhanger();
     }
 
-    // hard cap: force cliffhanger even if flow is messy
     if (!cliffhangerSent && e >= HARD_CAP_SECONDS) {
       sendCliffhanger();
     }
@@ -382,6 +377,19 @@ function attachChannel(ch){
         return;
       }
 
+      // fallback: some models may emit user items differently
+      if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
+        const item = msg?.item;
+        if (item?.role === "user" && Array.isArray(item?.content)) {
+          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
+          if (text) {
+            convoLog.push({ role: "user", text });
+            lastUserSpokeAt = Date.now();
+          }
+        }
+        return;
+      }
+
       // assistant transcript
       if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
@@ -410,17 +418,14 @@ function attachChannel(ch){
         partialAssistant = "";
         lastAssistantDoneAt = Date.now();
 
-        // detect cliffhanger marker
+        // detect cliffhanger marker -> stop + charge + redirect
         if (!cliffhangerDetected && String(lastAssistantFinal || "").includes(CLIFFHANGER_MARKER)) {
           cliffhangerDetected = true;
           handoffInProgress = true;
 
           stopFlowLoop();
-
-          // immediately stop realtime so nothing continues
           teardownRealtimeNow();
 
-          // accounting + redirect
           (async () => {
             const dur = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
             talkStartedAt = null;
@@ -521,14 +526,12 @@ async function startVoice(){
     const answer = { type: "answer", sdp: await sdpRes.text() };
     await pc.setRemoteDescription(answer);
 
-    // ✅ NOW we are fully connected -> start Sophie reliably
+    // ✅ connected -> start flow
     talkStartedAt = Date.now();
     startFlowLoop();
 
     // tiny delay so audio pipeline is ready
-    setTimeout(() => {
-      sendOpening();
-    }, 250);
+    setTimeout(() => { sendOpening(); }, 250);
 
     endBtn.disabled = false;
     headline.textContent = "Sophie is listening.";
@@ -567,9 +570,7 @@ async function stopVoice(){
 }
 
 logoutBtn.onclick = async () => {
-  try {
-    if (pc || stream || talkStartedAt) await stopVoice();
-  } catch(_) {}
+  try { if (pc || stream || talkStartedAt) await stopVoice(); } catch(_) {}
   try { await supabase.auth.signOut(); } catch(_) {}
   window.location.href = "/";
 };
