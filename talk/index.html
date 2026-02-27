@@ -115,6 +115,9 @@ body{
 
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
+
+/* ✅ Timer ausblenden */
+#timer{ display:none !important; }
 </style>
 </head>
 
@@ -131,7 +134,7 @@ body{
 <div class="wrap">
   <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Whenever you’re ready.</div>
-  <div class="timer" id="timer">Free-Zeit: --:--</div>
+  <div class="timer" id="timer">Zeit: --:--</div>
 
   <button id="start" class="btn">Enter the Room</button>
   <button id="end" class="btn" disabled>Leave the Room</button>
@@ -147,26 +150,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ✅ Frontend Login Guard: ohne Session -> /login/
 const { data: { session } } = await supabase.auth.getSession();
-if (!session?.user) {
-  window.location.href = "/login/";
-}
+if (!session?.user) window.location.href = "/login/";
 
-// --- Tracking helper (POST /api/track) ---
-async function track(event_name, meta = {}) {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    await fetch("/api/track", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ event_name, meta }),
-      keepalive: true,
-    });
-  } catch (_) {}
+// Helpers
+async function safeJson(res) { try { return await res.json(); } catch { return null; } }
+function setStatus(txt){ document.getElementById("status").textContent = txt; }
+function showBackground(on){
+  document.getElementById("bg").classList.toggle("active", on);
+  document.getElementById("overlay").classList.toggle("active", on);
 }
 
 // --- Usage reporting helper (POST /api/usage) ---
@@ -174,7 +165,6 @@ async function reportUsage(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
-
     await fetch("/api/usage", {
       method: "POST",
       headers: {
@@ -188,20 +178,22 @@ async function reportUsage(secondsUsed) {
 }
 
 // --- Memory update helper (POST /api/memory-update) ---
-// Sends a POST even if transcript is empty (backend will log a session row anyway)
+let convoLog = [];
+let partialAssistant = "";
+let lastAssistantFinal = "";
+const userTranscriptBuffer = new Map();
+
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
 
-    // flush assistant text
     const finalA = (partialAssistant || "").trim();
     if (finalA) {
       convoLog.push({ role: "assistant", text: finalA });
       partialAssistant = "";
     }
 
-    // ✅ Filter obvious junk (prevents "Bye." as user turn)
     const cleaned = (convoLog || []).filter(t => {
       const role = String(t?.role || "");
       const text = String(t?.text || "").trim();
@@ -210,7 +202,6 @@ async function sendMemoryUpdate(secondsUsed) {
       return true;
     });
 
-    // ✅ keep more context, but not infinite
     const payload = cleaned.slice(-80);
 
     await fetch("/api/memory-update", {
@@ -227,132 +218,127 @@ async function sendMemoryUpdate(secondsUsed) {
   } catch (_) {}
 }
 
-// UI Elements
+// UI
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
-const statusEl = document.getElementById("status");
-const timerEl  = document.getElementById("timer");
 const headline = document.getElementById("headline");
-const bg = document.getElementById("bg");
-const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// Voice vars
+// Realtime vars
 let pc = null;
 let stream = null;
 let audioEl = null;
-
-// DataChannel + Transcript logging
 let dc = null;
-let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
-let partialAssistant = "";    // assistant chunks
 
-// ✅ buffer for user transcript deltas
-const userTranscriptBuffer = new Map(); // item_id -> string
-
-// ✅ NEW: de-dup for assistant final (prevents triple repeats)
-let lastAssistantFinal = "";
-
-// Timer vars
-let countdown = null;
-let remainingSeconds = 15 * 60;
-let isPremium = false;
-
-// Session meta
+// Timing / flow control
 let talkStartedAt = null;
+let flowLoop = null;
 
-// ✅ dynamic reset interval (anti "gets flat over time")
-let dynamicResetInterval = null;
+const SOFT_FROM_SECONDS = 110;      // ab hier darf Cliffhanger kommen (wenn es passt)
+const HARD_CAP_SECONDS = 150;       // spätestens hier muss er kommen (2:30)
+const CLIFFHANGER_MARKER = "Just tell me if you want me to stay.";
 
-function setStatus(txt){ statusEl.textContent = txt; }
+let lastUserSpokeAt = 0;
+let lastAssistantDoneAt = 0;
 
-function showBackground(on){
-  if(on){
-    bg.classList.add("active");
-    overlay.classList.add("active");
-  } else {
-    bg.classList.remove("active");
-    overlay.classList.remove("active");
-  }
+let openingSent = false;
+let cliffhangerSent = false;
+let cliffhangerDetected = false;
+let handoffInProgress = false;
+
+// Immediately stop realtime (prevents “it continues after cliffhanger”)
+function teardownRealtimeNow(){
+  try { if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} }); } catch(_) {}
+  try { if (dc) dc.close(); } catch(_) {}
+  try { if (pc) pc.close(); } catch(_) {}
+  stream = null; dc = null; pc = null;
+  if (audioEl) { try { audioEl.srcObject = null; } catch(_){} audioEl = null; }
 }
 
-function renderTimer(){
-  if (isPremium) {
-    timerEl.textContent = "Premium: unlimited";
-    return;
-  }
-  const m = String(Math.floor(remainingSeconds/60)).padStart(2,"0");
-  const s = String(remainingSeconds%60).padStart(2,"0");
-  timerEl.textContent = `Free-Time: ${m}:${s}`;
+function stopFlowLoop(){
+  if (flowLoop) { clearInterval(flowLoop); flowLoop = null; }
 }
-renderTimer();
 
-function startCountdown(){
-  if (isPremium) return;
+function elapsedSeconds(){
+  if (!talkStartedAt) return 0;
+  return Math.floor((Date.now() - talkStartedAt) / 1000);
+}
 
-  if (countdown) clearInterval(countdown);
-  countdown = setInterval(() => {
-    remainingSeconds -= 1;
-    renderTimer();
+function safeMomentToInsert(){
+  const now = Date.now();
+  const userQuiet = (now - lastUserSpokeAt) > 2000;       // 2s Ruhe nach User
+  const assistantQuiet = (now - lastAssistantDoneAt) > 2000; // 2s Ruhe nach Sophie
+  return userQuiet && assistantQuiet;
+}
 
-    if (remainingSeconds <= 0) {
-      clearInterval(countdown);
-      countdown = null;
-      setStatus("Free-Time limit reached.");
+function sendAssistantSpeech(text){
+  if (!dc || dc.readyState !== "open") return false;
+  try {
+    dc.send(JSON.stringify({
+      type: "response.create",
+      response: {
+        modalities: ["audio","text"],
+        instructions: text
+      }
+    }));
+    return true;
+  } catch (_) { return false; }
+}
 
-      track("free_limit_reached");
+function sendOpening(){
+  if (openingSent) return;
+  openingSent = true;
 
-      stopVoice(true).finally(() => {
-        window.location.href = "/pricing/";
-      });
+  // exact 3 lines, then onboarding (as text, no meta wording)
+  sendAssistantSpeech(
+`… Oh. Hi.
+
+I’m Sophie.
+
+You’re new here, aren’t you?
+
+I don’t know you yet.
+
+What should I call you?`
+  );
+}
+
+function sendCliffhanger(){
+  if (cliffhangerSent || cliffhangerDetected || handoffInProgress) return;
+  cliffhangerSent = true;
+
+  sendAssistantSpeech(
+`There’s something I’d like to tell you about that.
+But this isn’t a conversation for in-between moments.
+
+If we do this…
+we do it properly.
+
+Just tell me if you want me to stay.`
+  );
+}
+
+function startFlowLoop(){
+  stopFlowLoop();
+  flowLoop = setInterval(() => {
+    const e = elapsedSeconds();
+
+    // only consider cliffhanger after soft window starts
+    if (!cliffhangerSent && e >= SOFT_FROM_SECONDS && e < HARD_CAP_SECONDS) {
+      if (safeMomentToInsert()) {
+        sendCliffhanger();
+      }
     }
-  }, 1000);
+
+    // hard cap: force cliffhanger even if flow is messy
+    if (!cliffhangerSent && e >= HARD_CAP_SECONDS) {
+      sendCliffhanger();
+    }
+  }, 500);
 }
 
-function stopCountdown(){
-  if (countdown) { clearInterval(countdown); countdown = null; }
-}
-
-function stopDynamicResets(){
-  if (dynamicResetInterval) {
-    clearInterval(dynamicResetInterval);
-    dynamicResetInterval = null;
-  }
-}
-
-function triggerDynamicReset(){
-  if (dc && dc.readyState === "open") {
-    try {
-      dc.send(JSON.stringify({
-        type: "response.create",
-        response: {
-          modalities: ["text"],
-          instructions: `
-Continue naturally.
-Refresh your inner energy and spontaneity a little.
-Do not change the topic.
-Do not restart or re-greet.
-Do not mention this instruction.
-Avoid becoming explanatory or generic.
-Stay present, warm, and human.
-`
-        }
-      }));
-    } catch (_) {}
-  }
-}
-
-function startDynamicResets(){
-  stopDynamicResets();
-  dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
-}
-
-async function safeJson(res) {
-  try { return await res.json(); } catch { return null; }
-}
-
-// Robust DataChannel handling: server-created + client-created
-function attachChannel(ch) {
+// DataChannel events
+function attachChannel(ch){
   dc = ch;
 
   dc.addEventListener("open", () => {
@@ -364,17 +350,14 @@ function attachChannel(ch) {
           turn_detection: { type: "server_vad" }
         }
       }));
-    } catch (_) {}
+    } catch(_) {}
   });
 
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
 
-      // =========================
-      // USER AUDIO TRANSCRIPTION
-      // =========================
-
+      // user transcript streaming
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
         const delta = String(msg?.delta || "");
@@ -392,58 +375,32 @@ function attachChannel(ch) {
         const text = (t1 || tBuf).trim();
 
         if (itemId) userTranscriptBuffer.delete(itemId);
-        if (text) convoLog.push({ role: "user", text });
+        if (text) {
+          convoLog.push({ role: "user", text });
+          lastUserSpokeAt = Date.now();
+        }
         return;
       }
 
-      // Fallback user text on item.created/done
-      if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
-        const item = msg?.item;
-        if (item?.role === "user" && Array.isArray(item?.content)) {
-          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-          if (text) convoLog.push({ role: "user", text });
-        }
-      }
-
-      // =========================
-      // ASSISTANT TEXT
-      // =========================
-
-      // Delta -> append
-      if (msg?.type === "response.audio_transcript.delta") {
+      // assistant transcript
+      if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
         return;
       }
 
-      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.audio_transcript.done") {
         const full = String(msg?.transcript || msg?.text || "").trim();
         if (full) partialAssistant = full;
         return;
       }
 
-      // Backup text stream variants
-      if (msg?.type === "response.output_text.delta") {
-        const chunk = String(msg?.delta || "");
-        if (chunk) partialAssistant += chunk;
-        return;
-      }
-
-      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.output_text.done") {
         const full = String(msg?.text || "").trim();
         if (full) partialAssistant = full;
         return;
       }
 
-      if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
-        const part = msg.part || {};
-        const chunk = String(part.text || part.transcript || "");
-        if (chunk) partialAssistant += chunk;
-      }
-
-      // Final assistant message: push ONCE (de-dup)
       if (msg?.type === "response.done") {
         const final = String(partialAssistant || "").trim();
         if (final && final !== lastAssistantFinal) {
@@ -451,51 +408,75 @@ function attachChannel(ch) {
           lastAssistantFinal = final;
         }
         partialAssistant = "";
+        lastAssistantDoneAt = Date.now();
+
+        // detect cliffhanger marker
+        if (!cliffhangerDetected && String(lastAssistantFinal || "").includes(CLIFFHANGER_MARKER)) {
+          cliffhangerDetected = true;
+          handoffInProgress = true;
+
+          stopFlowLoop();
+
+          // immediately stop realtime so nothing continues
+          teardownRealtimeNow();
+
+          // accounting + redirect
+          (async () => {
+            const dur = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+            talkStartedAt = null;
+
+            if (dur > 0) await reportUsage(dur);
+            await sendMemoryUpdate(dur);
+
+            window.location.href = "/pricing/";
+          })();
+        }
       }
-    } catch (_) {}
+    } catch(_) {}
   });
 }
 
-function setupDataChannelLogging() {
+function setupDataChannel(){
   pc.ondatachannel = (e) => attachChannel(e.channel);
-  try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
+  try { attachChannel(pc.createDataChannel("oai-events")); } catch(_) {}
 }
 
+// Start / Stop
 async function startVoice(){
   startBtn.disabled = true;
   logoutBtn.disabled = true;
+  endBtn.disabled = true;
+
+  showBackground(true);
   headline.textContent = "Sophie is joining…";
   setStatus("connecting..");
-  showBackground(true);
 
-  track("talk_start_clicked");
-
+  // reset state
   convoLog = [];
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  stopDynamicResets();
+  openingSent = false;
+  cliffhangerSent = false;
+  cliffhangerDetected = false;
+  handoffInProgress = false;
+
+  lastUserSpokeAt = Date.now();
+  lastAssistantDoneAt = Date.now();
+
+  stopFlowLoop();
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      window.location.href = "/login/";
-      return;
-    }
+    if (!session?.user) { window.location.href = "/login/"; return; }
 
     const tokenRes = await fetch("/api/session", {
       headers: { Authorization: `Bearer ${session.access_token}` }
     });
-
     const data = await safeJson(tokenRes);
 
-    if (tokenRes.status === 402) {
-      track("free_limit_reached");
-      window.location.href = "/pricing/";
-      return;
-    }
-
+    if (tokenRes.status === 402) { window.location.href = "/pricing/"; return; }
     if (!tokenRes.ok) {
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
@@ -503,26 +484,11 @@ async function startVoice(){
       showBackground(false);
       startBtn.disabled = false;
       logoutBtn.disabled = false;
-      track("talk_start_failed", { http_status: tokenRes.status, message: msg });
-      return;
-    }
-
-    isPremium = !!data?.is_premium;
-
-    if (!isPremium && typeof data?.remaining_seconds === "number") {
-      remainingSeconds = Math.max(0, data.remaining_seconds);
-    }
-
-    renderTimer();
-
-    if (!isPremium && remainingSeconds <= 0) {
-      track("free_limit_reached");
-      window.location.href = "/pricing/";
       return;
     }
 
     pc = new RTCPeerConnection();
-    setupDataChannelLogging();
+    setupDataChannel();
 
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
@@ -555,99 +521,45 @@ async function startVoice(){
     const answer = { type: "answer", sdp: await sdpRes.text() };
     await pc.setRemoteDescription(answer);
 
-    endBtn.disabled = false;
-    setStatus("Live.");
-    headline.textContent = "Sophie is listening.";
-
-    startDynamicResets();
-
+    // ✅ NOW we are fully connected -> start Sophie reliably
     talkStartedAt = Date.now();
-    track("talk_started", {
-      is_premium: isPremium,
-      remaining_seconds_at_start: isPremium ? null : remainingSeconds
-    });
+    startFlowLoop();
 
-    startCountdown();
+    // tiny delay so audio pipeline is ready
+    setTimeout(() => {
+      sendOpening();
+    }, 250);
+
+    endBtn.disabled = false;
+    headline.textContent = "Sophie is listening.";
+    setStatus("Live.");
 
   } catch(err){
     console.error(err);
     setStatus("Fail to Start.");
     headline.textContent = "Sophie is waiting.";
-    track("talk_start_exception", { message: String(err?.message || err) });
-    stopVoice(false);
+    showBackground(false);
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+    teardownRealtimeNow();
+    stopFlowLoop();
+    talkStartedAt = null;
   }
 }
 
-async function stopVoice(triggeredByLimit = false){
+async function stopVoice(){
   endBtn.disabled = true;
-  stopDynamicResets();
+  stopFlowLoop();
 
-  // Soft goodbye before closing
-  if (dc && dc.readyState === "open") {
-    try {
-      dc.send(JSON.stringify({
-        type: "response.create",
-        response: {
-          instructions: `
-Say one short, soft goodbye line.
-Use the same language that was used in the last conversation.
-Match the emotional tone of the last exchange.
-Calm. Intimate. Low energy.
-No explanation. No repetition.
-Max 12 words.
-`,
-          modalities: ["audio", "text"]
-        }
-      }));
-
-      await new Promise(r => setTimeout(r, 900));
-    } catch (_) {}
-  }
-
-  const durationSeconds = talkStartedAt
-    ? Math.round((Date.now() - talkStartedAt) / 1000)
-    : 0;
-
-  if (durationSeconds > 0 && !isPremium) {
-    await reportUsage(durationSeconds);
-  }
-
-  // Always attempt memory-update
-  await sendMemoryUpdate(durationSeconds);
-
-  track("talk_ended", {
-    duration_seconds: durationSeconds || null,
-    is_premium: isPremium,
-    remaining_seconds_at_end: isPremium ? null : remainingSeconds,
-    triggered_by_limit: !!triggeredByLimit
-  });
-
+  const dur = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
   talkStartedAt = null;
 
-  stopCountdown();
+  teardownRealtimeNow();
 
-  if (dc) {
-    try { dc.close(); } catch(e){}
-    dc = null;
-  }
-
-  if(stream){
-    stream.getTracks().forEach(t => t.stop());
-    stream = null;
-  }
-
-  if(pc){
-    try{ pc.close(); } catch(e){}
-    pc = null;
-  }
-
-  if(audioEl){
-    try{ audioEl.srcObject = null; } catch(e){}
-    audioEl = null;
-  }
+  if (dur > 0) await reportUsage(dur);
+  await sendMemoryUpdate(dur);
 
   showBackground(false);
-
   startBtn.disabled = false;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie is waiting.";
@@ -656,18 +568,14 @@ Max 12 words.
 
 logoutBtn.onclick = async () => {
   try {
-    track("logout_clicked");
-    if (pc || stream || talkStartedAt) {
-      await stopVoice(false);
-    }
-  } catch(e) {}
-
-  try { await supabase.auth.signOut(); } catch(e) {}
+    if (pc || stream || talkStartedAt) await stopVoice();
+  } catch(_) {}
+  try { await supabase.auth.signOut(); } catch(_) {}
   window.location.href = "/";
 };
 
 startBtn.addEventListener("click", startVoice);
-endBtn.addEventListener("click", () => stopVoice(false));
+endBtn.addEventListener("click", stopVoice);
 </script>
 
 </body>
