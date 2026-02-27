@@ -247,24 +247,23 @@ let partialAssistant = "";
 const userTranscriptBuffer = new Map();
 let lastAssistantFinal = "";
 
-// Timer vars
-let countdown = null;
-let remainingSeconds = 0;
-let isPremium = false;
-let plan = null;
-
 // Session meta
 let talkStartedAt = null;
 
 // dynamic reset interval
 let dynamicResetInterval = null;
 
-// ✅ Cliffhanger + handoff control
-let cliffhangerTriggered = false;
-let handoffArmed = false;
-let handoffTimeout = null;
+// ✅ “2 min as rough frame” + hard cap
+const SOFT_TARGET_SECONDS = 120; // nur Rahmen
+const HARD_CAP_SECONDS = 150;    // max 2:30
+const CLIFFHANGER_MARKER = "Just tell me if you want me to stay.";
 
-// ✅ Force Sophie to speak first
+let hardCapTimer = null;
+let handoffTimeout = null;
+let handoffArmed = false;
+let cliffhangerDetected = false;
+
+// ✅ Force Sophie to speak first (reliable start)
 let startPromptSent = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
@@ -287,13 +286,15 @@ function formatMMSS(sec){
 }
 
 function renderTimer(){
-  timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
+  if (!talkStartedAt) {
+    timerEl.textContent = `Zeit: --:--`;
+    return;
+  }
+  const elapsed = Math.max(0, Math.floor((Date.now() - talkStartedAt) / 1000));
+  // Anzeige bleibt “Zeit:” – nur Inhalt: vergangen / 2:30 (kein UI Change)
+  timerEl.textContent = `Zeit: ${formatMMSS(elapsed)} / ${formatMMSS(HARD_CAP_SECONDS)}`;
 }
 renderTimer();
-
-function stopCountdown(){
-  if (countdown) { clearInterval(countdown); countdown = null; }
-}
 
 function stopDynamicResets(){
   if (dynamicResetInterval) {
@@ -327,6 +328,29 @@ Stay present, warm, and human.
 function startDynamicResets(){
   stopDynamicResets();
   dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
+}
+
+function stopHardCapTimer(){
+  if (hardCapTimer) {
+    clearInterval(hardCapTimer);
+    hardCapTimer = null;
+  }
+}
+
+function armHandoffFallback(ms = 12000){
+  if (handoffTimeout) clearTimeout(handoffTimeout);
+  handoffTimeout = setTimeout(async () => {
+    handoffArmed = false;
+    try { await stopVoice(true); } catch (_) {}
+    window.location.href = "/pricing/";
+  }, ms);
+}
+
+function clearHandoffFallback(){
+  if (handoffTimeout) {
+    clearTimeout(handoffTimeout);
+    handoffTimeout = null;
+  }
 }
 
 async function safeJson(res) {
@@ -443,19 +467,33 @@ Then continue with the Start-Mode onboarding exactly as instructed in your syste
         }
         partialAssistant = "";
 
-        // ✅ Event-driven handoff: end ONLY after the cliffhanger response is actually done
-        if (handoffArmed) {
-          handoffArmed = false;
-          if (handoffTimeout) {
-            clearTimeout(handoffTimeout);
-            handoffTimeout = null;
-          }
+        // ✅ Detect cliffhanger “when it fits” via marker line (exact phrase)
+        const finalText = String(lastAssistantFinal || "");
+        if (!cliffhangerDetected && finalText.includes(CLIFFHANGER_MARKER)) {
+          cliffhangerDetected = true;
+          handoffArmed = true;
 
-          // tiny delay to let last audio buffer flush
+          clearHandoffFallback();
+          stopHardCapTimer();
+
+          // tiny delay to flush last audio buffer
           setTimeout(async () => {
             try { await stopVoice(true); } catch (_) {}
             window.location.href = "/pricing/";
-          }, 350);
+          }, 450);
+
+          return;
+        }
+
+        // ✅ If hard cap armed the handoff, end after the current response finishes
+        if (handoffArmed && !cliffhangerDetected) {
+          clearHandoffFallback();
+          stopHardCapTimer();
+
+          setTimeout(async () => {
+            try { await stopVoice(true); } catch (_) {}
+            window.location.href = "/pricing/";
+          }, 450);
         }
       }
     } catch (_) {}
@@ -467,74 +505,42 @@ function setupDataChannelLogging() {
   try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
 }
 
-function startCountdown(){
-  if (countdown) clearInterval(countdown);
+function startHardCapLoop(){
+  stopHardCapTimer();
 
-  countdown = setInterval(() => {
-    remainingSeconds -= 1;
+  hardCapTimer = setInterval(() => {
     renderTimer();
 
-    // ✅ 15s Cliffhanger trigger -> ARM handoff, wait for response.done, then redirect
-    if (!cliffhangerTriggered && remainingSeconds === 15 && dc && dc.readyState === "open") {
-      cliffhangerTriggered = true;
+    if (!talkStartedAt) return;
+    const elapsed = Math.floor((Date.now() - talkStartedAt) / 1000);
 
-      // stop timer NOW (no extra chat after cliffhanger)
-      clearInterval(countdown);
-      countdown = null;
-
-      // arm handoff (we redirect on response.done)
+    // ✅ At hard cap: request clean cliffhanger close, then hand off after response.done
+    if (elapsed >= HARD_CAP_SECONDS && !handoffArmed) {
       handoffArmed = true;
 
-      // safety fallback if response.done never arrives
-      if (handoffTimeout) clearTimeout(handoffTimeout);
-      handoffTimeout = setTimeout(async () => {
-        handoffArmed = false;
-        try { await stopVoice(true); } catch (_) {}
-        window.location.href = "/pricing/";
-      }, 12000);
-
+      // Give Sophie ONE chance to land gracefully (no pricing mention)
       try {
-        dc.send(JSON.stringify({
-          type: "response.create",
-          response: {
-            modalities: ["audio", "text"],
-            instructions: `
-CLIFFHANGER MODE NOW.
-Say the premium cliffhanger exactly in this structure:
+        if (dc && dc.readyState === "open") {
+          dc.send(JSON.stringify({
+            type: "response.create",
+            response: {
+              modalities: ["audio", "text"],
+              instructions: `
+Wrap up cleanly NOW with the premium cliffhanger, calm and intimate.
+End with the exact final line:
+"${CLIFFHANGER_MARKER}"
 
-"There’s something I’d like to tell you about that.
-But this isn’t a conversation for in-between moments.
-
-If we do this…
-we do it properly."
-
-Short pause.
-
-"Just tell me if you want me to stay."
-
-Rules:
-- Do NOT mention time limits.
-- Do NOT explain pricing.
-- Keep it intimate, calm, and natural.
-- Finish cleanly. No abrupt stop.
+Do NOT mention time limits.
+Do NOT mention pricing.
+Finish the sentence completely.
 `
-          }
-        }));
+            }
+          }));
+        }
       } catch (_) {}
 
-      return;
-    }
-
-    if (remainingSeconds <= 0) {
-      clearInterval(countdown);
-      countdown = null;
-      setStatus("Zeitlimit erreicht.");
-
-      track("time_limit_reached", { plan: plan || null });
-
-      stopVoice(true).finally(() => {
-        window.location.href = "/pricing/";
-      });
+      // safety fallback
+      armHandoffFallback(12000);
     }
   }, 1000);
 }
@@ -548,15 +554,19 @@ async function startVoice(){
 
   track("talk_start_clicked");
 
+  // reset logs
   convoLog = [];
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  // ✅ reset cliffhanger + handoff + start prompt
-  cliffhangerTriggered = false;
+  // reset handoff state
   handoffArmed = false;
-  if (handoffTimeout) { clearTimeout(handoffTimeout); handoffTimeout = null; }
+  cliffhangerDetected = false;
+  clearHandoffFallback();
+  stopHardCapTimer();
+
+  // reset start speech
   startPromptSent = false;
 
   stopDynamicResets();
@@ -591,22 +601,9 @@ async function startVoice(){
       return;
     }
 
-    isPremium = !!data?.is_premium;
-    plan = data?.plan || null;
-
-    if (typeof data?.remaining_seconds === "number") {
-      remainingSeconds = Math.max(0, data.remaining_seconds);
-    } else {
-      remainingSeconds = 0;
-    }
-
-    renderTimer();
-
-    if (remainingSeconds <= 0) {
-      track("time_limit_reached");
-      window.location.href = "/pricing/";
-      return;
-    }
+    // Keep premium/plan if you use it elsewhere (not required here)
+    // isPremium = !!data?.is_premium;
+    // plan = data?.plan || null;
 
     pc = new RTCPeerConnection();
     setupDataChannelLogging();
@@ -649,13 +646,13 @@ async function startVoice(){
     startDynamicResets();
 
     talkStartedAt = Date.now();
-    track("talk_started", {
-      is_premium: isPremium,
-      plan: plan || null,
-      remaining_seconds_at_start: remainingSeconds
-    });
+    renderTimer();
+    startHardCapLoop();
 
-    startCountdown();
+    track("talk_started", {
+      soft_target_seconds: SOFT_TARGET_SECONDS,
+      hard_cap_seconds: HARD_CAP_SECONDS
+    });
 
   } catch(err){
     console.error(err);
@@ -669,8 +666,10 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
+  stopHardCapTimer();
+  clearHandoffFallback();
 
-  // ✅ If stopping due to limit/paywall handoff -> do NOT send a goodbye (prevents extra speech + cutoffs)
+  // ✅ If stopping due to paywall/handoff -> do NOT send a goodbye (prevents extra speech / weirdness)
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
@@ -704,18 +703,14 @@ Max 12 words.
 
   track("talk_ended", {
     duration_seconds: durationSeconds || null,
-    is_premium: isPremium,
-    plan: plan || null,
-    remaining_seconds_at_end: remainingSeconds,
     triggered_by_limit: !!triggeredByLimit
   });
 
   talkStartedAt = null;
+  renderTimer();
 
-  stopCountdown();
-
-  if (handoffTimeout) { clearTimeout(handoffTimeout); handoffTimeout = null; }
   handoffArmed = false;
+  cliffhangerDetected = false;
 
   if (dc) {
     try { dc.close(); } catch(e){}
