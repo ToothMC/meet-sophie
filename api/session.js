@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
       if (usageErr) return res.status(500).json({ error: usageErr.message });
 
-      const freeTotal = usage?.free_seconds_total ?? 900;
+      const freeTotal = usage?.free_seconds_total ?? 120;
       const freeUsed = usage?.free_seconds_used ?? 0;
       remaining = Math.max(0, freeTotal - freeUsed);
 
