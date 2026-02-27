@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+const FREE_SECONDS_DEFAULT = 120; // ✅ 2 minutes default free time
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -16,45 +18,56 @@ export default async function handler(req, res) {
     if (!sec) return res.status(200).json({ ok: true, ignored: true });
 
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
+      return res
+        .status(500)
+        .json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
     }
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     // usage row holen (oder anlegen)
     let { data: usage, error: usageErr } = await supabase
       .from("user_usage")
-      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .select(
+        "free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance"
+      )
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (usageErr) return res.status(500).json({ error: usageErr.message });
 
     if (!usage) {
-      const ins = await supabase.from("user_usage").insert({
-        user_id: user.id,
-        free_seconds_total: 600,
-        free_seconds_used: 0,
-        paid_seconds_total: 0,
-        paid_seconds_used: 0,
-        topup_seconds_balance: 0,
-      }).select().maybeSingle();
+      const ins = await supabase
+        .from("user_usage")
+        .insert({
+          user_id: user.id,
+          free_seconds_total: FREE_SECONDS_DEFAULT, // ✅ 120 instead of 600
+          free_seconds_used: 0,
+          paid_seconds_total: 0,
+          paid_seconds_used: 0,
+          topup_seconds_balance: 0,
+        })
+        .select()
+        .maybeSingle();
 
       if (ins.error) return res.status(500).json({ error: ins.error.message });
       usage = ins.data;
     }
 
-    const freeTotal = usage?.free_seconds_total ?? 600;
-    const freeUsed  = usage?.free_seconds_used ?? 0;
+    const freeTotal = usage?.free_seconds_total ?? FREE_SECONDS_DEFAULT; // ✅ 120 fallback
+    const freeUsed = usage?.free_seconds_used ?? 0;
     const paidTotal = usage?.paid_seconds_total ?? 0;
-    const paidUsed  = usage?.paid_seconds_used ?? 0;
-    const topupBal  = usage?.topup_seconds_balance ?? 0;
+    const paidUsed = usage?.paid_seconds_used ?? 0;
+    const topupBal = usage?.topup_seconds_balance ?? 0;
 
-    const freeRemaining  = Math.max(0, freeTotal - freeUsed);
-    const paidRemaining  = Math.max(0, paidTotal - paidUsed);
+    const freeRemaining = Math.max(0, freeTotal - freeUsed);
+    const paidRemaining = Math.max(0, paidTotal - paidUsed);
     const topupRemaining = Math.max(0, topupBal);
 
     const totalRemaining = freeRemaining + paidRemaining + topupRemaining;
@@ -88,20 +101,22 @@ export default async function handler(req, res) {
         topup_seconds_balance: newTopupBal,
       })
       .eq("user_id", user.id)
-      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .select(
+        "free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance"
+      )
       .maybeSingle();
 
     if (upd.error) return res.status(500).json({ error: upd.error.message });
 
     const u2 = upd.data;
     const rem =
-      Math.max(0, (u2.free_seconds_total ?? 600) - (u2.free_seconds_used ?? 0)) +
+      Math.max(0, (u2.free_seconds_total ?? FREE_SECONDS_DEFAULT) - (u2.free_seconds_used ?? 0)) +
       Math.max(0, (u2.paid_seconds_total ?? 0) - (u2.paid_seconds_used ?? 0)) +
-      Math.max(0, (u2.topup_seconds_balance ?? 0));
+      Math.max(0, u2.topup_seconds_balance ?? 0);
 
     return res.status(200).json({
       ok: true,
-      charged_seconds: (sec - toCharge),
+      charged_seconds: sec - toCharge,
       buckets: {
         free: chargeFree,
         paid: chargePaid,
