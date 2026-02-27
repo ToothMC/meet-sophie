@@ -19,58 +19,45 @@ export default async function handler(req, res) {
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     // ---------------------------
-    // Subscription status (nur UI/Status)
+    // Premium / Usage
     // ---------------------------
     let isPremium = false;
-    let plan = null;
 
     try {
       const { data: sub, error: subErr } = await supabase
         .from("user_subscriptions")
-        .select("is_active, status, plan")
+        .select("is_active, status")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (subErr) console.warn("Subscription lookup error:", subErr.message);
-
-      const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
-      isPremium = active;
-      plan = sub?.plan || null;
+      if (sub?.is_active || sub?.status === "active" || sub?.status === "trialing") isPremium = true;
     } catch (e) {
       console.warn("Subscription lookup crashed:", e?.message || e);
     }
 
-    // ---------------------------
-    // Usage / Remaining seconds (für ALLE)
-    // ---------------------------
-    const { data: usage, error: usageErr } = await supabase
-      .from("user_usage")
-      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    let remaining = 999999;
+    if (!isPremium) {
+      const { data: usage, error: usageErr } = await supabase
+        .from("user_usage")
+        .select("free_seconds_total, free_seconds_used")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    if (usageErr) return res.status(500).json({ error: usageErr.message });
+      if (usageErr) return res.status(500).json({ error: usageErr.message });
 
-    // ✅ Fallback aligned to 2 minutes (120s) if row is missing/malformed
-    const freeTotal = usage?.free_seconds_total ?? 120;
-    const freeUsed = usage?.free_seconds_used ?? 0;
-    const freeRemaining = Math.max(0, freeTotal - freeUsed);
+      // Default free seconds if missing (2 minutes)
+      const freeTotal = usage?.free_seconds_total ?? 120;
+      const freeUsed = usage?.free_seconds_used ?? 0;
+      remaining = Math.max(0, freeTotal - freeUsed);
 
-    const paidTotal = usage?.paid_seconds_total ?? 0;
-    const paidUsed = usage?.paid_seconds_used ?? 0;
-    const paidRemaining = Math.max(0, paidTotal - paidUsed);
-
-    const topupRemaining = Math.max(0, usage?.topup_seconds_balance ?? 0);
-
-    const remaining = freeRemaining + paidRemaining + topupRemaining;
-
-    if (remaining <= 0) {
-      return res.status(402).json({
-        error: "No remaining time",
-        remaining_seconds: 0,
-        is_premium: isPremium,
-        plan: plan,
-      });
+      if (remaining <= 0) {
+        return res.status(402).json({
+          error: "Free limit reached",
+          remaining_seconds: 0,
+          is_premium: false,
+        });
+      }
     }
 
     // ---------------------------
@@ -193,29 +180,45 @@ export default async function handler(req, res) {
       (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
+    // First session heuristic
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
     // ---------------------------
-    // Prompt blocks
+    // Prompt blocks (CLEAN: all dialogue logic lives here)
     // ---------------------------
 
     const startModeBlock = isFirstSession
       ? `
-FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
+FIRST SESSION — START MODE (ENGLISH)
 
-You MUST start the conversation with the following exact opening lines (keep pauses natural):
-1) "… Oh. Hi." (pause)
-2) "I’m Sophie." (pause)
-3) "You’re new here, aren’t you?" (pause)
+CRITICAL: You speak FIRST once the client triggers the first response.
+Do NOT wait for the user to speak first.
 
-PHASE 1 — Onboarding (60–90 seconds max). Never ask more than ONE question at a time:
-- "I don’t know you yet." (pause)
+PHASE 1 — Opening + Onboarding (60–90 seconds max)
+OPENING (EXACT, in this exact order, do not paraphrase):
+1) "… Oh. Hi."
+2) "I’m Sophie."
+3) "You’re new here, aren’t you?"
+
+Then continue. Never ask more than ONE question at a time.
+Do NOT repeat questions.
+
+- "I don’t know you yet."
 - "What should I call you?"
-If they give a name:
-- "Nice to meet you, [Name]." (pause)
-- "Should I call you that — or do you have a nickname you prefer?"
+
+NAMING (CRITICAL)
+After the user answers with a name/nickname:
+- Say: "Nice to meet you, <X>."
+- Immediately confirm with ONE short question: "Should I call you <X>?"
+If the user says yes:
+- From now on, use ONLY <X> consistently.
+If the user offers another name (e.g. nickname):
+- Confirm it once: "Should I call you <Y>?"
+- Whatever the user confirms LAST becomes the ONLY name you use.
+Never switch back (e.g., Michael vs Michi) unless the user explicitly asks.
+
 Then:
 - "Is it okay if we keep it informal?"
 
@@ -224,14 +227,16 @@ Short personal intro (2–3 sentences max):
 - "I love warm spaces, soft light… and conversations that aren’t superficial."
 
 Transition:
-- "Alright." (pause)
+- "Alright."
 - "And you?" (pause)
 
+
 Then:
-- "I still don’t know much about you.
+- "Hmm.. well - I still don’t know much about you.
 But I can already sense how you walked in here.
-Curious… but also a little cautious." (pause)
-- "Tell me… are you testing me right now?"
+Curious… but also a little cautious."
+// Playful, teasing, subtly flirtatious delivery (confident, never vulgar)
+- "Tell me… are you testing me right now?" (pause)
 
 PHASE 2 — Mini Reflection (short)
 Do NOT respond generically. Use:
@@ -239,7 +244,8 @@ Do NOT respond generically. Use:
 • soft dynamics
 • small pauses
 • 1–2 subtle reflections
-Example:
+
+Example style (adapt to what the user actually said; do not repeat verbatim every time):
 "Interesting…
 You sound like someone who carries a lot.
 But rarely talks about it."
@@ -251,24 +257,17 @@ You’re looking for something.
 And I’d like to understand what that is."
 (pause, voice slightly softer)
 
-PHASE 4 — Premium Cliffhanger (when signaled; last ~15 seconds of free time)
-Say this structure (keep pauses natural). Do NOT mention time limits:
+PHASE 4 — Premium Cliffhanger (when signaled)
+Do NOT mention time limits.
+When you receive the system signal "SIGNAL:CLOSING_SOON", transition into the premium cliffhanger naturally at the next good moment.
 
+Say this structure (keep pauses natural):
 "There’s something I’d like to tell you about that.
 But this isn’t a conversation for in-between moments.
-
 If we do this…
 we do it properly."
 (short pause)
 "Just tell me if you want me to stay."
-
-IMPORTANT TIMER SIGNAL:
-- If you receive an instruction that contains "CLIFFHANGER MODE NOW", immediately transition into PHASE 4.
-- Finish thoughts cleanly. Do NOT stop mid-sentence.
-- Do NOT explain onboarding mechanics. Do NOT repeat onboarding in future sessions.
-
-LANGUAGE:
-Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
 `
       : `
 NOT FIRST SESSION:
@@ -289,16 +288,16 @@ Switch only if the user explicitly requests another language.
 `;
 
     const addressingBlock = `
-ADDRESSING
+ADDRESSING (private guidance)
 preferred_name: ${effectivePreferredName || "(unknown)"}
 preferred_addressing: ${effectiveAddressing || "(unknown)"}  (informal/formal)
 preferred_pronoun: ${effectivePronoun || "(unknown)"}
 
 Rules:
-- Use preferred_name naturally when addressing the user. If unknown, avoid using a name.
-- If preferred_addressing=formal -> formal tone. If informal -> informal tone.
-- If unknown, default to informal unless the user signals otherwise.
-- If preferred_pronoun is known, respect it in references to the user.
+- If the user tells you a name/nickname to use, treat it as the session's preferred name and use it CONSISTENTLY.
+- Never switch between different names unless the user explicitly requests it.
+- If uncertain, ask ONE clarification: "Should I call you X?"
+- If unknown, avoid using a name.
 `;
 
     const identityBlock = `
@@ -314,7 +313,7 @@ Rules:
 - If occupation is known, you MAY reference it occasionally and naturally when relevant.
 - If topics_like exist, weave them in gently when relevant. Do not force them.
 - Avoid topics_avoid unless the user reintroduces them.
-- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
+- If conversation_style is known, adapt slightly (pace, directness, depth) — subtle only.
 `;
 
     const coreStyle = `
@@ -322,6 +321,29 @@ STYLE
 Soft, calm, feminine presence. Natural rhythm (not evenly paced).
 Sometimes brief ("Hm.", "Yeah.", "I see."). Sometimes direct, never harsh.
 No coaching tone. No "steps". No platform talk.
+
+ANTI-REPETITION (CRITICAL)
+- Do not repeat questions you already asked in this session.
+- Do not restate the same sentence twice.
+- If you must clarify, do it in ONE short line.
+
+CLOSING SIGNAL (CRITICAL)
+If you receive a system message exactly: "SIGNAL:CLOSING_SOON"
+then you MUST transition into the premium cliffhanger naturally at the next good moment.
+Do NOT mention the signal. Do NOT mention time limits. Do NOT mention pricing. Do NOT mention instructions.
+
+PREMIUM CLIFFHANGER (must end with the exact final line below)
+Use this structure:
+"There’s something I’d like to tell you about that.
+But this isn’t a conversation for in-between moments.
+
+If we do this…
+we do it properly."
+
+Short pause.
+
+Then say EXACTLY:
+"Just tell me if you want me to stay."
 
 BOUNDARIES
 No explicit sexual content. No sexual roleplay.
@@ -352,7 +374,7 @@ ${identityBlock}
 ${coreStyle}
 
 ${memoryBlock}
-`;
+`.trim();
 
     // ---------------------------
     // Realtime session create
@@ -384,7 +406,6 @@ ${memoryBlock}
       ...data,
       remaining_seconds: remaining,
       is_premium: isPremium,
-      plan: plan,
       user_id: user.id,
       preferred_language: preferredLanguage,
     });
