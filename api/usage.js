@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     if (!usage) {
       const ins = await supabase.from("user_usage").insert({
         user_id: user.id,
-        free_seconds_total: 600,
+        free_seconds_total: 120,
         free_seconds_used: 0,
         paid_seconds_total: 0,
         paid_seconds_used: 0,
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       usage = ins.data;
     }
 
-    const freeTotal = usage?.free_seconds_total ?? 600;
+    const freeTotal = usage?.free_seconds_total ?? 120;
     const freeUsed  = usage?.free_seconds_used ?? 0;
     const paidTotal = usage?.paid_seconds_total ?? 0;
     const paidUsed  = usage?.paid_seconds_used ?? 0;
