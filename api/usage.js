@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
     const u2 = upd.data;
     const rem =
-      Math.max(0, (u2.free_seconds_total ?? 600) - (u2.free_seconds_used ?? 0)) +
+      Math.max(0, (u2.free_seconds_total ?? 120) - (u2.free_seconds_used ?? 0)) +
       Math.max(0, (u2.paid_seconds_total ?? 0) - (u2.paid_seconds_used ?? 0)) +
       Math.max(0, (u2.topup_seconds_balance ?? 0));
 
