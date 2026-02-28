@@ -204,15 +204,37 @@ let cliffhangerToken="";
 let cliffhangerRedirectUrl="/pricing/";
 let cliffhangerTriggered=false;
 
-// Start-mode re-lock (NO MONOLOG)
-let startModeActive=false;
-let lastRelockAt=0;
-
 // cliffhanger state machine
 let cliffhangerArmed=false;
 let finalLineHeard=false;
 let tokenRequested=false;
 let tokenSeen=false;
+
+// --- START-MODE BEAT ENGINE (NO MONOLOG) ---
+let startModeActive=false;
+let smIndex=0;
+let smInFlight=false;
+let lastRelockAt=0;
+
+// Keep beats short: 1–2 lines each.
+const START_MODE_BEATS = [
+  `… Oh. Hi.`,
+  `I’m Sophie.`,
+  `You’re new here, aren’t you?`,
+  `I don’t know you yet. What should I call you?`,
+  `Nice to meet you. Should I call you that — or do you have a nickname you prefer?`,
+  `Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer.`,
+  `I love warm spaces and conversations that aren’t superficial.`,
+  `Okay. And what about you? I still don’t know much about you.`,
+  `Hm… I can tell from the way you just walked in here— with curiosity… but also a little caution.`,
+  `Tell me… are you testing me right now?`,
+  `Interesting… You sound like someone who carries a lot. But rarely talks about it.`,
+  `I think… you’re not here because you’re bored. You’re looking for something. And I have a feeling I know what that is.`,
+  `There’s something I’d like to tell you about that. But this isn’t a conversation for in-between moments.`,
+  `If we do this… we do it properly.`,
+  // FINAL LINE (must be exact)
+  `Stay with me`
+];
 
 function setStatus(txt){ statusEl.textContent = txt; }
 function showBackground(on){
@@ -276,14 +298,13 @@ function normalize(s){
   return String(s||"")
     .toLowerCase()
     .replace(/[“”"']/g,"")
+    .replace(/[.,!?]/g,"")
     .replace(/\s+/g," ")
     .trim();
 }
 
-// FINAL LINE must match exactly (optional punctuation)
 function hasFinalLineExact(s){
-  const t = normalize(s);
-  return /^stay with me[.!?]?$/.test(t);
+  return normalize(s) === "stay with me";
 }
 
 function requestTokenTextOnly(){
@@ -309,42 +330,88 @@ function isExactTokenTextDone(msg){
   return !!tok && txt === tok;
 }
 
-// Re-lock Start-Mode if user interrupts
-function relockStartModeIfNeeded(){
-  if (!startModeActive) return;
-  if (cliffhangerTriggered) return;
-  if (finalLineHeard) { startModeActive = false; return; }
+function sendBeat(beatText, ackText=""){
   if (!dc || dc.readyState !== "open") return;
+  if (!beatText) return;
+  smInFlight = true;
 
-  const now = Date.now();
-  if (now - lastRelockAt < 1200) return; // throttle
-  lastRelockAt = now;
+  const instr = ackText
+    ? `Say exactly this short acknowledgment first (max 8 words): ${ackText}\nThen say exactly this next line:\n${beatText}\nDo not add anything else.`
+    : `Say exactly this line:\n${beatText}\nDo not add anything else.`;
 
-  console.log("RELOCK FIRED");
-
+  try {
+    dc.send(JSON.stringify({ type:"response.cancel" }));
+  } catch(_) {}
   try {
     dc.send(JSON.stringify({
       type: "response.create",
       response: {
         modalities: ["audio","text"],
-        instructions: `
-You are still in START-MODE.
-The user just spoke. Follow the INTERRUPTION RULE:
-- Say ONE short acknowledgment sentence (max 8 words).
-- Then immediately continue Start-Mode where you left off.
-Do NOT switch to normal conversation mode.
-Do NOT change topic.
-`
+        instructions: instr
       }
     }));
   } catch(_) {}
 }
 
+function startModeKick(){
+  if (!startModeActive) return;
+  if (smInFlight) return;
+  if (smIndex >= START_MODE_BEATS.length) return;
+  sendBeat(START_MODE_BEATS[smIndex]);
+}
+
+// Called when assistant finishes a spoken chunk
+function advanceStartModeOnAssistantDone(transcript){
+  if (!startModeActive) return;
+
+  const t = normalize(transcript || "");
+  const current = normalize(START_MODE_BEATS[smIndex] || "");
+
+  // Only advance when it matches the expected beat (exact, but punctuation-tolerant)
+  if (t === current) {
+    smIndex += 1;
+    smInFlight = false;
+
+    // If that was final line, arm redirect
+    if (t === "stay with me") {
+      finalLineHeard = true;
+      startModeActive = false;
+      requestTokenTextOnly();
+      return;
+    }
+
+    // Next beat only when user speaks OR after a short pause?
+    // Here: we wait (interactive). If you want auto-continue, uncomment the next line:
+    // setTimeout(() => startModeKick(), 250);
+    return;
+  }
+
+  // If it didn't match expected, allow next relock to resend current beat
+  smInFlight = false;
+}
+
+function relockStartModeIfNeeded(){
+  if (!startModeActive) return;
+  if (cliffhangerTriggered) return;
+  if (!dc || dc.readyState !== "open") return;
+
+  const now = Date.now();
+  if (now - lastRelockAt < 700) return;
+  lastRelockAt = now;
+
+  console.log("RELOCK FIRED (beat)", smIndex);
+
+  // Acknowledge + resend current beat (or next if none in flight)
+  const beat = START_MODE_BEATS[smIndex] || "";
+  if (!beat) return;
+
+  sendBeat(beat, "Okay.");
+}
+
 function extractUserTextFromItem(item){
   if (!item || item.role !== "user") return "";
   const content = Array.isArray(item.content) ? item.content : [];
-  const text = content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-  return text;
+  return content.map(p => p?.transcript || p?.text || "").join(" ").trim();
 }
 
 function attachChannel(ch){
@@ -367,48 +434,47 @@ function attachChannel(ch){
     let msg=null;
     try { msg = JSON.parse(ev.data); } catch { return; }
 
-    // ---- Cliffhanger gating ----
-    if (cliffhangerMode && !isPremium) {
+    // --- assistant transcript.done: use to advance beats + arm cliffhanger ---
+    if (msg?.type === "response.audio_transcript.done") {
+      const full = String(msg?.transcript || "").trim();
 
-      if (!cliffhangerArmed && msg?.type === "response.audio_transcript.done") {
-        const t = normalize(msg?.transcript || "");
-        if (
-          t.includes("im sophie") ||
-          t.includes("i’m sophie") ||
-          t.includes("i am sophie") ||
-          t.includes("you're new here") ||
-          t.includes("youre new here")
-        ) {
+      // Start-mode beat advance
+      if (startModeActive) {
+        advanceStartModeOnAssistantDone(full);
+      }
+
+      // Cliffhanger arming (only informational)
+      if (cliffhangerMode && !isPremium && !cliffhangerArmed) {
+        const tt = normalize(full);
+        if (tt.includes("im sophie") || tt.includes("i am sophie") || tt.includes("youre new here")) {
           cliffhangerArmed = true;
           console.log("CLIFFHANGER ARMED");
           track("cliffhanger_armed");
         }
       }
 
-      if (cliffhangerArmed && !finalLineHeard && msg?.type === "response.audio_transcript.done") {
-        const full = String(msg?.transcript || "").trim();
-        if (hasFinalLineExact(full)) {
-          finalLineHeard = true;
-          startModeActive = false;
-          console.log("FINAL LINE HEARD");
-          track("cliffhanger_final_line_heard_done");
-          requestTokenTextOnly();
-        }
+      // Final-line detection safety (in case beats drift)
+      if (cliffhangerMode && !isPremium && !finalLineHeard && hasFinalLineExact(full)) {
+        finalLineHeard = true;
+        startModeActive = false;
+        requestTokenTextOnly();
       }
 
-      if (cliffhangerArmed && finalLineHeard && tokenRequested && !tokenSeen) {
-        if (isExactTokenTextDone(msg)) {
-          tokenSeen = true;
-          console.log("TOKEN SEEN -> REDIRECT");
-          track("cliffhanger_token_seen");
-          triggerCliffhangerRedirect();
-          return;
-        }
+      return;
+    }
+
+    // token receipt ONLY exact output_text.done
+    if (cliffhangerMode && !isPremium && finalLineHeard && tokenRequested && !tokenSeen) {
+      if (isExactTokenTextDone(msg)) {
+        tokenSeen = true;
+        console.log("TOKEN SEEN -> REDIRECT");
+        track("cliffhanger_token_seen");
+        triggerCliffhangerRedirect();
+        return;
       }
     }
 
-    // ---- user interruption triggers (FIX) ----
-    // 1) transcription completed (if present)
+    // user interruptions
     if (msg?.type === "conversation.item.input_audio_transcription.completed") {
       const itemId = msg?.item_id;
       const t1 = String(msg?.transcript || "").trim();
@@ -417,23 +483,29 @@ function attachChannel(ch){
       if (itemId) userTranscriptBuffer.delete(itemId);
       if (text) convoLog.push({ role:"user", text });
 
-      relockStartModeIfNeeded();
+      // If start-mode active: relock AND continue next beat after user input
+      if (startModeActive) {
+        relockStartModeIfNeeded();
+        // After user speaks, continue with next beat (not monolog; only progresses on user activity)
+        // If you want more “flow”, uncomment:
+        // setTimeout(() => { smInFlight=false; startModeKick(); }, 250);
+      }
       return;
     }
 
-    // 2) conversation.item.created/done (more reliable in many realtime cases)
     if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
       const item = msg?.item;
       if (item?.role === "user") {
         const text = extractUserTextFromItem(item);
         if (text) convoLog.push({ role:"user", text });
 
-        relockStartModeIfNeeded();
+        if (startModeActive) {
+          relockStartModeIfNeeded();
+        }
         return;
       }
     }
 
-    // keep the delta buffer (optional)
     if (msg?.type === "conversation.item.input_audio_transcription.delta") {
       const itemId = msg?.item_id;
       const delta = String(msg?.delta || "");
@@ -444,19 +516,17 @@ function attachChannel(ch){
       return;
     }
 
-    // ---- assistant accumulation for memory ----
+    // memory accumulation (text)
     if (msg?.type === "response.output_text.delta") {
       const chunk = String(msg?.delta || "");
       if (chunk) partialAssistantForMemory += chunk;
       return;
     }
-
     if (msg?.type === "response.output_text.done") {
       const full = String(msg?.text || "").trim();
       if (full) partialAssistantForMemory = full;
       return;
     }
-
     if (msg?.type === "response.done") {
       const final = String(partialAssistantForMemory || "").trim();
       if (final && final !== lastAssistantFinal) {
@@ -497,6 +567,8 @@ async function startVoice(){
   tokenSeen=false;
 
   startModeActive=false;
+  smIndex=0;
+  smInFlight=false;
   lastRelockAt=0;
 
   try{
@@ -545,6 +617,7 @@ async function startVoice(){
     cliffhangerToken = String(data?.cliffhanger_token || "SOPHIE_CLIFFHANGER_9F3A").trim();
     cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
 
+    // Start-mode beat engine active only for first session non-premium
     startModeActive = !!cliffhangerMode && !isPremium;
 
     console.log("cliffhanger_mode:", cliffhangerMode, "token:", cliffhangerToken, "startModeActive:", startModeActive);
@@ -596,6 +669,11 @@ async function startVoice(){
     });
 
     startCountdown();
+
+    // Kick first beat (no monolog; just beat 0)
+    if (startModeActive) {
+      setTimeout(() => startModeKick(), 250);
+    }
 
   } catch(err){
     console.error(err);
