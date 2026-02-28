@@ -228,7 +228,7 @@ If they give a name:
 Then short personal intro (2–3 sentences max):
 - "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
 - "I love warm spaces and conversations that aren’t superficial."
-Transition:
+
 - "Okay." (pause)
 - "And what about you?"
 - "I still don’t know much about you." (pause)
