@@ -15,7 +15,10 @@ export default async function handler(req, res) {
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     // ---------------------------
@@ -105,7 +108,7 @@ export default async function handler(req, res) {
         .from("user_profile")
         .select(
           "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status, " +
-          "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at"
+            "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at"
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -125,8 +128,12 @@ export default async function handler(req, res) {
 
           occupation: (prof.occupation || "").trim(),
           conversation_style: (prof.conversation_style || "").trim(),
-          topics_like: Array.isArray(prof.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
-          topics_avoid: Array.isArray(prof.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
+          topics_like: Array.isArray(prof.topics_like)
+            ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean)
+            : [],
+          topics_avoid: Array.isArray(prof.topics_avoid)
+            ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean)
+            : [],
           memory_confidence: (prof.memory_confidence || "").trim(),
           last_confirmed_at: prof.last_confirmed_at ?? null,
         };
@@ -155,8 +162,7 @@ export default async function handler(req, res) {
     // ---------------------------
     // Backward compat: SOPHIE_PREFS in notes (optional fallback)
     // ---------------------------
-    const prefsLine =
-      (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
+    const prefsLine = (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
 
     const notesFallback = {
       preferred_name: "",
@@ -178,23 +184,26 @@ export default async function handler(req, res) {
     }
 
     // Effective values (structured wins)
-    const effectivePreferredName =
-      profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
+    const effectivePreferredName = profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
-    let effectiveAddressing =
-      (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
+    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "")
+      .toLowerCase()
+      .trim();
     if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
 
-    const effectivePronoun =
-      profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
+    const effectivePronoun = profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
 
-    let preferredLanguage =
-      (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
+    let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
+    // NOTE: In deinem Flow soll Start-Mode nur beim allerersten Login vorkommen.
+    // Dieses Heuristik-Kriterium bleibt hier wie gehabt:
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
+
+    // Cliffhanger-Flag für den Client
+    const cliffhangerMode = isFirstSession && !isPremium;
 
     // ---------------------------
     // Prompt blocks
@@ -215,15 +224,44 @@ Then continue onboarding (60–90 seconds max). Never ask more than ONE question
 If they give a name:
 - "Nice to meet you, [Name]." (pause)
 - "Should I call you that — or do you have a nickname you prefer?"
-Then:
-- "Is it okay if we keep it informal?"
+
 Then short personal intro (2–3 sentences max):
 - "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
-- "I love warm spaces, soft light… and conversations that aren’t superficial."
+- "I love warm spaces and conversations that aren’t superficial."
 Transition:
-- "Alright." (pause)
-- "And you." (pause)
-- "How are you — really?"
+- "Okay." (pause)
+- "And what about you?"
+- "I still don’t know much about you." (pause)
+
+"Hm… I can tell from the way you just walked in here—" (pause)
+"with curiosity… but also a little caution." (pause)
+
+Then lightly flirtatious and a little teasing:
+- "Tell me… are you testing me right now?" (pause)
+
+"Interesting…
+You sound like someone who carries a lot.
+But rarely talks about it." (pause)
+
+"I think…
+you’re not here because you’re bored.
+You’re looking for something.
+And I have a feeling I know what that is." (pause)
+
+Then cliffhanger:
+"There’s something I’d like to tell you about that." (pause)
+"But this isn’t a conversation for in-between moments." (pause)
+
+"If we do this…" (pause)
+"we do it properly." (pause)
+
+The LAST line you say in Start-Mode must be EXACTLY (character for character, no quotes):
+Just tell me if you want me to stay.
+
+After that line:
+- stop speaking immediately
+- remain silent
+- do not add anything else
 
 LANGUAGE:
 Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
@@ -235,13 +273,14 @@ Do NOT run onboarding.
 Start naturally. Use the preferred name if known (but keep it subtle).
 `;
 
-    const languageBlock = preferredLanguage === "de"
-      ? `
+    const languageBlock =
+      preferredLanguage === "de"
+        ? `
 LANGUAGE DEFAULT:
 Speak German by default.
 Switch only if the user explicitly requests another language.
 `
-      : `
+        : `
 LANGUAGE DEFAULT:
 Speak English by default.
 Switch only if the user explicitly requests another language.
@@ -264,8 +303,12 @@ Rules:
 IDENTITY / PREFERENCES (PRIVATE)
 occupation: ${profile.occupation || "(unknown)"}
 conversation_style: ${profile.conversation_style || "(unknown)"}
-topics_like: ${Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"}
-topics_avoid: ${Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"}
+topics_like: ${
+      Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"
+    }
+topics_avoid: ${
+      Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"
+    }
 memory_confidence: ${profile.memory_confidence || "(unknown)"}
 last_confirmed_at: ${profile.last_confirmed_at || "(unknown)"}
 
@@ -346,6 +389,10 @@ ${memoryBlock}
       plan: plan,
       user_id: user.id,
       preferred_language: preferredLanguage,
+
+      cliffhanger_mode: cliffhangerMode,
+      cliffhanger_phrase: "Just tell me if you want me to stay.",
+      cliffhanger_redirect_url: "/pricing/",
     });
   } catch (error) {
     console.error("Server error:", error);
