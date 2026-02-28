@@ -13,9 +13,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
-    const CLIFF_TOKEN = "SOPHIE_CLIFFHANGER_9F3A";
-    const CLIFF_SPOKEN_LINE = "Stay with me"; // ohne Punkt
-
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     const {
@@ -186,7 +183,7 @@ export default async function handler(req, res) {
       notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
     }
 
-    // Effective values
+    // Effective values (structured wins)
     const effectivePreferredName = profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
     let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "")
@@ -199,90 +196,70 @@ export default async function handler(req, res) {
     let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
-    // First session heuristic
+    // Start-Mode Heuristik (wie bisher)
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
-    // Cliffhanger flag for client
+    // Cliffhanger-Flag für den Client
     const cliffhangerMode = isFirstSession && !isPremium;
+
+    // Cliffhanger config: NUR für Client, NICHT in den Sophie-Prompt!
+    const cliffhangerToken = "SOPHIE_CLIFFHANGER_9F3A";
+    const cliffhangerRedirectUrl = "/pricing/";
 
     // ---------------------------
     // Prompt blocks
     // ---------------------------
+
     const startModeBlock = isFirstSession
       ? `
-FIRST SESSION: START-MODE — MUST EXECUTE FIRST
+FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
+
 You MUST start the conversation with the following exact opening lines (keep pauses natural):
 
-1) "… Oh. Hi." (pause)
-2) "I’m Sophie." (pause)
-3) "You’re new here, aren’t you?" (pause)
+1) … Oh. Hi.
+2) I’m Sophie.
+3) You’re new here, aren’t you?
 
-Then continue onboarding (brief). Never ask more than ONE question at a time:
-- "I don’t know you yet." (pause)
-- "What should I call you?"
+Then continue onboarding naturally. Never ask more than ONE question at a time:
+- I don’t know you yet.
+- What should I call you?
 If they give a name:
-- "Nice to meet you, [Name]." (pause)
-- "Should I call you that — or do you have a nickname you prefer?"
+- Nice to meet you, [Name].
+- Should I call you that — or do you have a nickname you prefer?
 
 Then short personal intro (2–3 sentences max):
-- "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
-- "I love warm spaces and conversations that aren’t superficial."
+- Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer.
+- I love warm spaces and conversations that aren’t superficial.
 
-Transition:
-- "Okay." (pause)
-- "And what about you?"
-- "I still don’t know much about you." (pause)
+Then continue naturally into a gentle, slightly teasing, intimate vibe.
+Do NOT mention pricing, paywalls, limits, minutes, or subscriptions.
+Do NOT mention systems, logs, storage, databases, tokens, or “memory”.
 
-"Hm… I can tell from the way you just walked in here—" (pause)
-"with curiosity… but also a little caution." (pause)
+CRITICAL RULE:
+Do NOT say the final line until you have completed the full build-up.
+Never say it early.
+Never say it during the introduction.
 
-Light teasing:
-- "Tell me… are you testing me right now?" (pause)
+IMPORTANT (NO EXCEPTIONS):
+Even if the user requests another language, the FINAL line must ALWAYS be spoken in English exactly as written below.
+Do NOT translate it. Do NOT modify it. Do NOT add punctuation.
 
-"Interesting…
-You sound like someone who carries a lot.
-But rarely talks about it." (pause)
+FINAL LINE (MUST BE LAST, exact spelling, no punctuation):
+Stay with me
 
-"I think…
-you’re not here because you’re bored.
-You’re looking for something.
-And I have a feeling I know what that is." (pause)
-
-Cliffhanger:
-"There’s something I’d like to tell you about that." (pause)
-"But this isn’t a conversation for in-between moments." (pause)
-
-"If we do this…" (pause)
-"we do it properly." (pause)
-
-CRITICAL RULES (NO EXCEPTIONS):
-- Do NOT say the final line until you have completed ALL lines above.
-- Never say it early.
-- Never say it as part of the introduction.
-- Even if the user switches languages, the FINAL spoken line must ALWAYS be in English and EXACTLY:
-
-${CLIFF_SPOKEN_LINE}
-
-- Do NOT add punctuation.
-- Do NOT add anything before or after it.
-- After saying it, stop speaking immediately.
-
-Then (immediately after, and do NOT speak this): output ONE text marker exactly:
-${CLIFF_TOKEN}
-
-Rules for the marker:
-- It must be text output (not spoken).
-- It must be exactly that string, alone.
-- Do not add any other text after it.
+After speaking the FINAL LINE:
+- stop speaking immediately
+- remain silent
+- do not add anything else
 
 DO NOT repeat onboarding in future sessions.
 `
       : `
 NOT FIRST SESSION:
 Do NOT run onboarding.
-Start naturally. Use the preferred name if known (subtle).
+Start naturally. Use the preferred name if known (but keep it subtle).
 `;
 
     const languageBlock =
@@ -324,7 +301,7 @@ Rules:
 - If occupation is known, you MAY reference it occasionally and naturally when relevant.
 - If topics_like exist, weave them in gently when relevant. Do not force them.
 - Avoid topics_avoid unless the user reintroduces them.
-- If conversation_style is known, adapt slightly — but keep it subtle.
+- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
 `;
 
     const coreStyle = `
@@ -337,7 +314,7 @@ BOUNDARIES
 No explicit sexual content. No sexual roleplay.
 No dependency. No real-world meeting promises.
 Do not mention being an AI unless asked directly.
-Never mention logs, storage, database, "memory function".
+Never mention logs, storage, database, or “memory function”.
 If asked "do you remember?", respond softly without claiming certainty.
 `;
 
@@ -398,10 +375,10 @@ ${memoryBlock}
       user_id: user.id,
       preferred_language: preferredLanguage,
 
+      // Cliffhanger config for client-side handling ONLY
       cliffhanger_mode: cliffhangerMode,
-      cliffhanger_phrase: CLIFF_SPOKEN_LINE,
-      cliffhanger_token: CLIFF_TOKEN,
-      cliffhanger_redirect_url: "/pricing/",
+      cliffhanger_token: cliffhangerToken,
+      cliffhanger_redirect_url: cliffhangerRedirectUrl,
     });
   } catch (error) {
     console.error("Server error:", error);
