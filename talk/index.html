@@ -7,7 +7,6 @@
 
 <style>
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
@@ -21,18 +20,12 @@ body{
   position:relative;
   overflow:hidden;
 }
-
-/* Topbar */
 .topbar{
-  position:fixed;
-  top:0; left:0; right:0;
+  position:fixed; top:0; left:0; right:0;
   z-index:3;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+  display:flex; justify-content:space-between; align-items:center;
   padding:14px 16px;
 }
-
 .topbar a{
   color:rgba(255,255,255,.9);
   text-decoration:none;
@@ -42,7 +35,6 @@ body{
   background:rgba(255,255,255,.10);
   border:1px solid rgba(255,255,255,.18);
 }
-
 .topbar button{
   color:rgba(255,255,255,.9);
   font-weight:600;
@@ -52,74 +44,44 @@ body{
   border:1px solid rgba(255,255,255,.18);
   cursor:pointer;
 }
-
-.topbar button:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-}
-
-/* Hintergrundbild */
+.topbar button:disabled{ opacity:.5; cursor:not-allowed; }
 .bg{
-  position:fixed;
-  inset:0;
+  position:fixed; inset:0;
   background:url("/sophie.jpg") center/cover no-repeat;
-  opacity:0;
-  transition:opacity .5s ease;
-  z-index:0;
+  opacity:0; transition:opacity .5s ease; z-index:0;
 }
-
-/* dunkles Overlay */
 .overlay{
-  position:fixed;
-  inset:0;
+  position:fixed; inset:0;
   background:rgba(0,0,0,.55);
-  opacity:0;
-  transition:opacity .5s ease;
-  z-index:1;
+  opacity:0; transition:opacity .5s ease; z-index:1;
 }
-
-/* Aktiv-Zustand */
-.bg.active,
-.overlay.active{ opacity:1; }
-
-/* Vordergrund */
+.bg.active,.overlay.active{ opacity:1; }
 .wrap{
-  position:relative;
-  z-index:2;
-  width:90%;
-  max-width:420px;
-  padding-top:40px; /* Platz für Topbar */
+  position:relative; z-index:2;
+  width:90%; max-width:420px;
+  padding-top:40px;
 }
-
-/* Buttons */
 .btn{
-  display:block;
-  width:100%;
+  display:block; width:100%;
   margin:0 auto 15px;
   padding:18px 20px;
-  font-size:20px;
-  font-weight:700;
-  border:none;
-  border-radius:12px;
+  font-size:20px; font-weight:700;
+  border:none; border-radius:12px;
   cursor:pointer;
 }
-
 #start{ background:#ffffff; color:#000; }
 #end{
   background:rgba(255,255,255,.15);
   color:#fff;
   border:1px solid rgba(255,255,255,.3);
 }
-
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
-
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
 </style>
 </head>
 
 <body>
-
 <div class="bg" id="bg"></div>
 <div class="overlay" id="overlay"></div>
 
@@ -140,63 +102,49 @@ body{
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-// ✅ Supabase Config
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ✅ Frontend Login Guard: ohne Session -> /login/
+// login guard
 {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) window.location.href = "/login/";
 }
 
-// Helpers
-async function safeJson(res) { try { return await res.json(); } catch { return null; } }
+async function safeJson(res){ try { return await res.json(); } catch { return null; } }
 
-// --- Tracking helper (POST /api/track) ---
 async function track(event_name, meta = {}) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
-
     await fetch("/api/track", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${session.access_token}` },
       body: JSON.stringify({ event_name, meta }),
-      keepalive: true,
+      keepalive:true,
     });
-  } catch (_) {}
+  } catch(_) {}
 }
 
-// --- Usage reporting helper (POST /api/usage) ---
 async function reportUsage(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
-
     await fetch("/api/usage", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${session.access_token}` },
       body: JSON.stringify({ seconds_used: secondsUsed }),
-      keepalive: true,
+      keepalive:true,
     });
-  } catch (_) {}
+  } catch(_) {}
 }
 
-// --- Conversation buffer (for memory update) ---
 let convoLog = [];
 let partialAssistant = "";
 let lastAssistantFinal = "";
 const userTranscriptBuffer = new Map();
 
-// --- Memory update helper (POST /api/memory-update) ---
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -204,7 +152,7 @@ async function sendMemoryUpdate(secondsUsed) {
 
     const finalA = (partialAssistant || "").trim();
     if (finalA) {
-      convoLog.push({ role: "assistant", text: finalA });
+      convoLog.push({ role:"assistant", text: finalA });
       partialAssistant = "";
     }
 
@@ -216,23 +164,18 @@ async function sendMemoryUpdate(secondsUsed) {
       return true;
     });
 
-    const payload = cleaned.slice(-80);
-
     await fetch("/api/memory-update", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ transcript: payload, seconds_used: secondsUsed }),
-      keepalive: true,
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${session.access_token}` },
+      body: JSON.stringify({ transcript: cleaned.slice(-80), seconds_used: secondsUsed }),
+      keepalive:true,
     });
 
     convoLog = [];
-  } catch (_) {}
+  } catch(_) {}
 }
 
-// UI Elements
+// UI
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
 const statusEl = document.getElementById("status");
@@ -242,49 +185,42 @@ const bg = document.getElementById("bg");
 const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// Voice vars
-let pc = null;
-let stream = null;
-let audioEl = null;
+// voice
+let pc=null, stream=null, audioEl=null;
+let dc=null;
 
-// DataChannel
-let dc = null;
+// timer
+let countdown=null;
+let remainingSeconds=0;
+let isPremium=false;
+let plan=null;
 
-// Timer vars
-let countdown = null;
-let remainingSeconds = 0;
-let isPremium = false;
-let plan = null;
+// session meta
+let talkStartedAt=null;
 
-// Session meta
-let talkStartedAt = null;
+// cliffhanger
+let cliffhangerMode=false;
+let cliffhangerToken="";
+let cliffhangerRedirectUrl="/pricing/";
+let cliffhangerTriggered=false;
 
-// Cliffhanger config from backend
-let cliffhangerMode = false;
-let cliffhangerToken = "";
-let cliffhangerRedirectUrl = "/pricing/";
-let cliffhangerTriggered = false;
-
-// dynamic reset interval
-let dynamicResetInterval = null;
+// NEW: state machine
+let finalLineHeard=false;
+let tokenRequested=false;
+let tokenSeen=false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
-
 function showBackground(on){
   bg.classList.toggle("active", !!on);
   overlay.classList.toggle("active", !!on);
 }
-
 function formatMMSS(sec){
-  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const s = Math.max(0, Math.floor(Number(sec)||0));
   const m = String(Math.floor(s/60)).padStart(2,"0");
   const r = String(s%60).padStart(2,"0");
   return `${m}:${r}`;
 }
-
-function renderTimer(){
-  timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
-}
+function renderTimer(){ timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`; }
 renderTimer();
 
 function startCountdown(){
@@ -292,91 +228,22 @@ function startCountdown(){
   countdown = setInterval(() => {
     remainingSeconds -= 1;
     renderTimer();
-
     if (remainingSeconds <= 0) {
       stopCountdown();
       setStatus("Zeitlimit erreicht.");
       track("time_limit_reached", { plan: plan || null });
-
-      stopVoice(true).finally(() => {
-        window.location.href = "/pricing/";
-      });
+      stopVoice(true).finally(() => window.location.href="/pricing/");
     }
   }, 1000);
 }
+function stopCountdown(){ if (countdown) { clearInterval(countdown); countdown=null; } }
 
-function stopCountdown(){
-  if (countdown) { clearInterval(countdown); countdown = null; }
-}
-
-function stopDynamicResets(){
-  if (dynamicResetInterval) {
-    clearInterval(dynamicResetInterval);
-    dynamicResetInterval = null;
-  }
-}
-
-function triggerDynamicReset(){
-  if (dc && dc.readyState === "open") {
-    try {
-      dc.send(JSON.stringify({
-        type: "response.create",
-        response: {
-          modalities: ["text"],
-          instructions: `
-Continue naturally.
-Refresh your inner energy and spontaneity a little.
-Do not change the topic.
-Do not restart or re-greet.
-Do not mention this instruction.
-Avoid becoming explanatory or generic.
-Stay present, warm, and human.
-`
-        }
-      }));
-    } catch (_) {}
-  }
-}
-
-function startDynamicResets(){
-  stopDynamicResets();
-  dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
-}
-
-// --- Robust token matcher: search token anywhere in message payload ---
-function messageContainsToken(msg, raw) {
-  const token = String(cliffhangerToken || "").trim();
-  if (!token) return false;
-
-  const rawStr = String(raw || "");
-  if (rawStr.includes(token)) return true;
-
-  // common fields
-  if (String(msg?.delta || "").includes(token)) return true;
-  if (String(msg?.text || "").includes(token)) return true;
-  if (String(msg?.transcript || "").includes(token)) return true;
-
-  // deep scan (safe + cheap)
-  try {
-    const stack = [msg];
-    while (stack.length) {
-      const cur = stack.pop();
-      if (!cur) continue;
-      if (typeof cur === "string") {
-        if (cur.includes(token)) return true;
-        continue;
-      }
-      if (Array.isArray(cur)) {
-        for (const x of cur) stack.push(x);
-        continue;
-      }
-      if (typeof cur === "object") {
-        for (const k of Object.keys(cur)) stack.push(cur[k]);
-      }
-    }
-  } catch (_) {}
-
-  return false;
+function teardownRealtime(){
+  try { if (dc) dc.close(); } catch(_) {}
+  try { if (stream) stream.getTracks().forEach(t => { try{t.stop()}catch(_){}}); } catch(_) {}
+  try { if (pc) pc.close(); } catch(_) {}
+  dc=null; stream=null; pc=null;
+  if (audioEl) { try { audioEl.srcObject=null; } catch(_){} audioEl=null; }
 }
 
 async function triggerCliffhangerRedirect(){
@@ -384,28 +251,71 @@ async function triggerCliffhangerRedirect(){
   cliffhangerTriggered = true;
 
   try {
-    track("cliffhanger_triggered", {
+    track("cliffhanger_redirect", {
       token: cliffhangerToken || null,
-      redirect: cliffhangerRedirectUrl || null,
       plan: plan || null,
       is_premium: !!isPremium
     });
-  } catch (_) {}
+  } catch(_) {}
 
-  // stop any ongoing generation & clear audio
-  if (dc && dc.readyState === "open") {
-    try { dc.send(JSON.stringify({ type: "response.cancel" })); } catch(_) {}
-    try { dc.send(JSON.stringify({ type: "output_audio_buffer.clear" })); } catch(_) {}
+  // cancel generation + clear audio
+  if (dc && dc.readyState==="open") {
+    try { dc.send(JSON.stringify({ type:"response.cancel" })); } catch(_) {}
+    try { dc.send(JSON.stringify({ type:"output_audio_buffer.clear" })); } catch(_) {}
   }
 
-  // Tear down quickly (avoid goodbye/memory delay)
-  try { await stopVoice(true); } catch (_) {}
-
+  // fast teardown
+  try { await stopVoice(true); } catch(_) {}
   window.location.href = cliffhangerRedirectUrl || "/pricing/";
 }
 
-// Robust DataChannel handling: server-created + client-created
-function attachChannel(ch) {
+// Match assistant transcript for final spoken line (tolerant)
+function normalize(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/[“”"']/g,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function hasFinalLine(s){
+  const t = normalize(s);
+  // accept with/without punctuation
+  return t.includes("stay with me");
+}
+
+// Ask the server (model) for a text-only token now (NOT spoken)
+function requestTokenTextOnly(){
+  if (!dc || dc.readyState!=="open") return;
+  if (tokenRequested) return;
+  tokenRequested = true;
+
+  try {
+    dc.send(JSON.stringify({
+      type: "response.create",
+      response: {
+        modalities: ["text"],
+        instructions: `Output exactly this string and nothing else:\n${cliffhangerToken}`
+      }
+    }));
+  } catch(_) {}
+}
+
+// Token can come as output_text.*; we only accept it AFTER final line heard AND we requested it
+function messageHasToken(msg){
+  const tok = String(cliffhangerToken||"").trim();
+  if (!tok) return false;
+  if (String(msg?.delta||"").includes(tok)) return true;
+  if (String(msg?.text||"").includes(tok)) return true;
+  if (String(msg?.transcript||"").includes(tok)) return true;
+  // check nested parts
+  try {
+    const s = JSON.stringify(msg);
+    if (s.includes(tok)) return true;
+  } catch(_) {}
+  return false;
+}
+
+function attachChannel(ch){
   dc = ch;
 
   dc.addEventListener("open", () => {
@@ -413,108 +323,110 @@ function attachChannel(ch) {
       dc.send(JSON.stringify({
         type: "session.update",
         session: {
-          modalities: ["audio", "text"], // <<< Text aktivieren
+          modalities: ["audio","text"],
           input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-          turn_detection: { type: "server_vad" }
+          turn_detection: { type:"server_vad" }
         }
       }));
-    } catch (_) {}
+    } catch(_) {}
   });
 
   dc.addEventListener("message", (ev) => {
-    const raw = ev.data;
-    let msg = null;
+    let msg=null;
+    try { msg = JSON.parse(ev.data); } catch { return; }
 
-    try { msg = JSON.parse(raw); } catch { return; }
-
-    // ---- CLIFFHANGER: detect token in ANY event type ----
-    if (cliffhangerMode && !isPremium && cliffhangerToken) {
-      if (messageContainsToken(msg, raw)) {
-        // Sofort redirect (sie hat den Token ja bereits gesagt/ausgegeben)
-        triggerCliffhangerRedirect();
-        return;
-      }
-    }
-
-    try {
-      // user transcript streaming
-      if (msg?.type === "conversation.item.input_audio_transcription.delta") {
-        const itemId = msg?.item_id;
-        const delta = String(msg?.delta || "");
-        if (itemId && delta) {
-          const prev = userTranscriptBuffer.get(itemId) || "";
-          userTranscriptBuffer.set(itemId, (prev + delta));
+    // ---- assistant transcript stream: detect final line ----
+    if (cliffhangerMode && !isPremium && !finalLineHeard) {
+      if (msg?.type === "response.audio_transcript.delta") {
+        const d = String(msg?.delta || "");
+        if (d) {
+          // accumulate into partialAssistant as well
+          partialAssistant += d;
+          if (hasFinalLine(partialAssistant)) {
+            finalLineHeard = true;
+            track("cliffhanger_final_line_heard");
+            requestTokenTextOnly();
+          }
         }
-        return;
-      }
-
-      if (msg?.type === "conversation.item.input_audio_transcription.completed") {
-        const itemId = msg?.item_id;
-        const t1 = String(msg?.transcript || "").trim();
-        const tBuf = itemId ? String(userTranscriptBuffer.get(itemId) || "").trim() : "";
-        const text = (t1 || tBuf).trim();
-
-        if (itemId) userTranscriptBuffer.delete(itemId);
-        if (text) convoLog.push({ role: "user", text });
-        return;
-      }
-
-      if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
-        const item = msg?.item;
-        if (item?.role === "user" && Array.isArray(item?.content)) {
-          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-          if (text) convoLog.push({ role: "user", text });
-        }
-      }
-
-      // assistant transcript/text
-      if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
-        const chunk = String(msg?.delta || "");
-        if (chunk) partialAssistant += chunk;
-        return;
       }
 
       if (msg?.type === "response.audio_transcript.done") {
-        const full = String(msg?.transcript || msg?.text || "").trim();
-        if (full) partialAssistant = full;
-        return;
-      }
-
-      if (msg?.type === "response.output_text.done") {
-        const full = String(msg?.text || "").trim();
-        if (full) partialAssistant = full;
-        return;
-      }
-
-      if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
-        const part = msg.part || {};
-        const chunk = String(part.text || part.transcript || "");
-        if (chunk) partialAssistant += chunk;
-      }
-
-      if (msg?.type === "response.done") {
-        const final = String(partialAssistant || "").trim();
-        if (final && final !== lastAssistantFinal) {
-          convoLog.push({ role: "assistant", text: final });
-          lastAssistantFinal = final;
+        const full = String(msg?.transcript || "");
+        if (full) {
+          partialAssistant = full;
+          if (hasFinalLine(full)) {
+            finalLineHeard = true;
+            track("cliffhanger_final_line_heard_done");
+            requestTokenTextOnly();
+          }
         }
-        partialAssistant = "";
       }
-    } catch (_) {}
+    }
+
+    // ---- token receipt (only after request) ----
+    if (cliffhangerMode && !isPremium && finalLineHeard && tokenRequested && !tokenSeen) {
+      if (
+        msg?.type === "response.output_text.delta" ||
+        msg?.type === "response.output_text.done" ||
+        msg?.type === "response.done"
+      ) {
+        if (messageHasToken(msg)) {
+          tokenSeen = true;
+          track("cliffhanger_token_seen");
+          triggerCliffhangerRedirect();
+          return;
+        }
+      }
+    }
+
+    // ---- user transcript logging ----
+    if (msg?.type === "conversation.item.input_audio_transcription.delta") {
+      const itemId = msg?.item_id;
+      const delta = String(msg?.delta || "");
+      if (itemId && delta) {
+        const prev = userTranscriptBuffer.get(itemId) || "";
+        userTranscriptBuffer.set(itemId, prev + delta);
+      }
+      return;
+    }
+
+    if (msg?.type === "conversation.item.input_audio_transcription.completed") {
+      const itemId = msg?.item_id;
+      const t1 = String(msg?.transcript || "").trim();
+      const tBuf = itemId ? String(userTranscriptBuffer.get(itemId) || "").trim() : "";
+      const text = (t1 || tBuf).trim();
+      if (itemId) userTranscriptBuffer.delete(itemId);
+      if (text) convoLog.push({ role:"user", text });
+      return;
+    }
+
+    // assistant accumulation for memory
+    if (msg?.type === "response.output_text.delta") {
+      const chunk = String(msg?.delta || "");
+      if (chunk) partialAssistant += chunk;
+      return;
+    }
+
+    if (msg?.type === "response.output_text.done") {
+      const full = String(msg?.text || "").trim();
+      if (full) partialAssistant = full;
+      return;
+    }
+
+    if (msg?.type === "response.done") {
+      const final = String(partialAssistant || "").trim();
+      if (final && final !== lastAssistantFinal) {
+        convoLog.push({ role:"assistant", text: final });
+        lastAssistantFinal = final;
+      }
+      partialAssistant = "";
+    }
   });
 }
 
-function setupDataChannelLogging() {
+function setupDataChannelLogging(){
   pc.ondatachannel = (e) => attachChannel(e.channel);
-  try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
-}
-
-function teardownRealtime(){
-  try { if (dc) dc.close(); } catch(_) {}
-  try { if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} }); } catch(_) {}
-  try { if (pc) pc.close(); } catch(_) {}
-  dc = null; stream = null; pc = null;
-  if (audioEl) { try { audioEl.srcObject = null; } catch(_){} audioEl = null; }
+  try { attachChannel(pc.createDataChannel("oai-events")); } catch(_) {}
 }
 
 async function startVoice(){
@@ -528,23 +440,19 @@ async function startVoice(){
 
   track("talk_start_clicked");
 
-  // reset convo buffers
   convoLog = [];
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  stopDynamicResets();
-
-  // reset cliffhanger
-  cliffhangerMode = false;
-  cliffhangerToken = "";
-  cliffhangerRedirectUrl = "/pricing/";
-  cliffhangerTriggered = false;
+  cliffhangerTriggered=false;
+  finalLineHeard=false;
+  tokenRequested=false;
+  tokenSeen=false;
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { window.location.href = "/login/"; return; }
+    if (!session?.user) { window.location.href="/login/"; return; }
 
     const tokenRes = await fetch("/api/session", {
       headers: { Authorization: `Bearer ${session.access_token}` }
@@ -554,7 +462,7 @@ async function startVoice(){
 
     if (tokenRes.status === 402) {
       track("time_limit_reached");
-      window.location.href = "/pricing/";
+      window.location.href="/pricing/";
       return;
     }
 
@@ -578,16 +486,14 @@ async function startVoice(){
       : 0;
 
     renderTimer();
-
     if (remainingSeconds <= 0) {
       track("time_limit_reached");
-      window.location.href = "/pricing/";
+      window.location.href="/pricing/";
       return;
     }
 
-    // Cliffhanger config
     cliffhangerMode = !!data?.cliffhanger_mode;
-    cliffhangerToken = String(data?.cliffhanger_token || "").trim();
+    cliffhangerToken = String(data?.cliffhanger_token || "SOPHIE_CLIFFHANGER_9F3A").trim();
     cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
 
     console.log("cliffhanger_mode:", cliffhangerMode, "token:", cliffhangerToken);
@@ -595,7 +501,7 @@ async function startVoice(){
     pc = new RTCPeerConnection();
     setupDataChannelLogging();
 
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ audio:true });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     audioEl = document.createElement("audio");
@@ -610,28 +516,25 @@ async function startVoice(){
     const model = "gpt-4o-realtime-preview";
 
     const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
-      method: "POST",
+      method:"POST",
       body: offer.sdp,
       headers: {
         Authorization: `Bearer ${data.client_secret.value}`,
-        "Content-Type": "application/sdp"
+        "Content-Type":"application/sdp"
       },
     });
 
     if (!sdpRes.ok) {
-      const t = await sdpRes.text().catch(() => "");
-      throw new Error(`OpenAI SDP Fehler (HTTP ${sdpRes.status}): ${t.slice(0, 200)}`);
+      const t = await sdpRes.text().catch(()=> "");
+      throw new Error(`OpenAI SDP Fehler (HTTP ${sdpRes.status}): ${t.slice(0,200)}`);
     }
 
-    const answer = { type: "answer", sdp: await sdpRes.text() };
+    const answer = { type:"answer", sdp: await sdpRes.text() };
     await pc.setRemoteDescription(answer);
 
     endBtn.disabled = false;
     headline.textContent = "Sophie is listening.";
     setStatus("Live.");
-
-    // NO dynamic resets in cliffhanger mode
-    if (!cliffhangerMode) startDynamicResets();
 
     talkStartedAt = Date.now();
     track("talk_started", {
@@ -655,41 +558,19 @@ async function startVoice(){
   }
 }
 
-async function stopVoice(triggeredByLimit = false){
+async function stopVoice(triggeredByLimit=false){
   endBtn.disabled = true;
-  stopDynamicResets();
 
-  // If redirecting: do not delay with goodbye/memory
+  // If redirecting, do fast teardown
   if (cliffhangerTriggered) {
     stopCountdown();
     teardownRealtime();
     showBackground(false);
-    startBtn.disabled = false;
-    logoutBtn.disabled = false;
-    headline.textContent = "Sophie is waiting.";
+    startBtn.disabled=false;
+    logoutBtn.disabled=false;
+    headline.textContent="Sophie is waiting.";
     setStatus("Ended.");
     return;
-  }
-
-  // try short goodbye
-  if (dc && dc.readyState === "open") {
-    try {
-      dc.send(JSON.stringify({
-        type: "response.create",
-        response: {
-          instructions: `
-Say one short, soft goodbye line.
-Use the same language that was used in the last conversation.
-Match the emotional tone of the last exchange.
-Calm. Intimate. Low energy.
-No explanation. No repetition.
-Max 12 words.
-`,
-          modalities: ["audio", "text"]
-        }
-      }));
-      await new Promise(r => setTimeout(r, 900));
-    } catch (_) {}
   }
 
   const durationSeconds = talkStartedAt
@@ -711,12 +592,11 @@ Max 12 words.
 
   stopCountdown();
   teardownRealtime();
-
   showBackground(false);
 
-  startBtn.disabled = false;
-  logoutBtn.disabled = false;
-  headline.textContent = "Sophie is waiting.";
+  startBtn.disabled=false;
+  logoutBtn.disabled=false;
+  headline.textContent="Sophie is waiting.";
   setStatus("Ended.");
 }
 
@@ -726,7 +606,7 @@ logoutBtn.onclick = async () => {
     if (pc || stream || talkStartedAt) await stopVoice(false);
   } catch(_) {}
   try { await supabase.auth.signOut(); } catch(_) {}
-  window.location.href = "/";
+  window.location.href="/";
 };
 
 startBtn.addEventListener("click", startVoice);
