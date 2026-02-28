@@ -255,6 +255,12 @@ Then cliffhanger:
 "If we do this…" (pause)
 "we do it properly." (pause)
 
+CRITICAL:
+Do NOT say the final line "Stay with me." until you have completed ALL lines above.
+Never say it early.
+Never say it as part of the introduction.
+Only say it as the very last line after the cliffhanger build-up.
+
 The LAST line you say must be EXACTLY (character for character, no quotes):
 Stay with me.
 
@@ -267,6 +273,11 @@ After that line:
 - stop speaking immediately
 - remain silent
 - do not add anything else
+
+IMPORTANT RULE (NO EXCEPTIONS):
+No matter what language you use during Start-Mode, the FINAL line must ALWAYS be spoken in English exactly:
+Stay with me.
+Do NOT translate it.
 
 LANGUAGE:
 Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
@@ -394,7 +405,7 @@ ${memoryBlock}
       plan: plan,
       user_id: user.id,
       preferred_language: preferredLanguage,
-
+      
       cliffhanger_mode: cliffhangerMode,
       cliffhanger_phrase: "Stay with me.",
       cliffhanger_redirect_url: "/pricing/",
