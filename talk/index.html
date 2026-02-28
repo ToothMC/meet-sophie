@@ -264,6 +264,8 @@ let cliffhangerMode = false;
 let cliffhangerPhrase = "";
 let cliffhangerRedirectUrl = "/pricing/";
 let cliffhangerTriggered = false;
+let cliffhangerPending = false;
+let lastDetectedAt = 0;
 
 // dynamic reset interval
 let dynamicResetInterval = null;
@@ -348,9 +350,22 @@ function normalizePhrase(s){
   return String(s || "")
     .toLowerCase()
     .replace(/[“”„"']/g, "")
-    .replace(/[^\p{L}\p{N}\s.?!-]/gu, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function detectCliffhanger(text){
+  if (!cliffhangerMode || isPremium) return false;
+  const hay = normalizePhrase(text);
+  if (!hay) return false;
+
+  const target = normalizePhrase(cliffhangerPhrase || "");
+  if (target && hay.includes(target)) return true;
+
+  // Optional: German fallback (if Sophie translates anyway)
+  if (hay.includes(normalizePhrase("bleib bei mir."))) return true;
+
+  return false;
 }
 
 async function triggerCliffhangerRedirect(){
@@ -362,7 +377,8 @@ async function triggerCliffhangerRedirect(){
       phrase: cliffhangerPhrase || null,
       redirect: cliffhangerRedirectUrl || null,
       plan: plan || null,
-      is_premium: !!isPremium
+      is_premium: !!isPremium,
+      detected_at: lastDetectedAt || null
     });
   } catch (_) {}
 
@@ -398,23 +414,30 @@ function attachChannel(ch) {
     try {
       const msg = JSON.parse(ev.data);
 
-      // ✅ CLIFFHANGER DETECTION (best hook: audio transcript finished)
-      if (msg?.type === "response.output_audio_transcript.done") {
-        if (!cliffhangerMode || isPremium) return;
-
-        const spoken = normalizePhrase(msg?.transcript || "");
-        const target = normalizePhrase(cliffhangerPhrase);
-
-        // Optional: German fallback (if Sophie translates anyway)
-        const germanFallback = normalizePhrase("Bleib bei mir.");
-        const hit =
-          (target && spoken.includes(target)) ||
-          (!!spoken && spoken.includes(germanFallback));
-
-        if (hit) {
-          triggerCliffhangerRedirect();
+      // --- CLIFFHANGER DETECTION (robust: check multiple events) ---
+      if (msg?.type === "response.audio_transcript.done") {
+        const t = String(msg?.transcript || "").trim();
+        if (detectCliffhanger(t)) {
+          cliffhangerPending = true;
+          lastDetectedAt = Date.now();
         }
-        return;
+      }
+
+      if (msg?.type === "response.output_text.done") {
+        const t = String(msg?.text || "").trim();
+        if (detectCliffhanger(t)) {
+          cliffhangerPending = true;
+          lastDetectedAt = Date.now();
+        }
+      }
+
+      // Redirect only when audio streaming is done
+      if (msg?.type === "response.output_audio.done") {
+        if (cliffhangerPending) {
+          cliffhangerPending = false;
+          triggerCliffhangerRedirect();
+          return;
+        }
       }
 
       // user transcript streaming
@@ -447,7 +470,7 @@ function attachChannel(ch) {
         }
       }
 
-      // assistant transcript
+      // assistant transcript (for memory)
       if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
@@ -478,6 +501,13 @@ function attachChannel(ch) {
           convoLog.push({ role: "assistant", text: final });
           lastAssistantFinal = final;
         }
+
+        // Fallback detect here too
+        if (detectCliffhanger(final)) {
+          cliffhangerPending = true;
+          lastDetectedAt = Date.now();
+        }
+
         partialAssistant = "";
       }
     } catch (_) {}
@@ -526,6 +556,8 @@ async function startVoice(){
 
     const data = await safeJson(tokenRes);
 
+    console.log("cliffhanger_mode:", data?.cliffhanger_mode, "phrase:", data?.cliffhanger_phrase);
+
     if (tokenRes.status === 402) {
       track("time_limit_reached");
       window.location.href = "/pricing/";
@@ -552,6 +584,8 @@ async function startVoice(){
     cliffhangerPhrase = String(data?.cliffhanger_phrase || "").trim(); // e.g. "Stay with me."
     cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
     cliffhangerTriggered = false;
+    cliffhangerPending = false;
+    lastDetectedAt = 0;
 
     remainingSeconds = (typeof data?.remaining_seconds === "number")
       ? Math.max(0, data.remaining_seconds)
