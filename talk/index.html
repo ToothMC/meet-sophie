@@ -141,7 +141,7 @@ async function reportUsage(secondsUsed) {
 }
 
 let convoLog = [];
-let partialAssistant = "";
+let partialAssistantForMemory = "";
 let lastAssistantFinal = "";
 const userTranscriptBuffer = new Map();
 
@@ -150,10 +150,10 @@ async function sendMemoryUpdate(secondsUsed) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
 
-    const finalA = (partialAssistant || "").trim();
+    const finalA = (partialAssistantForMemory || "").trim();
     if (finalA) {
       convoLog.push({ role:"assistant", text: finalA });
-      partialAssistant = "";
+      partialAssistantForMemory = "";
     }
 
     const cleaned = (convoLog || []).filter(t => {
@@ -204,7 +204,8 @@ let cliffhangerToken="";
 let cliffhangerRedirectUrl="/pricing/";
 let cliffhangerTriggered=false;
 
-// NEW: state machine
+// state machine (FIXED)
+let cliffhangerArmed=false;
 let finalLineHeard=false;
 let tokenRequested=false;
 let tokenSeen=false;
@@ -258,18 +259,15 @@ async function triggerCliffhangerRedirect(){
     });
   } catch(_) {}
 
-  // cancel generation + clear audio
   if (dc && dc.readyState==="open") {
     try { dc.send(JSON.stringify({ type:"response.cancel" })); } catch(_) {}
     try { dc.send(JSON.stringify({ type:"output_audio_buffer.clear" })); } catch(_) {}
   }
 
-  // fast teardown
   try { await stopVoice(true); } catch(_) {}
   window.location.href = cliffhangerRedirectUrl || "/pricing/";
 }
 
-// Match assistant transcript for final spoken line (tolerant)
 function normalize(s){
   return String(s||"")
     .toLowerCase()
@@ -277,13 +275,13 @@ function normalize(s){
     .replace(/\s+/g," ")
     .trim();
 }
-function hasFinalLine(s){
+
+// FINAL LINE MUST MATCH EXACTLY (optional punctuation)
+function hasFinalLineExact(s){
   const t = normalize(s);
-  // accept with/without punctuation
-  return t.includes("stay with me");
+  return /^stay with me[.!?]?$/.test(t);
 }
 
-// Ask the server (model) for a text-only token now (NOT spoken)
 function requestTokenTextOnly(){
   if (!dc || dc.readyState!=="open") return;
   if (tokenRequested) return;
@@ -300,19 +298,12 @@ function requestTokenTextOnly(){
   } catch(_) {}
 }
 
-// Token can come as output_text.*; we only accept it AFTER final line heard AND we requested it
-function messageHasToken(msg){
-  const tok = String(cliffhangerToken||"").trim();
-  if (!tok) return false;
-  if (String(msg?.delta||"").includes(tok)) return true;
-  if (String(msg?.text||"").includes(tok)) return true;
-  if (String(msg?.transcript||"").includes(tok)) return true;
-  // check nested parts
-  try {
-    const s = JSON.stringify(msg);
-    if (s.includes(tok)) return true;
-  } catch(_) {}
-  return false;
+// Token acceptance MUST be exact on output_text.done (no JSON stringify, no transcript)
+function isExactTokenTextDone(msg){
+  if (msg?.type !== "response.output_text.done") return false;
+  const tok = String(cliffhangerToken || "").trim();
+  const txt = String(msg?.text || "").trim();
+  return !!tok && txt === tok;
 }
 
 function attachChannel(ch){
@@ -335,43 +326,41 @@ function attachChannel(ch){
     let msg=null;
     try { msg = JSON.parse(ev.data); } catch { return; }
 
-    // ---- assistant transcript stream: detect final line ----
-    if (cliffhangerMode && !isPremium && !finalLineHeard) {
-      if (msg?.type === "response.audio_transcript.delta") {
-        const d = String(msg?.delta || "");
-        if (d) {
-          // accumulate into partialAssistant as well
-          partialAssistant += d;
-          if (hasFinalLine(partialAssistant)) {
-            finalLineHeard = true;
-            track("cliffhanger_final_line_heard");
-            requestTokenTextOnly();
-          }
+    // ---- Cliffhanger gating (FIXED) ----
+    if (cliffhangerMode && !isPremium) {
+
+      // Arm only after we KNOW Sophie actually spoke intro (done only)
+      if (!cliffhangerArmed && msg?.type === "response.audio_transcript.done") {
+        const t = normalize(msg?.transcript || "");
+        if (
+          t.includes("im sophie") ||
+          t.includes("i’m sophie") ||
+          t.includes("i am sophie") ||
+          t.includes("you're new here") ||
+          t.includes("youre new here")
+        ) {
+          cliffhangerArmed = true;
+          console.log("CLIFFHANGER ARMED");
+          track("cliffhanger_armed");
         }
       }
 
-      if (msg?.type === "response.audio_transcript.done") {
-        const full = String(msg?.transcript || "");
-        if (full) {
-          partialAssistant = full;
-          if (hasFinalLine(full)) {
-            finalLineHeard = true;
-            track("cliffhanger_final_line_heard_done");
-            requestTokenTextOnly();
-          }
+      // Detect final line ONLY on transcript.done and ONLY exact match
+      if (cliffhangerArmed && !finalLineHeard && msg?.type === "response.audio_transcript.done") {
+        const full = String(msg?.transcript || "").trim();
+        if (hasFinalLineExact(full)) {
+          finalLineHeard = true;
+          console.log("FINAL LINE HEARD");
+          track("cliffhanger_final_line_heard_done");
+          requestTokenTextOnly();
         }
       }
-    }
 
-    // ---- token receipt (only after request) ----
-    if (cliffhangerMode && !isPremium && finalLineHeard && tokenRequested && !tokenSeen) {
-      if (
-        msg?.type === "response.output_text.delta" ||
-        msg?.type === "response.output_text.done" ||
-        msg?.type === "response.done"
-      ) {
-        if (messageHasToken(msg)) {
+      // Accept token ONLY as exact response.output_text.done
+      if (cliffhangerArmed && finalLineHeard && tokenRequested && !tokenSeen) {
+        if (isExactTokenTextDone(msg)) {
           tokenSeen = true;
+          console.log("TOKEN SEEN -> REDIRECT");
           track("cliffhanger_token_seen");
           triggerCliffhangerRedirect();
           return;
@@ -400,26 +389,26 @@ function attachChannel(ch){
       return;
     }
 
-    // assistant accumulation for memory
+    // assistant accumulation for memory (keep separate from cliffhanger detection)
     if (msg?.type === "response.output_text.delta") {
       const chunk = String(msg?.delta || "");
-      if (chunk) partialAssistant += chunk;
+      if (chunk) partialAssistantForMemory += chunk;
       return;
     }
 
     if (msg?.type === "response.output_text.done") {
       const full = String(msg?.text || "").trim();
-      if (full) partialAssistant = full;
+      if (full) partialAssistantForMemory = full;
       return;
     }
 
     if (msg?.type === "response.done") {
-      const final = String(partialAssistant || "").trim();
+      const final = String(partialAssistantForMemory || "").trim();
       if (final && final !== lastAssistantFinal) {
         convoLog.push({ role:"assistant", text: final });
         lastAssistantFinal = final;
       }
-      partialAssistant = "";
+      partialAssistantForMemory = "";
     }
   });
 }
@@ -441,11 +430,12 @@ async function startVoice(){
   track("talk_start_clicked");
 
   convoLog = [];
-  partialAssistant = "";
+  partialAssistantForMemory = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
   cliffhangerTriggered=false;
+  cliffhangerArmed=false;
   finalLineHeard=false;
   tokenRequested=false;
   tokenSeen=false;
@@ -561,7 +551,6 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit=false){
   endBtn.disabled = true;
 
-  // If redirecting, do fast teardown
   if (cliffhangerTriggered) {
     stopCountdown();
     teardownRealtime();
