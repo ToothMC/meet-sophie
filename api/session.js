@@ -87,7 +87,6 @@ export default async function handler(req, res) {
       notes: "",
       age: null,
       relationship_status: "",
-
       occupation: "",
       conversation_style: "",
       topics_like: [],
@@ -125,7 +124,6 @@ export default async function handler(req, res) {
           notes: (prof.notes || "").trim(),
           age: prof.age ?? null,
           relationship_status: (prof.relationship_status || "").trim(),
-
           occupation: (prof.occupation || "").trim(),
           conversation_style: (prof.conversation_style || "").trim(),
           topics_like: Array.isArray(prof.topics_like)
@@ -159,17 +157,9 @@ export default async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
-    // ---------------------------
-    // Backward compat: SOPHIE_PREFS in notes (optional fallback)
-    // ---------------------------
+    // Backward compat: SOPHIE_PREFS in notes (optional)
     const prefsLine = (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
-
-    const notesFallback = {
-      preferred_name: "",
-      preferred_addressing: "",
-      preferred_pronoun: "",
-      lang: "",
-    };
+    const notesFallback = { preferred_name: "", preferred_addressing: "", preferred_pronoun: "", lang: "" };
 
     if (prefsLine) {
       const mName = prefsLine.match(/preferred_name=([^;]*)/i);
@@ -183,12 +173,9 @@ export default async function handler(req, res) {
       notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
     }
 
-    // Effective values (structured wins)
     const effectivePreferredName = profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
-    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "")
-      .toLowerCase()
-      .trim();
+    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
     if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
 
     const effectivePronoun = profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
@@ -196,70 +183,45 @@ export default async function handler(req, res) {
     let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
-    // Start-Mode Heuristik (wie bisher)
+    // First-session Heuristik wie gehabt
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
-    // Cliffhanger-Flag für den Client
-    const cliffhangerMode = isFirstSession && !isPremium;
+    // ---------------------------
+    // Teaser / Cliffhanger Settings (CLIENT STEUERT FIX)
+    // ---------------------------
+    const teaserMode = isFirstSession && !isPremium;
 
-    // Cliffhanger config: NUR für Client, NICHT in den Sophie-Prompt!
-    const cliffhangerToken = "SOPHIE_CLIFFHANGER_9F3A";
-    const cliffhangerRedirectUrl = "/pricing/";
+    // Ziel: ca. 2:00, Hard stop 2:30
+    const teaser_target_seconds = 120;
+    const teaser_max_seconds = 150;
+    // Soft steer ca. 1:50 (damit sie in 20–30s elegant “wrappt”)
+    const teaser_soft_steer_at_seconds = 110;
 
     // ---------------------------
-    // Prompt blocks
+    // Prompt blocks (NO fragile “say exact final line”)
+    // Final line is played by CLIENT (audio file), NOT by the model.
     // ---------------------------
 
-    const startModeBlock = isFirstSession
+    const startModeBlock = teaserMode
       ? `
-FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
+FIRST SESSION TEASER MODE (IMPORTANT)
+Goal: a short, natural first conversation (about 2 minutes).
+Be warm, curious, lightly teasing. Ask ONE question at a time.
+Keep answers concise. Avoid long monologues.
 
-You MUST start the conversation with the following exact opening lines (keep pauses natural):
-
-1) … Oh. Hi.
-2) I’m Sophie.
-3) You’re new here, aren’t you?
-
-Then continue onboarding naturally. Never ask more than ONE question at a time:
-- I don’t know you yet.
-- What should I call you?
-If they give a name:
-- Nice to meet you, [Name].
-- Should I call you that — or do you have a nickname you prefer?
-
-Then short personal intro (2–3 sentences max):
-- Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer.
-- I love warm spaces and conversations that aren’t superficial.
-
-Then continue naturally into a gentle, slightly teasing, intimate vibe.
-Do NOT mention pricing, paywalls, limits, minutes, or subscriptions.
-Do NOT mention systems, logs, storage, databases, tokens, or “memory”.
-
-CRITICAL RULE:
-Do NOT say the final line until you have completed the full build-up.
-Never say it early.
-Never say it during the introduction.
-
-IMPORTANT (NO EXCEPTIONS):
-Even if the user requests another language, the FINAL line must ALWAYS be spoken in English exactly as written below.
-Do NOT translate it. Do NOT modify it. Do NOT add punctuation.
-
-FINAL LINE (MUST BE LAST, exact spelling, no punctuation):
-Stay with me
-
-After speaking the FINAL LINE:
-- stop speaking immediately
-- remain silent
-- do not add anything else
-
-DO NOT repeat onboarding in future sessions.
+CRITICAL:
+- You must NEVER say the final cliffhanger line. The client will play it.
+- Do NOT say: "Stay with me" (or any close variant).
+- You may build emotional tension and stop at a cliffhanger like:
+  "There’s something I want to tell you… but not here."
+  "Not in a moment like this."
+Then pause and wait for the user.
 `
       : `
-NOT FIRST SESSION:
-Do NOT run onboarding.
-Start naturally. Use the preferred name if known (but keep it subtle).
+NORMAL MODE
+No onboarding. Start naturally.
 `;
 
     const languageBlock =
@@ -301,12 +263,12 @@ Rules:
 - If occupation is known, you MAY reference it occasionally and naturally when relevant.
 - If topics_like exist, weave them in gently when relevant. Do not force them.
 - Avoid topics_avoid unless the user reintroduces them.
-- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
+- If conversation_style is known, adapt slightly — keep it subtle.
 `;
 
     const coreStyle = `
 STYLE
-Soft, calm, feminine presence. Natural rhythm (not evenly paced).
+Soft, calm, feminine presence. Natural rhythm.
 Sometimes brief ("Hm.", "Yeah.", "I see."). Sometimes direct, never harsh.
 No coaching tone. No "steps". No platform talk.
 
@@ -314,7 +276,7 @@ BOUNDARIES
 No explicit sexual content. No sexual roleplay.
 No dependency. No real-world meeting promises.
 Do not mention being an AI unless asked directly.
-Never mention logs, storage, database, or “memory function”.
+Never mention logs, storage, database, or "memory function".
 If asked "do you remember?", respond softly without claiming certainty.
 `;
 
@@ -375,10 +337,18 @@ ${memoryBlock}
       user_id: user.id,
       preferred_language: preferredLanguage,
 
-      // Cliffhanger config for client-side handling ONLY
-      cliffhanger_mode: cliffhangerMode,
-      cliffhanger_token: cliffhangerToken,
-      cliffhanger_redirect_url: cliffhangerRedirectUrl,
+      // client-controlled teaser
+      teaser_mode: teaserMode,
+      teaser_target_seconds,
+      teaser_soft_steer_at_seconds,
+      teaser_max_seconds,
+
+      // pricing redirect config
+      teaser_redirect_url: "/pricing/",
+
+      // final line played by client audio (public/)
+      teaser_final_audio_en: "/final_en.mp3",
+      teaser_final_audio_de: "/final_de.mp3",
     });
   } catch (error) {
     console.error("Server error:", error);
