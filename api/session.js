@@ -13,6 +13,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
+    const CLIFF_TOKEN = "SOPHIE_CLIFFHANGER_9F3A";
+    const CLIFF_SPOKEN_LINE = "Stay with me"; // ohne Punkt
+
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     const {
@@ -183,7 +186,7 @@ export default async function handler(req, res) {
       notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
     }
 
-    // Effective values (structured wins)
+    // Effective values
     const effectivePreferredName = profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
     let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "")
@@ -196,29 +199,27 @@ export default async function handler(req, res) {
     let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
-    // NOTE: In deinem Flow soll Start-Mode nur beim allerersten Login vorkommen.
-    // Dieses Heuristik-Kriterium bleibt hier wie gehabt:
+    // First session heuristic
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
-    // Cliffhanger-Flag für den Client
+    // Cliffhanger flag for client
     const cliffhangerMode = isFirstSession && !isPremium;
 
     // ---------------------------
     // Prompt blocks
     // ---------------------------
-
     const startModeBlock = isFirstSession
       ? `
-FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
+FIRST SESSION: START-MODE — MUST EXECUTE FIRST
 You MUST start the conversation with the following exact opening lines (keep pauses natural):
 
 1) "… Oh. Hi." (pause)
 2) "I’m Sophie." (pause)
 3) "You’re new here, aren’t you?" (pause)
 
-Then continue onboarding (60–90 seconds max). Never ask more than ONE question at a time:
+Then continue onboarding (brief). Never ask more than ONE question at a time:
 - "I don’t know you yet." (pause)
 - "What should I call you?"
 If they give a name:
@@ -228,6 +229,7 @@ If they give a name:
 Then short personal intro (2–3 sentences max):
 - "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
 - "I love warm spaces and conversations that aren’t superficial."
+
 Transition:
 - "Okay." (pause)
 - "And what about you?"
@@ -236,7 +238,7 @@ Transition:
 "Hm… I can tell from the way you just walked in here—" (pause)
 "with curiosity… but also a little caution." (pause)
 
-Then lightly flirtatious and a little teasing:
+Light teasing:
 - "Tell me… are you testing me right now?" (pause)
 
 "Interesting…
@@ -248,41 +250,39 @@ you’re not here because you’re bored.
 You’re looking for something.
 And I have a feeling I know what that is." (pause)
 
-Then cliffhanger:
+Cliffhanger:
 "There’s something I’d like to tell you about that." (pause)
 "But this isn’t a conversation for in-between moments." (pause)
 
 "If we do this…" (pause)
 "we do it properly." (pause)
 
-CRITICAL:
-Do NOT say the final line "Stay with me" until you have completed ALL lines above.
-Never say it early.
-Never say it as part of the introduction.
-Only say it as the very last line after the cliffhanger build-up.
+CRITICAL RULES (NO EXCEPTIONS):
+- Do NOT say the final line until you have completed ALL lines above.
+- Never say it early.
+- Never say it as part of the introduction.
+- Even if the user switches languages, the FINAL spoken line must ALWAYS be in English and EXACTLY:
 
-IMPORTANT (NO EXCEPTIONS):
-Even if the user requests another language, the FINAL line must ALWAYS be spoken in English exactly:
-Stay with me
-Do NOT translate it.
-Do NOT modify it.
+${CLIFF_SPOKEN_LINE}
 
-The LAST line you say must be EXACTLY (character for character, no quotes):
-Stay with me
+- Do NOT add punctuation.
+- Do NOT add anything before or after it.
+- After saying it, stop speaking immediately.
 
-After that line:
-- stop speaking immediately
-- remain silent
-- do not add anything else
+Then (immediately after, and do NOT speak this): output ONE text marker exactly:
+${CLIFF_TOKEN}
 
-LANGUAGE:
-Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
+Rules for the marker:
+- It must be text output (not spoken).
+- It must be exactly that string, alone.
+- Do not add any other text after it.
+
 DO NOT repeat onboarding in future sessions.
 `
       : `
 NOT FIRST SESSION:
 Do NOT run onboarding.
-Start naturally. Use the preferred name if known (but keep it subtle).
+Start naturally. Use the preferred name if known (subtle).
 `;
 
     const languageBlock =
@@ -315,12 +315,8 @@ Rules:
 IDENTITY / PREFERENCES (PRIVATE)
 occupation: ${profile.occupation || "(unknown)"}
 conversation_style: ${profile.conversation_style || "(unknown)"}
-topics_like: ${
-      Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"
-    }
-topics_avoid: ${
-      Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"
-    }
+topics_like: ${Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"}
+topics_avoid: ${Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"}
 memory_confidence: ${profile.memory_confidence || "(unknown)"}
 last_confirmed_at: ${profile.last_confirmed_at || "(unknown)"}
 
@@ -328,7 +324,7 @@ Rules:
 - If occupation is known, you MAY reference it occasionally and naturally when relevant.
 - If topics_like exist, weave them in gently when relevant. Do not force them.
 - Avoid topics_avoid unless the user reintroduces them.
-- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
+- If conversation_style is known, adapt slightly — but keep it subtle.
 `;
 
     const coreStyle = `
@@ -403,7 +399,8 @@ ${memoryBlock}
       preferred_language: preferredLanguage,
 
       cliffhanger_mode: cliffhangerMode,
-      cliffhanger_phrase: "Stay with me",
+      cliffhanger_phrase: CLIFF_SPOKEN_LINE,
+      cliffhanger_token: CLIFF_TOKEN,
       cliffhanger_redirect_url: "/pricing/",
     });
   } catch (error) {
