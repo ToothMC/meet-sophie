@@ -198,13 +198,17 @@ let plan=null;
 // session meta
 let talkStartedAt=null;
 
-// cliffhanger
+// cliffhanger config from server
 let cliffhangerMode=false;
 let cliffhangerToken="";
 let cliffhangerRedirectUrl="/pricing/";
 let cliffhangerTriggered=false;
 
-// state machine (FIXED)
+// Start-mode re-lock (NO MONOLOG)
+let startModeActive=false;
+let lastRelockAt=0;
+
+// cliffhanger state machine
 let cliffhangerArmed=false;
 let finalLineHeard=false;
 let tokenRequested=false;
@@ -259,11 +263,13 @@ async function triggerCliffhangerRedirect(){
     });
   } catch(_) {}
 
+  // cancel generation + clear audio
   if (dc && dc.readyState==="open") {
     try { dc.send(JSON.stringify({ type:"response.cancel" })); } catch(_) {}
     try { dc.send(JSON.stringify({ type:"output_audio_buffer.clear" })); } catch(_) {}
   }
 
+  // fast teardown
   try { await stopVoice(true); } catch(_) {}
   window.location.href = cliffhangerRedirectUrl || "/pricing/";
 }
@@ -276,12 +282,13 @@ function normalize(s){
     .trim();
 }
 
-// FINAL LINE MUST MATCH EXACTLY (optional punctuation)
+// FINAL LINE must match exactly (optional punctuation)
 function hasFinalLineExact(s){
   const t = normalize(s);
   return /^stay with me[.!?]?$/.test(t);
 }
 
+// Ask the model for a text-only token (NOT spoken)
 function requestTokenTextOnly(){
   if (!dc || dc.readyState!=="open") return;
   if (tokenRequested) return;
@@ -298,12 +305,41 @@ function requestTokenTextOnly(){
   } catch(_) {}
 }
 
-// Token acceptance MUST be exact on output_text.done (no JSON stringify, no transcript)
+// Accept token ONLY as exact text in response.output_text.done
 function isExactTokenTextDone(msg){
   if (msg?.type !== "response.output_text.done") return false;
   const tok = String(cliffhangerToken || "").trim();
   const txt = String(msg?.text || "").trim();
   return !!tok && txt === tok;
+}
+
+// Re-lock Start-Mode if user interrupts (NOT monolog, just short ack + continue start-mode)
+function relockStartModeIfNeeded(){
+  if (!startModeActive) return;
+  if (cliffhangerTriggered) return;
+  if (finalLineHeard) { startModeActive = false; return; }
+  if (!dc || dc.readyState !== "open") return;
+
+  const now = Date.now();
+  if (now - lastRelockAt < 1200) return; // throttle
+  lastRelockAt = now;
+
+  try {
+    dc.send(JSON.stringify({
+      type: "response.create",
+      response: {
+        modalities: ["audio","text"],
+        instructions: `
+You are still in START-MODE.
+The user just spoke. Follow the INTERRUPTION RULE:
+- Say ONE short acknowledgment sentence (max 8 words).
+- Then immediately continue Start-Mode where you left off.
+Do NOT switch to normal conversation mode.
+Do NOT change topic.
+`
+      }
+    }));
+  } catch(_) {}
 }
 
 function attachChannel(ch){
@@ -326,10 +362,10 @@ function attachChannel(ch){
     let msg=null;
     try { msg = JSON.parse(ev.data); } catch { return; }
 
-    // ---- Cliffhanger gating (FIXED) ----
+    // ---- Cliffhanger gating ----
     if (cliffhangerMode && !isPremium) {
 
-      // Arm only after we KNOW Sophie actually spoke intro (done only)
+      // Arm only after we KNOW Sophie spoke intro (done only)
       if (!cliffhangerArmed && msg?.type === "response.audio_transcript.done") {
         const t = normalize(msg?.transcript || "");
         if (
@@ -345,18 +381,19 @@ function attachChannel(ch){
         }
       }
 
-      // Detect final line ONLY on transcript.done and ONLY exact match
+      // Detect FINAL line ONLY on transcript.done and ONLY exact match
       if (cliffhangerArmed && !finalLineHeard && msg?.type === "response.audio_transcript.done") {
         const full = String(msg?.transcript || "").trim();
         if (hasFinalLineExact(full)) {
           finalLineHeard = true;
+          startModeActive = false; // stop relock after final line
           console.log("FINAL LINE HEARD");
           track("cliffhanger_final_line_heard_done");
           requestTokenTextOnly();
         }
       }
 
-      // Accept token ONLY as exact response.output_text.done
+      // Accept token ONLY as exact output_text.done
       if (cliffhangerArmed && finalLineHeard && tokenRequested && !tokenSeen) {
         if (isExactTokenTextDone(msg)) {
           tokenSeen = true;
@@ -386,10 +423,13 @@ function attachChannel(ch){
       const text = (t1 || tBuf).trim();
       if (itemId) userTranscriptBuffer.delete(itemId);
       if (text) convoLog.push({ role:"user", text });
+
+      // NEW: if user interrupts during start-mode, re-lock flow
+      relockStartModeIfNeeded();
       return;
     }
 
-    // assistant accumulation for memory (keep separate from cliffhanger detection)
+    // assistant accumulation for memory
     if (msg?.type === "response.output_text.delta") {
       const chunk = String(msg?.delta || "");
       if (chunk) partialAssistantForMemory += chunk;
@@ -429,16 +469,22 @@ async function startVoice(){
 
   track("talk_start_clicked");
 
+  // reset buffers
   convoLog = [];
   partialAssistantForMemory = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
+  // reset cliffhanger state
   cliffhangerTriggered=false;
   cliffhangerArmed=false;
   finalLineHeard=false;
   tokenRequested=false;
   tokenSeen=false;
+
+  // reset relock state
+  startModeActive=false;
+  lastRelockAt=0;
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
@@ -486,7 +532,10 @@ async function startVoice(){
     cliffhangerToken = String(data?.cliffhanger_token || "SOPHIE_CLIFFHANGER_9F3A").trim();
     cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
 
-    console.log("cliffhanger_mode:", cliffhangerMode, "token:", cliffhangerToken);
+    // Start-mode active for relock only in this case
+    startModeActive = !!cliffhangerMode && !isPremium;
+
+    console.log("cliffhanger_mode:", cliffhangerMode, "token:", cliffhangerToken, "startModeActive:", startModeActive);
 
     pc = new RTCPeerConnection();
     setupDataChannelLogging();
@@ -551,6 +600,7 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit=false){
   endBtn.disabled = true;
 
+  // If redirecting, do fast teardown
   if (cliffhangerTriggered) {
     stopCountdown();
     teardownRealtime();
