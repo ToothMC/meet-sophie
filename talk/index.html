@@ -259,30 +259,11 @@ let plan = null;
 // Session meta
 let talkStartedAt = null;
 
-// Cliffhanger redirect (from /api/session)
+// Cliffhanger (from /api/session)
 let cliffhangerMode = false;
-let cliffhangerPhrase = "Stay with me.";
+let cliffhangerPhrase = "";
 let cliffhangerRedirectUrl = "/pricing/";
-let cliffhangerRedirected = false;
-let cliffhangerPending = false; // ✅ NEW: wait for audio to finish
-
-function norm(s) {
-  return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function redirectToPricing(reason = "cliffhanger") {
-  if (cliffhangerRedirected) return;
-  cliffhangerRedirected = true;
-
-  try { track("cliffhanger_redirect", { reason, plan: plan || null, is_premium: !!isPremium }); } catch (_) {}
-
-  // cleanup fast (keine Goodbye-Line, kein memory update – sonst verzögert es)
-  stopDynamicResets();
-  stopCountdown();
-  teardownRealtime();
-
-  window.location.href = cliffhangerRedirectUrl || "/pricing/";
-}
+let cliffhangerTriggered = false;
 
 // dynamic reset interval
 let dynamicResetInterval = null;
@@ -363,6 +344,40 @@ function startDynamicResets(){
   dynamicResetInterval = setInterval(triggerDynamicReset, 120000); // alle 2 Minuten
 }
 
+function normalizePhrase(s){
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[“”„"']/g, "")
+    .replace(/[^\p{L}\p{N}\s.?!-]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function triggerCliffhangerRedirect(){
+  if (cliffhangerTriggered) return;
+  cliffhangerTriggered = true;
+
+  try {
+    track("cliffhanger_triggered", {
+      phrase: cliffhangerPhrase || null,
+      redirect: cliffhangerRedirectUrl || null,
+      plan: plan || null,
+      is_premium: !!isPremium
+    });
+  } catch (_) {}
+
+  // Stop current response immediately + clear any buffered audio
+  if (dc && dc.readyState === "open") {
+    try { dc.send(JSON.stringify({ type: "response.cancel" })); } catch(_) {}
+    try { dc.send(JSON.stringify({ type: "output_audio_buffer.clear" })); } catch(_) {}
+  }
+
+  // Tear down voice quickly (avoid goodbye/memory delay)
+  try { await stopVoice(true); } catch (_) {}
+
+  window.location.href = cliffhangerRedirectUrl || "/pricing/";
+}
+
 // Robust DataChannel handling: server-created + client-created
 function attachChannel(ch) {
   dc = ch;
@@ -382,6 +397,25 @@ function attachChannel(ch) {
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
+
+      // ✅ CLIFFHANGER DETECTION (best hook: audio transcript finished)
+      if (msg?.type === "response.output_audio_transcript.done") {
+        if (!cliffhangerMode || isPremium) return;
+
+        const spoken = normalizePhrase(msg?.transcript || "");
+        const target = normalizePhrase(cliffhangerPhrase);
+
+        // Optional: German fallback (if Sophie translates anyway)
+        const germanFallback = normalizePhrase("Bleib bei mir.");
+        const hit =
+          (target && spoken.includes(target)) ||
+          (!!spoken && spoken.includes(germanFallback));
+
+        if (hit) {
+          triggerCliffhangerRedirect();
+        }
+        return;
+      }
 
       // user transcript streaming
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
@@ -438,35 +472,13 @@ function attachChannel(ch) {
         if (chunk) partialAssistant += chunk;
       }
 
-      // ✅ NEW: wait until audio finished playing/streaming before redirect
-      if (msg?.type === "response.output_audio.done") {
-        if (cliffhangerMode && cliffhangerPending) {
-          cliffhangerPending = false;
-          redirectToPricing("audio_done");
-          return;
-        }
-        return;
-      }
-
       if (msg?.type === "response.done") {
         const final = String(partialAssistant || "").trim();
-
         if (final && final !== lastAssistantFinal) {
           convoLog.push({ role: "assistant", text: final });
           lastAssistantFinal = final;
         }
-
-        // ✅ Cliffhanger detect here, but DO NOT redirect yet (audio may still be playing)
-        if (cliffhangerMode && final) {
-          const hay = norm(final);
-          const needle = norm(cliffhangerPhrase);
-          if (needle && hay.includes(needle)) {
-            cliffhangerPending = true; // redirect on output_audio.done
-          }
-        }
-
         partialAssistant = "";
-        return;
       }
     } catch (_) {}
   });
@@ -535,12 +547,11 @@ async function startVoice(){
     isPremium = !!data?.is_premium;
     plan = data?.plan || null;
 
-    // Cliffhanger info (only relevant for first session)
-    cliffhangerMode = !!data?.cliffhanger_mode && !isPremium;
-    cliffhangerPhrase = String(data?.cliffhanger_phrase || "Stay with me.").trim();
+    // Cliffhanger config from backend
+    cliffhangerMode = !!data?.cliffhanger_mode;
+    cliffhangerPhrase = String(data?.cliffhanger_phrase || "").trim(); // e.g. "Stay with me."
     cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
-    cliffhangerRedirected = false;
-    cliffhangerPending = false;
+    cliffhangerTriggered = false;
 
     remainingSeconds = (typeof data?.remaining_seconds === "number")
       ? Math.max(0, data.remaining_seconds)
@@ -598,7 +609,8 @@ async function startVoice(){
     track("talk_started", {
       is_premium: isPremium,
       plan: plan || null,
-      remaining_seconds_at_start: remainingSeconds
+      remaining_seconds_at_start: remainingSeconds,
+      cliffhanger_mode: !!cliffhangerMode
     });
 
     startCountdown();
@@ -620,7 +632,7 @@ async function stopVoice(triggeredByLimit = false){
   stopDynamicResets();
 
   // If we are redirecting due to cliffhanger, do not delay with goodbye/memory
-  if (cliffhangerRedirected) {
+  if (cliffhangerTriggered) {
     stopCountdown();
     teardownRealtime();
     showBackground(false);
