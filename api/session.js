@@ -256,19 +256,19 @@ Then cliffhanger:
 "we do it properly." (pause)
 
 CRITICAL:
-Do NOT say the final line "Stay with me." until you have completed ALL lines above.
+Do NOT say the final line "Stay with me" until you have completed ALL lines above.
 Never say it early.
 Never say it as part of the introduction.
 Only say it as the very last line after the cliffhanger build-up.
 
 IMPORTANT (NO EXCEPTIONS):
 Even if the user requests another language, the FINAL line must ALWAYS be spoken in English exactly:
-Stay with me.
+Stay with me
 Do NOT translate it.
 Do NOT modify it.
 
 The LAST line you say must be EXACTLY (character for character, no quotes):
-Stay with me.
+Stay with me
 
 After that line:
 - stop speaking immediately
@@ -403,7 +403,7 @@ ${memoryBlock}
       preferred_language: preferredLanguage,
 
       cliffhanger_mode: cliffhangerMode,
-      cliffhanger_phrase: "Stay with me.",
+      cliffhanger_phrase: "Stay with me",
       cliffhanger_redirect_url: "/pricing/",
     });
   } catch (error) {
