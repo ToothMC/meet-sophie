@@ -259,6 +259,30 @@ let plan = null;
 // Session meta
 let talkStartedAt = null;
 
+// Cliffhanger redirect (from /api/session)
+let cliffhangerMode = false;
+let cliffhangerPhrase = "Stay with me.";
+let cliffhangerRedirectUrl = "/pricing/";
+let cliffhangerRedirected = false;
+
+function norm(s) {
+  return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function redirectToPricing(reason = "cliffhanger") {
+  if (cliffhangerRedirected) return;
+  cliffhangerRedirected = true;
+
+  try { track("cliffhanger_redirect", { reason, plan: plan || null, is_premium: !!isPremium }); } catch (_) {}
+
+  // cleanup fast (keine Goodbye-Line, kein memory update – sonst verzögert es)
+  stopDynamicResets();
+  stopCountdown();
+  teardownRealtime();
+
+  window.location.href = cliffhangerRedirectUrl || "/pricing/";
+}
+
 // dynamic reset interval
 let dynamicResetInterval = null;
 
@@ -415,10 +439,23 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.done") {
         const final = String(partialAssistant || "").trim();
+
         if (final && final !== lastAssistantFinal) {
           convoLog.push({ role: "assistant", text: final });
           lastAssistantFinal = final;
         }
+
+        // ✅ Cliffhanger trigger: redirect EXACTLY after Sophie finished speaking the phrase
+        if (cliffhangerMode && final) {
+          const hay = norm(final);
+          const needle = norm(cliffhangerPhrase);
+          if (needle && hay.includes(needle)) {
+            partialAssistant = "";
+            redirectToPricing("phrase_spoken");
+            return;
+          }
+        }
+
         partialAssistant = "";
       }
     } catch (_) {}
@@ -487,6 +524,12 @@ async function startVoice(){
 
     isPremium = !!data?.is_premium;
     plan = data?.plan || null;
+
+    // Cliffhanger info (only relevant for first session)
+    cliffhangerMode = !!data?.cliffhanger_mode && !isPremium;
+    cliffhangerPhrase = String(data?.cliffhanger_phrase || "Just tell me if you want me to stay.").trim();
+    cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
+    cliffhangerRedirected = false;
 
     remainingSeconds = (typeof data?.remaining_seconds === "number")
       ? Math.max(0, data.remaining_seconds)
@@ -564,6 +607,18 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
+
+  // If we are redirecting due to cliffhanger, do not delay with goodbye/memory
+  if (cliffhangerRedirected) {
+    stopCountdown();
+    teardownRealtime();
+    showBackground(false);
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+    headline.textContent = "Sophie is waiting.";
+    setStatus("Ended.");
+    return;
+  }
 
   // try to let Sophie say a short goodbye (non-blocking-ish)
   if (dc && dc.readyState === "open") {
