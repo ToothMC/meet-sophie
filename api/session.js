@@ -255,8 +255,13 @@ Then cliffhanger:
 "If we do this…" (pause)
 "we do it properly." (pause)
 
-The LAST line you say in Start-Mode must be EXACTLY (character for character, no quotes):
-Just tell me if you want me to stay.
+The LAST line you say must be EXACTLY (character for character, no quotes):
+Stay with me.
+
+Do not translate it.
+Do not modify it.
+Do not add anything before or after it.
+After that line, stop speaking immediately and remain silent.
 
 After that line:
 - stop speaking immediately
@@ -391,7 +396,7 @@ ${memoryBlock}
       preferred_language: preferredLanguage,
 
       cliffhanger_mode: cliffhangerMode,
-      cliffhanger_phrase: "Just tell me if you want me to stay.",
+      cliffhanger_phrase: "Stay with me.",
       cliffhanger_redirect_url: "/pricing/",
     });
   } catch (error) {
