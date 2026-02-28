@@ -261,7 +261,7 @@ let talkStartedAt = null;
 
 // Cliffhanger (from /api/session)
 let cliffhangerMode = false;
-let cliffhangerPhrase = "";
+let cliffhangerPhrase = "";         // will be "Stay with me" (no dot)
 let cliffhangerRedirectUrl = "/pricing/";
 let cliffhangerTriggered = false;
 let cliffhangerPending = false;
@@ -350,6 +350,7 @@ function normalizePhrase(s){
   return String(s || "")
     .toLowerCase()
     .replace(/[“”„"']/g, "")
+    .replace(/[.?!,;:]+$/g, "")   // ✅ strip trailing punctuation for matching
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -363,7 +364,7 @@ function detectCliffhanger(text){
   if (target && hay.includes(target)) return true;
 
   // Optional: German fallback (if Sophie translates anyway)
-  if (hay.includes(normalizePhrase("bleib bei mir."))) return true;
+  if (hay.includes(normalizePhrase("bleib bei mir"))) return true;
 
   return false;
 }
@@ -581,7 +582,7 @@ async function startVoice(){
 
     // Cliffhanger config from backend
     cliffhangerMode = !!data?.cliffhanger_mode;
-    cliffhangerPhrase = String(data?.cliffhanger_phrase || "").trim(); // e.g. "Stay with me."
+    cliffhangerPhrase = String(data?.cliffhanger_phrase || "Stay with me").trim(); // ✅ no dot
     cliffhangerRedirectUrl = String(data?.cliffhanger_redirect_url || "/pricing/").trim() || "/pricing/";
     cliffhangerTriggered = false;
     cliffhangerPending = false;
