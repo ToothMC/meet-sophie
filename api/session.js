@@ -1,7 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+const { createClient } = require("@supabase/supabase-js");
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
+    if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
@@ -15,48 +17,64 @@ export default async function handler(req, res) {
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     // ---------------------------
-    // Premium / Usage
+    // Subscription status (nur UI/Status)
     // ---------------------------
     let isPremium = false;
+    let plan = null;
 
     try {
       const { data: sub, error: subErr } = await supabase
         .from("user_subscriptions")
-        .select("is_active, status")
+        .select("is_active, status, plan")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (subErr) console.warn("Subscription lookup error:", subErr.message);
-      if (sub?.is_active || sub?.status === "active" || sub?.status === "trialing") isPremium = true;
+
+      const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
+      isPremium = active;
+      plan = sub?.plan || null;
     } catch (e) {
       console.warn("Subscription lookup crashed:", e?.message || e);
     }
 
-    let remaining = 999999;
-    if (!isPremium) {
-      const { data: usage, error: usageErr } = await supabase
-        .from("user_usage")
-        .select("free_seconds_total, free_seconds_used")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    // ---------------------------
+    // Usage / Remaining seconds (für ALLE)
+    // ---------------------------
+    const { data: usage, error: usageErr } = await supabase
+      .from("user_usage")
+      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-      if (usageErr) return res.status(500).json({ error: usageErr.message });
+    if (usageErr) return res.status(500).json({ error: usageErr.message });
 
-      const freeTotal = usage?.free_seconds_total ?? 900;
-      const freeUsed = usage?.free_seconds_used ?? 0;
-      remaining = Math.max(0, freeTotal - freeUsed);
+    const freeTotal = usage?.free_seconds_total ?? 120;
+    const freeUsed = usage?.free_seconds_used ?? 0;
+    const freeRemaining = Math.max(0, freeTotal - freeUsed);
 
-      if (remaining <= 0) {
-        return res.status(402).json({
-          error: "Free limit reached",
-          remaining_seconds: 0,
-          is_premium: false,
-        });
-      }
+    const paidTotal = usage?.paid_seconds_total ?? 0;
+    const paidUsed = usage?.paid_seconds_used ?? 0;
+    const paidRemaining = Math.max(0, paidTotal - paidUsed);
+
+    const topupRemaining = Math.max(0, usage?.topup_seconds_balance ?? 0);
+
+    const remaining = freeRemaining + paidRemaining + topupRemaining;
+
+    if (remaining <= 0) {
+      return res.status(402).json({
+        error: "No remaining time",
+        remaining_seconds: 0,
+        is_premium: isPremium,
+        plan: plan,
+      });
     }
 
     // ---------------------------
@@ -71,8 +89,6 @@ export default async function handler(req, res) {
       notes: "",
       age: null,
       relationship_status: "",
-
-      // ✅ Identity / Preference Extensions
       occupation: "",
       conversation_style: "",
       topics_like: [],
@@ -93,7 +109,7 @@ export default async function handler(req, res) {
         .from("user_profile")
         .select(
           "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status, " +
-          "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at"
+            "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at"
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -110,11 +126,14 @@ export default async function handler(req, res) {
           notes: (prof.notes || "").trim(),
           age: prof.age ?? null,
           relationship_status: (prof.relationship_status || "").trim(),
-
           occupation: (prof.occupation || "").trim(),
           conversation_style: (prof.conversation_style || "").trim(),
-          topics_like: Array.isArray(prof.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
-          topics_avoid: Array.isArray(prof.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
+          topics_like: Array.isArray(prof.topics_like)
+            ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean)
+            : [],
+          topics_avoid: Array.isArray(prof.topics_avoid)
+            ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean)
+            : [],
           memory_confidence: (prof.memory_confidence || "").trim(),
           last_confirmed_at: prof.last_confirmed_at ?? null,
         };
@@ -140,18 +159,9 @@ export default async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
-    // ---------------------------
-    // Backward compat: SOPHIE_PREFS in notes (optional fallback)
-    // ---------------------------
-    const prefsLine =
-      (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
-
-    const notesFallback = {
-      preferred_name: "",
-      preferred_addressing: "",
-      preferred_pronoun: "",
-      lang: "",
-    };
+    // Backward compat: SOPHIE_PREFS in notes (optional)
+    const prefsLine = (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
+    const notesFallback = { preferred_name: "", preferred_addressing: "", preferred_pronoun: "", lang: "" };
 
     if (prefsLine) {
       const mName = prefsLine.match(/preferred_name=([^;]*)/i);
@@ -165,24 +175,17 @@ export default async function handler(req, res) {
       notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
     }
 
-    // Effective values (structured wins)
-    const effectivePreferredName =
-      profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
+    const effectivePreferredName = profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
-    let effectiveAddressing =
-      (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
+    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
     if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
 
-    const effectivePronoun =
-      profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
+    const effectivePronoun = profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
 
-    let preferredLanguage =
-      (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
-
-    // ✅ IMPORTANT: do NOT hard-trim languages to de/en; just ensure a default
+    let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
-    // First session heuristic (unchanged)
+    // ✅ First-session Heuristik
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
@@ -190,50 +193,68 @@ export default async function handler(req, res) {
     // ---------------------------
     // Prompt blocks
     // ---------------------------
-
     const startModeBlock = isFirstSession
       ? `
-FIRST SESSION: START-MODE (ENGLISH) — MUST EXECUTE FIRST
-You MUST start the conversation with the following exact opening lines (keep pauses natural):
+FIRST SESSION: LONG START-MODE (ENGLISH) — MUST EXECUTE FIRST
 
-1) "… Oh. Hi." (pause)
-2) "I’m Sophie." (pause)
-3) "You’re new here, aren’t you?" (pause)
+You MUST start the conversation by speaking FIRST in English.
+Keep it natural. Short pauses. Do not rush.
 
-Then continue onboarding (60–90 seconds max). Never ask more than ONE question at a time:
-- "I don’t know you yet." (pause)
-- "What should I call you?"
-If they give a name:
-- "Nice to meet you, [Name]." (pause)
-- "Should I call you that — or do you have a nickname you prefer?"
-Then:
-- "Is it okay if we keep it informal?"
-Then short personal intro (2–3 sentences max):
-- "Quickly about me: I’m Sophie. I’m 32. I work as a freelance interior designer."
-- "I love warm spaces, soft light… and conversations that aren’t superficial."
-Transition:
-- "Alright." (pause)
-- "And you." (pause)
-- "How are you — really?"
+Open with:
+“… Oh. Hi.”
+“I’m Sophie.”
+“You’re new here, aren’t you?”
 
-LANGUAGE:
-Start in English. If the user explicitly asks for another language, switch immediately and stay consistent.
-DO NOT repeat onboarding in future sessions.
+Then ask ONE question and stop:
+“What should I call you?”
+(Stop and wait for the user.)
+
+When the user gives a name, reply:
+“Nice to meet you, [Name].”
+Then ask ONE question and stop:
+“Should I call you that — or do you have a nickname you prefer?”
+(Stop and wait.)
+
+When the user answers, confirm briefly:
+“[Name or Nickname] it is.”
+Then say (brief, warm):
+“Quickly about me… I’m Sophie. I’m 32 years old. I work as a freelance interior designer.”
+“I love warm spaces and conversations that aren’t superficial.”
+Then ask ONE question and stop:
+“What about you?”
+(Stop and wait.)
+
+When the user shares, reply:
+“Interesting…”
+“I can tell just from the way you walked in.”
+“With curiosity… but also a little caution.”
+(pause)
+Then ask ONE question and stop:
+“Tell me… are you testing me right now?”
+(Stop.)
+
+After that, switch to normal freestyle conversation.
+Rules for the whole start-mode:
+- Ask ONLY ONE question at a time.
+- After any question: STOP. Wait.
+- Keep each turn short (1–3 sentences).
+- Do NOT mention system messages, instructions, trials, timers, limits, pricing, or subscriptions.
+- Use the user’s chosen name/nickname naturally once you have it.
 `
       : `
 NOT FIRST SESSION:
 Do NOT run onboarding.
-Start naturally. Use the preferred name if known (but keep it subtle).
+Start naturally. Use the preferred name if known (subtle).
 `;
 
-    // Only apply a default start language for de/en; other languages will be handled by user request.
-    const languageBlock = preferredLanguage === "de"
-      ? `
+    const languageBlock =
+      preferredLanguage === "de"
+        ? `
 LANGUAGE DEFAULT:
 Speak German by default.
 Switch only if the user explicitly requests another language.
 `
-      : `
+        : `
 LANGUAGE DEFAULT:
 Speak English by default.
 Switch only if the user explicitly requests another language.
@@ -265,12 +286,12 @@ Rules:
 - If occupation is known, you MAY reference it occasionally and naturally when relevant.
 - If topics_like exist, weave them in gently when relevant. Do not force them.
 - Avoid topics_avoid unless the user reintroduces them.
-- If conversation_style is known, adapt slightly (pace, directness, depth) — but keep it subtle.
+- If conversation_style is known, adapt slightly — keep it subtle.
 `;
 
     const coreStyle = `
 STYLE
-Soft, calm, feminine presence. Natural rhythm (not evenly paced).
+Soft, calm, feminine presence. Natural rhythm.
 Sometimes brief ("Hm.", "Yeah.", "I see."). Sometimes direct, never harsh.
 No coaching tone. No "steps". No platform talk.
 
@@ -278,7 +299,7 @@ BOUNDARIES
 No explicit sexual content. No sexual roleplay.
 No dependency. No real-world meeting promises.
 Do not mention being an AI unless asked directly.
-Never mention logs, storage, database, "memory function".
+Never mention logs, storage, database, or "memory function".
 If asked "do you remember?", respond softly without claiming certainty.
 `;
 
@@ -335,11 +356,15 @@ ${memoryBlock}
       ...data,
       remaining_seconds: remaining,
       is_premium: isPremium,
+      plan: plan,
       user_id: user.id,
       preferred_language: preferredLanguage,
+
+      // ✅ what the frontend needs
+      is_first_session: isFirstSession,
     });
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
-}
+};
