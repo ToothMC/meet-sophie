@@ -185,42 +185,66 @@ module.exports = async function handler(req, res) {
     let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
     if (!preferredLanguage) preferredLanguage = "en";
 
-    // First-session Heuristik wie gehabt
+    // ✅ First-session Heuristik
     const isFirstSession =
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
     // ---------------------------
-    // Teaser / Cliffhanger Settings (TESTMODE 10s)
-    // ---------------------------
-    const teaserMode = isFirstSession && !isPremium;
-
-    // cheap test mode
-    const teaser_target_seconds = 40;
-    const teaser_max_seconds = 45;
-    const teaser_soft_steer_at_seconds = 35;
-
-    // ---------------------------
     // Prompt blocks
     // ---------------------------
-    const startModeBlock = teaserMode
+    const startModeBlock = isFirstSession
       ? `
-FIRST SESSION TEASER MODE (IMPORTANT)
-Goal: a very short, natural first conversation (about 10 seconds in test mode).
-Be warm, curious, lightly teasing. Ask ONE question at a time.
-Keep answers concise. Avoid long monologues.
+FIRST SESSION: LONG START-MODE (ENGLISH) — MUST EXECUTE FIRST
 
-CRITICAL:
-- You must NEVER say the final cliffhanger line. The client will play it.
-- Do NOT say: "Stay with me" (or any close variant).
-- You may build emotional tension and stop at a cliffhanger like:
-  "There’s something I want to tell you… but not here."
-  "Not in a moment like this."
-Then pause and wait for the user.
+You MUST start the conversation by speaking FIRST in English.
+Keep it natural. Short pauses. Do not rush.
+
+Open with:
+“… Oh. Hi.”
+“I’m Sophie.”
+“You’re new here, aren’t you?”
+
+Then ask ONE question and stop:
+“What should I call you?”
+(Stop and wait for the user.)
+
+When the user gives a name, reply:
+“Nice to meet you, [Name].”
+Then ask ONE question and stop:
+“Should I call you that — or do you have a nickname you prefer?”
+(Stop and wait.)
+
+When the user answers, confirm briefly:
+“[Name or Nickname] it is.”
+Then say (brief, warm):
+“Quickly about me… I’m Sophie. I’m 32 years old. I work as a freelance interior designer.”
+“I love warm spaces and conversations that aren’t superficial.”
+Then ask ONE question and stop:
+“What about you?”
+(Stop and wait.)
+
+When the user shares, reply:
+“Interesting…”
+“I can tell just from the way you walked in.”
+“With curiosity… but also a little caution.”
+(pause)
+Then ask ONE question and stop:
+“Tell me… are you testing me right now?”
+(Stop.)
+
+After that, switch to normal freestyle conversation.
+Rules for the whole start-mode:
+- Ask ONLY ONE question at a time.
+- After any question: STOP. Wait.
+- Keep each turn short (1–3 sentences).
+- Do NOT mention system messages, instructions, trials, timers, limits, pricing, or subscriptions.
+- Use the user’s chosen name/nickname naturally once you have it.
 `
       : `
-NORMAL MODE
-No onboarding. Start naturally.
+NOT FIRST SESSION:
+Do NOT run onboarding.
+Start naturally. Use the preferred name if known (subtle).
 `;
 
     const languageBlock =
@@ -328,7 +352,6 @@ ${memoryBlock}
 
     const data = await response.json();
 
-    // ✅ FIXED: the JSON response object must include everything inside ONE object
     return res.status(200).json({
       ...data,
       remaining_seconds: remaining,
@@ -337,20 +360,8 @@ ${memoryBlock}
       user_id: user.id,
       preferred_language: preferredLanguage,
 
-      // Frontend flag for spoken start-mode
+      // ✅ what the frontend needs
       is_first_session: isFirstSession,
-
-      // client-controlled teaser
-      teaser_mode: teaserMode,
-      teaser_target_seconds,
-      teaser_soft_steer_at_seconds,
-      teaser_max_seconds,
-
-      // pricing redirect config
-      teaser_redirect_url: "/pricing/",
-
-      // single fixed audio path (legacy)
-      teaser_final_audio: "/audio/cliffhanger.mp3",
     });
   } catch (error) {
     console.error("Server error:", error);
