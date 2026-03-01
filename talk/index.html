@@ -237,6 +237,12 @@ let finaleAudioUrl = "/audio/cliffhanger.mp3";
 let finaleAudioEl = null;
 let audioUnlocked = false;
 
+// ✅ Cut-on-beat state
+let finaleArmed = false;
+let assistantSpeaking = false;
+let armedAtMs = 0;
+let finaleMaxWaitTimeout = null;
+
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
@@ -281,6 +287,7 @@ function stopCountdown(){
 function clearFinaleTimers(){
   if (softSteerTimeout) { clearTimeout(softSteerTimeout); softSteerTimeout = null; }
   if (hardCutTimeout) { clearTimeout(hardCutTimeout); hardCutTimeout = null; }
+  if (finaleMaxWaitTimeout) { clearTimeout(finaleMaxWaitTimeout); finaleMaxWaitTimeout = null; }
 }
 
 function teardownRealtime(){
@@ -339,18 +346,42 @@ async function playCliffhangerMp3(){
       a.addEventListener("error", resolve, { once: true });
       setTimeout(resolve, 1800); // safety
     });
-  } catch (_) {
-    // blocked/missing -> continue anyway
-  }
+  } catch (_) {}
 }
 
-// ✅ MP3 first, everything else fire-and-forget
+// ✅ Arm finale, wait for response.done (max 2.5s)
+function armFinaleThenWait(){
+  if (finaleTriggered) return;
+
+  finaleArmed = true;
+  armedAtMs = Date.now();
+
+  // If she isn't speaking right now, go immediately
+  if (!assistantSpeaking) {
+    runFinaleAndRedirect("armed_no_speech");
+    return;
+  }
+
+  // Safety: force cut after 2.5s if she keeps talking
+  if (finaleMaxWaitTimeout) clearTimeout(finaleMaxWaitTimeout);
+  finaleMaxWaitTimeout = setTimeout(() => {
+    runFinaleAndRedirect("armed_timeout_force");
+  }, 2500);
+}
+
+// ✅ MP3 first, backend fire-and-forget, redirect after mp3
 async function runFinaleAndRedirect(reason = "hardcut"){
   if (finaleTriggered) return;
   finaleTriggered = true;
 
+  // disarm
+  finaleArmed = false;
+  if (finaleMaxWaitTimeout) { clearTimeout(finaleMaxWaitTimeout); finaleMaxWaitTimeout = null; }
+
   stopCountdown();
-  clearFinaleTimers();
+  // keep soft/hard timers cleared
+  if (softSteerTimeout) { clearTimeout(softSteerTimeout); softSteerTimeout = null; }
+  if (hardCutTimeout) { clearTimeout(hardCutTimeout); hardCutTimeout = null; }
 
   // stop model asap
   if (dc && dc.readyState === "open") {
@@ -358,12 +389,12 @@ async function runFinaleAndRedirect(reason = "hardcut"){
     try { dc.send(JSON.stringify({ type: "output_audio_buffer.clear" })); } catch(_) {}
   }
 
-  // start MP3 immediately (don’t await anything before this)
+  // start MP3 immediately
   const playPromise = playCliffhangerMp3();
 
   // fire-and-forget backend
   const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt)/1000) : 0;
-  try { track("teaser_finale_triggered", { reason, duration_seconds: durationSeconds, audio_unlocked: !!audioUnlocked, audio_url: finaleAudioUrl }); } catch(_) {}
+  try { track("teaser_finale_triggered", { reason, duration_seconds: durationSeconds, armed_age_ms: Date.now() - armedAtMs, audio_unlocked: !!audioUnlocked }); } catch(_) {}
   try { reportUsage(durationSeconds); } catch(_) {}
   try { sendMemoryUpdate(durationSeconds); } catch(_) {}
 
@@ -371,7 +402,6 @@ async function runFinaleAndRedirect(reason = "hardcut"){
   try { teardownRealtime(); } catch(_) {}
   showBackground(false);
 
-  // wait for mp3 end/timeout then redirect
   await playPromise;
   window.location.href = "/pricing/";
 }
@@ -430,6 +460,9 @@ function attachChannel(ch) {
       if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
+
+        // mark speaking
+        assistantSpeaking = true;
         return;
       }
 
@@ -452,6 +485,14 @@ function attachChannel(ch) {
           lastAssistantFinal = final;
         }
         partialAssistant = "";
+
+        // mark finished utterance
+        assistantSpeaking = false;
+
+        // if finale armed, trigger now (clean end)
+        if (finaleArmed && !finaleTriggered) {
+          runFinaleAndRedirect("after_response_done");
+        }
       }
     } catch (_) {}
   });
@@ -471,6 +512,10 @@ async function startVoice(){
   await unlockAudioFromUserGesture();
 
   finaleTriggered = false;
+  finaleArmed = false;
+  assistantSpeaking = false;
+  armedAtMs = 0;
+  if (finaleMaxWaitTimeout) { clearTimeout(finaleMaxWaitTimeout); finaleMaxWaitTimeout = null; }
   clearFinaleTimers();
 
   headline.textContent = "Sophie is joining…";
@@ -524,7 +569,7 @@ async function startVoice(){
     teaserSoftAt = Number(data?.teaser_soft_steer_at_seconds || 0);
     teaserHardAt = Number(data?.teaser_max_seconds || 0);
 
-    // always use fixed path unless server overrides (optional)
+    // always use fixed path unless server overrides
     finaleAudioUrl = String(data?.teaser_final_audio || "/audio/cliffhanger.mp3").trim() || "/audio/cliffhanger.mp3";
 
     renderTimer();
@@ -600,10 +645,11 @@ async function startVoice(){
                 modalities: ["text"],
                 instructions: `
 For the next 8–12 seconds:
-- slow down noticeably (shorter sentences, softer tone)
-- ask ONE intimate, open-ended question that naturally needs a follow-up
-- do NOT resolve anything, do NOT summarize
-- end with a gentle pause and wait (no extra filler)
+- soften and slow down (short sentences)
+- gently build tension, but do NOT resolve anything
+- IMPORTANT: finish your current sentence cleanly
+- then say ONE final short line that invites a continuation
+- then stop speaking and hold a calm pause (no extra filler, no new topic)
 Do not mention time, limits, pricing, or paywalls.
 `
               }
@@ -613,10 +659,10 @@ Do not mention time, limits, pricing, or paywalls.
         }, teaserSoftAt * 1000);
       }
 
-      // ✅ Hard cut
+      // ✅ Hard cut: ARM and wait for response.done
       if (teaserHardAt > 0) {
         hardCutTimeout = setTimeout(() => {
-          runFinaleAndRedirect(`hardcut_${teaserHardAt}s`);
+          armFinaleThenWait();
         }, teaserHardAt * 1000);
       }
     }
@@ -636,6 +682,7 @@ Do not mention time, limits, pricing, or paywalls.
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   clearFinaleTimers();
+  finaleArmed = false;
 
   const durationSeconds = talkStartedAt
     ? Math.round((Date.now() - talkStartedAt) / 1000)
