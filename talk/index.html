@@ -115,6 +115,22 @@ body{
 
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
+
+/* LIMIT VIDEO OVERLAY */
+#limitOverlay{
+  position:fixed;
+  inset:0;
+  background:#000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+#limitVideo{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
 </style>
 </head>
 
@@ -131,10 +147,17 @@ body{
 <div class="wrap">
   <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Whenever you’re ready.</div>
-  <div class="timer" id="timer">Free-Zeit: --:--</div>
+  <div class="timer" id="timer">Zeit: --:--</div>
 
   <button id="start" class="btn">Enter the Room</button>
   <button id="end" class="btn" disabled>Leave the Room</button>
+</div>
+
+<!-- LIMIT VIDEO OVERLAY -->
+<div id="limitOverlay">
+  <video id="limitVideo" playsinline preload="auto">
+    <source src="/video/sophie_limit.mp4" type="video/mp4">
+  </video>
 </div>
 
 <script type="module">
@@ -188,20 +211,17 @@ async function reportUsage(secondsUsed) {
 }
 
 // --- Memory update helper (POST /api/memory-update) ---
-// Sends a POST even if transcript is empty (backend will log a session row anyway)
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return;
 
-    // flush assistant text
     const finalA = (partialAssistant || "").trim();
     if (finalA) {
       convoLog.push({ role: "assistant", text: finalA });
       partialAssistant = "";
     }
 
-    // ✅ Filter obvious junk (prevents "Bye." as user turn)
     const cleaned = (convoLog || []).filter(t => {
       const role = String(t?.role || "");
       const text = String(t?.text || "").trim();
@@ -210,7 +230,6 @@ async function sendMemoryUpdate(secondsUsed) {
       return true;
     });
 
-    // ✅ keep more context, but not infinite
     const payload = cleaned.slice(-80);
 
     await fetch("/api/memory-update", {
@@ -237,6 +256,10 @@ const bg = document.getElementById("bg");
 const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
 
+// Limit video elements
+const limitOverlay = document.getElementById("limitOverlay");
+const limitVideo = document.getElementById("limitVideo");
+
 // Voice vars
 let pc = null;
 let stream = null;
@@ -244,25 +267,30 @@ let audioEl = null;
 
 // DataChannel + Transcript logging
 let dc = null;
-let convoLog = [];            // Array<{role:"user"|"assistant", text:string}>
-let partialAssistant = "";    // assistant chunks
+let convoLog = [];
+let partialAssistant = "";
 
-// ✅ buffer for user transcript deltas
-const userTranscriptBuffer = new Map(); // item_id -> string
-
-// ✅ NEW: de-dup for assistant final (prevents triple repeats)
+// buffer for user transcript deltas
+const userTranscriptBuffer = new Map();
 let lastAssistantFinal = "";
 
 // Timer vars
 let countdown = null;
-let remainingSeconds = 15 * 60;
+let remainingSeconds = 0;
 let isPremium = false;
+let plan = null;
 
 // Session meta
 let talkStartedAt = null;
 
-// ✅ dynamic reset interval (anti "gets flat over time")
+// dynamic reset interval
 let dynamicResetInterval = null;
+
+// prevent double-trigger
+let limitTriggered = false;
+
+// prevent double-trigger of start-mode
+let startModeTriggered = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
@@ -276,38 +304,17 @@ function showBackground(on){
   }
 }
 
+function formatMMSS(sec){
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const m = String(Math.floor(s/60)).padStart(2,"0");
+  const r = String(s%60).padStart(2,"0");
+  return `${m}:${r}`;
+}
+
 function renderTimer(){
-  if (isPremium) {
-    timerEl.textContent = "Premium: unlimited";
-    return;
-  }
-  const m = String(Math.floor(remainingSeconds/60)).padStart(2,"0");
-  const s = String(remainingSeconds%60).padStart(2,"0");
-  timerEl.textContent = `Free-Time: ${m}:${s}`;
+  timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
 }
 renderTimer();
-
-function startCountdown(){
-  if (isPremium) return;
-
-  if (countdown) clearInterval(countdown);
-  countdown = setInterval(() => {
-    remainingSeconds -= 1;
-    renderTimer();
-
-    if (remainingSeconds <= 0) {
-      clearInterval(countdown);
-      countdown = null;
-      setStatus("Free-Time limit reached.");
-
-      track("free_limit_reached");
-
-      stopVoice(true).finally(() => {
-        window.location.href = "/pricing/";
-      });
-    }
-  }, 1000);
-}
 
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
@@ -351,7 +358,127 @@ async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
-// Robust DataChannel handling: server-created + client-created
+// helper to safely send messages once the DataChannel is open
+function sendWhenChannelOpen(payload, timeoutMs = 3000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tick = () => {
+      if (dc && dc.readyState === "open") {
+        try {
+          dc.send(JSON.stringify(payload));
+          return resolve(true);
+        } catch (e) {
+          return reject(e);
+        }
+      }
+      if (Date.now() - start > timeoutMs) return reject(new Error("DataChannel not open"));
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
+// cancel any auto-response (stabilizer)
+async function cancelAnyOngoingResponse() {
+  try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
+}
+
+// Start-Mode start shot (server prompt already contains the full flow)
+async function triggerStartModeKickoff() {
+  if (startModeTriggered) return;
+  startModeTriggered = true;
+
+  try {
+    // cancel anything that might start answering too early
+    await cancelAnyOngoingResponse();
+
+    await sendWhenChannelOpen({
+      type: "response.create",
+      response: {
+        modalities: ["audio", "text"],
+        instructions: `
+Begin now.
+Follow your FIRST SESSION LONG START-MODE exactly.
+Speak first.
+Ask your next question, then stop.
+Do NOT mention trials, timers, limits, pricing, subscriptions, or system messages.
+`
+      }
+    });
+  } catch (e) {
+    console.log("Start-mode kickoff failed:", e);
+  }
+}
+
+// --- Preload Limit Video ---
+function preloadLimitVideo(){
+  try{
+    limitVideo.muted = true;
+    limitVideo.playsInline = true;
+    limitVideo.preload = "auto";
+    limitVideo.load();
+  } catch(_) {}
+}
+
+// --- Play Limit Video + redirect to pricing ---
+function playLimitVideo(){
+  if (limitTriggered) return;
+  limitTriggered = true;
+
+  stopCountdown();
+  stopDynamicResets();
+
+  try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
+
+  try {
+    limitOverlay.style.display = "flex";
+    limitVideo.currentTime = 0;
+  } catch(_) {}
+
+  try { if (dc) dc.close(); } catch(_) {}
+  dc = null;
+
+  try { if (stream) stream.getTracks().forEach(t => t.stop()); } catch(_) {}
+  stream = null;
+
+  try { if (pc) pc.close(); } catch(_) {}
+  pc = null;
+
+  try { if (audioEl) audioEl.srcObject = null; } catch(_) {}
+  audioEl = null;
+
+  try { void stopVoice(true); } catch(_) {}
+
+  setTimeout(() => {
+    try{
+      limitVideo.muted = false;
+      const p = limitVideo.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => window.location.href = "/pricing/");
+      }
+    } catch(_) {
+      window.location.href = "/pricing/";
+    }
+  }, 250);
+
+  limitVideo.onended = () => {
+    window.location.href = "/pricing/";
+  };
+}
+
+function startCountdown(){
+  if (countdown) clearInterval(countdown);
+  countdown = setInterval(() => {
+    remainingSeconds -= 1;
+    renderTimer();
+
+    if (remainingSeconds <= 0) {
+      playLimitVideo();
+    }
+  }, 1000);
+}
+
+// Robust DataChannel handling
 function attachChannel(ch) {
   dc = ch;
 
@@ -370,10 +497,6 @@ function attachChannel(ch) {
   dc.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-
-      // =========================
-      // USER AUDIO TRANSCRIPTION
-      // =========================
 
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
@@ -396,7 +519,6 @@ function attachChannel(ch) {
         return;
       }
 
-      // Fallback user text on item.created/done
       if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
         const item = msg?.item;
         if (item?.role === "user" && Array.isArray(item?.content)) {
@@ -405,32 +527,24 @@ function attachChannel(ch) {
         }
       }
 
-      // =========================
-      // ASSISTANT TEXT
-      // =========================
-
-      // Delta -> append
       if (msg?.type === "response.audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
         return;
       }
 
-      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.audio_transcript.done") {
         const full = String(msg?.transcript || msg?.text || "").trim();
         if (full) partialAssistant = full;
         return;
       }
 
-      // Backup text stream variants
       if (msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
         return;
       }
 
-      // ✅ DONE -> REPLACE (prevents duplicates)
       if (msg?.type === "response.output_text.done") {
         const full = String(msg?.text || "").trim();
         if (full) partialAssistant = full;
@@ -443,7 +557,6 @@ function attachChannel(ch) {
         if (chunk) partialAssistant += chunk;
       }
 
-      // Final assistant message: push ONCE (de-dup)
       if (msg?.type === "response.done") {
         const final = String(partialAssistant || "").trim();
         if (final && final !== lastAssistantFinal) {
@@ -462,6 +575,8 @@ function setupDataChannelLogging() {
 }
 
 async function startVoice(){
+  preloadLimitVideo();
+
   startBtn.disabled = true;
   logoutBtn.disabled = true;
   headline.textContent = "Sophie is joining…";
@@ -477,6 +592,9 @@ async function startVoice(){
 
   stopDynamicResets();
 
+  limitTriggered = false;
+  startModeTriggered = false;
+
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
@@ -491,7 +609,7 @@ async function startVoice(){
     const data = await safeJson(tokenRes);
 
     if (tokenRes.status === 402) {
-      track("free_limit_reached");
+      track("time_limit_reached");
       window.location.href = "/pricing/";
       return;
     }
@@ -508,15 +626,18 @@ async function startVoice(){
     }
 
     isPremium = !!data?.is_premium;
+    plan = data?.plan || null;
 
-    if (!isPremium && typeof data?.remaining_seconds === "number") {
+    if (typeof data?.remaining_seconds === "number") {
       remainingSeconds = Math.max(0, data.remaining_seconds);
+    } else {
+      remainingSeconds = 0;
     }
 
     renderTimer();
 
-    if (!isPremium && remainingSeconds <= 0) {
-      track("free_limit_reached");
+    if (remainingSeconds <= 0) {
+      track("time_limit_reached");
       window.location.href = "/pricing/";
       return;
     }
@@ -559,12 +680,22 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
+    const isFirst = !!data?.is_first_session;
+
+    if (isFirst) {
+      // one clean kickoff; the server prompt holds the whole start-mode
+      await triggerStartModeKickoff();
+    }
+
+    // dynamic resets can run in both cases now (start-mode is in server prompt)
     startDynamicResets();
 
     talkStartedAt = Date.now();
     track("talk_started", {
       is_premium: isPremium,
-      remaining_seconds_at_start: isPremium ? null : remainingSeconds
+      plan: plan || null,
+      remaining_seconds_at_start: remainingSeconds,
+      is_first_session: !!isFirst
     });
 
     startCountdown();
@@ -582,8 +713,7 @@ async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
 
-  // Soft goodbye before closing
-  if (dc && dc.readyState === "open") {
+  if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
         type: "response.create",
@@ -608,17 +738,17 @@ Max 12 words.
     ? Math.round((Date.now() - talkStartedAt) / 1000)
     : 0;
 
-  if (durationSeconds > 0 && !isPremium) {
+  if (durationSeconds > 0) {
     await reportUsage(durationSeconds);
   }
 
-  // Always attempt memory-update
   await sendMemoryUpdate(durationSeconds);
 
   track("talk_ended", {
     duration_seconds: durationSeconds || null,
     is_premium: isPremium,
-    remaining_seconds_at_end: isPremium ? null : remainingSeconds,
+    plan: plan || null,
+    remaining_seconds_at_end: remainingSeconds,
     triggered_by_limit: !!triggeredByLimit
   });
 
@@ -632,7 +762,7 @@ Max 12 words.
   }
 
   if(stream){
-    stream.getTracks().forEach(t => t.stop());
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
     stream = null;
   }
 
