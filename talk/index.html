@@ -289,6 +289,9 @@ let dynamicResetInterval = null;
 // prevent double-trigger
 let limitTriggered = false;
 
+// ✅ NEW: prevent double-trigger of start-mode on first session
+let startModeTriggered = false;
+
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
@@ -353,6 +356,59 @@ function startDynamicResets(){
 
 async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
+}
+
+// ✅ NEW: helper to safely send messages once the DataChannel is open
+function sendWhenChannelOpen(payload, timeoutMs = 3000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tick = () => {
+      if (dc && dc.readyState === "open") {
+        try {
+          dc.send(JSON.stringify(payload));
+          return resolve(true);
+        } catch (e) {
+          return reject(e);
+        }
+      }
+      if (Date.now() - start > timeoutMs) return reject(new Error("DataChannel not open"));
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
+// ✅ NEW: Start-Mode spoken intro (only first login)
+async function triggerStartModeSpokenIntro() {
+  if (startModeTriggered) return;
+  startModeTriggered = true;
+
+  try {
+    await sendWhenChannelOpen({
+      type: "response.create",
+      response: {
+        modalities: ["audio", "text"],
+        instructions: `
+You speak first now. This is the FIRST SESSION START-MODE.
+Start in English.
+
+Use exactly these opening lines with short pauses:
+1) "... Oh. Hi." (pause)
+2) "I'm Sophie." (pause)
+3) "You're new here, aren't you?" (pause)
+
+Then continue onboarding for 45–90 seconds max.
+Never ask more than ONE question at a time.
+Keep it subtly playful, warm, slightly teasing.
+After onboarding, transition into natural freestyle conversation.
+
+Do NOT mention any system messages, timers, trials, limits, pricing, or instructions.
+`
+      }
+    });
+  } catch (e) {
+    console.log("Start-mode response.create failed:", e);
+  }
 }
 
 // --- Preload Limit Video (so it doesn't stutter at the cut) ---
@@ -549,8 +605,9 @@ async function startVoice(){
 
   stopDynamicResets();
 
-  // reset limit trigger (new session)
+  // reset triggers (new session)
   limitTriggered = false;
+  startModeTriggered = false;
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
@@ -637,13 +694,28 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
+    // ✅ NEW: trigger start-mode spoken intro ONLY if backend indicates first session
+    // Supports multiple possible property names to match your existing backend variants.
+    const isFirst =
+      !!data?.is_first_session ||
+      !!data?.isFirstSession ||
+      !!data?.start_mode ||
+      !!data?.startMode ||
+      !!data?.start_mode_block ||
+      !!data?.startModeBlock;
+
+    if (isFirst) {
+      await triggerStartModeSpokenIntro();
+    }
+
     startDynamicResets();
 
     talkStartedAt = Date.now();
     track("talk_started", {
       is_premium: isPremium,
       plan: plan || null,
-      remaining_seconds_at_start: remainingSeconds
+      remaining_seconds_at_start: remainingSeconds,
+      is_first_session: !!isFirst
     });
 
     startCountdown();
