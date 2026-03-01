@@ -334,6 +334,9 @@ ${memoryBlock}
       user_id: user.id,
       preferred_language: preferredLanguage,
 
+      // ✅ NEW: Frontend needs to know whether to force the Start-Mode spoken intro
+  is_first_session: isFirstSession,
+});
       // client-controlled teaser
       teaser_mode: teaserMode,
       teaser_target_seconds,
