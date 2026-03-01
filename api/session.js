@@ -1,7 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+const { createClient } = require("@supabase/supabase-js");
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
+    if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
@@ -326,6 +328,7 @@ ${memoryBlock}
 
     const data = await response.json();
 
+    // ✅ FIXED: the JSON response object must include everything inside ONE object
     return res.status(200).json({
       ...data,
       remaining_seconds: remaining,
@@ -334,9 +337,9 @@ ${memoryBlock}
       user_id: user.id,
       preferred_language: preferredLanguage,
 
-      // ✅ NEW: Frontend needs to know whether to force the Start-Mode spoken intro
-  is_first_session: isFirstSession,
-});
+      // Frontend flag for spoken start-mode
+      is_first_session: isFirstSession,
+
       // client-controlled teaser
       teaser_mode: teaserMode,
       teaser_target_seconds,
@@ -346,11 +349,11 @@ ${memoryBlock}
       // pricing redirect config
       teaser_redirect_url: "/pricing/",
 
-      // ✅ single fixed audio path for all languages / envs
+      // single fixed audio path (legacy)
       teaser_final_audio: "/audio/cliffhanger.mp3",
     });
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
-}
+};
