@@ -383,6 +383,17 @@ async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
+// ✅ NEW: enable mic + vad after start-mode kickoff is fired
+async function enableMicAndVad(){
+  try {
+    if (stream) stream.getAudioTracks().forEach(t => { t.enabled = true; });
+    await sendWhenChannelOpen({
+      type: "session.update",
+      session: { turn_detection: { type: "server_vad" } }
+    }, 2000);
+  } catch (_) {}
+}
+
 // Start-Mode start shot (server prompt already contains the full flow)
 async function triggerStartModeKickoff() {
   if (startModeTriggered) return;
@@ -410,14 +421,28 @@ Do NOT mention trials, timers, limits, pricing, subscriptions, or system message
   }
 }
 
-// --- Preload Limit Video ---
-function preloadLimitVideo(){
+/* ---------------------------
+   ✅ FIX: Preload + PRIME Limit Video (autoplay policy safe)
+   This MUST run inside the user's Start button click.
+--------------------------- */
+async function preloadLimitVideo(){
   try{
-    limitVideo.muted = true;
-    limitVideo.playsInline = true;
     limitVideo.preload = "auto";
+    limitVideo.playsInline = true;
+
+    // start muted for priming
+    limitVideo.muted = true;
     limitVideo.load();
-  } catch(_) {}
+
+    // PRIME: play once during user gesture, then pause + rewind
+    const p = limitVideo.play();
+    if (p && typeof p.then === "function") await p;
+
+    limitVideo.pause();
+    limitVideo.currentTime = 0;
+  } catch(_) {
+    // even if priming fails, preload still helps
+  }
 }
 
 // --- Play Limit Video + redirect to pricing ---
@@ -451,7 +476,14 @@ function playLimitVideo(){
 
   setTimeout(() => {
     try{
-      limitVideo.muted = false;
+      // ✅ Start muted (autoplay safe), then unmute once playing
+      limitVideo.muted = true;
+
+      const unmute = () => {
+        try { limitVideo.muted = false; } catch(_) {}
+      };
+      limitVideo.addEventListener("playing", unmute, { once: true });
+
       const p = limitVideo.play();
       if (p && typeof p.catch === "function") {
         p.catch(() => window.location.href = "/pricing/");
@@ -488,7 +520,8 @@ function attachChannel(ch) {
         type: "session.update",
         session: {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-          turn_detection: { type: "server_vad" }
+          // ✅ VAD OFF initially to prevent "ghost" user turns on connect
+          turn_detection: { type: "none" }
         }
       }));
     } catch (_) {}
@@ -575,7 +608,8 @@ function setupDataChannelLogging() {
 }
 
 async function startVoice(){
-  preloadLimitVideo();
+  // ✅ PRIME video inside user click context
+  await preloadLimitVideo();
 
   startBtn.disabled = true;
   logoutBtn.disabled = true;
@@ -646,6 +680,10 @@ async function startVoice(){
     setupDataChannelLogging();
 
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // ✅ Mute mic initially to prevent "ghost turns" right after connect
+    stream.getAudioTracks().forEach(t => { t.enabled = false; });
+
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     audioEl = document.createElement("audio");
@@ -687,7 +725,9 @@ async function startVoice(){
       await triggerStartModeKickoff();
     }
 
-    // dynamic resets can run in both cases now (start-mode is in server prompt)
+    // ✅ Now allow mic + VAD (for both first & normal sessions)
+    await enableMicAndVad();
+
     startDynamicResets();
 
     talkStartedAt = Date.now();
