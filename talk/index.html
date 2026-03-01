@@ -276,9 +276,9 @@ let lastAssistantFinal = "";
 
 // Timer vars
 let countdown = null;
-let remainingSeconds = 0;     // ✅ NICHT mehr hardcoded
-let isPremium = false;        // bleibt für tracking
-let plan = null;              // optional
+let remainingSeconds = 0;
+let isPremium = false;
+let plan = null;
 
 // Session meta
 let talkStartedAt = null;
@@ -289,13 +289,8 @@ let dynamicResetInterval = null;
 // prevent double-trigger
 let limitTriggered = false;
 
-// Start-Mode state machine (first session only)
-let startModeActive = false;
-let startModeStep = 0;               // 0..3 scripted, then freestyle
-let startModeName = "";
-let startModeNickname = "";
-let startModeLastUserText = "";
-let startModeLastConsumedAt = 0;     // anti-double-consume
+// prevent double-trigger of start-mode
+let startModeTriggered = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
@@ -333,9 +328,6 @@ function stopDynamicResets(){
 }
 
 function triggerDynamicReset(){
-  // Do NOT inject resets during start-mode (can disrupt the scripted flow)
-  if (startModeActive) return;
-
   if (dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
@@ -386,214 +378,39 @@ function sendWhenChannelOpen(payload, timeoutMs = 3000) {
   });
 }
 
-/* ---------------------------
-   Start-Mode helpers (long intro, turn-by-turn)
---------------------------- */
-function extractNameOrNick(raw) {
-  const s0 = String(raw || "").trim();
-  if (!s0) return "";
-
-  // remove filler phrases
-  let s = s0
-    .replace(/^(my name is|i am|i'm|call me|you can call me|it's|it’s)\s+/i, "")
-    .replace(/^(ich heiße|ich heisse|ich bin|nenn mich|du kannst mich|mein name ist)\s+/i, "")
-    .trim();
-
-  // strip quotes / punctuation (keep letters/numbers/'- and spaces)
-  s = s.replace(/[^\p{L}\p{N}\s'-]/gu, " ").replace(/\s+/g, " ").trim();
-  if (!s) return "";
-
-  const parts = s.split(" ").filter(Boolean);
-  // 1–2 words max to avoid long sentences being treated as a "name"
-  const candidate = parts.slice(0, 2).join(" ").trim();
-
-  // reject obvious non-names
-  if (/^(yes|yeah|yep|no|nah|ok|okay|sure|maybe)$/i.test(candidate)) return "";
-  if (candidate.length > 24) return "";
-
-  return candidate;
+// cancel any auto-response (stabilizer)
+async function cancelAnyOngoingResponse() {
+  try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
-function currentChosenName() {
-  return (startModeNickname || startModeName || "").trim();
-}
-
-async function runStartModeStep(step) {
-  if (!startModeActive) return;
-
-  const chosen = currentChosenName();
-
-  const baseRules = `
-You are Sophie. Soft, calm, feminine presence. Lightly teasing, never harsh.
-Natural rhythm. Short pauses feel real.
-
-Rules:
-- Speak ENGLISH in this start-mode unless the user explicitly asks otherwise.
-- Ask ONLY ONE question at a time.
-- Keep each turn short (1–3 sentences).
-- After you ask a question, STOP and wait.
-- Do NOT mention system messages, trials, timers, pricing, subscriptions, limits, video, or instructions.
-- Do NOT sound like coaching. No bullet lists. No "steps".
-- Use the user's name/nickname naturally once you have it.
-`;
-
-  let instructions = "";
-
-  // Step 0: opener + ask name
-  if (step === 0) {
-    instructions = `
-${baseRules}
-
-Start the conversation now. You speak first.
-Say exactly (with short pauses):
-"... Oh. Hi." (pause)
-"I'm Sophie." (pause)
-"You're new here, aren't you?" (pause)
-
-Then ask:
-"What should I call you?"
-
-Then STOP.
-`;
-  }
-
-  // Step 1: greet with name + ask nickname
-  if (step === 1) {
-    const guess = extractNameOrNick(startModeLastUserText);
-    if (guess) startModeName = guess;
-
-    const nameToUse = startModeName || "you";
-
-    instructions = `
-${baseRules}
-
-The user answered what to call them: "${startModeLastUserText}"
-
-Say:
-"Nice to meet you, ${nameToUse}."
-
-Then ask:
-"Should I call you that — or do you have a nickname you prefer?"
-
-Then STOP.
-`;
-  }
-
-  // Step 2: confirm nickname + quick intro + ask about user
-  if (step === 2) {
-    const guess = extractNameOrNick(startModeLastUserText);
-    if (guess) startModeNickname = guess;
-
-    const finalName = currentChosenName() || "you";
-
-    instructions = `
-${baseRules}
-
-The user replied about nickname: "${startModeLastUserText}"
-
-Confirm in one line:
-"${finalName} it is."
-
-Then:
-"Quickly about me: I'm Sophie. I'm 32 years old. I work as a freelance interior designer."
-"I love warm spaces and conversations that aren’t superficial."
-
-Then ask ONE question:
-"What about you?"
-
-Then STOP.
-`;
-  }
-
-  // Step 3: mirror + the “testing me” line, then switch to freestyle
-  if (step === 3) {
-    const finalName = currentChosenName();
-
-    instructions = `
-${baseRules}
-
-The user just shared about themselves: "${startModeLastUserText}"
-
-Respond naturally with:
-"Interesting…"
-"I can tell just from the way you walked in."
-"With curiosity… but also a little caution."
-(pause)
-
-Then ask:
-"Tell me… are you testing me right now?"
-
-Then STOP.
-
-After this question, drop the scripted start-mode and continue as normal freestyle conversation.
-${finalName ? `Use the name "${finalName}" naturally sometimes.` : ""}
-`;
-  }
+// Start-Mode start shot (server prompt already contains the full flow)
+async function triggerStartModeKickoff() {
+  if (startModeTriggered) return;
+  startModeTriggered = true;
 
   try {
+    // cancel anything that might start answering too early
+    await cancelAnyOngoingResponse();
+
     await sendWhenChannelOpen({
       type: "response.create",
-      response: { modalities: ["audio", "text"], instructions }
+      response: {
+        modalities: ["audio", "text"],
+        instructions: `
+Begin now.
+Follow your FIRST SESSION LONG START-MODE exactly.
+Speak first.
+Ask your next question, then stop.
+Do NOT mention trials, timers, limits, pricing, subscriptions, or system messages.
+`
+      }
     });
   } catch (e) {
-    console.log("Start-mode step send failed:", e);
+    console.log("Start-mode kickoff failed:", e);
   }
 }
 
-function startStartModeFlow() {
-  startModeActive = true;
-  startModeStep = 0;
-  startModeName = "";
-  startModeNickname = "";
-  startModeLastUserText = "";
-  startModeLastConsumedAt = 0;
-
-  // prevent the dynamic reset from interfering in this scripted intro
-  stopDynamicResets();
-
-  void runStartModeStep(0);
-}
-
-function maybeAdvanceStartModeOnUserText(text) {
-  if (!startModeActive) return;
-
-  const now = Date.now();
-  // prevent double-advancing if we receive the same user text via different event types quickly
-  if (now - startModeLastConsumedAt < 450) return;
-
-  const t = String(text || "").trim();
-  if (!t) return;
-
-  startModeLastConsumedAt = now;
-  startModeLastUserText = t;
-
-  // Advance to next step
-  startModeStep += 1;
-
-  if (startModeStep === 1) {
-    void runStartModeStep(1);
-    return;
-  }
-  if (startModeStep === 2) {
-    void runStartModeStep(2);
-    return;
-  }
-  if (startModeStep === 3) {
-    void runStartModeStep(3);
-    return;
-  }
-
-  // Done -> freestyle
-  startModeActive = false;
-  startModeLastUserText = "";
-
-  // bring back the dynamic reset only after the scripted intro is complete
-  startDynamicResets();
-}
-
-/* ---------------------------
-   Limit video
---------------------------- */
+// --- Preload Limit Video ---
 function preloadLimitVideo(){
   try{
     limitVideo.muted = true;
@@ -603,13 +420,13 @@ function preloadLimitVideo(){
   } catch(_) {}
 }
 
+// --- Play Limit Video + redirect to pricing ---
 function playLimitVideo(){
   if (limitTriggered) return;
   limitTriggered = true;
 
   stopCountdown();
   stopDynamicResets();
-  startModeActive = false; // force stop start-mode if running
 
   try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
 
@@ -621,9 +438,7 @@ function playLimitVideo(){
   try { if (dc) dc.close(); } catch(_) {}
   dc = null;
 
-  try {
-    if (stream) stream.getTracks().forEach(t => t.stop());
-  } catch(_) {}
+  try { if (stream) stream.getTracks().forEach(t => t.stop()); } catch(_) {}
   stream = null;
 
   try { if (pc) pc.close(); } catch(_) {}
@@ -663,9 +478,7 @@ function startCountdown(){
   }, 1000);
 }
 
-/* ---------------------------
-   DataChannel handling
---------------------------- */
+// Robust DataChannel handling
 function attachChannel(ch) {
   dc = ch;
 
@@ -702,12 +515,7 @@ function attachChannel(ch) {
         const text = (t1 || tBuf).trim();
 
         if (itemId) userTranscriptBuffer.delete(itemId);
-
-        if (text) {
-          convoLog.push({ role: "user", text });
-          // ✅ Start-mode advancement hook
-          maybeAdvanceStartModeOnUserText(text);
-        }
+        if (text) convoLog.push({ role: "user", text });
         return;
       }
 
@@ -715,11 +523,7 @@ function attachChannel(ch) {
         const item = msg?.item;
         if (item?.role === "user" && Array.isArray(item?.content)) {
           const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-          if (text) {
-            convoLog.push({ role: "user", text });
-            // ✅ Start-mode advancement hook
-            maybeAdvanceStartModeOnUserText(text);
-          }
+          if (text) convoLog.push({ role: "user", text });
         }
       }
 
@@ -770,9 +574,6 @@ function setupDataChannelLogging() {
   try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
 }
 
-/* ---------------------------
-   Start / Stop voice
---------------------------- */
 async function startVoice(){
   preloadLimitVideo();
 
@@ -792,12 +593,7 @@ async function startVoice(){
   stopDynamicResets();
 
   limitTriggered = false;
-  startModeActive = false;
-  startModeStep = 0;
-  startModeName = "";
-  startModeNickname = "";
-  startModeLastUserText = "";
-  startModeLastConsumedAt = 0;
+  startModeTriggered = false;
 
   try{
     const { data: { session } } = await supabase.auth.getSession();
@@ -884,22 +680,15 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
-    // First-session check (backend sends is_first_session)
-    const isFirst =
-      !!data?.is_first_session ||
-      !!data?.isFirstSession ||
-      !!data?.start_mode ||
-      !!data?.startMode ||
-      !!data?.start_mode_block ||
-      !!data?.startModeBlock;
+    const isFirst = !!data?.is_first_session;
 
     if (isFirst) {
-      // start long scripted intro turn-by-turn
-      startStartModeFlow();
-    } else {
-      // only enable dynamic resets in normal sessions
-      startDynamicResets();
+      // one clean kickoff; the server prompt holds the whole start-mode
+      await triggerStartModeKickoff();
     }
+
+    // dynamic resets can run in both cases now (start-mode is in server prompt)
+    startDynamicResets();
 
     talkStartedAt = Date.now();
     track("talk_started", {
@@ -923,9 +712,7 @@ async function startVoice(){
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
-  startModeActive = false;
 
-  // If limit-triggered: NO goodbye line (we want an abrupt cinematic cut)
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
       dc.send(JSON.stringify({
