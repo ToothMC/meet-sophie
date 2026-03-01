@@ -189,25 +189,22 @@ export default async function handler(req, res) {
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
     // ---------------------------
-    // Teaser / Cliffhanger Settings (CLIENT STEUERT FIX)
+    // Teaser / Cliffhanger Settings (TESTMODE 10s)
     // ---------------------------
     const teaserMode = isFirstSession && !isPremium;
 
-    // Ziel: ca. 2:00, Hard stop 2:30
-    const teaser_target_seconds = 120;
-    const teaser_max_seconds = 150;
-    // Soft steer ca. 1:50 (damit sie in 20–30s elegant “wrappt”)
-    const teaser_soft_steer_at_seconds = 110;
+    // cheap test mode
+    const teaser_target_seconds = 8;
+    const teaser_max_seconds = 10;
+    const teaser_soft_steer_at_seconds = 7;
 
     // ---------------------------
-    // Prompt blocks (NO fragile “say exact final line”)
-    // Final line is played by CLIENT (audio file), NOT by the model.
+    // Prompt blocks
     // ---------------------------
-
     const startModeBlock = teaserMode
       ? `
 FIRST SESSION TEASER MODE (IMPORTANT)
-Goal: a short, natural first conversation (about 2 minutes).
+Goal: a very short, natural first conversation (about 10 seconds in test mode).
 Be warm, curious, lightly teasing. Ask ONE question at a time.
 Keep answers concise. Avoid long monologues.
 
@@ -346,9 +343,8 @@ ${memoryBlock}
       // pricing redirect config
       teaser_redirect_url: "/pricing/",
 
-      // final line played by client audio (public/)
-      teaser_final_audio_en: "/final_en.mp3",
-      teaser_final_audio_de: "/final_de.mp3",
+      // ✅ single fixed audio path for all languages / envs
+      teaser_final_audio: "/audio/cliffhanger.mp3",
     });
   } catch (error) {
     console.error("Server error:", error);
