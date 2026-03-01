@@ -292,6 +292,10 @@ let limitTriggered = false;
 // prevent double-trigger of start-mode
 let startModeTriggered = false;
 
+// ✅ NEW: wait until we have real user audio, then allow auto responses
+let isFirstSession = false;
+let waitingForFirstUser = true;
+
 function setStatus(txt){ statusEl.textContent = txt; }
 
 function showBackground(on){
@@ -383,15 +387,16 @@ async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
-// ✅ NEW: enable mic + vad after start-mode kickoff is fired
-async function enableMicAndVad(){
-  try {
-    if (stream) stream.getAudioTracks().forEach(t => { t.enabled = true; });
+// ✅ NEW: toggle auto responses (server VAD creates response or not)
+async function setAutoResponses(on){
+  try{
     await sendWhenChannelOpen({
       type: "session.update",
-      session: { turn_detection: { type: "server_vad" } }
+      session: {
+        turn_detection: { type: "server_vad", create_response: !!on }
+      }
     }, 2000);
-  } catch (_) {}
+  } catch(_) {}
 }
 
 // Start-Mode start shot (server prompt already contains the full flow)
@@ -520,14 +525,15 @@ function attachChannel(ch) {
         type: "session.update",
         session: {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-          // ✅ VAD OFF initially to prevent "ghost" user turns on connect
-          turn_detection: { type: "none" }
+
+          // ✅ Keep VAD on, but DO NOT auto-create responses until the user speaks
+          turn_detection: { type: "server_vad", create_response: false }
         }
       }));
     } catch (_) {}
   });
 
-  dc.addEventListener("message", (ev) => {
+  dc.addEventListener("message", async (ev) => {
     try {
       const msg = JSON.parse(ev.data);
 
@@ -548,7 +554,23 @@ function attachChannel(ch) {
         const text = (t1 || tBuf).trim();
 
         if (itemId) userTranscriptBuffer.delete(itemId);
-        if (text) convoLog.push({ role: "user", text });
+
+        if (text) {
+          convoLog.push({ role: "user", text });
+
+          // ✅ First real user input unlocks the conversation
+          if (waitingForFirstUser) {
+            waitingForFirstUser = false;
+
+            // First session: start-mode kickoff, but ONLY now (after user spoke)
+            if (isFirstSession) {
+              await triggerStartModeKickoff();
+            }
+
+            // Now allow normal back-and-forth (auto responses)
+            await setAutoResponses(true);
+          }
+        }
         return;
       }
 
@@ -629,6 +651,10 @@ async function startVoice(){
   limitTriggered = false;
   startModeTriggered = false;
 
+  // ✅ reset gating
+  waitingForFirstUser = true;
+  isFirstSession = false;
+
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
@@ -676,14 +702,13 @@ async function startVoice(){
       return;
     }
 
+    // ✅ remember first-session state (backend decides)
+    isFirstSession = !!data?.is_first_session;
+
     pc = new RTCPeerConnection();
     setupDataChannelLogging();
 
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    // ✅ Mute mic initially to prevent "ghost turns" right after connect
-    stream.getAudioTracks().forEach(t => { t.enabled = false; });
-
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     audioEl = document.createElement("audio");
@@ -718,15 +743,9 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
-    const isFirst = !!data?.is_first_session;
-
-    if (isFirst) {
-      // one clean kickoff; the server prompt holds the whole start-mode
-      await triggerStartModeKickoff();
-    }
-
-    // ✅ Now allow mic + VAD (for both first & normal sessions)
-    await enableMicAndVad();
+    // ✅ IMPORTANT:
+    // We DO NOT auto-start start-mode.
+    // We wait until the user speaks first, then we unlock responses (and start-mode if first session).
 
     startDynamicResets();
 
@@ -735,7 +754,7 @@ async function startVoice(){
       is_premium: isPremium,
       plan: plan || null,
       remaining_seconds_at_start: remainingSeconds,
-      is_first_session: !!isFirst
+      is_first_session: !!isFirstSession
     });
 
     startCountdown();
