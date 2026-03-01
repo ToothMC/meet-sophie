@@ -194,9 +194,9 @@ export default async function handler(req, res) {
     const teaserMode = isFirstSession && !isPremium;
 
     // cheap test mode
-    const teaser_target_seconds = 8;
-    const teaser_max_seconds = 10;
-    const teaser_soft_steer_at_seconds = 7;
+    const teaser_target_seconds = 40;
+    const teaser_max_seconds = 45;
+    const teaser_soft_steer_at_seconds = 35;
 
     // ---------------------------
     // Prompt blocks
