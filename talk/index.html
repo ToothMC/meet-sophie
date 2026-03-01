@@ -107,7 +107,7 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ✅ Frontend Login Guard: ohne Session -> /login/
+// ✅ Frontend Login Guard
 {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) window.location.href = "/login/";
@@ -194,7 +194,7 @@ async function sendMemoryUpdate(secondsUsed) {
   } catch (_) {}
 }
 
-// UI Elements
+// UI
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
 const statusEl = document.getElementById("status");
@@ -221,7 +221,7 @@ let plan = null;
 // Session meta
 let talkStartedAt = null;
 
-// HARD CUT timers (teaser controlled by server)
+// Teaser timers
 let softSteerTimeout = null;
 let hardCutTimeout = null;
 let finaleTriggered = false;
@@ -230,10 +230,10 @@ let teaserMode = false;
 let teaserSoftAt = 0;
 let teaserHardAt = 0;
 
-// ✅ fixed audio path (relative; works on preview + prod)
+// ✅ fixed audio path
 let finaleAudioUrl = "/audio/cliffhanger.mp3";
 
-// Pre-unlocked audio element (fix autoplay policy)
+// Prewarmed audio element
 let finaleAudioEl = null;
 let audioUnlocked = false;
 
@@ -299,20 +299,25 @@ function ensureFinaleAudioEl(){
   return finaleAudioEl;
 }
 
-// Must be called from a user gesture (click)
+// ✅ FIX 2: warm-start muted on click, keep cached + autoplay unlocked
 async function unlockAudioFromUserGesture(){
   try{
     const a = ensureFinaleAudioEl();
-
-    // Prime with REAL file so browser grants subsequent play
     a.src = finaleAudioUrl;
+    a.preload = "auto";
     a.load();
 
-    // Quick play/pause to unlock (will likely start a tiny bit; we pause immediately)
+    // start muted briefly to guarantee future instant playback
+    a.muted = true;
+    a.currentTime = 0;
+
     const p = a.play();
     if (p && typeof p.then === "function") await p;
+
+    // stop immediately, reset to start, unmute
     a.pause();
     a.currentTime = 0;
+    a.muted = false;
 
     audioUnlocked = true;
   } catch(_){
@@ -320,11 +325,11 @@ async function unlockAudioFromUserGesture(){
   }
 }
 
+// ✅ Finale play: no load, just play
 async function playCliffhangerMp3(){
   try {
     const a = ensureFinaleAudioEl();
-    a.src = finaleAudioUrl;
-    a.load();
+    a.currentTime = 0;
 
     const p = a.play();
     if (p && typeof p.then === "function") await p;
@@ -332,63 +337,46 @@ async function playCliffhangerMp3(){
     await new Promise((resolve) => {
       a.addEventListener("ended", resolve, { once: true });
       a.addEventListener("error", resolve, { once: true });
-      setTimeout(resolve, 2500);
+      setTimeout(resolve, 1800); // safety
     });
   } catch (_) {
-    // blocked or missing file -> continue redirect
+    // blocked/missing -> continue anyway
   }
 }
 
+// ✅ MP3 first, everything else fire-and-forget
 async function runFinaleAndRedirect(reason = "hardcut"){
   if (finaleTriggered) return;
   finaleTriggered = true;
 
-  try {
-    track("teaser_finale_triggered", {
-      reason,
-      plan: plan || null,
-      is_premium: !!isPremium,
-      teaser_mode: !!teaserMode,
-      audio_unlocked: !!audioUnlocked,
-      audio_url: finaleAudioUrl
-    });
-  } catch(_) {}
+  stopCountdown();
+  clearFinaleTimers();
 
-  // Stop any further model speech immediately
+  // stop model asap
   if (dc && dc.readyState === "open") {
     try { dc.send(JSON.stringify({ type: "response.cancel" })); } catch(_) {}
     try { dc.send(JSON.stringify({ type: "output_audio_buffer.clear" })); } catch(_) {}
   }
 
-  stopCountdown();
-  clearFinaleTimers();
+  // start MP3 immediately (don’t await anything before this)
+  const playPromise = playCliffhangerMp3();
 
-  // Report + memory update (best effort) BEFORE redirect
-  try {
-    const durationSeconds = talkStartedAt
-      ? Math.round((Date.now() - talkStartedAt) / 1000)
-      : 0;
+  // fire-and-forget backend
+  const durationSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt)/1000) : 0;
+  try { track("teaser_finale_triggered", { reason, duration_seconds: durationSeconds, audio_unlocked: !!audioUnlocked, audio_url: finaleAudioUrl }); } catch(_) {}
+  try { reportUsage(durationSeconds); } catch(_) {}
+  try { sendMemoryUpdate(durationSeconds); } catch(_) {}
 
-    if (durationSeconds > 0) await reportUsage(durationSeconds);
-    await sendMemoryUpdate(durationSeconds);
-  } catch(_) {}
-
-  teardownRealtime();
+  // tear down without blocking UX
+  try { teardownRealtime(); } catch(_) {}
   showBackground(false);
 
-  // UI
-  endBtn.disabled = true;
-  startBtn.disabled = true;
-  logoutBtn.disabled = true;
-  headline.textContent = "…";
-  setStatus("—");
-
-  // Play MP3 then redirect
-  await playCliffhangerMp3();
+  // wait for mp3 end/timeout then redirect
+  await playPromise;
   window.location.href = "/pricing/";
 }
 
-// Robust DataChannel handling: server-created + client-created
+// Robust DataChannel handling
 function attachChannel(ch) {
   dc = ch;
 
@@ -438,7 +426,7 @@ function attachChannel(ch) {
         }
       }
 
-      // assistant transcript accumulation (for memory)
+      // assistant transcript accumulation
       if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_text.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) partialAssistant += chunk;
@@ -479,7 +467,7 @@ async function startVoice(){
   logoutBtn.disabled = true;
   endBtn.disabled = true;
 
-  // IMPORTANT: unlock audio while we are still inside user click
+  // ✅ unlock + warm audio on click
   await unlockAudioFromUserGesture();
 
   finaleTriggered = false;
@@ -532,13 +520,12 @@ async function startVoice(){
       ? Math.max(0, data.remaining_seconds)
       : 0;
 
-    // Teaser config from server (first session only)
     teaserMode = !!data?.teaser_mode;
     teaserSoftAt = Number(data?.teaser_soft_steer_at_seconds || 0);
     teaserHardAt = Number(data?.teaser_max_seconds || 0);
 
-    // Force path from server if present, else use our fixed default
-    finaleAudioUrl = String(data?.teaser_final_audio || data?.teaser_final_audio_en || "/audio/cliffhanger.mp3").trim() || "/audio/cliffhanger.mp3";
+    // always use fixed path unless server overrides (optional)
+    finaleAudioUrl = String(data?.teaser_final_audio || "/audio/cliffhanger.mp3").trim() || "/audio/cliffhanger.mp3";
 
     renderTimer();
 
@@ -599,10 +586,9 @@ async function startVoice(){
       audio_unlocked: !!audioUnlocked,
     });
 
-    // Start quota timer
     startCountdown();
 
-    // ✅ Teaser finale: ONLY if server says teaser_mode AND non-premium
+    // ✅ Soft steer
     if (teaserMode && !isPremium) {
       if (teaserSoftAt > 0) {
         softSteerTimeout = setTimeout(() => {
@@ -627,6 +613,7 @@ Do not mention time, limits, pricing, or paywalls.
         }, teaserSoftAt * 1000);
       }
 
+      // ✅ Hard cut
       if (teaserHardAt > 0) {
         hardCutTimeout = setTimeout(() => {
           runFinaleAndRedirect(`hardcut_${teaserHardAt}s`);
@@ -654,8 +641,8 @@ async function stopVoice(triggeredByLimit = false){
     ? Math.round((Date.now() - talkStartedAt) / 1000)
     : 0;
 
-  if (durationSeconds > 0) await reportUsage(durationSeconds);
-  await sendMemoryUpdate(durationSeconds);
+  if (durationSeconds > 0) reportUsage(durationSeconds);
+  sendMemoryUpdate(durationSeconds);
 
   track("talk_ended", {
     duration_seconds: durationSeconds || null,
