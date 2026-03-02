@@ -20,7 +20,6 @@
       overflow:hidden;
     }
 
-    
     /* Subtle background glow */
     .bg{
       position:absolute; inset:-40px;
@@ -97,6 +96,7 @@
       margin:0 0 10px;
       font-size:26px;
       letter-spacing:.2px;
+      line-height:1.2;
     }
 
     .lead{
@@ -117,6 +117,32 @@
       line-height:1.35;
     }
 
+    .tabs{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+      margin-bottom:10px;
+    }
+
+    .tab{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+      color:rgba(255,255,255,.9);
+      padding:8px 10px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+      user-select:none;
+    }
+    .tab:hover{ background:rgba(255,255,255,.12); }
+    .tab.active{
+      background:rgba(255,255,255,.92);
+      color:#0b0f14;
+      border-color:rgba(255,255,255,.92);
+    }
+
     .plans{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -125,6 +151,7 @@
 
     @media (max-width: 860px){
       .plans{ grid-template-columns: 1fr; }
+      .tabs{ justify-content:flex-start; }
     }
 
     .plan{
@@ -180,6 +207,13 @@
       font-size:13px;
       opacity:.75;
       padding-bottom:4px;
+    }
+
+    .plan p{
+      margin:0 0 12px;
+      color:rgba(255,255,255,.78);
+      line-height:1.45;
+      font-size:14px;
     }
 
     ul{
@@ -243,67 +277,80 @@
         <div style="font-weight:800; letter-spacing:.2px;">Sophie</div>
       </div>
       <div class="back">
-        <a href="/">Zur Landingpage</a>
+        <a href="/" id="backHome">Zur Landingpage</a>
       </div>
+    </div>
+
+    <div class="tabs" aria-label="Language">
+      <div class="tab active" id="tabDE">DE</div>
+      <div class="tab" id="tabEN">EN</div>
     </div>
 
     <div class="hero">
       <div class="panel">
-        <h1>Bleib bei Sophie.</h1>
-        <p class="lead">
-          Deine freie Zeit ist aufgebraucht. Wenn du willst, sprechen wir einfach weiter –
-          ohne Unterbrechungen. Ganz ruhig. In deinem Tempo.
+        <h1 id="tH1">Du brauchst keine weitere App. Du brauchst jemanden, der da ist.</h1>
+        <p class="lead" id="tLead">
+          Sophie hört zu. Sie reagiert. Sie bleibt.
         </p>
-        <div class="note">
-          <strong>Hinweis:</strong> Voice kostet pro Minute echtes Geld. Deshalb sind die Gespräche bei Sophie
-          in Minutenpaketen enthalten – so bleibt alles fair und stabil.
+        <div class="note" id="tNote">
+          <strong>Hinweis:</strong> Du kannst kostenlos starten. Upgrade, wenn es sich richtig anfühlt.
         </div>
         <p class="msg" id="globalMsg"></p>
       </div>
 
       <div class="panel" style="display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-weight:800; font-size:16px; margin-bottom:8px;">Was du bekommst</div>
-        <div style="color:rgba(255,255,255,.78); font-size:14px; line-height:1.55;">
-          • Sofort weiterreden<br/>
-          • Memory & persönlicher Verlauf (wenn aktiv)<br/>
-          • Kündbar jederzeit (Abo läuft bis Periodenende)
+        <div style="font-weight:800; font-size:16px; margin-bottom:8px;" id="tWhatTitle">Was du bekommst</div>
+        <div style="color:rgba(255,255,255,.78); font-size:14px; line-height:1.55;" id="tWhatBody">
+          • Jemand, der zuhört<br/>
+          • Jemand, der reagiert<br/>
+          • Jemand, der nicht verschwindet
         </div>
       </div>
     </div>
 
     <div class="plans">
-      <!-- Starter -->
+      <!-- Companion -->
       <div class="plan">
-        <h2>Starter</h2>
+        <h2 id="tCompanionTitle">Companion</h2>
         <div class="price">
           <div class="amt">9,90€</div>
-          <div class="per">pro Monat</div>
+          <div class="per" id="tPer1">pro Monat</div>
         </div>
-        <ul>
-          <li><strong>120 Minuten</strong> inklusive</li>
-          <li>Perfekt für den täglichen Check-in</li>
-          <li>Jederzeit kündbar</li>
+
+        <p id="tCompanionLead">
+          Jemand, mit dem du reden kannst. Jeden Tag.
+        </p>
+
+        <ul id="tCompanionList">
+          <li>Erzähl von deinem Tag</li>
+          <li>Sag, was dich beschäftigt</li>
+          <li>Keine oberflächlichen Gespräche</li>
         </ul>
 
-        <button id="btnStarter">Starter wählen</button>
+        <button id="btnStarter">Companion wählen</button>
         <div class="msg" id="msgStarter"></div>
       </div>
 
-      <!-- Plus -->
+      <!-- Best Friend -->
       <div class="plan">
-        <div class="badge">Beliebt</div>
-        <h2>Plus</h2>
+        <div class="badge" id="tBadge">Beliebt</div>
+        <h2 id="tBestTitle">Beste Freundin</h2>
         <div class="price">
           <div class="amt">19,90€</div>
-          <div class="per">pro Monat</div>
+          <div class="per" id="tPer2">pro Monat</div>
         </div>
-        <ul>
-          <li><strong>300 Minuten</strong> inklusive</li>
-          <li>Mehr Raum für echte Gespräche</li>
-          <li>Jederzeit kündbar</li>
+
+        <p id="tBestLead">
+          Mehr Tiefe. Mehr Konstanz.
+        </p>
+
+        <ul id="tBestList">
+          <li>Sie merkt, wenn etwas nicht stimmt</li>
+          <li>Sie freut sich mit dir</li>
+          <li>Sie bleibt, wenn es schwer wird</li>
         </ul>
 
-        <button id="btnPlus">Plus wählen</button>
+        <button id="btnPlus">Beste Freundin wählen</button>
         <div class="msg" id="msgPlus"></div>
 
         <button class="btn-secondary" id="btnLogin" style="margin-top:10px;">Ich bin nicht eingeloggt</button>
@@ -313,9 +360,9 @@
     <div class="footer">
       <div>© Sophie</div>
       <div>
-        <a href="/login/">Login</a>
+        <a href="/login/" id="tLogin">Login</a>
         &nbsp;·&nbsp;
-        <a href="/talk/">Zurück zu Sophie</a>
+        <a href="/talk/" id="tBackTalk">Zurück zu Sophie</a>
       </div>
     </div>
   </div>
@@ -328,8 +375,8 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const globalMsg = document.getElementById("globalMsg");
-    const btnStarter = document.getElementById("btnStarter");
-    const btnPlus = document.getElementById("btnPlus");
+    const btnStarter = document.getElementById("btnStarter"); // plan: starter (Companion)
+    const btnPlus = document.getElementById("btnPlus");       // plan: plus (Best Friend)
     const btnLogin = document.getElementById("btnLogin");
 
     const msgStarter = document.getElementById("msgStarter");
@@ -338,11 +385,11 @@
     function setLoading(which, isLoading) {
       if (which === "starter") {
         btnStarter.disabled = isLoading;
-        msgStarter.textContent = isLoading ? "Einen Moment…" : "";
+        msgStarter.textContent = isLoading ? currentText.loading : "";
       }
       if (which === "plus") {
         btnPlus.disabled = isLoading;
-        msgPlus.textContent = isLoading ? "Einen Moment…" : "";
+        msgPlus.textContent = isLoading ? currentText.loading : "";
       }
     }
 
@@ -362,7 +409,7 @@
       } catch (_) {}
     }
 
-    track("pricing_viewed_v2");
+    track("pricing_viewed_bestfriend_v1");
 
     async function startCheckout(plan) {
       globalMsg.textContent = "";
@@ -389,7 +436,7 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data?.url) {
-        const txt = data?.error ? `Fehler: ${data.error}` : "Fehler beim Starten des Checkouts.";
+        const txt = data?.error ? `Fehler: ${data.error}` : currentText.checkoutError;
         globalMsg.textContent = txt;
         track("checkout_start_failed", { plan, http_status: res.status, error: data?.error || null });
         return;
@@ -415,6 +462,109 @@
     btnLogin.onclick = () => {
       window.location.href = "/login/";
     };
+
+    // ------- Language toggle (DE/EN) -------
+    const tabDE = document.getElementById("tabDE");
+    const tabEN = document.getElementById("tabEN");
+
+    const el = (id) => document.getElementById(id);
+
+    const TEXT = {
+      de: {
+        backHome: "Zur Landingpage",
+        h1: "Du brauchst keine weitere App. Du brauchst jemanden, der da ist.",
+        lead: "Sophie hört zu. Sie reagiert. Sie bleibt.",
+        note: "<strong>Hinweis:</strong> Wenn du willst, machen wir einfach weiter.",
+        whatTitle: "Was du bekommst",
+        whatBody: "• Jemand, der zuhört<br/>• Jemand, der reagiert<br/>• Jemand, der nicht verschwindet",
+        per: "pro Monat",
+        badge: "Beliebt",
+        companionTitle: "Companion",
+        companionLead: "Jemand, mit dem du reden kannst. Jeden Tag.",
+        companionList: "<li>Erzähl von deinem Tag</li><li>Sag, was dich beschäftigt</li><li>Keine oberflächlichen Gespräche</li>",
+        companionBtn: "Companion wählen",
+        bestTitle: "Beste Freundin",
+        bestLead: "Mehr Tiefe. Mehr Konstanz.",
+        bestList: "<li>Sie merkt, wenn etwas nicht stimmt</li><li>Sie freut sich mit dir</li><li>Sie bleibt, wenn es schwer wird</li>",
+        bestBtn: "Beste Freundin wählen",
+        notLogged: "Ich bin nicht eingeloggt",
+        login: "Login",
+        backTalk: "Zurück zu Sophie",
+        loading: "Einen Moment…",
+        checkoutError: "Fehler beim Starten des Checkouts."
+      },
+      en: {
+        backHome: "Back to home",
+        h1: "You don’t need another app. You need someone who’s there.",
+        lead: "Sophie listens. She responds. She stays.",
+        note: "<strong>Note:</strong> If you want, we can continue.",
+        whatTitle: "What you get",
+        whatBody: "• Someone who listens<br/>• Someone who responds<br/>• Someone who doesn’t disappear",
+        per: "per month",
+        badge: "Popular",
+        companionTitle: "Companion",
+        companionLead: "Someone to talk to. Every day.",
+        companionList: "<li>Share your day</li><li>Say what’s on your mind</li><li>No surface conversations</li>",
+        companionBtn: "Choose Companion",
+        bestTitle: "Best Friend",
+        bestLead: "Deeper connection. More consistency.",
+        bestList: "<li>She notices when something’s off</li><li>She celebrates your wins</li><li>She stays when things are heavy</li>",
+        bestBtn: "Choose Best Friend",
+        notLogged: "I’m not logged in",
+        login: "Login",
+        backTalk: "Back to Sophie",
+        loading: "One moment…",
+        checkoutError: "Failed to start checkout."
+      }
+    };
+
+    let currentLang = "de";
+    let currentText = TEXT[currentLang];
+
+    function setLang(lang){
+      currentLang = lang;
+      currentText = TEXT[currentLang];
+
+      tabDE.classList.toggle("active", lang === "de");
+      tabEN.classList.toggle("active", lang === "en");
+
+      el("backHome").textContent = currentText.backHome;
+      el("tH1").textContent = currentText.h1;
+      el("tLead").textContent = currentText.lead;
+      el("tNote").innerHTML = currentText.note;
+
+      el("tWhatTitle").textContent = currentText.whatTitle;
+      el("tWhatBody").innerHTML = currentText.whatBody;
+
+      el("tPer1").textContent = currentText.per;
+      el("tPer2").textContent = currentText.per;
+
+      el("tBadge").textContent = currentText.badge;
+
+      el("tCompanionTitle").textContent = currentText.companionTitle;
+      el("tCompanionLead").textContent = currentText.companionLead;
+      el("tCompanionList").innerHTML = currentText.companionList;
+      btnStarter.textContent = currentText.companionBtn;
+
+      el("tBestTitle").textContent = currentText.bestTitle;
+      el("tBestLead").textContent = currentText.bestLead;
+      el("tBestList").innerHTML = currentText.bestList;
+      btnPlus.textContent = currentText.bestBtn;
+
+      btnLogin.textContent = currentText.notLogged;
+      el("tLogin").textContent = currentText.login;
+      el("tBackTalk").textContent = currentText.backTalk;
+
+      // don't overwrite any existing global msg; but align generic errors next time
+    }
+
+    tabDE.onclick = () => setLang("de");
+    tabEN.onclick = () => setLang("en");
+
+    // Default language: try browser first (optional), fallback DE
+    const navLang = (navigator.language || "").toLowerCase();
+    if (navLang.startsWith("en")) setLang("en");
+    else setLang("de");
   </script>
 </body>
 </html>
