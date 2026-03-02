@@ -292,10 +292,10 @@ let limitTriggered = false;
 // prevent double-trigger of start-mode
 let startModeTriggered = false;
 
-// ✅ backend decides this
+// backend decides this
 let isFirstSession = false;
 
-// ✅ NEW: start-mode firewall state
+// start-mode firewall state
 let kickoffInProgress = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
@@ -365,7 +365,6 @@ async function safeJson(res) {
 }
 
 // helper to safely send messages once the DataChannel is open
-// ✅ FIX #1: timeout already 15000 (was 3000)
 function sendWhenChannelOpen(payload, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -390,7 +389,7 @@ async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
-// ✅ toggle auto responses (server VAD creates response or not)
+// toggle auto responses (server VAD creates response or not)
 async function setAutoResponses(on){
   try{
     await sendWhenChannelOpen({
@@ -431,7 +430,7 @@ Do NOT mention trials, timers, limits, pricing, subscriptions, or system message
 }
 
 /* ---------------------------
-   ✅ FIX: Preload + PRIME Limit Video (autoplay policy safe)
+   Preload + PRIME Limit Video (autoplay policy safe)
    This MUST run inside the user's Start button click.
 --------------------------- */
 async function preloadLimitVideo(){
@@ -483,7 +482,7 @@ function playLimitVideo(){
 
   setTimeout(() => {
     try{
-      // ✅ Start muted (autoplay safe), then unmute once playing
+      // Start muted (autoplay safe), then unmute once playing
       limitVideo.muted = true;
 
       const unmute = () => {
@@ -523,7 +522,7 @@ function attachChannel(ch) {
 
   dc.addEventListener("open", async () => {
     try {
-      // ✅ First-session firewall: disable auto-response until kickoff completed
+      // First-session firewall: disable auto-response until kickoff completed
       dc.send(JSON.stringify({
         type: "session.update",
         session: {
@@ -537,11 +536,9 @@ function attachChannel(ch) {
       }));
     } catch (_) {}
 
-    // ✅ FIX #2: Trigger start-mode kickoff reliably on dc open (first session only)
+    // Trigger start-mode kickoff reliably on dc open (first session only)
     if (isFirstSession && !startModeTriggered) {
-      try {
-        await triggerStartModeKickoff();
-      } catch (_) {}
+      try { await triggerStartModeKickoff(); } catch (_) {}
     }
   });
 
@@ -619,7 +616,7 @@ function attachChannel(ch) {
         }
         partialAssistant = "";
 
-        // ✅ After first-session kickoff finished, re-enable auto responses (fluid conversation)
+        // After first-session kickoff finished, re-enable auto responses (fluid conversation)
         if (kickoffInProgress) {
           kickoffInProgress = false;
           await setAutoResponses(true);
@@ -629,13 +626,24 @@ function attachChannel(ch) {
   });
 }
 
+/**
+ * ✅ SINGLE DATACHANNEL FIX (Variante 1)
+ * - create exactly ONE channel on the client
+ * - ignore/close any remote-created channels so "dc" is never overwritten
+ */
 function setupDataChannelLogging() {
-  pc.ondatachannel = (e) => attachChannel(e.channel);
-  try { attachChannel(pc.createDataChannel("oai-events")); } catch (_) {}
+  try {
+    const ch = pc.createDataChannel("oai-events");
+    attachChannel(ch);
+  } catch (_) {}
+
+  pc.ondatachannel = (e) => {
+    try { e.channel.close(); } catch(_) {}
+  };
 }
 
 async function startVoice(){
-  // ✅ PRIME video inside user click context
+  // PRIME video inside user click context
   await preloadLimitVideo();
 
   startBtn.disabled = true;
@@ -706,7 +714,7 @@ async function startVoice(){
       return;
     }
 
-    // ✅ remember first-session state (backend decides)
+    // remember first-session state (backend decides)
     isFirstSession = !!data?.is_first_session;
 
     pc = new RTCPeerConnection();
