@@ -5,25 +5,17 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    // --- Bearer Token prüfen ---
     const authHeader = req.headers.authorization || "";
-    const accessToken = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : null;
+    const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!accessToken) return res.status(401).json({ error: "Missing Authorization Bearer token" });
 
-    if (!accessToken) {
-      return res.status(401).json({ error: "Missing Authorization Bearer token" });
-    }
-
-    // --- Supabase Server Env ---
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     if (!supabaseUrl || !serviceRoleKey) {
       return res.status(500).json({ error: "Missing Supabase server env vars" });
     }
 
-    // --- User via Supabase Auth API holen ---
+    // User validieren
     const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -38,16 +30,11 @@ export default async function handler(req, res) {
 
     const user = await userResp.json();
     const userId = user?.id;
+    if (!userId) return res.status(401).json({ error: "User not found" });
 
-    if (!userId) {
-      return res.status(401).json({ error: "User not found" });
-    }
-
-    // --- Stripe Key ---
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) return res.status(500).json({ error: "Missing STRIPE_SECRET_KEY" });
 
-    // --- plan aus Body ---
     const { plan } = req.body || {};
     const p = String(plan || "").toLowerCase().trim();
 
@@ -59,17 +46,18 @@ export default async function handler(req, res) {
         : null;
 
     if (!priceId) {
-      return res.status(400).json({
-        error: "Missing/invalid plan. Use { plan: 'starter' | 'plus' }",
-      });
+      return res.status(400).json({ error: "Missing/invalid plan. Use { plan: 'starter' | 'plus' }" });
     }
 
-    // --- URLs (immer mit Slash) ---
-    const origin = req.headers.origin || "https://meet-sophie.com";
-    const successUrl = `${origin}/success/`;
-    const cancelUrl = `${origin}/pricing/`;
+    // Robust origin (works on Vercel prod + preview)
+    const proto = (req.headers["x-forwarded-proto"] || "https").toString();
+    const host = (req.headers["x-forwarded-host"] || req.headers.host || "meet-sophie.com").toString();
+    const origin = `${proto}://${host}`;
 
-    // --- Stripe Checkout Session erstellen ---
+    // Empfehlenswert: direkt zurück in Talk
+    const successUrl = `${origin}/talk/?paid=1`;
+    const cancelUrl = `${origin}/pricing/?canceled=1`;
+
     const body = new URLSearchParams();
     body.append("mode", "subscription");
     body.append("success_url", successUrl);
@@ -78,11 +66,12 @@ export default async function handler(req, res) {
     body.append("line_items[0][price]", priceId);
     body.append("line_items[0][quantity]", "1");
 
-    // ✅ Session Metadata (kommt in checkout.session.completed)
+    // Hilft beim Matching ohne metadata parsing
+    body.append("client_reference_id", userId);
+
+    // Metadata
     body.append("metadata[user_id]", userId);
     body.append("metadata[plan]", p);
-
-    // ✅ Subscription Metadata (robuster; kann per subscriptions.retrieve geholt werden)
     body.append("subscription_data[metadata][user_id]", userId);
     body.append("subscription_data[metadata][plan]", p);
 
@@ -100,7 +89,11 @@ export default async function handler(req, res) {
     const stripeJson = await stripeResp.json();
 
     if (!stripeResp.ok) {
-      return res.status(500).json({ error: "Stripe error", detail: stripeJson });
+      return res.status(stripeResp.status).json({ error: "Stripe error", detail: stripeJson });
+    }
+
+    if (!stripeJson?.url) {
+      return res.status(500).json({ error: "Stripe error: missing checkout url", detail: stripeJson });
     }
 
     return res.status(200).json({ url: stripeJson.url });
