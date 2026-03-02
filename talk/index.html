@@ -292,9 +292,11 @@ let limitTriggered = false;
 // prevent double-trigger of start-mode
 let startModeTriggered = false;
 
-// ✅ NEW: wait until we have real user audio, then allow auto responses
+// ✅ backend decides this
 let isFirstSession = false;
-let waitingForFirstUser = true;
+
+// ✅ NEW: start-mode firewall state
+let kickoffInProgress = false;
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
@@ -363,6 +365,7 @@ async function safeJson(res) {
 }
 
 // helper to safely send messages once the DataChannel is open
+// ✅ FIX #1: timeout already 15000 (was 3000)
 function sendWhenChannelOpen(payload, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -387,15 +390,15 @@ async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
-// ✅ NEW: toggle auto responses (server VAD creates response or not)
+// ✅ toggle auto responses (server VAD creates response or not)
 async function setAutoResponses(on){
   try{
     await sendWhenChannelOpen({
       type: "session.update",
       session: {
-        turn_detection: { type: "server_vad", create_response: !!on }
+        turn_detection: { type: "server_vad", create_response: !!on, interrupt_response: true }
       }
-    }, 2000);
+    }, 5000);
   } catch(_) {}
 }
 
@@ -403,9 +406,9 @@ async function setAutoResponses(on){
 async function triggerStartModeKickoff() {
   if (startModeTriggered) return;
   startModeTriggered = true;
+  kickoffInProgress = true;
 
   try {
-    // cancel anything that might start answering too early
     await cancelAnyOngoingResponse();
 
     await sendWhenChannelOpen({
@@ -420,9 +423,10 @@ Ask your next question, then stop.
 Do NOT mention trials, timers, limits, pricing, subscriptions, or system messages.
 `
       }
-    });
+    }, 15000);
   } catch (e) {
     console.log("Start-mode kickoff failed:", e);
+    kickoffInProgress = false;
   }
 }
 
@@ -445,9 +449,7 @@ async function preloadLimitVideo(){
 
     limitVideo.pause();
     limitVideo.currentTime = 0;
-  } catch(_) {
-    // even if priming fails, preload still helps
-  }
+  } catch(_) {}
 }
 
 // --- Play Limit Video + redirect to pricing ---
@@ -519,18 +521,28 @@ function startCountdown(){
 function attachChannel(ch) {
   dc = ch;
 
-  dc.addEventListener("open", () => {
+  dc.addEventListener("open", async () => {
     try {
+      // ✅ First-session firewall: disable auto-response until kickoff completed
       dc.send(JSON.stringify({
         type: "session.update",
         session: {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-
-          // ✅ Keep VAD on, but DO NOT auto-create responses until the user speaks
-          turn_detection: { type: "server_vad", create_response: false }
+          turn_detection: {
+            type: "server_vad",
+            create_response: isFirstSession ? false : true,
+            interrupt_response: true
+          }
         }
       }));
     } catch (_) {}
+
+    // ✅ FIX #2: Trigger start-mode kickoff reliably on dc open (first session only)
+    if (isFirstSession && !startModeTriggered) {
+      try {
+        await triggerStartModeKickoff();
+      } catch (_) {}
+    }
   });
 
   dc.addEventListener("message", async (ev) => {
@@ -557,19 +569,6 @@ function attachChannel(ch) {
 
         if (text) {
           convoLog.push({ role: "user", text });
-
-          // ✅ First real user input unlocks the conversation
-          if (waitingForFirstUser) {
-            waitingForFirstUser = false;
-
-            // First session: start-mode kickoff, but ONLY now (after user spoke)
-            if (isFirstSession) {
-              await triggerStartModeKickoff();
-            }
-
-            // Now allow normal back-and-forth (auto responses)
-            await setAutoResponses(true);
-          }
         }
         return;
       }
@@ -619,6 +618,12 @@ function attachChannel(ch) {
           lastAssistantFinal = final;
         }
         partialAssistant = "";
+
+        // ✅ After first-session kickoff finished, re-enable auto responses (fluid conversation)
+        if (kickoffInProgress) {
+          kickoffInProgress = false;
+          await setAutoResponses(true);
+        }
       }
     } catch (_) {}
   });
@@ -650,9 +655,8 @@ async function startVoice(){
 
   limitTriggered = false;
   startModeTriggered = false;
+  kickoffInProgress = false;
 
-  // ✅ reset gating
-  waitingForFirstUser = true;
   isFirstSession = false;
 
   try{
@@ -742,10 +746,6 @@ async function startVoice(){
     endBtn.disabled = false;
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
-
-    // ✅ IMPORTANT:
-    // We DO NOT auto-start start-mode.
-    // We wait until the user speaks first, then we unlock responses (and start-mode if first session).
 
     startDynamicResets();
 
