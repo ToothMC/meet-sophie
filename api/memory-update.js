@@ -8,9 +8,9 @@ import { createClient } from "@supabase/supabase-js";
  * }
  *
  * HARD FIXES:
- * - preferred_language can NEVER be guessed by the model anymore.
- *   Only allow 'en' or 'de', and ONLY if the user explicitly asked for it in the transcript.
- * - Removes "lang=..." from SOPHIE_PREFS notes line to avoid DB poisoning via notes fallback.
+ * - preferred_language is NEVER guessed.
+ *   Only allow 'en' or 'de', and ONLY if the USER explicitly requested it in the transcript.
+ * - Notes marker SOPHIE_PREFS will NEVER include lang=...
  */
 export default async function handler(req, res) {
   try {
@@ -19,11 +19,7 @@ export default async function handler(req, res) {
     // Body robust lesen
     let body = req.body;
     if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        body = {};
-      }
+      try { body = JSON.parse(body); } catch { body = {}; }
     }
     body = body && typeof body === "object" ? body : {};
 
@@ -41,10 +37,7 @@ export default async function handler(req, res) {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     // User validieren
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
@@ -84,7 +77,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
     }
 
-    // Existing relationship/profile laden (inkl. Identity-Felder)
+    // Existing relationship/profile laden
     const { data: rel } = await supabase
       .from("user_relationship")
       .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
@@ -95,7 +88,7 @@ export default async function handler(req, res) {
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, " +
-          "occupation, conversation_style, topics_like, topics_avoid"
+        "occupation, conversation_style, topics_like, topics_avoid"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -110,12 +103,8 @@ export default async function handler(req, res) {
 
       occupation: String(prof?.occupation || "").trim(),
       conversation_style: String(prof?.conversation_style || "").trim(),
-      topics_like: Array.isArray(prof?.topics_like)
-        ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean)
-        : [],
-      topics_avoid: Array.isArray(prof?.topics_avoid)
-        ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean)
-        : [],
+      topics_like: Array.isArray(prof?.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
+      topics_avoid: Array.isArray(prof?.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
 
       tone_baseline: String(rel?.tone_baseline || "").trim(),
       openness_level: String(rel?.openness_level || "").trim(),
@@ -123,29 +112,39 @@ export default async function handler(req, res) {
       last_interaction_summary: String(rel?.last_interaction_summary || "").trim(),
     };
 
-    // --- LANGUAGE HARD GATE (no model guessing) ---
-    const transcriptLower = transcriptText.toLowerCase();
+    // ---------------------------
+    // LANGUAGE HARD GATE (user-only, robust phrases)
+    // ---------------------------
+    const userOnlyText = transcriptArr
+      .filter((t) => t.role === "user")
+      .map((t) => t.text)
+      .join("\n")
+      .toLowerCase();
 
-    const userExplicitlyRequestedLanguage =
-      transcriptLower.includes("speak english") ||
-      transcriptLower.includes("please speak english") ||
-      transcriptLower.includes("speak german") ||
-      transcriptLower.includes("please speak german") ||
-      transcriptLower.includes("sprich englisch") ||
-      transcriptLower.includes("bitte englisch") ||
-      transcriptLower.includes("sprich deutsch") ||
-      transcriptLower.includes("bitte deutsch");
+    // Recognize explicit user requests (broad but safe)
+    const wantsGerman =
+      /\b(speak|talk|continue|switch)\b.*\b(german|deutsch)\b/.test(userOnlyText) ||
+      /\b(german|deutsch)\b.*\b(please|bitte)\b/.test(userOnlyText) ||
+      /\b(auf deutsch|deutsch bitte|bitte deutsch)\b/.test(userOnlyText);
+
+    const wantsEnglish =
+      /\b(speak|talk|continue|switch)\b.*\b(english|englisch)\b/.test(userOnlyText) ||
+      /\b(english|englisch)\b.*\b(please|bitte)\b/.test(userOnlyText) ||
+      /\b(auf englisch|englisch bitte|bitte englisch)\b/.test(userOnlyText);
+
+    let explicitLang = "";
+    if (wantsGerman && !wantsEnglish) explicitLang = "de";
+    if (wantsEnglish && !wantsGerman) explicitLang = "en";
 
     const ALLOWED_LANGS = new Set(["en", "de"]);
 
+    // ---------------------------
+    // Memory extraction instructions
+    // ---------------------------
     const system =
       "Extract structured long-term user identity and relationship memory for Sophie. " +
       "Only store information that is clearly and explicitly stated. " +
       "Never guess. Never infer. If unsure, return empty values. " +
-      "Extract occupation if clearly mentioned. " +
-      "Extract topics_like only when the user expresses a clear positive preference. " +
-      "Extract topics_avoid only when the user expresses a clear dislike/avoidance. " +
-      "Infer conversation_style only if the user's communication style is obvious (e.g., analytical, direct, playful, reserved) — otherwise empty. " +
       "preferred_addressing must be either 'informal' or 'formal' (or empty). " +
       "preferred_language must be empty unless explicitly stated by the user.";
 
@@ -181,13 +180,12 @@ ${transcriptText}
           additionalProperties: false,
           properties: {
             first_name: { type: "string" },
-            preferred_name: { type: "string", description: "Name Sophie should use to address the user (nickname if preferred)" },
-            preferred_addressing: { type: "string", description: "informal or formal (or empty)" },
-            preferred_pronoun: { type: "string", description: "e.g. he/him, she/her, they/them, or empty" },
-            preferred_language: { type: "string", description: "e.g. en,de,... (or empty)" },
-
-            occupation: { type: "string", description: "User's occupation/job, only if explicitly stated" },
-            conversation_style: { type: "string", description: "e.g. analytical, direct, playful, reserved (or empty if unclear)" },
+            preferred_name: { type: "string" },
+            preferred_addressing: { type: "string" },
+            preferred_pronoun: { type: "string" },
+            preferred_language: { type: "string" },
+            occupation: { type: "string" },
+            conversation_style: { type: "string" },
             topics_like: { type: "array", items: { type: "string" } },
             topics_avoid: { type: "array", items: { type: "string" } },
           },
@@ -264,9 +262,7 @@ ${transcriptText}
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
-        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText)
-          .replace(/\s+/g, " ")
-          .slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
+        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText).replace(/\s+/g, " ").slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
       });
 
       return res.status(r.status).json({ error: errorText });
@@ -296,12 +292,10 @@ ${transcriptText}
     }
 
     const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
-
     const p = parsed.profile || {};
     const rr = parsed.relationship || {};
     const ss = parsed.session || {};
 
-    // ---- Helpers ----
     const toArrayStrings = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
 
     function mergeStringArrays(existingArr, newArr, limit = 12) {
@@ -317,9 +311,6 @@ ${transcriptText}
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
-    // MODEL language output is NOT trusted
-    const langNewRaw = clean(p.preferred_language).toLowerCase();
-
     const occupationNew = clean(p.occupation);
     const styleNew = clean(p.conversation_style);
     const topicsLikeNew = toArrayStrings(p.topics_like);
@@ -331,21 +322,19 @@ ${transcriptText}
     const finalAddressing =
       addressingNew === "informal" || addressingNew === "formal"
         ? addressingNew
-        : existing.preferred_addressing || "";
+        : (existing.preferred_addressing || "");
 
     const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
 
-    // ---- HARD LANGUAGE RULE ----
-    // Accept language ONLY if explicitly requested in transcript AND it is in allowed set (en/de).
-    let langNew = "";
-    if (userExplicitlyRequestedLanguage && ALLOWED_LANGS.has(langNewRaw)) {
-      langNew = langNewRaw;
+    // ✅ FINAL LANGUAGE: only store if explicitly requested by USER
+    let finalLang = "";
+    if (explicitLang && ALLOWED_LANGS.has(explicitLang)) {
+      finalLang = explicitLang;
+    } else {
+      // keep existing ONLY if it is allowed; otherwise store nothing
+      const ex = String(existing.preferred_language || "").toLowerCase().trim();
+      finalLang = ALLOWED_LANGS.has(ex) ? ex : "";
     }
-
-    let existingLang = String(existing.preferred_language || "").toLowerCase().trim();
-    if (!ALLOWED_LANGS.has(existingLang)) existingLang = "";
-
-    const finalLang = (langNew || existingLang || "en").slice(0, 12);
 
     const finalOccupation = (occupationNew || existing.occupation).slice(0, 120);
     const finalStyle = (styleNew || existing.conversation_style).slice(0, 80);
@@ -353,8 +342,7 @@ ${transcriptText}
     const finalTopicsLike = mergeStringArrays(existing.topics_like, topicsLikeNew, 12);
     const finalTopicsAvoid = mergeStringArrays(existing.topics_avoid, topicsAvoidNew, 12);
 
-    // Optional: marker line in notes for debugging/backward compat
-    // IMPORTANT: Do NOT persist lang=... in notes (prevents language poisoning via notes fallback)
+    // Notes marker (NO lang)
     const marker = "SOPHIE_PREFS:";
     const prefsLine = `${marker} preferred_name=${finalPreferredName}; preferred_addressing=${finalAddressing}; preferred_pronoun=${finalPronoun}`.trim();
 
@@ -371,13 +359,14 @@ ${transcriptText}
       finalNotes = (finalNotes + "\n" + prefsLine).trim();
     }
 
-    // ---- Upsert user_profile (STRUCTURED) ----
     const profileRow = {
       user_id: user.id,
       first_name: finalFirstName || null,
       preferred_name: finalPreferredName || null,
       preferred_addressing: finalAddressing || null,
       preferred_pronoun: finalPronoun || null,
+
+      // store only if we have an explicit/allowed lang; else NULL
       preferred_language: finalLang || null,
 
       occupation: finalOccupation || null,
@@ -389,24 +378,31 @@ ${transcriptText}
       updated_at: nowIso,
     };
 
-    // Upsert mit Fallback
-    const { error: profUpErr } = await supabase.from("user_profile").upsert(profileRow, { onConflict: "user_id" });
+    // Upsert user_profile (STRUCTURED)
+    const { error: profUpErr } = await supabase
+      .from("user_profile")
+      .upsert(profileRow, { onConflict: "user_id" });
 
     if (profUpErr) {
       console.error("user_profile upsert failed:", profUpErr.message, profileRow);
 
-      const { error: updErr } = await supabase.from("user_profile").update(profileRow).eq("user_id", user.id);
+      const { error: updErr } = await supabase
+        .from("user_profile")
+        .update(profileRow)
+        .eq("user_id", user.id);
 
       if (updErr) {
         console.error("user_profile update fallback failed:", updErr.message);
 
-        const { error: insErr } = await supabase.from("user_profile").insert(profileRow);
+        const { error: insErr } = await supabase
+          .from("user_profile")
+          .insert(profileRow);
 
         if (insErr) console.error("user_profile insert fallback failed:", insErr.message);
       }
     }
 
-    // ---- Relationship merge (keep last 3 bullets) ----
+    // ---- Relationship merge ----
     function mergeContinuity(prev, next) {
       prev = clean(prev);
       next = clean(next);
@@ -419,7 +415,10 @@ ${transcriptText}
       return parts.slice(0, 3).join(" • ").slice(0, 600);
     }
 
-    const newContinuity = mergeContinuity(existing.last_interaction_summary, clean(rr.last_interaction_summary || ss.short_summary));
+    const newContinuity = mergeContinuity(
+      existing.last_interaction_summary,
+      clean(rr.last_interaction_summary || ss.short_summary)
+    );
 
     const relRow = {
       user_id: user.id,
@@ -430,7 +429,10 @@ ${transcriptText}
       updated_at: nowIso,
     };
 
-    const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
+    const { error: relUpErr } = await supabase
+      .from("user_relationship")
+      .upsert(relRow, { onConflict: "user_id" });
+
     if (relUpErr) console.error("user_relationship upsert failed:", relUpErr.message, relRow);
 
     // ---- user_sessions insert ----
@@ -450,7 +452,7 @@ ${transcriptText}
         preferred_name: finalPreferredName,
         preferred_addressing: finalAddressing,
         preferred_pronoun: finalPronoun,
-        preferred_language: finalLang,
+        preferred_language: finalLang || "",
         occupation: finalOccupation,
         conversation_style: finalStyle,
         topics_like: finalTopicsLike,
