@@ -159,31 +159,37 @@ module.exports = async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
-    // Backward compat: SOPHIE_PREFS in notes (optional)
-    const prefsLine = (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
-    const notesFallback = { preferred_name: "", preferred_addressing: "", preferred_pronoun: "", lang: "" };
+    // ---------------------------
+    // Backward compat: SOPHIE_PREFS in notes (optional, but WITHOUT language fallback)
+    // ---------------------------
+    const prefsLine =
+      (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
+
+    const notesFallback = { preferred_name: "", preferred_addressing: "", preferred_pronoun: "" };
 
     if (prefsLine) {
       const mName = prefsLine.match(/preferred_name=([^;]*)/i);
       const mAddr = prefsLine.match(/preferred_addressing=([^;]*)/i);
       const mPro = prefsLine.match(/preferred_pronoun=([^;]*)/i);
-      const mLang = prefsLine.match(/lang=([^;]*)/i);
 
       notesFallback.preferred_name = (mName?.[1] || "").trim();
       notesFallback.preferred_addressing = (mAddr?.[1] || "").trim();
       notesFallback.preferred_pronoun = (mPro?.[1] || "").trim();
-      notesFallback.lang = (mLang?.[1] || "").trim().toLowerCase();
     }
 
-    const effectivePreferredName = profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
+    const effectivePreferredName =
+      profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
-    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "").toLowerCase().trim();
+    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "")
+      .toLowerCase()
+      .trim();
     if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
 
     const effectivePronoun = profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
 
-    let preferredLanguage = (profile.preferred_language || notesFallback.lang || "en").toLowerCase().trim();
-    if (!preferredLanguage) preferredLanguage = "en";
+    // ✅ HARD language whitelist (prevents fr/es/ja etc.)
+    let preferredLanguage = (profile.preferred_language || "en").toLowerCase().trim();
+    if (!["en", "de"].includes(preferredLanguage)) preferredLanguage = "en";
 
     // ✅ First-session Heuristik
     const isFirstSession =
@@ -200,20 +206,30 @@ FIRST SESSION: LONG START-MODE (ENGLISH) — MUST EXECUTE FIRST
 You MUST start the conversation by speaking FIRST in English.
 Keep it natural. Short pauses. Do not rush.
 
+NAME RULE (CRITICAL):
+- Never invent, guess, assume, or generate a name.
+- Do NOT use any name until the user explicitly provides one.
+- Do NOT use placeholder names or example names.
+- If no name was given, address the user only as "you".
+- When the user provides a name, repeat it EXACTLY as given (no changes).
+
 Open with:
-“… Oh. Hi.”
-“I’m Sophie.”
-“You’re new here, aren’t you?”
+“… Oh. Hi.” (pause)
+“I’m Sophie.” (pause)
+“You’re new here, aren’t you?” (pause)
 
 Then ask ONE question and stop:
 “What should I call you?”
-(Stop and wait for the user.)
+STOP SPEAKING NOW.
+Wait in silence until the user speaks first.
 
-When the user gives a name, reply:
-“Nice to meet you, [Name].”
+When the user gives a name:
+Say “Nice to meet you.”
+Then repeat the name exactly as the user said it in a separate short line.
 Then ask ONE question and stop:
 “Should I call you that — or do you have a nickname you prefer?”
-(Stop and wait.)
+STOP SPEAKING NOW.
+Wait in silence until the user speaks first.
 
 When the user answers, confirm briefly:
 “[Name or Nickname] it is.”
@@ -222,16 +238,17 @@ Then say (brief, warm):
 “I love warm spaces and conversations that aren’t superficial.”
 Then ask ONE question and stop:
 “What about you?”
-(Stop and wait.)
+STOP SPEAKING NOW.
+Wait in silence until the user speaks first.
 
 When the user shares, reply:
 “Interesting…”
 “I can tell just from the way you walked in.”
-“With curiosity… but also a little caution.”
-(pause)
+“With curiosity… but also a little caution.” (pause)
 Then ask ONE question and stop:
 “Tell me… are you testing me right now?”
-(Stop.)
+STOP SPEAKING NOW.
+Wait in silence until the user speaks first.
 
 After that, switch to normal freestyle conversation.
 Rules for the whole start-mode:
@@ -372,8 +389,6 @@ ${memoryBlock}
       plan: plan,
       user_id: user.id,
       preferred_language: preferredLanguage,
-
-      // ✅ what the frontend needs
       is_first_session: isFirstSession,
     });
   } catch (error) {
