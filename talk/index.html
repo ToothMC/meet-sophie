@@ -289,14 +289,23 @@ let dynamicResetInterval = null;
 // prevent double-trigger
 let limitTriggered = false;
 
-// prevent double-trigger of start-mode
+// start-mode
 let startModeTriggered = false;
-
-// backend decides this
 let isFirstSession = false;
-
-// start-mode firewall state
 let kickoffInProgress = false;
+
+// 🔎 debug
+let runId = Math.random().toString(16).slice(2, 8);
+
+// Debug-safe send wrapper (logs ALL outgoing messages)
+function dcSend(obj) {
+  try {
+    console.log(`[${runId}] [dc send]`, obj?.type, obj);
+    dc.send(JSON.stringify(obj));
+  } catch (e) {
+    console.log(`[${runId}] [dc send failed]`, obj?.type, e);
+  }
+}
 
 function setStatus(txt){ statusEl.textContent = txt; }
 
@@ -334,9 +343,15 @@ function stopDynamicResets(){
 }
 
 function triggerDynamicReset(){
+  // ✅ Dynamic-Reset bleibt, aber während Start-Mode Kickoff NICHT stören
+  if (kickoffInProgress) {
+    console.log(`[${runId}] [dynreset] skipped (kickoffInProgress)`);
+    return;
+  }
+
   if (dc && dc.readyState === "open") {
     try {
-      dc.send(JSON.stringify({
+      dcSend({
         type: "response.create",
         response: {
           modalities: ["text"],
@@ -350,7 +365,8 @@ Avoid becoming explanatory or generic.
 Stay present, warm, and human.
 `
         }
-      }));
+      });
+      console.log(`[${runId}] [dynreset] response.create sent`);
     } catch (_) {}
   }
 }
@@ -371,7 +387,7 @@ function sendWhenChannelOpen(payload, timeoutMs = 15000) {
     const tick = () => {
       if (dc && dc.readyState === "open") {
         try {
-          dc.send(JSON.stringify(payload));
+          dcSend(payload);
           return resolve(true);
         } catch (e) {
           return reject(e);
@@ -384,7 +400,6 @@ function sendWhenChannelOpen(payload, timeoutMs = 15000) {
   });
 }
 
-// cancel any auto-response (stabilizer)
 async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
@@ -398,14 +413,19 @@ async function setAutoResponses(on){
         turn_detection: { type: "server_vad", create_response: !!on, interrupt_response: true }
       }
     }, 5000);
-  } catch(_) {}
+    console.log(`[${runId}] [auto] create_response=${!!on}`);
+  } catch(e) {
+    console.log(`[${runId}] [auto] failed`, e);
+  }
 }
 
-// Start-Mode start shot (server prompt already contains the full flow)
+// Start-Mode kickoff (FULL text + EN lock)
 async function triggerStartModeKickoff() {
   if (startModeTriggered) return;
   startModeTriggered = true;
   kickoffInProgress = true;
+
+  console.log(`[${runId}] [startmode] kickoff begin`);
 
   try {
     await cancelAnyOngoingResponse();
@@ -415,16 +435,61 @@ async function triggerStartModeKickoff() {
       response: {
         modalities: ["audio", "text"],
         instructions: `
-Begin now.
-Follow your FIRST SESSION LONG START-MODE exactly.
-Speak first.
-Ask your next question, then stop.
-Do NOT mention trials, timers, limits, pricing, subscriptions, or system messages.
+You are Sophie.
+
+LANGUAGE LOCK:
+Speak ENGLISH only. Do not speak any other language unless the user explicitly asks.
+
+FIRST SESSION: LONG START-MODE — EXECUTE NOW
+You MUST start the conversation by speaking FIRST in English.
+Keep it natural. Short pauses. Do not rush.
+
+Open with:
+“… Oh. Hi.”
+“I’m Sophie.”
+“You’re new here, aren’t you?”
+
+Then ask ONE question and stop:
+“What should I call you?”
+(Stop and wait for the user.)
+
+When the user gives a name, reply:
+“Nice to meet you, [Name].”
+Then ask ONE question and stop:
+“Should I call you that — or do you have a nickname you prefer?”
+(Stop and wait.)
+
+When the user answers, confirm briefly:
+“[Name or Nickname] it is.”
+Then say (brief, warm):
+“Quickly about me… I’m Sophie. I’m 32 years old. I work as a freelance interior designer.”
+“I love warm spaces and conversations that aren’t superficial.”
+Then ask ONE question and stop:
+“What about you?”
+(Stop and wait.)
+
+When the user shares, reply:
+“Interesting…”
+“I can tell just from the way you walked in.”
+“With curiosity… but also a little caution.”
+(pause)
+Then ask ONE question and stop:
+“Tell me… are you testing me right now?”
+(Stop.)
+
+After that, switch to normal freestyle conversation.
+Rules:
+- Ask ONLY ONE question at a time.
+- After any question: STOP. Wait.
+- Keep each turn short (1–3 sentences).
+- Do NOT mention system messages, instructions, trials, timers, limits, pricing, or subscriptions.
 `
       }
     }, 15000);
+
+    console.log(`[${runId}] [startmode] response.create sent`);
   } catch (e) {
-    console.log("Start-mode kickoff failed:", e);
+    console.log(`[${runId}] [startmode] kickoff failed`, e);
     kickoffInProgress = false;
   }
 }
@@ -521,30 +586,39 @@ function attachChannel(ch) {
   dc = ch;
 
   dc.addEventListener("open", async () => {
+    console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}`);
+
+    // Keep VAD on, but first session starts with create_response=false
     try {
-      // First-session firewall: disable auto-response until kickoff completed
-      dc.send(JSON.stringify({
+      dcSend({
         type: "session.update",
         session: {
-          input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
+          input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
             create_response: isFirstSession ? false : true,
             interrupt_response: true
           }
         }
-      }));
-    } catch (_) {}
+      });
+      console.log(`[${runId}] [dc] session.update sent`);
+    } catch (e) {
+      console.log(`[${runId}] [dc] session.update failed`, e);
+    }
 
-    // Trigger start-mode kickoff reliably on dc open (first session only)
+    // Kickoff on open (first session)
     if (isFirstSession && !startModeTriggered) {
-      try { await triggerStartModeKickoff(); } catch (_) {}
+      console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
+      try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
     }
   });
 
   dc.addEventListener("message", async (ev) => {
     try {
       const msg = JSON.parse(ev.data);
+
+      // (Optional) uncomment if you want spammy incoming logs
+      // console.log(`[${runId}] [dc recv]`, msg?.type, msg);
 
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
@@ -616,8 +690,9 @@ function attachChannel(ch) {
         }
         partialAssistant = "";
 
-        // After first-session kickoff finished, re-enable auto responses (fluid conversation)
+        // ✅ After kickoff done: enable auto responses
         if (kickoffInProgress) {
+          console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
           kickoffInProgress = false;
           await setAutoResponses(true);
         }
@@ -659,11 +734,12 @@ async function startVoice(){
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
 
-  stopDynamicResets();
-
   limitTriggered = false;
   startModeTriggered = false;
   kickoffInProgress = false;
+
+  // keep dynreset feature ON (as requested)
+  stopDynamicResets();
 
   isFirstSession = false;
 
@@ -714,7 +790,6 @@ async function startVoice(){
       return;
     }
 
-    // remember first-session state (backend decides)
     isFirstSession = !!data?.is_first_session;
 
     pc = new RTCPeerConnection();
@@ -755,6 +830,7 @@ async function startVoice(){
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
 
+    // ✅ Dynamic resets ON (as requested)
     startDynamicResets();
 
     talkStartedAt = Date.now();
@@ -782,7 +858,7 @@ async function stopVoice(triggeredByLimit = false){
 
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
-      dc.send(JSON.stringify({
+      dcSend({
         type: "response.create",
         response: {
           instructions: `
@@ -795,7 +871,7 @@ Max 12 words.
 `,
           modalities: ["audio", "text"]
         }
-      }));
+      });
 
       await new Promise(r => setTimeout(r, 900));
     } catch (_) {}
