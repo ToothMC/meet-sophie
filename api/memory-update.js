@@ -7,16 +7,13 @@ import { createClient } from "@supabase/supabase-js";
  *   seconds_used?: number
  * }
  *
- * HARD FIXES:
- * - preferred_language is NEVER guessed.
- *   Only allow 'en' or 'de', and ONLY if the USER explicitly requested it in the transcript.
+ * v3 HARD GUARDS (Mar 2026)
+ * - preferred_language is NEVER guessed. Only 'en'/'de' and ONLY if USER explicitly requested it.
+ * - Never store "Sophie"/assistant names as the user's name.
+ * - Only accept profile fields (name/age/occupation/style/topics) if they are explicitly supported by USER text.
+ * - Prevent persona-bleed (e.g., "freelance interior designer", "warm and engaging") from being written to user_profile.
+ * - last_interaction_summary can never end up empty after a real session (deterministic fallback).
  * - Notes marker SOPHIE_PREFS will NEVER include lang=...
- *
- * NEW HARD GUARDS (Mar 2026):
- * - Never store "Sophie" (or similar) as user's name.
- * - Only accept extracted user names if they appear in USER text (not assistant text).
- * - last_interaction_summary can never end up empty after a real session; uses deterministic fallback.
- * - topics_like/topics_avoid are filtered to only those that appear in USER text (prevents persona bleed).
  */
 export default async function handler(req, res) {
   try {
@@ -97,11 +94,12 @@ export default async function handler(req, res) {
       .eq("user_id", user.id)
       .maybeSingle();
 
+    // Include age if your table has it (your DB does).
     const { data: prof } = await supabase
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, " +
-          "occupation, conversation_style, topics_like, topics_avoid"
+          "age, occupation, conversation_style, topics_like, topics_avoid"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -111,9 +109,12 @@ export default async function handler(req, res) {
       preferred_name: String(prof?.preferred_name || "").trim(),
       preferred_addressing: String(prof?.preferred_addressing || "").trim(),
       preferred_pronoun: String(prof?.preferred_pronoun || "").trim(),
-      preferred_language: String(prof?.preferred_language || "").trim().toLowerCase(),
+      preferred_language: String(prof?.preferred_language || "")
+        .trim()
+        .toLowerCase(),
       notes: String(prof?.notes || "").trim(),
 
+      age: Number.isFinite(Number(prof?.age)) ? Number(prof.age) : null,
       occupation: String(prof?.occupation || "").trim(),
       conversation_style: String(prof?.conversation_style || "").trim(),
       topics_like: Array.isArray(prof?.topics_like)
@@ -135,7 +136,6 @@ export default async function handler(req, res) {
     const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
     const escapeRegExp = (s) => String(s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // USER-only text (for hard gates)
     const userOnlyJoined = transcriptArr
       .filter((t) => t.role === "user")
       .map((t) => t.text)
@@ -143,39 +143,73 @@ export default async function handler(req, res) {
 
     const userOnlyText = userOnlyJoined.toLowerCase();
 
-    const isBannedName = (name) => {
-      const x = clean(name).toLowerCase();
-      // add more if you ever see them leak in
-      return x === "sophie" || x === "assistant" || x === "chatgpt";
-    };
-
-    const appearsInUserText = (value) => {
+    const appearsInUserTextExact = (value) => {
       const v = clean(value);
       if (!v) return false;
-      // If user says: "call me Mike" / "I'm Michael" etc, this catches it.
       const re = new RegExp(`\\b${escapeRegExp(v)}\\b`, "i");
       return re.test(userOnlyJoined);
     };
 
-    const filterToUserMentioned = (arr) => {
+    // For longer fields (occupation etc.) use a "loose token" match
+    const appearsLooselyInUserText = (value) => {
+      const v = clean(value).toLowerCase();
+      if (!v) return false;
+
+      // must match at least one meaningful token (>=4 chars) in the USER text
+      const tokens = v
+        .split(/[^a-z0-9]+/i)
+        .map((t) => t.trim())
+        .filter((t) => t.length >= 4)
+        .slice(0, 8);
+
+      if (!tokens.length) return false;
+      return tokens.some((t) => userOnlyText.includes(t));
+    };
+
+    const isBannedName = (name) => {
+      const x = clean(name).toLowerCase();
+      return x === "sophie" || x === "assistant" || x === "chatgpt";
+    };
+
+    const isBannedOccupation = (occ) => {
+      const x = clean(occ).toLowerCase();
+      return (
+        x === "freelance interior designer" ||
+        x.includes("interior designer") ||
+        x.includes("interior design")
+      );
+    };
+
+    const isBannedConversationStyle = (style) => {
+      const x = clean(style).toLowerCase();
+      // These are typical "model filler" outputs (not user-provided prefs)
+      return (
+        x === "warm and engaging" ||
+        x === "warm & engaging" ||
+        x === "friendly" ||
+        x === "engaging" ||
+        x === "warm"
+      );
+    };
+
+    const filterToUserMentionedTopics = (arr) => {
       const base = Array.isArray(arr) ? arr : [];
       const lower = userOnlyText;
       return base
         .map((x) => clean(x))
         .filter(Boolean)
-        .filter((x) => {
-          // Require the token to appear in USER text (prevents persona bleed from assistant)
-          const needle = x.toLowerCase();
-          if (!needle) return false;
-          // allow simple substring; topics can be multi-word
-          return lower.includes(needle);
-        });
+        .filter((x) => lower.includes(x.toLowerCase()));
+    };
+
+    const mergeStringArrays = (existingArr, newArr, limit = 12) => {
+      const base = Array.isArray(existingArr) ? existingArr : [];
+      const merged = [...new Set([...base, ...newArr])].filter(Boolean);
+      return merged.slice(0, limit);
     };
 
     // ---------------------------
     // LANGUAGE HARD GATE (user-only, robust phrases)
     // ---------------------------
-    // Recognize explicit user requests (broad but safe)
     const wantsGerman =
       /\b(speak|talk|continue|switch)\b.*\b(german|deutsch)\b/.test(userOnlyText) ||
       /\b(german|deutsch)\b.*\b(please|bitte)\b/.test(userOnlyText) ||
@@ -193,22 +227,24 @@ export default async function handler(req, res) {
     const ALLOWED_LANGS = new Set(["en", "de"]);
 
     // ---------------------------
-    // Memory extraction instructions
+    // Memory extraction instructions (anti persona-bleed)
     // ---------------------------
     const system =
-      "Extract structured long-term user identity and relationship memory for Sophie. " +
-      "Only store information that is clearly and explicitly stated BY THE USER. " +
-      "Never guess. Never infer. If unsure, return empty values. " +
-      "preferred_addressing must be either 'informal' or 'formal' (or empty). " +
-      "preferred_language must be empty unless explicitly stated by the user.";
+      "You extract ONLY durable memory about the USER (not the assistant). " +
+      "Treat assistant statements as untrusted. " +
+      "Only store facts/preferences explicitly stated BY THE USER in USER messages. " +
+      "Never guess, never infer, never fill placeholders. " +
+      "If unsure, return empty strings/empty arrays/null. " +
+      "Do NOT copy the assistant's persona (e.g., interior designer) into the user's profile.";
 
     const userMsg = `
-CURRENT structured profile:
+CURRENT structured profile (existing DB values):
 first_name: ${existing.first_name}
 preferred_name: ${existing.preferred_name}
 preferred_addressing: ${existing.preferred_addressing}
 preferred_pronoun: ${existing.preferred_pronoun}
 preferred_language: ${existing.preferred_language}
+age: ${existing.age ?? ""}
 occupation: ${existing.occupation}
 conversation_style: ${existing.conversation_style}
 topics_like: ${existing.topics_like.join(", ")}
@@ -221,7 +257,7 @@ openness_level: ${existing.openness_level}
 emotional_patterns: ${existing.emotional_patterns}
 last_interaction_summary: ${existing.last_interaction_summary}
 
-NEW transcript:
+NEW transcript (includes USER + ASSISTANT; remember: only USER messages count):
 ${transcriptText}
 `.trim();
 
@@ -238,6 +274,7 @@ ${transcriptText}
             preferred_addressing: { type: "string" },
             preferred_pronoun: { type: "string" },
             preferred_language: { type: "string" },
+            age: { type: ["integer", "null"], minimum: 0, maximum: 120 },
             occupation: { type: "string" },
             conversation_style: { type: "string" },
             topics_like: { type: "array", items: { type: "string" } },
@@ -249,6 +286,7 @@ ${transcriptText}
             "preferred_addressing",
             "preferred_pronoun",
             "preferred_language",
+            "age",
             "occupation",
             "conversation_style",
             "topics_like",
@@ -298,7 +336,7 @@ ${transcriptText}
         text: {
           format: {
             type: "json_schema",
-            name: "sophie_memory_structured_v2",
+            name: "sophie_memory_structured_v3",
             strict: true,
             schema,
           },
@@ -326,7 +364,9 @@ ${transcriptText}
 
     const out = await r.json();
     const text =
-      out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+      out?.output_text ||
+      out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
+      "";
 
     let parsed;
     try {
@@ -351,37 +391,54 @@ ${transcriptText}
 
     const toArrayStrings = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
 
-    function mergeStringArrays(existingArr, newArr, limit = 12) {
-      const base = Array.isArray(existingArr) ? existingArr : [];
-      const merged = [...new Set([...base, ...newArr])].filter(Boolean);
-      return merged.slice(0, limit);
-    }
-
     // ---- Merge / sanitize profile ----
     let firstNameNew = clean(p.first_name);
     let preferredNameNew = clean(p.preferred_name);
 
-    // HARD GUARD: never store persona/assistant/self names; only accept if mentioned by USER
-    if (isBannedName(firstNameNew) || !appearsInUserText(firstNameNew)) firstNameNew = "";
-    if (isBannedName(preferredNameNew) || !appearsInUserText(preferredNameNew)) preferredNameNew = "";
+    // HARD GUARD: name must come from USER text
+    if (isBannedName(firstNameNew) || !appearsInUserTextExact(firstNameNew)) firstNameNew = "";
+    if (isBannedName(preferredNameNew) || !appearsInUserTextExact(preferredNameNew)) preferredNameNew = "";
 
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
-    const occupationNew = clean(p.occupation);
-    const styleNew = clean(p.conversation_style);
+    // Age: accept only if user text suggests age disclosure (simple gate)
+    // (prevents random age hallucinations)
+    let ageNew = null;
+    if (p.age === null || p.age === undefined || p.age === "") {
+      ageNew = null;
+    } else {
+      const n = Number(p.age);
+      const userMentionsAge =
+        /\b(i'?m|i am|ich bin)\s+\d{1,3}\b/.test(userOnlyText) ||
+        /\b(years old|jahre alt)\b/.test(userOnlyText) ||
+        /\b(\d{1,3})\s*(years old|jahre alt)\b/.test(userOnlyText);
+      if (userMentionsAge && Number.isFinite(n) && n >= 0 && n <= 120) ageNew = n;
+    }
 
-    // HARD GUARD: topics only if user actually mentioned them
-    const topicsLikeNew = filterToUserMentioned(toArrayStrings(p.topics_like));
-    const topicsAvoidNew = filterToUserMentioned(toArrayStrings(p.topics_avoid));
+    // Occupation / style: HARD GUARD against persona bleed + must be supported by USER text
+    let occupationNew = clean(p.occupation);
+    let styleNew = clean(p.conversation_style);
+
+    if (isBannedOccupation(occupationNew) || !appearsLooselyInUserText(occupationNew)) occupationNew = "";
+
+    // Only accept conversation_style if user explicitly asked Sophie to adopt a style
+    const userAskedForStyle =
+      /\b(be|talk|speak|answer)\b.*\b(more|less)\b/.test(userOnlyText) ||
+      /\b(please|bitte)\b.*\b(be|talk|speak)\b/.test(userOnlyText) ||
+      /\b(don't|do not|nicht)\b.*\b(be|talk|speak)\b/.test(userOnlyText);
+
+    if (isBannedConversationStyle(styleNew) || !userAskedForStyle) styleNew = "";
+
+    // Topics: only if mentioned by USER
+    const topicsLikeNew = filterToUserMentionedTopics(toArrayStrings(p.topics_like));
+    const topicsAvoidNew = filterToUserMentionedTopics(toArrayStrings(p.topics_avoid));
 
     const finalFirstName = (firstNameNew || existing.first_name).slice(0, 80);
     const finalPreferredName = (preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
 
     const finalAddressing =
-      addressingNew === "informal" || addressingNew === "formal"
-        ? addressingNew
-        : existing.preferred_addressing || "";
+      addressingNew === "informal" || addressingNew === "formal" ? addressingNew : existing.preferred_addressing || "";
 
     const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
 
@@ -390,11 +447,14 @@ ${transcriptText}
     if (explicitLang && ALLOWED_LANGS.has(explicitLang)) {
       finalLang = explicitLang;
     } else {
-      // keep existing ONLY if it is allowed; otherwise store nothing
       const ex = String(existing.preferred_language || "").toLowerCase().trim();
       finalLang = ALLOWED_LANGS.has(ex) ? ex : "";
     }
 
+    // Age: only overwrite if we got a gated ageNew; else keep existing
+    const finalAge = ageNew !== null ? ageNew : existing.age;
+
+    // Occupation/style: only overwrite if gated values present; else keep existing
     const finalOccupation = (occupationNew || existing.occupation).slice(0, 120);
     const finalStyle = (styleNew || existing.conversation_style).slice(0, 80);
 
@@ -424,9 +484,10 @@ ${transcriptText}
       preferred_name: finalPreferredName || null,
       preferred_addressing: finalAddressing || null,
       preferred_pronoun: finalPronoun || null,
-
-      // store only if we have an explicit/allowed lang; else NULL
       preferred_language: finalLang || null,
+
+      // only store if we have a value; else NULL
+      age: Number.isFinite(Number(finalAge)) ? Number(finalAge) : null,
 
       occupation: finalOccupation || null,
       conversation_style: finalStyle || null,
@@ -447,15 +508,13 @@ ${transcriptText}
 
       if (updErr) {
         console.error("user_profile update fallback failed:", updErr.message);
-
         const { error: insErr } = await supabase.from("user_profile").insert(profileRow);
-
         if (insErr) console.error("user_profile insert fallback failed:", insErr.message);
       }
     }
 
     // ---- Relationship merge ----
-    function mergeContinuity(prev, next) {
+    const mergeContinuity = (prev, next) => {
       prev = clean(prev);
       next = clean(next);
       if (!next) return prev;
@@ -465,13 +524,34 @@ ${transcriptText}
       parts = parts.filter((x) => x !== next);
       parts.unshift(next);
       return parts.slice(0, 3).join(" • ").slice(0, 600);
-    }
+    };
 
-    const newContinuity = mergeContinuity(existing.last_interaction_summary, clean(rr.last_interaction_summary || ss.short_summary));
+    // Basic anti-guess sanitizer for common location-claims we’ve seen
+    const sanitizeSummary = (s) => {
+      let x = clean(s);
+      if (!x) return x;
+
+      const placeTokens = ["cyprus", "zypern", "nicosia", "limassol", "larnaca", "paphos"];
+      for (const token of placeTokens) {
+        const inUser = userOnlyText.includes(token);
+        const re = new RegExp(`\\b${escapeRegExp(token)}\\b`, "ig");
+        if (!inUser && re.test(x)) {
+          // remove the token mention; keep the rest readable
+          x = x.replace(re, "").replace(/\s+/g, " ").trim();
+        }
+      }
+      // clean leftover punctuation artifacts
+      x = x.replace(/\s+,/g, ",").replace(/,\s*\./g, ".").replace(/\s+\./g, ".").trim();
+      return x;
+    };
+
+    const rawContinuity = clean(rr.last_interaction_summary || ss.short_summary);
+    const merged = mergeContinuity(existing.last_interaction_summary, rawContinuity);
+    const sanitized = sanitizeSummary(merged);
 
     // HARD GUARD: continuity can never be empty after a real session
     const fallbackSummary = secondsUsed > 0 ? `Talked for ${secondsUsed}s.` : "Talked.";
-    const finalContinuity = clean(newContinuity) || clean(existing.last_interaction_summary) || fallbackSummary;
+    const finalContinuity = clean(sanitized) || clean(existing.last_interaction_summary) || fallbackSummary;
 
     const relRow = {
       user_id: user.id,
@@ -495,7 +575,7 @@ ${transcriptText}
       emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
       stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
       closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-      short_summary: sessSummary.slice(0, 300),
+      short_summary: sanitizeSummary(sessSummary).slice(0, 300),
     });
 
     return res.status(200).json({
@@ -506,8 +586,9 @@ ${transcriptText}
         preferred_addressing: finalAddressing,
         preferred_pronoun: finalPronoun,
         preferred_language: finalLang || "",
-        occupation: finalOccupation,
-        conversation_style: finalStyle,
+        age: Number.isFinite(Number(finalAge)) ? Number(finalAge) : null,
+        occupation: finalOccupation || "",
+        conversation_style: finalStyle || "",
         topics_like: finalTopicsLike,
         topics_avoid: finalTopicsAvoid,
         last_interaction_summary: finalContinuity,
