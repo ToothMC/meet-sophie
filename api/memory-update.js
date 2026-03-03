@@ -11,6 +11,12 @@ import { createClient } from "@supabase/supabase-js";
  * - preferred_language is NEVER guessed.
  *   Only allow 'en' or 'de', and ONLY if the USER explicitly requested it in the transcript.
  * - Notes marker SOPHIE_PREFS will NEVER include lang=...
+ *
+ * NEW HARD GUARDS (Mar 2026):
+ * - Never store "Sophie" (or similar) as user's name.
+ * - Only accept extracted user names if they appear in USER text (not assistant text).
+ * - last_interaction_summary can never end up empty after a real session; uses deterministic fallback.
+ * - topics_like/topics_avoid are filtered to only those that appear in USER text (prevents persona bleed).
  */
 export default async function handler(req, res) {
   try {
@@ -19,7 +25,11 @@ export default async function handler(req, res) {
     // Body robust lesen
     let body = req.body;
     if (typeof body === "string") {
-      try { body = JSON.parse(body); } catch { body = {}; }
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
     }
     body = body && typeof body === "object" ? body : {};
 
@@ -37,7 +47,10 @@ export default async function handler(req, res) {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     // User validieren
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
@@ -88,7 +101,7 @@ export default async function handler(req, res) {
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, " +
-        "occupation, conversation_style, topics_like, topics_avoid"
+          "occupation, conversation_style, topics_like, topics_avoid"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -103,8 +116,12 @@ export default async function handler(req, res) {
 
       occupation: String(prof?.occupation || "").trim(),
       conversation_style: String(prof?.conversation_style || "").trim(),
-      topics_like: Array.isArray(prof?.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
-      topics_avoid: Array.isArray(prof?.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
+      topics_like: Array.isArray(prof?.topics_like)
+        ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean)
+        : [],
+      topics_avoid: Array.isArray(prof?.topics_avoid)
+        ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean)
+        : [],
 
       tone_baseline: String(rel?.tone_baseline || "").trim(),
       openness_level: String(rel?.openness_level || "").trim(),
@@ -113,14 +130,51 @@ export default async function handler(req, res) {
     };
 
     // ---------------------------
-    // LANGUAGE HARD GATE (user-only, robust phrases)
+    // Helpers
     // ---------------------------
-    const userOnlyText = transcriptArr
+    const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
+    const escapeRegExp = (s) => String(s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // USER-only text (for hard gates)
+    const userOnlyJoined = transcriptArr
       .filter((t) => t.role === "user")
       .map((t) => t.text)
-      .join("\n")
-      .toLowerCase();
+      .join("\n");
 
+    const userOnlyText = userOnlyJoined.toLowerCase();
+
+    const isBannedName = (name) => {
+      const x = clean(name).toLowerCase();
+      // add more if you ever see them leak in
+      return x === "sophie" || x === "assistant" || x === "chatgpt";
+    };
+
+    const appearsInUserText = (value) => {
+      const v = clean(value);
+      if (!v) return false;
+      // If user says: "call me Mike" / "I'm Michael" etc, this catches it.
+      const re = new RegExp(`\\b${escapeRegExp(v)}\\b`, "i");
+      return re.test(userOnlyJoined);
+    };
+
+    const filterToUserMentioned = (arr) => {
+      const base = Array.isArray(arr) ? arr : [];
+      const lower = userOnlyText;
+      return base
+        .map((x) => clean(x))
+        .filter(Boolean)
+        .filter((x) => {
+          // Require the token to appear in USER text (prevents persona bleed from assistant)
+          const needle = x.toLowerCase();
+          if (!needle) return false;
+          // allow simple substring; topics can be multi-word
+          return lower.includes(needle);
+        });
+    };
+
+    // ---------------------------
+    // LANGUAGE HARD GATE (user-only, robust phrases)
+    // ---------------------------
     // Recognize explicit user requests (broad but safe)
     const wantsGerman =
       /\b(speak|talk|continue|switch)\b.*\b(german|deutsch)\b/.test(userOnlyText) ||
@@ -143,7 +197,7 @@ export default async function handler(req, res) {
     // ---------------------------
     const system =
       "Extract structured long-term user identity and relationship memory for Sophie. " +
-      "Only store information that is clearly and explicitly stated. " +
+      "Only store information that is clearly and explicitly stated BY THE USER. " +
       "Never guess. Never infer. If unsure, return empty values. " +
       "preferred_addressing must be either 'informal' or 'formal' (or empty). " +
       "preferred_language must be empty unless explicitly stated by the user.";
@@ -262,7 +316,9 @@ ${transcriptText}
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
-        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText).replace(/\s+/g, " ").slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
+        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText)
+          .replace(/\s+/g, " ")
+          .slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
       });
 
       return res.status(r.status).json({ error: errorText });
@@ -270,9 +326,7 @@ ${transcriptText}
 
     const out = await r.json();
     const text =
-      out?.output_text ||
-      out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
-      "";
+      out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
 
     let parsed;
     try {
@@ -291,7 +345,6 @@ ${transcriptText}
       return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
     }
 
-    const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
     const p = parsed.profile || {};
     const rr = parsed.relationship || {};
     const ss = parsed.session || {};
@@ -305,16 +358,22 @@ ${transcriptText}
     }
 
     // ---- Merge / sanitize profile ----
-    const firstNameNew = clean(p.first_name);
-    const preferredNameNew = clean(p.preferred_name);
+    let firstNameNew = clean(p.first_name);
+    let preferredNameNew = clean(p.preferred_name);
+
+    // HARD GUARD: never store persona/assistant/self names; only accept if mentioned by USER
+    if (isBannedName(firstNameNew) || !appearsInUserText(firstNameNew)) firstNameNew = "";
+    if (isBannedName(preferredNameNew) || !appearsInUserText(preferredNameNew)) preferredNameNew = "";
 
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
     const occupationNew = clean(p.occupation);
     const styleNew = clean(p.conversation_style);
-    const topicsLikeNew = toArrayStrings(p.topics_like);
-    const topicsAvoidNew = toArrayStrings(p.topics_avoid);
+
+    // HARD GUARD: topics only if user actually mentioned them
+    const topicsLikeNew = filterToUserMentioned(toArrayStrings(p.topics_like));
+    const topicsAvoidNew = filterToUserMentioned(toArrayStrings(p.topics_avoid));
 
     const finalFirstName = (firstNameNew || existing.first_name).slice(0, 80);
     const finalPreferredName = (preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
@@ -322,7 +381,7 @@ ${transcriptText}
     const finalAddressing =
       addressingNew === "informal" || addressingNew === "formal"
         ? addressingNew
-        : (existing.preferred_addressing || "");
+        : existing.preferred_addressing || "";
 
     const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
 
@@ -379,24 +438,17 @@ ${transcriptText}
     };
 
     // Upsert user_profile (STRUCTURED)
-    const { error: profUpErr } = await supabase
-      .from("user_profile")
-      .upsert(profileRow, { onConflict: "user_id" });
+    const { error: profUpErr } = await supabase.from("user_profile").upsert(profileRow, { onConflict: "user_id" });
 
     if (profUpErr) {
       console.error("user_profile upsert failed:", profUpErr.message, profileRow);
 
-      const { error: updErr } = await supabase
-        .from("user_profile")
-        .update(profileRow)
-        .eq("user_id", user.id);
+      const { error: updErr } = await supabase.from("user_profile").update(profileRow).eq("user_id", user.id);
 
       if (updErr) {
         console.error("user_profile update fallback failed:", updErr.message);
 
-        const { error: insErr } = await supabase
-          .from("user_profile")
-          .insert(profileRow);
+        const { error: insErr } = await supabase.from("user_profile").insert(profileRow);
 
         if (insErr) console.error("user_profile insert fallback failed:", insErr.message);
       }
@@ -415,34 +467,35 @@ ${transcriptText}
       return parts.slice(0, 3).join(" • ").slice(0, 600);
     }
 
-    const newContinuity = mergeContinuity(
-      existing.last_interaction_summary,
-      clean(rr.last_interaction_summary || ss.short_summary)
-    );
+    const newContinuity = mergeContinuity(existing.last_interaction_summary, clean(rr.last_interaction_summary || ss.short_summary));
+
+    // HARD GUARD: continuity can never be empty after a real session
+    const fallbackSummary = secondsUsed > 0 ? `Talked for ${secondsUsed}s.` : "Talked.";
+    const finalContinuity = clean(newContinuity) || clean(existing.last_interaction_summary) || fallbackSummary;
 
     const relRow = {
       user_id: user.id,
       tone_baseline: clean(rr.tone_baseline || existing.tone_baseline).slice(0, 200),
       openness_level: clean(rr.openness_level || existing.openness_level).slice(0, 50),
       emotional_patterns: clean(rr.emotional_patterns || existing.emotional_patterns).slice(0, 500),
-      last_interaction_summary: clean(newContinuity).slice(0, 600),
+      last_interaction_summary: finalContinuity.slice(0, 600),
       updated_at: nowIso,
     };
 
-    const { error: relUpErr } = await supabase
-      .from("user_relationship")
-      .upsert(relRow, { onConflict: "user_id" });
+    const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
 
     if (relUpErr) console.error("user_relationship upsert failed:", relUpErr.message, relRow);
 
     // ---- user_sessions insert ----
+    const sessSummary = clean(ss.short_summary) || fallbackSummary;
+
     await supabase.from("user_sessions").insert({
       user_id: user.id,
       session_date: nowIso,
       emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
       stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
       closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-      short_summary: clean(ss.short_summary).slice(0, 300) || "Session captured.",
+      short_summary: sessSummary.slice(0, 300),
     });
 
     return res.status(200).json({
@@ -457,6 +510,7 @@ ${transcriptText}
         conversation_style: finalStyle,
         topics_like: finalTopicsLike,
         topics_avoid: finalTopicsAvoid,
+        last_interaction_summary: finalContinuity,
       },
     });
   } catch (err) {
