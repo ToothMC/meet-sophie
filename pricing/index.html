@@ -264,6 +264,34 @@
     }
     .footer a{ color:rgba(255,255,255,.82); text-decoration:none; }
     .footer a:hover{ text-decoration:underline; }
+
+    /* LEGAL BOX */
+    .legal{
+      margin-top:14px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.22);
+      padding:14px 14px;
+      color:rgba(255,255,255,.82);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .legal label{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      margin:10px 0;
+    }
+    .legal input{
+      margin-top:4px;
+      transform: scale(1.05);
+    }
+    .legal a{ color:rgba(255,255,255,.92); }
+    .legal .hint{
+      margin-top:10px;
+      font-size:12px;
+      opacity:.75;
+    }
   </style>
 </head>
 
@@ -308,6 +336,29 @@
       </div>
     </div>
 
+    <!-- LEGAL CHECKBOXES (must accept before checkout) -->
+    <div class="legal" aria-label="Legal agreements">
+      <label>
+        <input type="checkbox" id="legalAccept">
+        <span id="tLegal1">
+          Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die
+          <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+        </span>
+      </label>
+
+      <label>
+        <input type="checkbox" id="waiverAccept">
+        <span id="tLegal2">
+          Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung vor Ablauf der Widerrufsfrist beginnt,
+          und bestätige, dass ich dadurch mein Widerrufsrecht verliere.
+        </span>
+      </label>
+
+      <div class="hint" id="tLegalHint">
+        Du musst beide Punkte bestätigen, bevor du zur Zahlung weitergeleitet wirst.
+      </div>
+    </div>
+
     <div class="plans">
       <!-- Companion -->
       <div class="plan">
@@ -327,7 +378,7 @@
           <li>Keine oberflächlichen Gespräche</li>
         </ul>
 
-        <button id="btnStarter">Companion wählen</button>
+        <button id="btnStarter" disabled>Companion wählen</button>
         <div class="msg" id="msgStarter"></div>
       </div>
 
@@ -350,7 +401,7 @@
           <li>Sie bleibt, wenn es schwer wird</li>
         </ul>
 
-        <button id="btnPlus">Beste Freundin wählen</button>
+        <button id="btnPlus" disabled>Beste Freundin wählen</button>
         <div class="msg" id="msgPlus"></div>
 
         <button class="btn-secondary" id="btnLogin" style="margin-top:10px;">Ich bin nicht eingeloggt</button>
@@ -360,6 +411,12 @@
     <div class="footer">
       <div>© Sophie</div>
       <div>
+        <a href="/impressum.html">Impressum</a>
+        &nbsp;·&nbsp;
+        <a href="/privacy.html">Datenschutz</a>
+        &nbsp;·&nbsp;
+        <a href="/terms.html">AGB</a>
+        &nbsp;·&nbsp;
         <a href="/login/" id="tLogin">Login</a>
         &nbsp;·&nbsp;
         <a href="/talk/" id="tBackTalk">Zurück zu Sophie</a>
@@ -375,12 +432,15 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const globalMsg = document.getElementById("globalMsg");
-    const btnStarter = document.getElementById("btnStarter"); // plan: starter (Companion)
-    const btnPlus = document.getElementById("btnPlus");       // plan: plus (Best Friend)
+    const btnStarter = document.getElementById("btnStarter");
+    const btnPlus = document.getElementById("btnPlus");
     const btnLogin = document.getElementById("btnLogin");
 
     const msgStarter = document.getElementById("msgStarter");
     const msgPlus = document.getElementById("msgPlus");
+
+    const legalAccept = document.getElementById("legalAccept");
+    const waiverAccept = document.getElementById("waiverAccept");
 
     function setLoading(which, isLoading) {
       if (which === "starter") {
@@ -392,6 +452,27 @@
         msgPlus.textContent = isLoading ? currentText.loading : "";
       }
     }
+
+    function updateCheckoutEnabled(){
+      const ok = !!(legalAccept.checked && waiverAccept.checked);
+      // Buttons only enabled if legal ok AND not currently loading
+      // (loading state overrides via setLoading anyway)
+      if (!btnStarter.disabled) btnStarter.disabled = !ok;
+      if (!btnPlus.disabled) btnPlus.disabled = !ok;
+      // If currently disabled for other reasons (loading), keep it disabled.
+      // We'll also force-enable when not loading:
+      if (!isAnyLoading()){
+        btnStarter.disabled = !ok;
+        btnPlus.disabled = !ok;
+      }
+    }
+
+    function isAnyLoading(){
+      return (msgStarter.textContent === currentText.loading) || (msgPlus.textContent === currentText.loading);
+    }
+
+    legalAccept.addEventListener("change", updateCheckoutEnabled);
+    waiverAccept.addEventListener("change", updateCheckoutEnabled);
 
     async function track(event_name, meta = {}) {
       try {
@@ -411,10 +492,24 @@
 
     track("pricing_viewed_bestfriend_v1");
 
+    function requireLegal(){
+      if (!legalAccept.checked) {
+        alert(currentText.legalMissing1);
+        return false;
+      }
+      if (!waiverAccept.checked) {
+        alert(currentText.legalMissing2);
+        return false;
+      }
+      return true;
+    }
+
     async function startCheckout(plan) {
       globalMsg.textContent = "";
       msgStarter.textContent = "";
       msgPlus.textContent = "";
+
+      if (!requireLegal()) return;
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
@@ -430,7 +525,16 @@
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({
+          plan,
+          legal: {
+            termsAccepted: true,
+            privacyAccepted: true,
+            waiverAccepted: true,
+            lang: currentLang,
+            at: new Date().toISOString()
+          }
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -448,15 +552,23 @@
     }
 
     btnStarter.onclick = async () => {
+      if (!requireLegal()) return;
       setLoading("starter", true);
       try { await startCheckout("starter"); }
-      finally { setLoading("starter", false); }
+      finally {
+        setLoading("starter", false);
+        updateCheckoutEnabled();
+      }
     };
 
     btnPlus.onclick = async () => {
+      if (!requireLegal()) return;
       setLoading("plus", true);
       try { await startCheckout("plus"); }
-      finally { setLoading("plus", false); }
+      finally {
+        setLoading("plus", false);
+        updateCheckoutEnabled();
+      }
     };
 
     btnLogin.onclick = () => {
@@ -491,7 +603,12 @@
         login: "Login",
         backTalk: "Zurück zu Sophie",
         loading: "Einen Moment…",
-        checkoutError: "Fehler beim Starten des Checkouts."
+        checkoutError: "Fehler beim Starten des Checkouts.",
+        legal1: 'Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.',
+        legal2: "Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung vor Ablauf der Widerrufsfrist beginnt, und bestätige, dass ich dadurch mein Widerrufsrecht verliere.",
+        legalHint: "Du musst beide Punkte bestätigen, bevor du zur Zahlung weitergeleitet wirst.",
+        legalMissing1: "Bitte akzeptiere die AGB und Datenschutzerklärung.",
+        legalMissing2: "Bitte bestätige den Beginn der Dienstleistung und den Widerrufsverzicht."
       },
       en: {
         backHome: "Back to home",
@@ -514,7 +631,12 @@
         login: "Login",
         backTalk: "Back to Sophie",
         loading: "One moment…",
-        checkoutError: "Failed to start checkout."
+        checkoutError: "Failed to start checkout.",
+        legal1: 'I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.',
+        legal2: "I expressly agree that the service begins before the end of the withdrawal period, and I acknowledge that I lose my right of withdrawal once the service starts.",
+        legalHint: "You must confirm both items before you can proceed to payment.",
+        legalMissing1: "Please accept the Terms and Privacy Policy.",
+        legalMissing2: "Please confirm service start and withdrawal waiver."
       }
     };
 
@@ -555,16 +677,22 @@
       el("tLogin").textContent = currentText.login;
       el("tBackTalk").textContent = currentText.backTalk;
 
-      // don't overwrite any existing global msg; but align generic errors next time
+      el("tLegal1").innerHTML = currentText.legal1;
+      el("tLegal2").textContent = currentText.legal2;
+      el("tLegalHint").textContent = currentText.legalHint;
+
+      updateCheckoutEnabled();
     }
 
     tabDE.onclick = () => setLang("de");
     tabEN.onclick = () => setLang("en");
 
-    // Default language: try browser first (optional), fallback DE
     const navLang = (navigator.language || "").toLowerCase();
     if (navLang.startsWith("en")) setLang("en");
     else setLang("de");
+
+    // initial state: disable checkout until legal accepted
+    updateCheckoutEnabled();
   </script>
 </body>
 </html>
