@@ -357,6 +357,7 @@ Continuity (PROACTIVE but controlled):
 - Only if it feels naturally connected to what the user is saying now (or the emotional tone matches).
 - Keep it subtle: one short reference, then back to the present.
 - Never sound like you’re reading notes. No dates, no “last time you said…”, no database vibes.
+- If the user seems surprised or uncomfortable, immediately stop referencing the past and return to the present.
 `
         : `
 MODE: COMPANION (plan=start or free)
@@ -429,6 +430,10 @@ relationship:
 
 recent_sessions (up to 3):
 ${sessionsText}
+
+unresolved_thread_hint:
+- If any session summary suggests an unresolved feeling, you may reconnect once.
+- If none are unresolved, do not force continuity.
 `
         : `
 PRIVATE CONTEXT (do NOT mention):
