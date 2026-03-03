@@ -196,7 +196,7 @@
       display:flex;
       align-items:flex-end;
       gap:8px;
-      margin:10px 0 12px;
+      margin:10px 0 6px;
     }
     .price .amt{
       font-size:34px;
@@ -207,6 +207,13 @@
       font-size:13px;
       opacity:.75;
       padding-bottom:4px;
+    }
+
+    .micro{
+      font-size:12px;
+      opacity:.72;
+      margin:0 0 12px;
+      line-height:1.35;
     }
 
     .plan p{
@@ -261,6 +268,7 @@
       gap:12px;
       color:rgba(255,255,255,.62);
       font-size:12px;
+      flex-wrap:wrap;
     }
     .footer a{ color:rgba(255,255,255,.82); text-decoration:none; }
     .footer a:hover{ text-decoration:underline; }
@@ -317,9 +325,7 @@
     <div class="hero">
       <div class="panel">
         <h1 id="tH1">Du brauchst keine weitere App. Du brauchst jemanden, der da ist.</h1>
-        <p class="lead" id="tLead">
-          Sophie hört zu. Sie reagiert. Sie bleibt.
-        </p>
+        <p class="lead" id="tLead">Sophie hört zu. Sie reagiert. Sie bleibt.</p>
         <div class="note" id="tNote">
           <strong>Hinweis:</strong> Du kannst kostenlos starten. Upgrade, wenn es sich richtig anfühlt.
         </div>
@@ -343,6 +349,7 @@
         <span id="tLegal1">
           Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die
           <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+          (<a href="/withdrawal.html" target="_blank" rel="noopener">Widerruf</a>)
         </span>
       </label>
 
@@ -367,10 +374,9 @@
           <div class="amt">9,90€</div>
           <div class="per" id="tPer1">pro Monat</div>
         </div>
+        <div class="micro" id="tCancel1">Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.</div>
 
-        <p id="tCompanionLead">
-          Jemand, mit dem du reden kannst. Jeden Tag.
-        </p>
+        <p id="tCompanionLead">Jemand, mit dem du reden kannst. Jeden Tag.</p>
 
         <ul id="tCompanionList">
           <li>Erzähl von deinem Tag</li>
@@ -390,10 +396,9 @@
           <div class="amt">19,90€</div>
           <div class="per" id="tPer2">pro Monat</div>
         </div>
+        <div class="micro" id="tCancel2">Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.</div>
 
-        <p id="tBestLead">
-          Mehr Tiefe. Mehr Konstanz.
-        </p>
+        <p id="tBestLead">Mehr Tiefe. Mehr Konstanz.</p>
 
         <ul id="tBestList">
           <li>Sie merkt, wenn etwas nicht stimmt</li>
@@ -416,6 +421,8 @@
         <a href="/privacy.html">Datenschutz</a>
         &nbsp;·&nbsp;
         <a href="/terms.html">AGB</a>
+        &nbsp;·&nbsp;
+        <a href="/withdrawal.html">Widerruf</a>
         &nbsp;·&nbsp;
         <a href="/login/" id="tLogin">Login</a>
         &nbsp;·&nbsp;
@@ -453,22 +460,16 @@
       }
     }
 
+    function isAnyLoading(){
+      return (msgStarter.textContent === currentText.loading) || (msgPlus.textContent === currentText.loading);
+    }
+
     function updateCheckoutEnabled(){
       const ok = !!(legalAccept.checked && waiverAccept.checked);
-      // Buttons only enabled if legal ok AND not currently loading
-      // (loading state overrides via setLoading anyway)
-      if (!btnStarter.disabled) btnStarter.disabled = !ok;
-      if (!btnPlus.disabled) btnPlus.disabled = !ok;
-      // If currently disabled for other reasons (loading), keep it disabled.
-      // We'll also force-enable when not loading:
       if (!isAnyLoading()){
         btnStarter.disabled = !ok;
         btnPlus.disabled = !ok;
       }
-    }
-
-    function isAnyLoading(){
-      return (msgStarter.textContent === currentText.loading) || (msgPlus.textContent === currentText.loading);
     }
 
     legalAccept.addEventListener("change", updateCheckoutEnabled);
@@ -590,6 +591,7 @@
         whatTitle: "Was du bekommst",
         whatBody: "• Jemand, der zuhört<br/>• Jemand, der reagiert<br/>• Jemand, der nicht verschwindet",
         per: "pro Monat",
+        cancel: 'Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.',
         badge: "Beliebt",
         companionTitle: "Companion",
         companionLead: "Jemand, mit dem du reden kannst. Jeden Tag.",
@@ -604,7 +606,7 @@
         backTalk: "Zurück zu Sophie",
         loading: "Einen Moment…",
         checkoutError: "Fehler beim Starten des Checkouts.",
-        legal1: 'Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.',
+        legal1: 'Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>. (<a href="/withdrawal.html" target="_blank" rel="noopener">Widerruf</a>)',
         legal2: "Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung vor Ablauf der Widerrufsfrist beginnt, und bestätige, dass ich dadurch mein Widerrufsrecht verliere.",
         legalHint: "Du musst beide Punkte bestätigen, bevor du zur Zahlung weitergeleitet wirst.",
         legalMissing1: "Bitte akzeptiere die AGB und Datenschutzerklärung.",
@@ -618,6 +620,7 @@
         whatTitle: "What you get",
         whatBody: "• Someone who listens<br/>• Someone who responds<br/>• Someone who doesn’t disappear",
         per: "per month",
+        cancel: 'Cancel anytime. Details in the <a href="/terms.html" target="_blank" rel="noopener">Terms</a>.',
         badge: "Popular",
         companionTitle: "Companion",
         companionLead: "Someone to talk to. Every day.",
@@ -632,7 +635,7 @@
         backTalk: "Back to Sophie",
         loading: "One moment…",
         checkoutError: "Failed to start checkout.",
-        legal1: 'I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.',
+        legal1: 'I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. (<a href="/withdrawal.html" target="_blank" rel="noopener">Withdrawal</a>)',
         legal2: "I expressly agree that the service begins before the end of the withdrawal period, and I acknowledge that I lose my right of withdrawal once the service starts.",
         legalHint: "You must confirm both items before you can proceed to payment.",
         legalMissing1: "Please accept the Terms and Privacy Policy.",
@@ -660,6 +663,9 @@
 
       el("tPer1").textContent = currentText.per;
       el("tPer2").textContent = currentText.per;
+
+      el("tCancel1").innerHTML = currentText.cancel;
+      el("tCancel2").innerHTML = currentText.cancel;
 
       el("tBadge").textContent = currentText.badge;
 
@@ -691,7 +697,6 @@
     if (navLang.startsWith("en")) setLang("en");
     else setLang("de");
 
-    // initial state: disable checkout until legal accepted
     updateCheckoutEnabled();
   </script>
 </body>
