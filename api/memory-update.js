@@ -19,6 +19,8 @@ import { createClient } from "@supabase/supabase-js";
  */
 export default async function handler(req, res) {
   try {
+
+    console.log("memory-update v4 live", new Date().toISOString());    
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
     // Robust body parsing (Vercel sometimes provides string)
