@@ -3,25 +3,112 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sophie – Erfolg</title>
+  <title>Sophie – Aktiv</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
-    a { color: inherit; }
+    body{
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      max-width: 760px;
+      margin: 44px auto;
+      padding: 0 18px;
+      color:#111;
+    }
+    .card{
+      border:1px solid rgba(0,0,0,.12);
+      border-radius:16px;
+      padding:18px;
+      background:#fff;
+      box-shadow:0 10px 30px rgba(0,0,0,.06);
+    }
+    h1{ margin:0 0 8px; font-size:26px; }
+    p{ margin:10px 0; line-height:1.55; }
+    a{ color:inherit; }
+    .btn{
+      display:inline-block;
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:#111;
+      color:#fff;
+      text-decoration:none;
+      font-weight:700;
+    }
+    .btn:hover{ opacity:.92; }
+    .muted{ opacity:.72; font-size:13px; }
+    .links{ margin-top:14px; font-size:13px; opacity:.85; }
+    .links a{ text-decoration:none; }
+    .links a:hover{ text-decoration:underline; }
+    .hr{ height:1px; background:rgba(0,0,0,.10); margin:16px 0; }
   </style>
 </head>
 <body>
-  <h1>Payment successful ✅</h1>
-  <p>Your Premium access is active. Continue your conversation with Sophie.</p>
 
-  <p id="wait">One moment… activating.</p>
-  <p><a id="go" href="/talk/" style="display:none;">Enter the Room</a></p>
+  <div class="card">
+    <h1 id="tTitle">Zahlung erfolgreich ✅</h1>
+    <p id="tBody">Dein Abonnement ist aktiv. Du kannst jetzt mit Sophie weitermachen.</p>
 
-  
+    <p id="wait" class="muted">Einen Moment… wird aktiviert.</p>
+    <p><a id="go" class="btn" href="/talk/" style="display:none;">Weiter zu Sophie</a></p>
+
+    <div class="hr"></div>
+
+    <div class="links">
+      <a href="/impressum.html" target="_blank" rel="noopener">Impressum</a>
+      &nbsp;·&nbsp;
+      <a href="/privacy.html" target="_blank" rel="noopener">Datenschutz</a>
+      &nbsp;·&nbsp;
+      <a href="/terms.html" target="_blank" rel="noopener">AGB</a>
+      &nbsp;·&nbsp;
+      <a href="/withdrawal.html" target="_blank" rel="noopener">Widerruf</a>
+      &nbsp;·&nbsp;
+      <a href="/pricing/" id="tManage">Abo verwalten</a>
+    </div>
+
+    <p class="muted" id="tLang" style="margin-top:14px;">
+      <a href="#" id="de">DE</a> · <a href="#" id="en">EN</a>
+    </p>
+  </div>
+
   <script>
+    const TEXT = {
+      de: {
+        title: "Zahlung erfolgreich ✅",
+        body: "Dein Abonnement ist aktiv. Du kannst jetzt mit Sophie weitermachen.",
+        wait: "Einen Moment… wird aktiviert.",
+        ready: "Bereit.",
+        btn: "Weiter zu Sophie",
+        manage: "Abo verwalten",
+      },
+      en: {
+        title: "Payment successful ✅",
+        body: "Your subscription is active. You can continue with Sophie now.",
+        wait: "One moment… activating.",
+        ready: "Ready.",
+        btn: "Enter the Room",
+        manage: "Manage subscription",
+      }
+    };
+
+    let lang = (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "de";
+
+    function setLang(l){
+      lang = l;
+      document.documentElement.lang = l;
+      document.getElementById("tTitle").textContent = TEXT[l].title;
+      document.getElementById("tBody").textContent  = TEXT[l].body;
+      document.getElementById("wait").textContent   = TEXT[l].wait;
+      document.getElementById("go").textContent     = TEXT[l].btn;
+      document.getElementById("tManage").textContent= TEXT[l].manage;
+    }
+
+    document.getElementById("de").onclick = (e)=>{ e.preventDefault(); setLang("de"); };
+    document.getElementById("en").onclick = (e)=>{ e.preventDefault(); setLang("en"); };
+
+    setLang(lang);
+
     setTimeout(() => {
-      document.getElementById("wait").textContent = "Ready.";
+      document.getElementById("wait").textContent = TEXT[lang].ready;
       document.getElementById("go").style.display = "inline-block";
-    }, 1500);
+    }, 1200);
   </script>
 </body>
 </html>
