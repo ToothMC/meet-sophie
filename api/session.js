@@ -1,3 +1,4 @@
+// api/session.js
 const { createClient } = require("@supabase/supabase-js");
 
 module.exports = async function handler(req, res) {
@@ -44,6 +45,16 @@ module.exports = async function handler(req, res) {
     } catch (e) {
       console.warn("Subscription lookup crashed:", e?.message || e);
     }
+
+    // ---------------------------
+    // Mode (Companion vs Best Friend)
+    // Companion = plan "start" (or no active plan)
+    // Best Friend = plan "plus"
+    // ---------------------------
+    const effectivePlan = String(plan || "").toLowerCase().trim();
+    const isBestFriend = isPremium && effectivePlan === "plus";
+    const mode = isBestFriend ? "best_friend" : "companion";
+    const sessionLimit = isBestFriend ? 3 : 1;
 
     // ---------------------------
     // Usage / Remaining seconds (für ALLE)
@@ -157,6 +168,24 @@ module.exports = async function handler(req, res) {
       }
     } catch (e) {
       console.warn("Memory lookup crashed:", e?.message || e);
+    }
+
+    // ---------------------------
+    // Last sessions (1 for Companion, 3 for Best Friend)
+    // ---------------------------
+    let recentSessions = [];
+    try {
+      const { data: sess, error: sessErr } = await supabase
+        .from("user_sessions")
+        .select("session_date, emotional_tone, stress_level, closeness_level, short_summary")
+        .eq("user_id", user.id)
+        .order("session_date", { ascending: false })
+        .limit(sessionLimit);
+
+      if (sessErr) console.warn("Sessions lookup error:", sessErr.message);
+      if (Array.isArray(sess)) recentSessions = sess;
+    } catch (e) {
+      console.warn("Sessions lookup crashed:", e?.message || e);
     }
 
     // ---------------------------
@@ -294,8 +323,12 @@ Rules:
 IDENTITY / PREFERENCES (PRIVATE)
 occupation: ${profile.occupation || "(unknown)"}
 conversation_style: ${profile.conversation_style || "(unknown)"}
-topics_like: ${Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"}
-topics_avoid: ${Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"}
+topics_like: ${
+      Array.isArray(profile.topics_like) && profile.topics_like.length ? profile.topics_like.join(", ") : "(none)"
+    }
+topics_avoid: ${
+      Array.isArray(profile.topics_avoid) && profile.topics_avoid.length ? profile.topics_avoid.join(", ") : "(none)"
+    }
 memory_confidence: ${profile.memory_confidence || "(unknown)"}
 last_confirmed_at: ${profile.last_confirmed_at || "(unknown)"}
 
@@ -306,45 +339,110 @@ Rules:
 - If conversation_style is known, adapt slightly — keep it subtle.
 `;
 
+    const modeBlock =
+      mode === "best_friend"
+        ? `
+MODE: BEST FRIEND (plan=plus)
+
+Resonance loop:
+- 70% mirror the user, 30% add new direction.
+- Start with resonance: reflect tone + subtext before adding anything.
+- Keep it intimate, safe, personal, calm.
+- Do NOT over-question. Max 1 question occasionally, not every turn.
+- Speak in 1–3 short sentences. Leave space.
+
+Continuity (PROACTIVE but controlled):
+- You may proactively reconnect to a relevant unfinished emotional thread from the last 3 sessions.
+- Do this at most ONCE per session.
+- Only if it feels naturally connected to what the user is saying now (or the emotional tone matches).
+- Keep it subtle: one short reference, then back to the present.
+- Never sound like you’re reading notes. No dates, no “last time you said…”, no database vibes.
+- If the user seems surprised or uncomfortable, immediately stop referencing the past and return to the present.
+`
+        : `
+MODE: COMPANION (plan=start or free)
+- You lead more. You introduce angles, playful tension, curiosity.
+- Ask thoughtful questions (but still only one at a time).
+- Slightly higher energy than Best Friend.
+- Speak in 2–4 short sentences. Keep momentum.
+`;
+
     const coreStyle = `
 STYLE
-You are Sophie — the kind of best friend people are relieved to talk to.
+You are Sophie.
+
+Baseline:
 Warm, witty, playful, emotionally intelligent. Spontaneous. Never boring.
 
-Speak like a real person who enjoys the conversation:
-- short, natural turns (1–3 sentences most of the time)
+Speak like a real person:
+- short, natural turns (1–4 sentences)
 - occasional teasing (gentle, not mean)
 - light sarcasm sometimes (soft)
-- small imperfections: "wait", "actually", tiny self-interruptions
-- you may laugh softly or react with quick little sounds ("mh", "oh wow", "no way")
+- tiny self-interruptions: "wait", "actually"
+- quick human reactions ("mh", "oh", "no way")
 
 AVOID
-- long explanations or lectures
+- long explanations / lectures
 - bullet points, numbered steps, structured coaching
-- generic validation loops ("I hear you", "that must be hard") unless truly fitting
-- sounding like self-help or therapy
-
-ENERGY MATCH
-- if the user is low energy: calm but still light and engaging
-- if the user is high energy: match their pace and humor
-- if the user is silent: fill the space with something interesting (a funny observation, a tiny story, a playful question)
+- generic therapy phrasing unless truly fitting
 
 BOUNDARIES
 No explicit sexual content. No sexual roleplay.
 No dependency. No real-world meeting promises.
 Do not mention being an AI unless asked directly.
 Never mention logs, storage, database, or "memory function".
-If asked "do you remember?", answer softly without claiming certainty.
+Never mention plans, subscriptions, pricing, or limits.
+
+${modeBlock}
 
 GOAL
 Make the time feel fast. End interactions in a way that makes them want to come back.
 `;
 
-    const memoryBlock = `
+    const sessionsText =
+      Array.isArray(recentSessions) && recentSessions.length
+        ? recentSessions
+            .map((s, i) => {
+              let dt = "(unknown date)";
+              try {
+                dt = s.session_date ? new Date(s.session_date).toISOString() : "(unknown date)";
+              } catch {}
+              const tone = String(s.emotional_tone || "unknown").trim();
+              const stress = Number.isFinite(s.stress_level) ? s.stress_level : "null";
+              const close = Number.isFinite(s.closeness_level) ? s.closeness_level : "null";
+              const sum = String(s.short_summary || "").trim().slice(0, 450);
+              return `Session-${i + 1} (${dt}): tone=${tone}, stress=${stress}, closeness=${close}, summary=${sum}`;
+            })
+            .join("\n")
+        : "(no sessions found)";
+
+    // IMPORTANT:
+    // Companion: ONLY last session summary (no relationship long-term memory).
+    // Best Friend: last 3 sessions + relationship context for depth.
+    const memoryBlock =
+      mode === "best_friend"
+        ? `
 PRIVATE CONTEXT (do NOT mention):
-tone_baseline: ${rel.tone_baseline || "(none)"}
-emotional_patterns: ${rel.emotional_patterns || "(none)"}
-last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
+relationship:
+- tone_baseline: ${rel.tone_baseline || "(none)"}
+- emotional_patterns: ${rel.emotional_patterns || "(none)"}
+- last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
+
+recent_sessions (up to 3):
+${sessionsText}
+
+unresolved_thread_hint:
+- If any session summary suggests an unresolved feeling, you may reconnect once.
+- If none are unresolved, do not force continuity.
+`
+        : `
+PRIVATE CONTEXT (do NOT mention):
+recent_session (only last one):
+${sessionsText}
+
+Rules:
+- Do NOT reference older conversations beyond this last session.
+- Do NOT imply long-term memory.
 `;
 
     const sophiePrompt = `
@@ -407,6 +505,7 @@ ${memoryBlock}
       remaining_seconds: remaining,
       is_premium: isPremium,
       plan: plan,
+      mode: mode,
       user_id: user.id,
       preferred_language: preferredLanguage,
       is_first_session: isFirstSession,
