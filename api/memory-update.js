@@ -613,12 +613,36 @@ ${transcriptText}
       return x;
     };
 
-    const rawContinuity = clean(rr.last_interaction_summary || ss.short_summary);
+    // --- Deterministic summary fallback (improves empty summaries) ---
+    const modelSummary = clean(rr.last_interaction_summary || ss.short_summary);
+
+    let deterministicSummary = "";
+    const bits = [];
+
+    if (finalFirstName) bits.push(`name ${finalFirstName}`);
+
+    if (finalPreferredName && finalPreferredName !== finalFirstName) {
+      bits.push(`nickname ${finalPreferredName}`);
+    }
+
+    if (finalOccupation) bits.push(`occupation ${finalOccupation}`);
+
+    if (bits.length > 0) {
+      deterministicSummary = `User shared ${bits.join(", ")}.`;
+    }
+
+    const rawContinuity = modelSummary || deterministicSummary;
+
     const merged = mergeContinuity(existing.last_interaction_summary, rawContinuity);
     const sanitized = sanitizeSummary(merged);
 
     const fallbackSummary = secondsUsed > 0 ? `Talked for ${secondsUsed}s.` : "Talked.";
-    const finalContinuity = clean(sanitized) || clean(existing.last_interaction_summary) || fallbackSummary;
+
+    const finalContinuity =
+      clean(sanitized) ||
+      clean(existing.last_interaction_summary) ||
+      deterministicSummary ||
+      fallbackSummary;
 
     const relRow = {
       user_id: user.id,
