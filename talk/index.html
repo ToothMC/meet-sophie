@@ -817,7 +817,8 @@ async function startVoice(){
     await pc.setLocalDescription(offer);
 
     const baseUrl = "https://api.openai.com/v1/realtime";
-    const model = "gpt-4o-realtime-preview";
+    // GA Realtime model (preview models are being retired)
+    const model = "gpt-4o-realtime-2025-02-01";
 
     const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
       method: "POST",
