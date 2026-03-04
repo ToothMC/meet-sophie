@@ -118,6 +118,13 @@ opacity:.55;
 cursor:not-allowed;
 }
 
+.btn-secondary{
+margin-top:10px;
+background:rgba(255,255,255,.14);
+color:white;
+border:1px solid rgba(255,255,255,.18);
+}
+
 .legal{
 margin-top:20px;
 font-size:13px;
@@ -177,6 +184,10 @@ text-decoration:none;
 
 <button id="btnContinue" disabled></button>
 
+<button class="btn-secondary" id="btnLogin">
+Login
+</button>
+
 <div class="legal">
 
 <label>
@@ -200,9 +211,16 @@ text-decoration:none;
 
 </div>
 
-<script>
+<script type="module">
 
-const TEXT = {
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL="https://ohzfojsbmzinpxhcynpt.supabase.co"
+const SUPABASE_ANON_KEY="YOUR_PUBLIC_ANON_KEY"
+
+const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+
+const TEXT={
 
 de:{
 h1:"Warte. Geh noch nicht.",
@@ -210,6 +228,7 @@ lead:"Sophie wollte dich gerade etwas fragen.",
 note:"Wenn du willst, machen wir genau hier weiter.",
 per:"pro Monat",
 btn:"Weiter mit Sophie",
+login:"Ich bin noch nicht eingeloggt",
 
 legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank">AGB</a> und die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a>.`,
 
@@ -222,6 +241,7 @@ lead:"Sophie was about to ask you something.",
 note:"If you want, we continue right here.",
 per:"per month",
 btn:"Continue with Sophie",
+login:"I'm not logged in",
 
 legal1:`I accept the <a href="/terms.html" target="_blank">Terms</a> and the <a href="/privacy.html" target="_blank">Privacy Policy</a>.`,
 
@@ -236,6 +256,12 @@ const navLang=(navigator.language||"").toLowerCase()
 
 if(navLang.startsWith("de")) lang="de"
 
+const btn=document.getElementById("btnContinue")
+const btnLogin=document.getElementById("btnLogin")
+
+const c1=document.getElementById("legal1")
+const c2=document.getElementById("legal2")
+
 function setLang(l){
 
 lang=l
@@ -249,7 +275,8 @@ tH1.textContent=t.h1
 tLead.textContent=t.lead
 tNote.textContent=t.note
 tPer.textContent=t.per
-btnContinue.textContent=t.btn
+btn.textContent=t.btn
+btnLogin.textContent=t.login
 
 tLegal1.innerHTML=t.legal1
 tLegal2.innerHTML=t.legal2
@@ -261,16 +288,28 @@ setLang(lang)
 langDE.onclick=()=>setLang("de")
 langEN.onclick=()=>setLang("en")
 
-const btn=document.getElementById("btnContinue")
-const c1=document.getElementById("legal1")
-const c2=document.getElementById("legal2")
-
 function update(){
 btn.disabled=!(c1.checked && c2.checked)
 }
 
 c1.onchange=update
 c2.onchange=update
+
+btnLogin.onclick=()=>{
+window.location.href="/login/"
+}
+
+async function checkSession(){
+
+const {data:{session}}=await supabase.auth.getSession()
+
+if(session){
+btnLogin.style.display="none"
+}
+
+}
+
+checkSession()
 
 </script>
 
