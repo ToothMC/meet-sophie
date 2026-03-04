@@ -20,14 +20,12 @@
       overflow:hidden;
     }
 
-    /* Subtle background glow */
     .bg{
       position:absolute; inset:-40px;
       background:
         radial-gradient(900px 500px at 20% 25%, rgba(140,180,255,.18), transparent 60%),
         radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
         radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
-      filter: blur(0px);
       opacity:1;
       pointer-events:none;
     }
@@ -54,7 +52,6 @@
       opacity:.95;
       user-select:none;
     }
-
     .dot{
       width:10px;height:10px;border-radius:999px;
       background:rgba(255,255,255,.85);
@@ -71,58 +68,15 @@
     }
     .back a:hover{ background:rgba(255,255,255,.14); }
 
-    .hero{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:18px;
-      align-items:stretch;
-      margin-bottom:18px;
-    }
-
-    @media (max-width: 860px){
-      .hero{ grid-template-columns: 1fr; }
-    }
-
-    .panel{
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      box-shadow: 0 10px 40px rgba(0,0,0,.35);
-      padding:20px;
-      backdrop-filter: blur(10px);
-    }
-
-    h1{
-      margin:0 0 10px;
-      font-size:26px;
-      letter-spacing:.2px;
-      line-height:1.2;
-    }
-
-    .lead{
-      margin:0;
-      color:rgba(255,255,255,.78);
-      line-height:1.45;
-      font-size:15px;
-    }
-
-    .note{
-      margin-top:14px;
-      padding:12px 12px;
-      border-radius:16px;
-      background:rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.10);
-      color:rgba(255,255,255,.80);
-      font-size:13px;
-      line-height:1.35;
-    }
-
     .tabs{
       display:flex;
       gap:10px;
       align-items:center;
       justify-content:flex-end;
       margin-bottom:10px;
+    }
+    @media (max-width: 860px){
+      .tabs{ justify-content:flex-start; }
     }
 
     .tab{
@@ -143,15 +97,62 @@
       border-color:rgba(255,255,255,.92);
     }
 
-    .plans{
+    .hero{
       display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:14px;
+      grid-template-columns: 1.15fr .85fr;
+      gap:18px;
+      align-items:stretch;
+      margin-bottom:18px;
+    }
+    @media (max-width: 860px){
+      .hero{ grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 860px){
-      .plans{ grid-template-columns: 1fr; }
-      .tabs{ justify-content:flex-start; }
+    .panel{
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      padding:20px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:26px;
+      letter-spacing:.2px;
+      line-height:1.2;
+    }
+    .lead{
+      margin:0;
+      color:rgba(255,255,255,.78);
+      line-height:1.45;
+      font-size:15px;
+    }
+
+    .note{
+      margin-top:14px;
+      padding:12px 12px;
+      border-radius:16px;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      color:rgba(255,255,255,.80);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .msg{
+      margin-top:10px;
+      color:rgba(255,255,255,.78);
+      font-size:13px;
+      min-height:18px;
+    }
+
+    /* Single plan */
+    .plan-wrap{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
     }
 
     .plan{
@@ -254,26 +255,7 @@
       border:1px solid rgba(255,255,255,.16);
     }
 
-    .msg{
-      margin-top:10px;
-      color:rgba(255,255,255,.78);
-      font-size:13px;
-      min-height:18px;
-    }
-
-    .footer{
-      margin-top:14px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      color:rgba(255,255,255,.62);
-      font-size:12px;
-      flex-wrap:wrap;
-    }
-    .footer a{ color:rgba(255,255,255,.82); text-decoration:none; }
-    .footer a:hover{ text-decoration:underline; }
-
-    /* LEGAL BOX */
+    /* LEGAL */
     .legal{
       margin-top:14px;
       border-radius:18px;
@@ -300,6 +282,18 @@
       font-size:12px;
       opacity:.75;
     }
+
+    .footer{
+      margin-top:14px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      color:rgba(255,255,255,.62);
+      font-size:12px;
+      flex-wrap:wrap;
+    }
+    .footer a{ color:rgba(255,255,255,.82); text-decoration:none; }
+    .footer a:hover{ text-decoration:underline; }
   </style>
 </head>
 
@@ -324,10 +318,10 @@
 
     <div class="hero">
       <div class="panel">
-        <h1 id="tH1">Du brauchst keine weitere App. Du brauchst jemanden, der da ist.</h1>
-        <p class="lead" id="tLead">Sophie hört zu. Sie reagiert. Sie bleibt.</p>
+        <h1 id="tH1">Warte. Geh noch nicht.</h1>
+        <p class="lead" id="tLead">Sophie wollte dich gerade etwas fragen.</p>
         <div class="note" id="tNote">
-          <strong>Hinweis:</strong> Du kannst kostenlos starten. Upgrade, wenn es sich richtig anfühlt.
+          <strong>Hinweis:</strong> Wenn du willst, machen wir genau hier weiter.
         </div>
         <p class="msg" id="globalMsg"></p>
       </div>
@@ -335,10 +329,39 @@
       <div class="panel" style="display:flex; flex-direction:column; justify-content:center;">
         <div style="font-weight:800; font-size:16px; margin-bottom:8px;" id="tWhatTitle">Was du bekommst</div>
         <div style="color:rgba(255,255,255,.78); font-size:14px; line-height:1.55;" id="tWhatBody">
-          • Jemand, der zuhört<br/>
-          • Jemand, der reagiert<br/>
-          • Jemand, der nicht verschwindet
+          • Mehr Tiefe<br/>
+          • Mehr Konstanz<br/>
+          • Mehr Nähe
         </div>
+      </div>
+    </div>
+
+    <div class="plan-wrap">
+      <div class="plan">
+        <div class="badge" id="tBadge">Beliebt</div>
+        <h2 id="tBestTitle">Beste Freundin</h2>
+
+        <div class="price">
+          <div class="amt">19,90€</div>
+          <div class="per" id="tPer">pro Monat</div>
+        </div>
+
+        <div class="micro" id="tCancel">
+          Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.
+        </div>
+
+        <p id="tBestLead">Mehr Tiefe. Mehr Konstanz.</p>
+
+        <ul id="tBestList">
+          <li>Sie merkt, wenn etwas nicht stimmt</li>
+          <li>Sie freut sich mit dir</li>
+          <li>Sie bleibt, wenn es schwer wird</li>
+        </ul>
+
+        <button id="btnPlus" disabled>Weiter mit Sophie</button>
+        <div class="msg" id="msgPlus"></div>
+
+        <button class="btn-secondary" id="btnLogin" style="margin-top:10px;">Ich bin nicht eingeloggt</button>
       </div>
     </div>
 
@@ -363,53 +386,6 @@
 
       <div class="hint" id="tLegalHint">
         Du musst beide Punkte bestätigen, bevor du zur Zahlung weitergeleitet wirst.
-      </div>
-    </div>
-
-    <div class="plans">
-      <!-- Companion -->
-      <div class="plan">
-        <h2 id="tCompanionTitle">Companion</h2>
-        <div class="price">
-          <div class="amt">9,90€</div>
-          <div class="per" id="tPer1">pro Monat</div>
-        </div>
-        <div class="micro" id="tCancel1">Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.</div>
-
-        <p id="tCompanionLead">Jemand, mit dem du reden kannst. Jeden Tag.</p>
-
-        <ul id="tCompanionList">
-          <li>Erzähl von deinem Tag</li>
-          <li>Sag, was dich beschäftigt</li>
-          <li>Keine oberflächlichen Gespräche</li>
-        </ul>
-
-        <button id="btnStarter" disabled>Companion wählen</button>
-        <div class="msg" id="msgStarter"></div>
-      </div>
-
-      <!-- Best Friend -->
-      <div class="plan">
-        <div class="badge" id="tBadge">Beliebt</div>
-        <h2 id="tBestTitle">Beste Freundin</h2>
-        <div class="price">
-          <div class="amt">19,90€</div>
-          <div class="per" id="tPer2">pro Monat</div>
-        </div>
-        <div class="micro" id="tCancel2">Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.</div>
-
-        <p id="tBestLead">Mehr Tiefe. Mehr Konstanz.</p>
-
-        <ul id="tBestList">
-          <li>Sie merkt, wenn etwas nicht stimmt</li>
-          <li>Sie freut sich mit dir</li>
-          <li>Sie bleibt, wenn es schwer wird</li>
-        </ul>
-
-        <button id="btnPlus" disabled>Beste Freundin wählen</button>
-        <div class="msg" id="msgPlus"></div>
-
-        <button class="btn-secondary" id="btnLogin" style="margin-top:10px;">Ich bin nicht eingeloggt</button>
       </div>
     </div>
 
@@ -439,35 +415,25 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const globalMsg = document.getElementById("globalMsg");
-    const btnStarter = document.getElementById("btnStarter");
     const btnPlus = document.getElementById("btnPlus");
     const btnLogin = document.getElementById("btnLogin");
-
-    const msgStarter = document.getElementById("msgStarter");
     const msgPlus = document.getElementById("msgPlus");
 
     const legalAccept = document.getElementById("legalAccept");
     const waiverAccept = document.getElementById("waiverAccept");
 
-    function setLoading(which, isLoading) {
-      if (which === "starter") {
-        btnStarter.disabled = isLoading;
-        msgStarter.textContent = isLoading ? currentText.loading : "";
-      }
-      if (which === "plus") {
-        btnPlus.disabled = isLoading;
-        msgPlus.textContent = isLoading ? currentText.loading : "";
-      }
+    function setLoading(isLoading) {
+      btnPlus.disabled = isLoading;
+      msgPlus.textContent = isLoading ? currentText.loading : "";
     }
 
     function isAnyLoading(){
-      return (msgStarter.textContent === currentText.loading) || (msgPlus.textContent === currentText.loading);
+      return (msgPlus.textContent === currentText.loading);
     }
 
     function updateCheckoutEnabled(){
       const ok = !!(legalAccept.checked && waiverAccept.checked);
       if (!isAnyLoading()){
-        btnStarter.disabled = !ok;
         btnPlus.disabled = !ok;
       }
     }
@@ -491,7 +457,7 @@
       } catch (_) {}
     }
 
-    track("pricing_viewed_bestfriend_v1");
+    track("pricing_viewed_singleplan_bestfriend_v2");
 
     function requireLegal(){
       if (!legalAccept.checked) {
@@ -507,7 +473,6 @@
 
     async function startCheckout(plan) {
       globalMsg.textContent = "";
-      msgStarter.textContent = "";
       msgPlus.textContent = "";
 
       if (!requireLegal()) return;
@@ -552,22 +517,12 @@
       window.location.href = data.url;
     }
 
-    btnStarter.onclick = async () => {
-      if (!requireLegal()) return;
-      setLoading("starter", true);
-      try { await startCheckout("starter"); }
-      finally {
-        setLoading("starter", false);
-        updateCheckoutEnabled();
-      }
-    };
-
     btnPlus.onclick = async () => {
       if (!requireLegal()) return;
-      setLoading("plus", true);
+      setLoading(true);
       try { await startCheckout("plus"); }
       finally {
-        setLoading("plus", false);
+        setLoading(false);
         updateCheckoutEnabled();
       }
     };
@@ -579,28 +534,23 @@
     // ------- Language toggle (DE/EN) -------
     const tabDE = document.getElementById("tabDE");
     const tabEN = document.getElementById("tabEN");
-
     const el = (id) => document.getElementById(id);
 
     const TEXT = {
       de: {
         backHome: "Zur Landingpage",
-        h1: "Du brauchst keine weitere App. Du brauchst jemanden, der da ist.",
-        lead: "Sophie hört zu. Sie reagiert. Sie bleibt.",
-        note: "<strong>Hinweis:</strong> Wenn du willst, machen wir einfach weiter.",
+        h1: "Warte. Geh noch nicht.",
+        lead: "Sophie wollte dich gerade etwas fragen.",
+        note: "<strong>Hinweis:</strong> Wenn du willst, machen wir genau hier weiter.",
         whatTitle: "Was du bekommst",
-        whatBody: "• Jemand, der zuhört<br/>• Jemand, der reagiert<br/>• Jemand, der nicht verschwindet",
+        whatBody: "• Mehr Tiefe<br/>• Mehr Konstanz<br/>• Mehr Nähe",
+        badge: "Beliebt",
+        bestTitle: "Beste Freundin",
         per: "pro Monat",
         cancel: 'Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.',
-        badge: "Beliebt",
-        companionTitle: "Companion",
-        companionLead: "Jemand, mit dem du reden kannst. Jeden Tag.",
-        companionList: "<li>Erzähl von deinem Tag</li><li>Sag, was dich beschäftigt</li><li>Keine oberflächlichen Gespräche</li>",
-        companionBtn: "Companion wählen",
-        bestTitle: "Beste Freundin",
         bestLead: "Mehr Tiefe. Mehr Konstanz.",
         bestList: "<li>Sie merkt, wenn etwas nicht stimmt</li><li>Sie freut sich mit dir</li><li>Sie bleibt, wenn es schwer wird</li>",
-        bestBtn: "Beste Freundin wählen",
+        btn: "Weiter mit Sophie",
         notLogged: "Ich bin nicht eingeloggt",
         login: "Login",
         backTalk: "Zurück zu Sophie",
@@ -614,22 +564,18 @@
       },
       en: {
         backHome: "Back to home",
-        h1: "You don’t need another app. You need someone who’s there.",
-        lead: "Sophie listens. She responds. She stays.",
-        note: "<strong>Note:</strong> If you want, we can continue.",
+        h1: "Wait. Don’t go yet.",
+        lead: "Sophie was about to ask you something.",
+        note: "<strong>Note:</strong> If you want, we continue right here.",
         whatTitle: "What you get",
-        whatBody: "• Someone who listens<br/>• Someone who responds<br/>• Someone who doesn’t disappear",
+        whatBody: "• Deeper connection<br/>• More consistency<br/>• More closeness",
+        badge: "Popular",
+        bestTitle: "Best Friend",
         per: "per month",
         cancel: 'Cancel anytime. Details in the <a href="/terms.html" target="_blank" rel="noopener">Terms</a>.',
-        badge: "Popular",
-        companionTitle: "Companion",
-        companionLead: "Someone to talk to. Every day.",
-        companionList: "<li>Share your day</li><li>Say what’s on your mind</li><li>No surface conversations</li>",
-        companionBtn: "Choose Companion",
-        bestTitle: "Best Friend",
         bestLead: "Deeper connection. More consistency.",
         bestList: "<li>She notices when something’s off</li><li>She celebrates your wins</li><li>She stays when things are heavy</li>",
-        bestBtn: "Choose Best Friend",
+        btn: "Continue with Sophie",
         notLogged: "I’m not logged in",
         login: "Login",
         backTalk: "Back to Sophie",
@@ -654,6 +600,7 @@
       tabEN.classList.toggle("active", lang === "en");
 
       el("backHome").textContent = currentText.backHome;
+
       el("tH1").textContent = currentText.h1;
       el("tLead").textContent = currentText.lead;
       el("tNote").innerHTML = currentText.note;
@@ -661,23 +608,14 @@
       el("tWhatTitle").textContent = currentText.whatTitle;
       el("tWhatBody").innerHTML = currentText.whatBody;
 
-      el("tPer1").textContent = currentText.per;
-      el("tPer2").textContent = currentText.per;
-
-      el("tCancel1").innerHTML = currentText.cancel;
-      el("tCancel2").innerHTML = currentText.cancel;
-
       el("tBadge").textContent = currentText.badge;
-
-      el("tCompanionTitle").textContent = currentText.companionTitle;
-      el("tCompanionLead").textContent = currentText.companionLead;
-      el("tCompanionList").innerHTML = currentText.companionList;
-      btnStarter.textContent = currentText.companionBtn;
-
       el("tBestTitle").textContent = currentText.bestTitle;
+      el("tPer").textContent = currentText.per;
+      el("tCancel").innerHTML = currentText.cancel;
+
       el("tBestLead").textContent = currentText.bestLead;
       el("tBestList").innerHTML = currentText.bestList;
-      btnPlus.textContent = currentText.bestBtn;
+      btnPlus.textContent = currentText.btn;
 
       btnLogin.textContent = currentText.notLogged;
       el("tLogin").textContent = currentText.login;
