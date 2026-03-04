@@ -551,7 +551,7 @@ ${memoryBlock}
         model: "gpt-realtime",
         voice: "shimmer",
         // Required for GA Realtime to reliably start audio + text
-        output_modalities: ["audio", "text"],
+        modalities: ["audio", "text"],
         temperature: 1.05,
         instructions: sophiePrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
