@@ -9,145 +9,154 @@
 *{box-sizing:border-box}
 
 body{
-margin:0;
-font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-color:white;
-min-height:100vh;
-display:flex;
-align-items:center;
-justify-content:center;
-background:#0b0f14;
-position:relative;
-overflow:hidden;
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:white;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0b0f14;
+  position:relative;
+  overflow:hidden;
 }
 
 .bg{
-position:absolute; inset:-40px;
-background:
-radial-gradient(900px 500px at 20% 25%, rgba(140,180,255,.18), transparent 60%),
-radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
-radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
+  position:absolute; inset:-40px;
+  background:
+    radial-gradient(900px 500px at 20% 25%, rgba(140,180,255,.18), transparent 60%),
+    radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
+    radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
 }
 
 .wrap{
-width:min(620px,92vw);
-position:relative;
-z-index:2;
+  width:min(620px,92vw);
+  position:relative;
+  z-index:2;
 }
 
 .top{
-display:flex;
-justify-content:space-between;
-margin-bottom:12px;
-font-size:13px;
-opacity:.85;
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:12px;
+  font-size:13px;
+  opacity:.85;
 }
 
 .lang{
-display:flex;
-gap:8px;
+  display:flex;
+  gap:8px;
 }
 
 .lang span{
-cursor:pointer;
-padding:4px 8px;
-border-radius:10px;
-border:1px solid rgba(255,255,255,.15);
+  cursor:pointer;
+  padding:4px 8px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.15);
 }
 
 .lang .active{
-background:white;
-color:#0b0f14;
+  background:white;
+  color:#0b0f14;
 }
 
 .panel{
-border-radius:24px;
-border:1px solid rgba(255,255,255,.12);
-background:rgba(255,255,255,.06);
-box-shadow:0 10px 40px rgba(0,0,0,.35);
-padding:28px;
-text-align:center;
-backdrop-filter:blur(10px);
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);
+  box-shadow:0 10px 40px rgba(0,0,0,.35);
+  padding:28px;
+  text-align:center;
+  backdrop-filter:blur(10px);
 }
 
 h1{
-margin:0 0 12px;
-font-size:28px;
-line-height:1.2;
+  margin:0 0 12px;
+  font-size:28px;
+  line-height:1.2;
 }
 
 .lead{
-margin:0;
-font-size:16px;
-color:rgba(255,255,255,.78);
+  margin:0;
+  font-size:16px;
+  color:rgba(255,255,255,.78);
 }
 
 .note{
-margin-top:14px;
-font-size:14px;
-opacity:.75;
+  margin-top:14px;
+  font-size:14px;
+  opacity:.75;
 }
 
 .price{
-margin-top:24px;
-font-size:32px;
-font-weight:800;
+  margin-top:24px;
+  font-size:32px;
+  font-weight:800;
 }
 
 .per{
-font-size:14px;
-opacity:.7;
-margin-top:4px;
+  font-size:14px;
+  opacity:.7;
+  margin-top:4px;
 }
 
 button{
-margin-top:22px;
-width:100%;
-padding:16px;
-border-radius:16px;
-border:0;
-font-size:16px;
-font-weight:800;
-cursor:pointer;
-background:white;
-color:#0b0f14;
+  margin-top:22px;
+  width:100%;
+  padding:16px;
+  border-radius:16px;
+  border:0;
+  font-size:16px;
+  font-weight:800;
+  cursor:pointer;
+  background:white;
+  color:#0b0f14;
 }
 
+button:hover{ opacity:.95; }
+
 button:disabled{
-opacity:.55;
-cursor:not-allowed;
+  opacity:.55;
+  cursor:not-allowed;
 }
 
 .btn-secondary{
-margin-top:10px;
-background:rgba(255,255,255,.14);
-color:white;
-border:1px solid rgba(255,255,255,.18);
+  margin-top:10px;
+  background:rgba(255,255,255,.14);
+  color:white;
+  border:1px solid rgba(255,255,255,.18);
+}
+
+.msg{
+  margin-top:10px;
+  font-size:13px;
+  color:rgba(255,255,255,.78);
+  min-height:18px;
 }
 
 .legal{
-margin-top:20px;
-font-size:13px;
-color:rgba(255,255,255,.75);
-text-align:left;
+  margin-top:18px;
+  font-size:13px;
+  color:rgba(255,255,255,.75);
+  text-align:left;
 }
 
 .legal label{
-display:flex;
-gap:10px;
-margin:10px 0;
+  display:flex;
+  gap:10px;
+  margin:10px 0;
 }
 
 .footer{
-margin-top:16px;
-text-align:center;
-font-size:12px;
-opacity:.6;
+  margin-top:16px;
+  text-align:center;
+  font-size:12px;
+  opacity:.6;
 }
 
 .footer a{
-color:white;
-text-decoration:none;
+  color:white;
+  text-decoration:none;
 }
 </style>
 </head>
@@ -158,159 +167,202 @@ text-decoration:none;
 
 <div class="wrap">
 
-<div class="top">
+  <div class="top">
+    <div>Sophie</div>
+    <div class="lang">
+      <span id="langDE">DE</span>
+      <span id="langEN">EN</span>
+    </div>
+  </div>
 
-<div>Sophie</div>
+  <div class="panel">
 
-<div class="lang">
-<span id="langDE">DE</span>
-<span id="langEN">EN</span>
-</div>
+    <h1 id="tH1"></h1>
+    <p class="lead" id="tLead"></p>
+    <p class="note" id="tNote"></p>
 
-</div>
+    <div class="price">
+      19,90€
+      <div class="per" id="tPer"></div>
+    </div>
 
-<div class="panel">
+    <button id="btnContinue" disabled></button>
+    <button class="btn-secondary" id="btnLogin"></button>
 
-<h1 id="tH1"></h1>
+    <div class="msg" id="msg"></div>
 
-<p class="lead" id="tLead"></p>
+    <div class="legal">
+      <label>
+        <input type="checkbox" id="legal1">
+        <span id="tLegal1"></span>
+      </label>
 
-<p class="note" id="tNote"></p>
+      <label>
+        <input type="checkbox" id="legal2">
+        <span id="tLegal2"></span>
+      </label>
+    </div>
 
-<div class="price">
-19,90€
-<div class="per" id="tPer"></div>
-</div>
+  </div>
 
-<button id="btnContinue" disabled></button>
-
-<button class="btn-secondary" id="btnLogin">
-Login
-</button>
-
-<div class="legal">
-
-<label>
-<input type="checkbox" id="legal1">
-<span id="tLegal1"></span>
-</label>
-
-<label>
-<input type="checkbox" id="legal2">
-<span id="tLegal2"></span>
-</label>
-
-</div>
-
-</div>
-
-<div class="footer">
-<a href="/impressum.html">Impressum</a> ·
-<a href="/privacy.html">Privacy</a>
-</div>
+  <div class="footer">
+    <a href="/impressum.html">Impressum</a> ·
+    <a href="/privacy.html">Privacy</a>
+  </div>
 
 </div>
 
 <script type="module">
-
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL="https://ohzfojsbmzinpxhcynpt.supabase.co"
-const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I"
+// ✅ Setze deinen echten Public ANON Key ein
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 
-const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TEXT={
+const TEXT = {
+  de:{
+    h1:"Warte. Geh noch nicht.",
+    lead:"Sophie wollte dich gerade etwas fragen.",
+    note:"Wenn du willst, machen wir genau hier weiter.",
+    per:"pro Monat",
+    btn:"Weiter mit Sophie",
+    login:"Ich bin noch nicht eingeloggt",
+    loading:"Einen Moment…",
+    checkoutError:"Fehler beim Starten des Checkouts.",
+    legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
+    legal2:`Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
+    legalMissing:"Bitte bestätige beide Checkboxen."
+  },
+  en:{
+    h1:"Wait. Don’t go yet.",
+    lead:"Sophie was about to ask you something.",
+    note:"If you want, we continue right here.",
+    per:"per month",
+    btn:"Continue with Sophie",
+    login:"I'm not logged in",
+    loading:"One moment…",
+    checkoutError:"Failed to start checkout.",
+    legal1:`I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
+    legal2:`I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
+    legalMissing:"Please confirm both checkboxes."
+  }
+};
 
-de:{
-h1:"Warte. Geh noch nicht.",
-lead:"Sophie wollte dich gerade etwas fragen.",
-note:"Wenn du willst, machen wir genau hier weiter.",
-per:"pro Monat",
-btn:"Weiter mit Sophie",
-login:"Ich bin noch nicht eingeloggt",
+const btnContinue = document.getElementById("btnContinue");
+const btnLogin = document.getElementById("btnLogin");
+const msg = document.getElementById("msg");
+const c1 = document.getElementById("legal1");
+const c2 = document.getElementById("legal2");
 
-legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank">AGB</a> und die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a>.`,
-
-legal2:`Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`
-},
-
-en:{
-h1:"Wait. Don’t go yet.",
-lead:"Sophie was about to ask you something.",
-note:"If you want, we continue right here.",
-per:"per month",
-btn:"Continue with Sophie",
-login:"I'm not logged in",
-
-legal1:`I accept the <a href="/terms.html" target="_blank">Terms</a> and the <a href="/privacy.html" target="_blank">Privacy Policy</a>.`,
-
-legal2:`I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`
-}
-
-}
-
-let lang="en"
-
-const navLang=(navigator.language||"").toLowerCase()
-
-if(navLang.startsWith("de")) lang="de"
-
-const btn=document.getElementById("btnContinue")
-const btnLogin=document.getElementById("btnLogin")
-
-const c1=document.getElementById("legal1")
-const c2=document.getElementById("legal2")
+let currentLang = "en";
+const navLang = (navigator.language || "").toLowerCase();
+if (navLang.startsWith("de")) currentLang = "de";
 
 function setLang(l){
+  currentLang = l;
 
-lang=l
+  document.getElementById("langDE").classList.toggle("active", l==="de");
+  document.getElementById("langEN").classList.toggle("active", l==="en");
 
-document.getElementById("langDE").classList.toggle("active",l==="de")
-document.getElementById("langEN").classList.toggle("active",l==="en")
+  const t = TEXT[l];
+  document.getElementById("tH1").textContent = t.h1;
+  document.getElementById("tLead").textContent = t.lead;
+  document.getElementById("tNote").textContent = t.note;
+  document.getElementById("tPer").textContent = t.per;
 
-const t=TEXT[l]
+  btnContinue.textContent = t.btn;
+  btnLogin.textContent = t.login;
 
-tH1.textContent=t.h1
-tLead.textContent=t.lead
-tNote.textContent=t.note
-tPer.textContent=t.per
-btn.textContent=t.btn
-btnLogin.textContent=t.login
+  document.getElementById("tLegal1").innerHTML = t.legal1;
+  document.getElementById("tLegal2").innerHTML = t.legal2;
 
-tLegal1.innerHTML=t.legal1
-tLegal2.innerHTML=t.legal2
-
+  updateEnabled();
 }
 
-setLang(lang)
+document.getElementById("langDE").onclick = () => setLang("de");
+document.getElementById("langEN").onclick = () => setLang("en");
 
-langDE.onclick=()=>setLang("de")
-langEN.onclick=()=>setLang("en")
+function updateEnabled(){
+  btnContinue.disabled = !(c1.checked && c2.checked);
+}
+c1.onchange = updateEnabled;
+c2.onchange = updateEnabled;
 
-function update(){
-btn.disabled=!(c1.checked && c2.checked)
+function goLogin(){
+  // ✅ nach Login wieder hierher zurück
+  const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.href = `/login/?redirect=${redirect}`;
 }
 
-c1.onchange=update
-c2.onchange=update
+btnLogin.onclick = goLogin;
 
-btnLogin.onclick=()=>{
-window.location.href="/login/"
+async function startCheckout(){
+  msg.textContent = "";
+
+  if (!(c1.checked && c2.checked)) {
+    msg.textContent = TEXT[currentLang].legalMissing;
+    return;
+  }
+
+  btnContinue.disabled = true;
+  btnContinue.textContent = TEXT[currentLang].loading;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      goLogin();
+      return;
+    }
+
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        plan: "plus",
+        legal: {
+          termsAccepted: true,
+          privacyAccepted: true,
+          waiverAccepted: true,
+          lang: currentLang,
+          at: new Date().toISOString()
+        }
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data?.url) {
+      msg.textContent = (data?.error ? `Error: ${data.error}` : TEXT[currentLang].checkoutError);
+      return;
+    }
+
+    window.location.href = data.url;
+
+  } catch (e) {
+    msg.textContent = TEXT[currentLang].checkoutError;
+  } finally {
+    btnContinue.textContent = TEXT[currentLang].btn;
+    updateEnabled();
+  }
 }
 
-async function checkSession(){
+btnContinue.onclick = startCheckout;
 
-const {data:{session}}=await supabase.auth.getSession()
+// Hide login button if already logged in
+(async function init(){
+  setLang(currentLang);
 
-if(session){
-btnLogin.style.display="none"
-}
-
-}
-
-checkSession()
-
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    btnLogin.style.display = "none";
+  }
+})();
 </script>
 
 </body>
