@@ -7,20 +7,20 @@ import { createClient } from "@supabase/supabase-js";
  *   seconds_used?: number
  * }
  *
- * v4.1 (Mar 2026) – RLS-correct + hard guards + CORS/OPTIONS + poison scrub
+ * v4.2 (Mar 2026) – v4.1 + SAFE AGE (fixes 23514 user_profile_age_check)
  * - Uses SUPABASE_ANON_KEY + Authorization Bearer user JWT so auth.uid() works (RLS policies pass)
- * - Handles OPTIONS preflight (fixes red Network "Method not allowed")
+ * - Handles OPTIONS preflight (fixes red Network "Method not allowed" for OPTIONS)
  * - Never guess preferred_language (only 'en'/'de' if USER explicitly requested)
  * - Never store "Sophie"/assistant as user's name (also scrubs existing poisoned values)
- * - Deterministic name + nickname extraction from USER text (regex fallback): "Michael/Michi" always saves
+ * - Deterministic name + nickname extraction from USER text (regex fallback)
  * - Prevent persona bleed into user_profile (occupation/style)
  * - Topics only if user actually mentioned them
- * - last_interaction_summary can never be empty after a real session
- * - Strict role mapping: ONLY role==="user" counts as USER text; everything else is not USER
+ * - last_interaction_summary can never be empty after a real session (deterministic fallback)
+ * - STRICT DB age constraint compatibility: only write age if 10..110 else NULL
  */
 export default async function handler(req, res) {
   try {
-    // --- CORS / Preflight (fixes red Network "Method not allowed" for OPTIONS/GET preflight) ---
+    // --- CORS / Preflight ---
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       },
     });
 
-    // Validate user from JWT (now uses the header in the client)
+    // Validate user from JWT (uses the auth header in the client)
     const {
       data: { user },
       error: userErr,
@@ -186,23 +186,12 @@ export default async function handler(req, res) {
 
     const isBannedOccupation = (occ) => {
       const x = clean(occ).toLowerCase();
-      return (
-        x === "freelance interior designer" ||
-        x.includes("interior designer") ||
-        x.includes("interior design")
-      );
+      return x === "freelance interior designer" || x.includes("interior designer") || x.includes("interior design");
     };
 
     const isBannedConversationStyle = (style) => {
       const x = clean(style).toLowerCase();
-      // typical model filler outputs
-      return (
-        x === "warm and engaging" ||
-        x === "warm & engaging" ||
-        x === "friendly" ||
-        x === "engaging" ||
-        x === "warm"
-      );
+      return x === "warm and engaging" || x === "warm & engaging" || x === "friendly" || x === "engaging" || x === "warm";
     };
 
     // --- HARD SCRUB EXISTING (prevents poisoned DB values from becoming fallback) ---
@@ -218,8 +207,7 @@ export default async function handler(req, res) {
       const x = clean(v);
       const l = x.toLowerCase();
       if (!x) return "";
-      if (l === "freelance interior designer" || l.includes("interior designer") || l.includes("interior design"))
-        return "";
+      if (l === "freelance interior designer" || l.includes("interior designer") || l.includes("interior design")) return "";
       return x;
     };
 
@@ -255,16 +243,11 @@ export default async function handler(req, res) {
         return m ? m[0] : "";
       };
 
-      // English
-      const enFirst =
-        t.match(/\b(?:my name is|i am|i'm|call me)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
+      const enFirst = t.match(/\b(?:my name is|i am|i'm|call me)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
       const enNick =
-        t.match(/\b(?:nickname is|you can call me|people call me)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) ||
-        null;
+        t.match(/\b(?:nickname is|you can call me|people call me)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
 
-      // German
-      const deFirst =
-        t.match(/\b(?:ich hei(?:ß|ss)e|ich bin|mein name ist)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
+      const deFirst = t.match(/\b(?:ich hei(?:ß|ss)e|ich bin|mein name ist)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
       const deNick =
         t.match(
           /\b(?:mein\s+spitzname\s+ist|spitzname\s*ist|nenn(?:t)?\s*mich|du kannst mich)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i
@@ -424,9 +407,10 @@ ${transcriptText}
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
-        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText)
-          .replace(/\s+/g, " ")
-          .slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
+        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText).replace(/\s+/g, " ").slice(0, 200)} duration=${secondsUsed}s`.slice(
+          0,
+          300
+        ),
       });
       if (sessErr) console.error("user_sessions insert (error) failed:", sessErr);
 
@@ -434,10 +418,7 @@ ${transcriptText}
     }
 
     const out = await r.json();
-    const text =
-      out?.output_text ||
-      out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
-      "";
+    const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
 
     let parsed;
     try {
@@ -481,7 +462,7 @@ ${transcriptText}
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
-    // Age gate (avoid hallucinations)
+    // Age gate (avoid hallucinations) – still allow model to propose, but DB-safe later
     let ageNew = null;
     if (p.age === null || p.age === undefined || p.age === "") {
       ageNew = null;
@@ -491,7 +472,7 @@ ${transcriptText}
         /\b(i'?m|i am|ich bin)\s+\d{1,3}\b/.test(userOnlyText) ||
         /\b(years old|jahre alt)\b/.test(userOnlyText) ||
         /\b(\d{1,3})\s*(years old|jahre alt)\b/.test(userOnlyText);
-      if (userMentionsAge && Number.isFinite(n) && n >= 0 && n <= 120) ageNew = n;
+      if (userMentionsAge && Number.isFinite(n)) ageNew = Math.trunc(n);
     }
 
     // Occupation / style gates (anti persona bleed)
@@ -515,11 +496,7 @@ ${transcriptText}
     const finalFirstName = scrubName(firstNameNew || existing.first_name).slice(0, 80);
     const finalPreferredName = scrubName(preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
 
-    const finalAddressing =
-      addressingNew === "informal" || addressingNew === "formal"
-        ? addressingNew
-        : existing.preferred_addressing || "";
-
+    const finalAddressing = addressingNew === "informal" || addressingNew === "formal" ? addressingNew : existing.preferred_addressing || "";
     const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
 
     // Language: only if explicitly requested by USER
@@ -539,6 +516,21 @@ ${transcriptText}
 
     const finalTopicsLike = mergeStringArrays(existing.topics_like, topicsLikeNew, 12);
     const finalTopicsAvoid = mergeStringArrays(existing.topics_avoid, topicsAvoidNew, 12);
+
+    // ✅ DB-safe age (matches CHECK (age IS NULL OR (age >= 10 AND age <= 110)))
+    const safeAgeForDb = (value) => {
+      if (value === null || value === undefined || value === "") return null;
+      const n = Number(value);
+      if (!Number.isFinite(n)) return null;
+      const i = Math.trunc(n);
+      if (i < 10 || i > 110) return null;
+      return i;
+    };
+
+    const ageToWrite = safeAgeForDb(finalAge);
+    if (finalAge !== null && finalAge !== undefined && ageToWrite === null) {
+      console.log("[memory-update] dropping invalid age", { finalAge });
+    }
 
     // Notes marker (NO lang) — and never allow Sophie into prefs line
     const marker = "SOPHIE_PREFS:";
@@ -565,7 +557,7 @@ ${transcriptText}
       preferred_addressing: finalAddressing || null,
       preferred_pronoun: finalPronoun || null,
       preferred_language: finalLang || null,
-      age: Number.isFinite(Number(finalAge)) ? Number(finalAge) : null,
+      age: ageToWrite, // ✅ FIX: never violates user_profile_age_check
       occupation: finalOccupation || null,
       conversation_style: finalStyle || null,
       topics_like: finalTopicsLike.length ? finalTopicsLike : null,
@@ -596,7 +588,7 @@ ${transcriptText}
       return parts.slice(0, 3).join(" • ").slice(0, 600);
     };
 
-    // Conservative sanitizer: remove Cyprus/Zypern mentions unless USER text contains them
+    // Conservative sanitizer: remove place tokens unless USER text contains them
     const sanitizeSummary = (s) => {
       let x = clean(s);
       if (!x) return x;
@@ -620,16 +612,10 @@ ${transcriptText}
     const bits = [];
 
     if (finalFirstName) bits.push(`name ${finalFirstName}`);
-
-    if (finalPreferredName && finalPreferredName !== finalFirstName) {
-      bits.push(`nickname ${finalPreferredName}`);
-    }
-
+    if (finalPreferredName && finalPreferredName !== finalFirstName) bits.push(`nickname ${finalPreferredName}`);
     if (finalOccupation) bits.push(`occupation ${finalOccupation}`);
 
-    if (bits.length > 0) {
-      deterministicSummary = `User shared ${bits.join(", ")}.`;
-    }
+    if (bits.length > 0) deterministicSummary = `User shared ${bits.join(", ")}.`;
 
     const rawContinuity = modelSummary || deterministicSummary;
 
@@ -639,10 +625,7 @@ ${transcriptText}
     const fallbackSummary = secondsUsed > 0 ? `Talked for ${secondsUsed}s.` : "Talked.";
 
     const finalContinuity =
-      clean(sanitized) ||
-      clean(existing.last_interaction_summary) ||
-      deterministicSummary ||
-      fallbackSummary;
+      clean(sanitized) || clean(existing.last_interaction_summary) || deterministicSummary || fallbackSummary;
 
     const relRow = {
       user_id: user.id,
@@ -656,7 +639,7 @@ ${transcriptText}
     const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
     if (relUpErr) console.error("user_relationship upsert failed:", relUpErr);
 
-    const sessSummary = sanitizeSummary(clean(ss.short_summary) || fallbackSummary);
+    const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
 
     const { error: sessErr } = await supabase.from("user_sessions").insert({
       user_id: user.id,
