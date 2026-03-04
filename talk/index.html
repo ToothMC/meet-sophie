@@ -211,6 +211,7 @@ async function reportUsage(secondsUsed) {
 }
 
 // --- Memory update helper (POST /api/memory-update) ---
+// FIX: request is awaited + response is read (prevents aborted/canceled + DevTools "no resource")
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -232,7 +233,7 @@ async function sendMemoryUpdate(secondsUsed) {
 
     const payload = cleaned.slice(-80);
 
-    await fetch("/api/memory-update", {
+    const r = await fetch("/api/memory-update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -242,8 +243,13 @@ async function sendMemoryUpdate(secondsUsed) {
       keepalive: true,
     });
 
+    const txt = await r.text().catch(() => "");
+    console.log(`[${runId}] [memory-update] status=${r.status} body=${txt.slice(0, 200)}`);
+
     convoLog = [];
-  } catch (_) {}
+  } catch (e) {
+    console.log(`[${runId}] [memory-update] failed`, e);
+  }
 }
 
 // UI Elements
@@ -533,7 +539,8 @@ async function preloadLimitVideo(){
 }
 
 // --- Play Limit Video + redirect to pricing ---
-function playLimitVideo(){
+// FIX: make async + await stopVoice(true) so memory-update cannot be aborted by navigation
+async function playLimitVideo(){
   if (limitTriggered) return;
   limitTriggered = true;
 
@@ -542,24 +549,13 @@ function playLimitVideo(){
 
   try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
 
-  try {
+  // ✅ IMPORTANT: ensure usage + memory-update finish BEFORE video/redirect
+  try { await stopVoice(true); } catch(_) {}
+
+  try{
     limitOverlay.style.display = "flex";
     limitVideo.currentTime = 0;
   } catch(_) {}
-
-  try { if (dc) dc.close(); } catch(_) {}
-  dc = null;
-
-  try { if (stream) stream.getTracks().forEach(t => t.stop()); } catch(_) {}
-  stream = null;
-
-  try { if (pc) pc.close(); } catch(_) {}
-  pc = null;
-
-  try { if (audioEl) audioEl.srcObject = null; } catch(_) {}
-  audioEl = null;
-
-  try { void stopVoice(true); } catch(_) {}
 
   setTimeout(() => {
     try{
@@ -592,7 +588,8 @@ function startCountdown(){
     renderTimer();
 
     if (remainingSeconds <= 0) {
-      playLimitVideo();
+      // fire & forget; function itself awaits saving before redirect
+      void playLimitVideo();
     }
   }, 1000);
 }
@@ -632,9 +629,6 @@ function attachChannel(ch) {
   dc.addEventListener("message", async (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-
-      // (Optional) uncomment if you want spammy incoming logs
-      // console.log(`[${runId}] [dc recv]`, msg?.type, msg);
 
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
