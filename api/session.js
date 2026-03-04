@@ -89,6 +89,33 @@ module.exports = async function handler(req, res) {
     }
 
     // ---------------------------
+    // DAILY BUDGET LIMIT (global) - only for truly free users
+    // ---------------------------
+    const DAILY_FREE_SECONDS_CAP = parseInt(process.env.DAILY_FREE_SECONDS_CAP || "3000", 10);
+
+    // Reserve exactly the free seconds you grant per free user (2 minutes)
+    const FREE_SECONDS_PER_TRIAL = 120;
+
+    // Only throttle users who are truly free (no subscription AND no paid/topup time)
+    const isPayingUser = !!(isPremium || paidRemaining > 0 || topupRemaining > 0);
+
+    if (!isPayingUser) {
+      const { data: budgetRow, error: budgetErr } = await supabase.rpc("reserve_free_seconds", {
+        p_seconds: FREE_SECONDS_PER_TRIAL,
+        p_cap: DAILY_FREE_SECONDS_CAP,
+      });
+
+      const allowed = Array.isArray(budgetRow) && budgetRow[0]?.allowed === true;
+
+      if (budgetErr || !allowed) {
+        return res.status(429).json({
+          error: "busy",
+          message: "Sophie has too many calls right now. Please try later.",
+        });
+      }
+    }
+
+    // ---------------------------
     // Profile + Relationship laden
     // ---------------------------
     let profile = {
