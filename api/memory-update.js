@@ -7,10 +7,11 @@ import { createClient } from "@supabase/supabase-js";
  *   seconds_used?: number
  * }
  *
- * v4 (Mar 2026) – RLS-correct + hard guards
+ * v4.1 (Mar 2026) – RLS-correct + hard guards + CORS/OPTIONS + poison scrub
  * - Uses SUPABASE_ANON_KEY + Authorization Bearer user JWT so auth.uid() works (RLS policies pass)
+ * - Handles OPTIONS preflight (fixes red Network "Method not allowed")
  * - Never guess preferred_language (only 'en'/'de' if USER explicitly requested)
- * - Never store "Sophie"/assistant as user's name
+ * - Never store "Sophie"/assistant as user's name (also scrubs existing poisoned values)
  * - Deterministic name + nickname extraction from USER text (regex fallback): "Michael/Michi" always saves
  * - Prevent persona bleed into user_profile (occupation/style)
  * - Topics only if user actually mentioned them
@@ -19,6 +20,12 @@ import { createClient } from "@supabase/supabase-js";
  */
 export default async function handler(req, res) {
   try {
+    // --- CORS / Preflight (fixes red Network "Method not allowed" for OPTIONS/GET preflight) ---
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") return res.status(204).end();
+
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
     // ---- Robust body parsing ----
@@ -197,6 +204,28 @@ export default async function handler(req, res) {
         x === "warm"
       );
     };
+
+    // --- HARD SCRUB EXISTING (prevents poisoned DB values from becoming fallback) ---
+    const scrubName = (v) => {
+      const x = clean(v);
+      const l = x.toLowerCase();
+      if (!x) return "";
+      if (l === "sophie" || l === "assistant" || l === "chatgpt") return "";
+      return x;
+    };
+
+    const scrubOccupation = (v) => {
+      const x = clean(v);
+      const l = x.toLowerCase();
+      if (!x) return "";
+      if (l === "freelance interior designer" || l.includes("interior designer") || l.includes("interior design"))
+        return "";
+      return x;
+    };
+
+    existing.first_name = scrubName(existing.first_name);
+    existing.preferred_name = scrubName(existing.preferred_name);
+    existing.occupation = scrubOccupation(existing.occupation);
 
     const filterToUserMentionedTopics = (arr) => {
       const base = Array.isArray(arr) ? arr : [];
@@ -445,7 +474,7 @@ ${transcriptText}
     if (!firstNameNew && extracted.first) firstNameNew = extracted.first;
     if (!preferredNameNew && extracted.nick) preferredNameNew = extracted.nick;
 
-    // Name hard gates
+    // Name hard gates (new values only)
     if (isBannedName(firstNameNew) || !appearsInUserTextExact(firstNameNew)) firstNameNew = "";
     if (isBannedName(preferredNameNew) || !appearsInUserTextExact(preferredNameNew)) preferredNameNew = "";
 
@@ -482,8 +511,9 @@ ${transcriptText}
     const topicsLikeNew = filterToUserMentionedTopics(toArrayStrings(p.topics_like));
     const topicsAvoidNew = filterToUserMentionedTopics(toArrayStrings(p.topics_avoid));
 
-    const finalFirstName = (firstNameNew || existing.first_name).slice(0, 80);
-    const finalPreferredName = (preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
+    // SAFE fallback (scrubbed existing cannot re-poison)
+    const finalFirstName = scrubName(firstNameNew || existing.first_name).slice(0, 80);
+    const finalPreferredName = scrubName(preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
 
     const finalAddressing =
       addressingNew === "informal" || addressingNew === "formal"
@@ -502,15 +532,18 @@ ${transcriptText}
     }
 
     const finalAge = ageNew !== null ? ageNew : existing.age;
-    const finalOccupation = (occupationNew || existing.occupation).slice(0, 120);
+
+    // also scrub occupation fallback
+    const finalOccupation = scrubOccupation(occupationNew || existing.occupation).slice(0, 120);
     const finalStyle = (styleNew || existing.conversation_style).slice(0, 80);
 
     const finalTopicsLike = mergeStringArrays(existing.topics_like, topicsLikeNew, 12);
     const finalTopicsAvoid = mergeStringArrays(existing.topics_avoid, topicsAvoidNew, 12);
 
-    // Notes marker (NO lang)
+    // Notes marker (NO lang) — and never allow Sophie into prefs line
     const marker = "SOPHIE_PREFS:";
-    const prefsLine = `${marker} preferred_name=${finalPreferredName}; preferred_addressing=${finalAddressing}; preferred_pronoun=${finalPronoun}`.trim();
+    const safePreferredForNotes = scrubName(finalPreferredName);
+    const prefsLine = `${marker} preferred_name=${safePreferredForNotes}; preferred_addressing=${finalAddressing}; preferred_pronoun=${finalPronoun}`.trim();
 
     let finalNotes = existing.notes || "";
     if (!finalNotes) {
@@ -545,7 +578,6 @@ ${transcriptText}
     const { error: profUpErr } = await supabase.from("user_profile").upsert(profileRow, { onConflict: "user_id" });
     if (profUpErr) {
       console.error("user_profile upsert failed:", profUpErr);
-      // HARD FAIL so you can see it immediately
       return res.status(500).json({ error: "user_profile upsert failed", detail: profUpErr.message });
     }
 
@@ -598,10 +630,7 @@ ${transcriptText}
     };
 
     const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
-    if (relUpErr) {
-      console.error("user_relationship upsert failed:", relUpErr);
-      // don't fail the whole request if relationship fails, but log it
-    }
+    if (relUpErr) console.error("user_relationship upsert failed:", relUpErr);
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || fallbackSummary);
 
