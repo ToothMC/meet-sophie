@@ -7,23 +7,21 @@ import { createClient } from "@supabase/supabase-js";
  *   seconds_used?: number
  * }
  *
- * HARD GUARDED VERSION (v4)
- * Goals:
+ * v4 (Mar 2026) – RLS-correct + hard guards
+ * - Uses SUPABASE_ANON_KEY + Authorization Bearer user JWT so auth.uid() works (RLS policies pass)
  * - Never guess preferred_language (only 'en'/'de' if USER explicitly requested)
  * - Never store "Sophie"/assistant as user's name
- * - Deterministic name + nickname extraction from USER text (regex fallback) so "Michael/Michi" always saves
+ * - Deterministic name + nickname extraction from USER text (regex fallback): "Michael/Michi" always saves
  * - Prevent persona bleed into user_profile (occupation/style)
  * - Topics only if user actually mentioned them
  * - last_interaction_summary can never be empty after a real session
- * - Role mapping fix: ONLY role==="user" counts as user text; everything else is not user
+ * - Strict role mapping: ONLY role==="user" counts as USER text; everything else is not USER
  */
 export default async function handler(req, res) {
   try {
-
-    console.log("memory-update v4 live", new Date().toISOString());    
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    // Robust body parsing (Vercel sometimes provides string)
+    // ---- Robust body parsing ----
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -34,25 +32,30 @@ export default async function handler(req, res) {
     }
     body = body && typeof body === "object" ? body : {};
 
-    // Auth
+    // ---- Auth token ----
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
 
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
-    }
+    // ---- Env checks ----
+    if (!process.env.SUPABASE_URL) return res.status(500).json({ error: "Missing SUPABASE_URL" });
+    if (!process.env.SUPABASE_ANON_KEY) return res.status(500).json({ error: "Missing SUPABASE_ANON_KEY" });
+    if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
 
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    // ---- Supabase client WITH user JWT so auth.uid() works for RLS ----
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
 
-    // Validate user from JWT
+    // Validate user from JWT (now uses the header in the client)
     const {
       data: { user },
       error: userErr,
-    } = await supabase.auth.getUser(token);
+    } = await supabase.auth.getUser();
 
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
@@ -85,13 +88,14 @@ export default async function handler(req, res) {
     const baseSession = { user_id: user.id, session_date: nowIso };
 
     if (!transcriptText || transcriptText.trim().length < 10) {
-      await supabase.from("user_sessions").insert({
+      const { error: sessErr } = await supabase.from("user_sessions").insert({
         ...baseSession,
         emotional_tone: "unknown",
         stress_level: null,
         closeness_level: null,
         short_summary: `No transcript captured. duration=${secondsUsed}s`.slice(0, 300),
       });
+      if (sessErr) console.error("user_sessions insert failed:", sessErr);
       return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
     }
 
@@ -102,14 +106,15 @@ export default async function handler(req, res) {
       .join("\n");
     const userOnlyText = userOnlyJoined.toLowerCase();
 
-    // ---- Load existing rows ----
-    const { data: rel } = await supabase
+    // ---- Load existing rows (optional) ----
+    const { data: rel, error: relSelErr } = await supabase
       .from("user_relationship")
       .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
       .eq("user_id", user.id)
       .maybeSingle();
+    if (relSelErr) console.error("user_relationship select failed:", relSelErr);
 
-    const { data: prof } = await supabase
+    const { data: prof, error: profSelErr } = await supabase
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
@@ -117,6 +122,7 @@ export default async function handler(req, res) {
       )
       .eq("user_id", user.id)
       .maybeSingle();
+    if (profSelErr) console.error("user_profile select failed:", profSelErr);
 
     const existing = {
       first_name: String(prof?.first_name || "").trim(),
@@ -134,7 +140,6 @@ export default async function handler(req, res) {
       topics_avoid: Array.isArray(prof?.topics_avoid)
         ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean)
         : [],
-
       tone_baseline: String(rel?.tone_baseline || "").trim(),
       openness_level: String(rel?.openness_level || "").trim(),
       emotional_patterns: String(rel?.emotional_patterns || "").trim(),
@@ -154,7 +159,7 @@ export default async function handler(req, res) {
       return re.test(userOnlyJoined);
     };
 
-    // For longer fields, match at least one meaningful token
+    // For longer fields, match at least one meaningful token (>=4 chars)
     const appearsLooselyInUserText = (value) => {
       const v = clean(value).toLowerCase();
       if (!v) return false;
@@ -183,6 +188,7 @@ export default async function handler(req, res) {
 
     const isBannedConversationStyle = (style) => {
       const x = clean(style).toLowerCase();
+      // typical model filler outputs
       return (
         x === "warm and engaging" ||
         x === "warm & engaging" ||
@@ -231,8 +237,9 @@ export default async function handler(req, res) {
       const deFirst =
         t.match(/\b(?:ich hei(?:ß|ss)e|ich bin|mein name ist)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
       const deNick =
-        t.match(/\b(?:mein\s+spitzname\s+ist|spitzname\s*ist|nenn(?:t)?\s*mich|du kannst mich)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) ||
-        null;
+        t.match(
+          /\b(?:mein\s+spitzname\s+ist|spitzname\s*ist|nenn(?:t)?\s*mich|du kannst mich)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i
+        ) || null;
 
       let first = pickWord((enFirst && enFirst[1]) || (deFirst && deFirst[1]) || "");
       let nick = pickWord((enNick && enNick[1]) || (deNick && deNick[1]) || "");
@@ -383,7 +390,7 @@ ${transcriptText}
       const errorText = await r.text().catch(() => "");
       console.error("OpenAI memory error:", r.status, errorText);
 
-      await supabase.from("user_sessions").insert({
+      const { error: sessErr } = await supabase.from("user_sessions").insert({
         ...baseSession,
         emotional_tone: "error",
         stress_level: null,
@@ -392,6 +399,7 @@ ${transcriptText}
           .replace(/\s+/g, " ")
           .slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
       });
+      if (sessErr) console.error("user_sessions insert (error) failed:", sessErr);
 
       return res.status(r.status).json({ error: errorText });
     }
@@ -408,13 +416,14 @@ ${transcriptText}
     } catch {
       console.error("Bad JSON from memory model:", text);
 
-      await supabase.from("user_sessions").insert({
+      const { error: sessErr } = await supabase.from("user_sessions").insert({
         ...baseSession,
         emotional_tone: "error",
         stress_level: null,
         closeness_level: null,
         short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
       });
+      if (sessErr) console.error("user_sessions insert (bad json) failed:", sessErr);
 
       return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
     }
@@ -443,7 +452,7 @@ ${transcriptText}
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
-    // Age gate (avoid hallucinations): only if user text indicates age disclosure
+    // Age gate (avoid hallucinations)
     let ageNew = null;
     if (p.age === null || p.age === undefined || p.age === "") {
       ageNew = null;
@@ -530,10 +539,15 @@ ${transcriptText}
       topics_avoid: finalTopicsAvoid.length ? finalTopicsAvoid : null,
       notes: finalNotes.slice(0, 2000),
       updated_at: nowIso,
+      memory_confidence: prof?.memory_confidence || "medium",
     };
 
     const { error: profUpErr } = await supabase.from("user_profile").upsert(profileRow, { onConflict: "user_id" });
-    if (profUpErr) console.error("user_profile upsert failed:", profUpErr.message, profileRow);
+    if (profUpErr) {
+      console.error("user_profile upsert failed:", profUpErr);
+      // HARD FAIL so you can see it immediately
+      return res.status(500).json({ error: "user_profile upsert failed", detail: profUpErr.message });
+    }
 
     // ---------------------------
     // RELATIONSHIP + SESSION
@@ -583,14 +597,15 @@ ${transcriptText}
       updated_at: nowIso,
     };
 
-    const { error: relUpErr } = await supabase
-      .from("user_relationship")
-      .upsert(relRow, { onConflict: "user_id" });
-    if (relUpErr) console.error("user_relationship upsert failed:", relUpErr.message, relRow);
+    const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
+    if (relUpErr) {
+      console.error("user_relationship upsert failed:", relUpErr);
+      // don't fail the whole request if relationship fails, but log it
+    }
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || fallbackSummary);
 
-    await supabase.from("user_sessions").insert({
+    const { error: sessErr } = await supabase.from("user_sessions").insert({
       user_id: user.id,
       session_date: nowIso,
       emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
@@ -598,6 +613,7 @@ ${transcriptText}
       closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
       short_summary: sessSummary.slice(0, 300),
     });
+    if (sessErr) console.error("user_sessions insert failed:", sessErr);
 
     return res.status(200).json({
       ok: true,
