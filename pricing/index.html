@@ -1,703 +1,317 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sophie – Upgrade</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sophie – Continue</title>
 
-  <style>
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      color:white;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#0b0f14;
-      position:relative;
-      overflow:hidden;
-    }
+<style>
+*{box-sizing:border-box}
 
-    /* Subtle background glow */
-    .bg{
-      position:absolute; inset:-40px;
-      background:
-        radial-gradient(900px 500px at 20% 25%, rgba(140,180,255,.18), transparent 60%),
-        radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
-        radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
-      filter: blur(0px);
-      opacity:1;
-      pointer-events:none;
-    }
+body{
+margin:0;
+font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+color:white;
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#0b0f14;
+position:relative;
+overflow:hidden;
+}
 
-    .wrap{
-      width:min(980px, 92vw);
-      position:relative;
-      z-index:2;
-      padding:28px 0;
-    }
+.bg{
+position:absolute; inset:-40px;
+background:
+radial-gradient(900px 500px at 20% 25%, rgba(140,180,255,.18), transparent 60%),
+radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
+radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
+}
 
-    .top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:18px;
-    }
+.wrap{
+width:min(620px,92vw);
+position:relative;
+z-index:2;
+}
 
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      opacity:.95;
-      user-select:none;
-    }
+.top{
+display:flex;
+justify-content:space-between;
+margin-bottom:12px;
+font-size:13px;
+opacity:.85;
+}
 
-    .dot{
-      width:10px;height:10px;border-radius:999px;
-      background:rgba(255,255,255,.85);
-      box-shadow:0 0 18px rgba(255,255,255,.25);
-    }
+.lang{
+display:flex;
+gap:8px;
+}
 
-    .back a{
-      color:rgba(255,255,255,.9);
-      text-decoration:none;
-      padding:10px 12px;
-      border-radius:12px;
-      background:rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.12);
-    }
-    .back a:hover{ background:rgba(255,255,255,.14); }
+.lang span{
+cursor:pointer;
+padding:4px 8px;
+border-radius:10px;
+border:1px solid rgba(255,255,255,.15);
+}
 
-    .hero{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:18px;
-      align-items:stretch;
-      margin-bottom:18px;
-    }
+.lang .active{
+background:white;
+color:#0b0f14;
+}
 
-    @media (max-width: 860px){
-      .hero{ grid-template-columns: 1fr; }
-    }
+.panel{
+border-radius:24px;
+border:1px solid rgba(255,255,255,.12);
+background:rgba(255,255,255,.06);
+box-shadow:0 10px 40px rgba(0,0,0,.35);
+padding:28px;
+text-align:center;
+backdrop-filter:blur(10px);
+}
 
-    .panel{
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      box-shadow: 0 10px 40px rgba(0,0,0,.35);
-      padding:20px;
-      backdrop-filter: blur(10px);
-    }
+h1{
+margin:0 0 12px;
+font-size:28px;
+line-height:1.2;
+}
 
-    h1{
-      margin:0 0 10px;
-      font-size:26px;
-      letter-spacing:.2px;
-      line-height:1.2;
-    }
+.lead{
+margin:0;
+font-size:16px;
+color:rgba(255,255,255,.78);
+}
 
-    .lead{
-      margin:0;
-      color:rgba(255,255,255,.78);
-      line-height:1.45;
-      font-size:15px;
-    }
+.note{
+margin-top:14px;
+font-size:14px;
+opacity:.75;
+}
 
-    .note{
-      margin-top:14px;
-      padding:12px 12px;
-      border-radius:16px;
-      background:rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.10);
-      color:rgba(255,255,255,.80);
-      font-size:13px;
-      line-height:1.35;
-    }
+.price{
+margin-top:24px;
+font-size:32px;
+font-weight:800;
+}
 
-    .tabs{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      justify-content:flex-end;
-      margin-bottom:10px;
-    }
+.per{
+font-size:14px;
+opacity:.7;
+margin-top:4px;
+}
 
-    .tab{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.08);
-      color:rgba(255,255,255,.9);
-      padding:8px 10px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:700;
-      font-size:13px;
-      user-select:none;
-    }
-    .tab:hover{ background:rgba(255,255,255,.12); }
-    .tab.active{
-      background:rgba(255,255,255,.92);
-      color:#0b0f14;
-      border-color:rgba(255,255,255,.92);
-    }
+button{
+margin-top:22px;
+width:100%;
+padding:16px;
+border-radius:16px;
+border:0;
+font-size:16px;
+font-weight:800;
+cursor:pointer;
+background:white;
+color:#0b0f14;
+}
 
-    .plans{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:14px;
-    }
+button:disabled{
+opacity:.55;
+cursor:not-allowed;
+}
 
-    @media (max-width: 860px){
-      .plans{ grid-template-columns: 1fr; }
-      .tabs{ justify-content:flex-start; }
-    }
+.btn-secondary{
+margin-top:10px;
+background:rgba(255,255,255,.14);
+color:white;
+border:1px solid rgba(255,255,255,.18);
+}
 
-    .plan{
-      position:relative;
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      padding:18px;
-      box-shadow: 0 10px 40px rgba(0,0,0,.35);
-      backdrop-filter: blur(10px);
-      overflow:hidden;
-    }
+.legal{
+margin-top:20px;
+font-size:13px;
+color:rgba(255,255,255,.75);
+text-align:left;
+}
 
-    .plan::before{
-      content:"";
-      position:absolute; inset:-60px -60px auto auto;
-      width:240px; height:240px;
-      border-radius:999px;
-      background:radial-gradient(circle at 30% 30%, rgba(140,180,255,.18), transparent 60%);
-      transform: rotate(10deg);
-      pointer-events:none;
-    }
+.legal label{
+display:flex;
+gap:10px;
+margin:10px 0;
+}
 
-    .badge{
-      position:absolute;
-      top:14px; right:14px;
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.10);
-      color:rgba(255,255,255,.9);
-    }
+.footer{
+margin-top:16px;
+text-align:center;
+font-size:12px;
+opacity:.6;
+}
 
-    .plan h2{
-      margin:0 0 6px;
-      font-size:18px;
-      letter-spacing:.2px;
-    }
-
-    .price{
-      display:flex;
-      align-items:flex-end;
-      gap:8px;
-      margin:10px 0 6px;
-    }
-    .price .amt{
-      font-size:34px;
-      font-weight:800;
-      line-height:1;
-    }
-    .price .per{
-      font-size:13px;
-      opacity:.75;
-      padding-bottom:4px;
-    }
-
-    .micro{
-      font-size:12px;
-      opacity:.72;
-      margin:0 0 12px;
-      line-height:1.35;
-    }
-
-    .plan p{
-      margin:0 0 12px;
-      color:rgba(255,255,255,.78);
-      line-height:1.45;
-      font-size:14px;
-    }
-
-    ul{
-      margin:0 0 14px;
-      padding-left:18px;
-      color:rgba(255,255,255,.82);
-      line-height:1.55;
-      font-size:14px;
-    }
-    li{ margin:6px 0; }
-
-    button{
-      width:100%;
-      padding:14px 14px;
-      border:0;
-      border-radius:16px;
-      cursor:pointer;
-      font-weight:800;
-      letter-spacing:.2px;
-      background:rgba(255,255,255,.92);
-      color:#0b0f14;
-      transition: transform .05s ease, opacity .2s ease;
-    }
-    button:hover{ opacity:.95; }
-    button:active{ transform: scale(.99); }
-    button:disabled{ opacity:.55; cursor:not-allowed; }
-
-    .btn-secondary{
-      background:rgba(255,255,255,.14);
-      color:white;
-      border:1px solid rgba(255,255,255,.16);
-    }
-
-    .msg{
-      margin-top:10px;
-      color:rgba(255,255,255,.78);
-      font-size:13px;
-      min-height:18px;
-    }
-
-    .footer{
-      margin-top:14px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      color:rgba(255,255,255,.62);
-      font-size:12px;
-      flex-wrap:wrap;
-    }
-    .footer a{ color:rgba(255,255,255,.82); text-decoration:none; }
-    .footer a:hover{ text-decoration:underline; }
-
-    /* LEGAL BOX */
-    .legal{
-      margin-top:14px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.22);
-      padding:14px 14px;
-      color:rgba(255,255,255,.82);
-      font-size:13px;
-      line-height:1.45;
-    }
-    .legal label{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      margin:10px 0;
-    }
-    .legal input{
-      margin-top:4px;
-      transform: scale(1.05);
-    }
-    .legal a{ color:rgba(255,255,255,.92); }
-    .legal .hint{
-      margin-top:10px;
-      font-size:12px;
-      opacity:.75;
-    }
-  </style>
+.footer a{
+color:white;
+text-decoration:none;
+}
+</style>
 </head>
 
 <body>
-  <div class="bg"></div>
 
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        <div class="dot"></div>
-        <div style="font-weight:800; letter-spacing:.2px;">Sophie</div>
-      </div>
-      <div class="back">
-        <a href="/" id="backHome">Zur Landingpage</a>
-      </div>
-    </div>
+<div class="bg"></div>
 
-    <div class="tabs" aria-label="Language">
-      <div class="tab active" id="tabDE">DE</div>
-      <div class="tab" id="tabEN">EN</div>
-    </div>
+<div class="wrap">
 
-    <div class="hero">
-      <div class="panel">
-        <h1 id="tH1">Du brauchst keine weitere App. Du brauchst jemanden, der da ist.</h1>
-        <p class="lead" id="tLead">Sophie hört zu. Sie reagiert. Sie bleibt.</p>
-        <div class="note" id="tNote">
-          <strong>Hinweis:</strong> Du kannst kostenlos starten. Upgrade, wenn es sich richtig anfühlt.
-        </div>
-        <p class="msg" id="globalMsg"></p>
-      </div>
+<div class="top">
 
-      <div class="panel" style="display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-weight:800; font-size:16px; margin-bottom:8px;" id="tWhatTitle">Was du bekommst</div>
-        <div style="color:rgba(255,255,255,.78); font-size:14px; line-height:1.55;" id="tWhatBody">
-          • Jemand, der zuhört<br/>
-          • Jemand, der reagiert<br/>
-          • Jemand, der nicht verschwindet
-        </div>
-      </div>
-    </div>
+<div>Sophie</div>
 
-    <!-- LEGAL CHECKBOXES (must accept before checkout) -->
-    <div class="legal" aria-label="Legal agreements">
-      <label>
-        <input type="checkbox" id="legalAccept">
-        <span id="tLegal1">
-          Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die
-          <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.
-          (<a href="/withdrawal.html" target="_blank" rel="noopener">Widerruf</a>)
-        </span>
-      </label>
+<div class="lang">
+<span id="langDE">DE</span>
+<span id="langEN">EN</span>
+</div>
 
-      <label>
-        <input type="checkbox" id="waiverAccept">
-        <span id="tLegal2">
-          Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung vor Ablauf der Widerrufsfrist beginnt,
-          und bestätige, dass ich dadurch mein Widerrufsrecht verliere.
-        </span>
-      </label>
+</div>
 
-      <div class="hint" id="tLegalHint">
-        Du musst beide Punkte bestätigen, bevor du zur Zahlung weitergeleitet wirst.
-      </div>
-    </div>
+<div class="panel">
 
-    <div class="plans">
-      <!-- Companion -->
-      <div class="plan">
-        <h2 id="tCompanionTitle">Companion</h2>
-        <div class="price">
-          <div class="amt">9,90€</div>
-          <div class="per" id="tPer1">pro Monat</div>
-        </div>
-        <div class="micro" id="tCancel1">Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.</div>
+<h1 id="tH1"></h1>
 
-        <p id="tCompanionLead">Jemand, mit dem du reden kannst. Jeden Tag.</p>
+<p class="lead" id="tLead"></p>
 
-        <ul id="tCompanionList">
-          <li>Erzähl von deinem Tag</li>
-          <li>Sag, was dich beschäftigt</li>
-          <li>Keine oberflächlichen Gespräche</li>
-        </ul>
+<p class="note" id="tNote"></p>
 
-        <button id="btnStarter" disabled>Companion wählen</button>
-        <div class="msg" id="msgStarter"></div>
-      </div>
+<div class="price">
+19,90€
+<div class="per" id="tPer"></div>
+</div>
 
-      <!-- Best Friend -->
-      <div class="plan">
-        <div class="badge" id="tBadge">Beliebt</div>
-        <h2 id="tBestTitle">Beste Freundin</h2>
-        <div class="price">
-          <div class="amt">19,90€</div>
-          <div class="per" id="tPer2">pro Monat</div>
-        </div>
-        <div class="micro" id="tCancel2">Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.</div>
+<button id="btnContinue" disabled></button>
 
-        <p id="tBestLead">Mehr Tiefe. Mehr Konstanz.</p>
+<button class="btn-secondary" id="btnLogin">
+Login
+</button>
 
-        <ul id="tBestList">
-          <li>Sie merkt, wenn etwas nicht stimmt</li>
-          <li>Sie freut sich mit dir</li>
-          <li>Sie bleibt, wenn es schwer wird</li>
-        </ul>
+<div class="legal">
 
-        <button id="btnPlus" disabled>Beste Freundin wählen</button>
-        <div class="msg" id="msgPlus"></div>
+<label>
+<input type="checkbox" id="legal1">
+<span id="tLegal1"></span>
+</label>
 
-        <button class="btn-secondary" id="btnLogin" style="margin-top:10px;">Ich bin nicht eingeloggt</button>
-      </div>
-    </div>
+<label>
+<input type="checkbox" id="legal2">
+<span id="tLegal2"></span>
+</label>
 
-    <div class="footer">
-      <div>© Sophie</div>
-      <div>
-        <a href="/impressum.html">Impressum</a>
-        &nbsp;·&nbsp;
-        <a href="/privacy.html">Datenschutz</a>
-        &nbsp;·&nbsp;
-        <a href="/terms.html">AGB</a>
-        &nbsp;·&nbsp;
-        <a href="/withdrawal.html">Widerruf</a>
-        &nbsp;·&nbsp;
-        <a href="/login/" id="tLogin">Login</a>
-        &nbsp;·&nbsp;
-        <a href="/talk/" id="tBackTalk">Zurück zu Sophie</a>
-      </div>
-    </div>
-  </div>
+</div>
 
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+</div>
 
-    const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<div class="footer">
+<a href="/impressum.html">Impressum</a> ·
+<a href="/privacy.html">Privacy</a>
+</div>
 
-    const globalMsg = document.getElementById("globalMsg");
-    const btnStarter = document.getElementById("btnStarter");
-    const btnPlus = document.getElementById("btnPlus");
-    const btnLogin = document.getElementById("btnLogin");
+</div>
 
-    const msgStarter = document.getElementById("msgStarter");
-    const msgPlus = document.getElementById("msgPlus");
+<script type="module">
 
-    const legalAccept = document.getElementById("legalAccept");
-    const waiverAccept = document.getElementById("waiverAccept");
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    function setLoading(which, isLoading) {
-      if (which === "starter") {
-        btnStarter.disabled = isLoading;
-        msgStarter.textContent = isLoading ? currentText.loading : "";
-      }
-      if (which === "plus") {
-        btnPlus.disabled = isLoading;
-        msgPlus.textContent = isLoading ? currentText.loading : "";
-      }
-    }
+const SUPABASE_URL="https://ohzfojsbmzinpxhcynpt.supabase.co"
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I"
 
-    function isAnyLoading(){
-      return (msgStarter.textContent === currentText.loading) || (msgPlus.textContent === currentText.loading);
-    }
+const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
-    function updateCheckoutEnabled(){
-      const ok = !!(legalAccept.checked && waiverAccept.checked);
-      if (!isAnyLoading()){
-        btnStarter.disabled = !ok;
-        btnPlus.disabled = !ok;
-      }
-    }
+const TEXT={
 
-    legalAccept.addEventListener("change", updateCheckoutEnabled);
-    waiverAccept.addEventListener("change", updateCheckoutEnabled);
+de:{
+h1:"Warte. Geh noch nicht.",
+lead:"Sophie wollte dich gerade etwas fragen.",
+note:"Wenn du willst, machen wir genau hier weiter.",
+per:"pro Monat",
+btn:"Weiter mit Sophie",
+login:"Ich bin noch nicht eingeloggt",
 
-    async function track(event_name, meta = {}) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
+legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank">AGB</a> und die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a>.`,
 
-        await fetch("/api/track", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ event_name, meta }),
-        });
-      } catch (_) {}
-    }
+legal2:`Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`
+},
 
-    track("pricing_viewed_bestfriend_v1");
+en:{
+h1:"Wait. Don’t go yet.",
+lead:"Sophie was about to ask you something.",
+note:"If you want, we continue right here.",
+per:"per month",
+btn:"Continue with Sophie",
+login:"I'm not logged in",
 
-    function requireLegal(){
-      if (!legalAccept.checked) {
-        alert(currentText.legalMissing1);
-        return false;
-      }
-      if (!waiverAccept.checked) {
-        alert(currentText.legalMissing2);
-        return false;
-      }
-      return true;
-    }
+legal1:`I accept the <a href="/terms.html" target="_blank">Terms</a> and the <a href="/privacy.html" target="_blank">Privacy Policy</a>.`,
 
-    async function startCheckout(plan) {
-      globalMsg.textContent = "";
-      msgStarter.textContent = "";
-      msgPlus.textContent = "";
+legal2:`I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`
+}
 
-      if (!requireLegal()) return;
+}
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        window.location.href = "/login/";
-        return;
-      }
+let lang="en"
 
-      track("checkout_clicked", { plan });
+const navLang=(navigator.language||"").toLowerCase()
 
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          plan,
-          legal: {
-            termsAccepted: true,
-            privacyAccepted: true,
-            waiverAccepted: true,
-            lang: currentLang,
-            at: new Date().toISOString()
-          }
-        }),
-      });
+if(navLang.startsWith("de")) lang="de"
 
-      const data = await res.json().catch(() => ({}));
+const btn=document.getElementById("btnContinue")
+const btnLogin=document.getElementById("btnLogin")
 
-      if (!res.ok || !data?.url) {
-        const txt = data?.error ? `Fehler: ${data.error}` : currentText.checkoutError;
-        globalMsg.textContent = txt;
-        track("checkout_start_failed", { plan, http_status: res.status, error: data?.error || null });
-        return;
-      }
+const c1=document.getElementById("legal1")
+const c2=document.getElementById("legal2")
 
-      track("checkout_session_created", { plan });
+function setLang(l){
 
-      window.location.href = data.url;
-    }
+lang=l
 
-    btnStarter.onclick = async () => {
-      if (!requireLegal()) return;
-      setLoading("starter", true);
-      try { await startCheckout("starter"); }
-      finally {
-        setLoading("starter", false);
-        updateCheckoutEnabled();
-      }
-    };
+document.getElementById("langDE").classList.toggle("active",l==="de")
+document.getElementById("langEN").classList.toggle("active",l==="en")
 
-    btnPlus.onclick = async () => {
-      if (!requireLegal()) return;
-      setLoading("plus", true);
-      try { await startCheckout("plus"); }
-      finally {
-        setLoading("plus", false);
-        updateCheckoutEnabled();
-      }
-    };
+const t=TEXT[l]
 
-    btnLogin.onclick = () => {
-      window.location.href = "/login/";
-    };
+tH1.textContent=t.h1
+tLead.textContent=t.lead
+tNote.textContent=t.note
+tPer.textContent=t.per
+btn.textContent=t.btn
+btnLogin.textContent=t.login
 
-    // ------- Language toggle (DE/EN) -------
-    const tabDE = document.getElementById("tabDE");
-    const tabEN = document.getElementById("tabEN");
+tLegal1.innerHTML=t.legal1
+tLegal2.innerHTML=t.legal2
 
-    const el = (id) => document.getElementById(id);
+}
 
-    const TEXT = {
-      de: {
-        backHome: "Zur Landingpage",
-        h1: "Du brauchst keine weitere App. Du brauchst jemanden, der da ist.",
-        lead: "Sophie hört zu. Sie reagiert. Sie bleibt.",
-        note: "<strong>Hinweis:</strong> Wenn du willst, machen wir einfach weiter.",
-        whatTitle: "Was du bekommst",
-        whatBody: "• Jemand, der zuhört<br/>• Jemand, der reagiert<br/>• Jemand, der nicht verschwindet",
-        per: "pro Monat",
-        cancel: 'Monatlich kündbar. Details in den <a href="/terms.html" target="_blank" rel="noopener">AGB</a>.',
-        badge: "Beliebt",
-        companionTitle: "Companion",
-        companionLead: "Jemand, mit dem du reden kannst. Jeden Tag.",
-        companionList: "<li>Erzähl von deinem Tag</li><li>Sag, was dich beschäftigt</li><li>Keine oberflächlichen Gespräche</li>",
-        companionBtn: "Companion wählen",
-        bestTitle: "Beste Freundin",
-        bestLead: "Mehr Tiefe. Mehr Konstanz.",
-        bestList: "<li>Sie merkt, wenn etwas nicht stimmt</li><li>Sie freut sich mit dir</li><li>Sie bleibt, wenn es schwer wird</li>",
-        bestBtn: "Beste Freundin wählen",
-        notLogged: "Ich bin nicht eingeloggt",
-        login: "Login",
-        backTalk: "Zurück zu Sophie",
-        loading: "Einen Moment…",
-        checkoutError: "Fehler beim Starten des Checkouts.",
-        legal1: 'Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>. (<a href="/withdrawal.html" target="_blank" rel="noopener">Widerruf</a>)',
-        legal2: "Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung vor Ablauf der Widerrufsfrist beginnt, und bestätige, dass ich dadurch mein Widerrufsrecht verliere.",
-        legalHint: "Du musst beide Punkte bestätigen, bevor du zur Zahlung weitergeleitet wirst.",
-        legalMissing1: "Bitte akzeptiere die AGB und Datenschutzerklärung.",
-        legalMissing2: "Bitte bestätige den Beginn der Dienstleistung und den Widerrufsverzicht."
-      },
-      en: {
-        backHome: "Back to home",
-        h1: "You don’t need another app. You need someone who’s there.",
-        lead: "Sophie listens. She responds. She stays.",
-        note: "<strong>Note:</strong> If you want, we can continue.",
-        whatTitle: "What you get",
-        whatBody: "• Someone who listens<br/>• Someone who responds<br/>• Someone who doesn’t disappear",
-        per: "per month",
-        cancel: 'Cancel anytime. Details in the <a href="/terms.html" target="_blank" rel="noopener">Terms</a>.',
-        badge: "Popular",
-        companionTitle: "Companion",
-        companionLead: "Someone to talk to. Every day.",
-        companionList: "<li>Share your day</li><li>Say what’s on your mind</li><li>No surface conversations</li>",
-        companionBtn: "Choose Companion",
-        bestTitle: "Best Friend",
-        bestLead: "Deeper connection. More consistency.",
-        bestList: "<li>She notices when something’s off</li><li>She celebrates your wins</li><li>She stays when things are heavy</li>",
-        bestBtn: "Choose Best Friend",
-        notLogged: "I’m not logged in",
-        login: "Login",
-        backTalk: "Back to Sophie",
-        loading: "One moment…",
-        checkoutError: "Failed to start checkout.",
-        legal1: 'I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. (<a href="/withdrawal.html" target="_blank" rel="noopener">Withdrawal</a>)',
-        legal2: "I expressly agree that the service begins before the end of the withdrawal period, and I acknowledge that I lose my right of withdrawal once the service starts.",
-        legalHint: "You must confirm both items before you can proceed to payment.",
-        legalMissing1: "Please accept the Terms and Privacy Policy.",
-        legalMissing2: "Please confirm service start and withdrawal waiver."
-      }
-    };
+setLang(lang)
 
-    let currentLang = "de";
-    let currentText = TEXT[currentLang];
+langDE.onclick=()=>setLang("de")
+langEN.onclick=()=>setLang("en")
 
-    function setLang(lang){
-      currentLang = lang;
-      currentText = TEXT[currentLang];
+function update(){
+btn.disabled=!(c1.checked && c2.checked)
+}
 
-      tabDE.classList.toggle("active", lang === "de");
-      tabEN.classList.toggle("active", lang === "en");
+c1.onchange=update
+c2.onchange=update
 
-      el("backHome").textContent = currentText.backHome;
-      el("tH1").textContent = currentText.h1;
-      el("tLead").textContent = currentText.lead;
-      el("tNote").innerHTML = currentText.note;
+btnLogin.onclick=()=>{
+window.location.href="/login/"
+}
 
-      el("tWhatTitle").textContent = currentText.whatTitle;
-      el("tWhatBody").innerHTML = currentText.whatBody;
+async function checkSession(){
 
-      el("tPer1").textContent = currentText.per;
-      el("tPer2").textContent = currentText.per;
+const {data:{session}}=await supabase.auth.getSession()
 
-      el("tCancel1").innerHTML = currentText.cancel;
-      el("tCancel2").innerHTML = currentText.cancel;
+if(session){
+btnLogin.style.display="none"
+}
 
-      el("tBadge").textContent = currentText.badge;
+}
 
-      el("tCompanionTitle").textContent = currentText.companionTitle;
-      el("tCompanionLead").textContent = currentText.companionLead;
-      el("tCompanionList").innerHTML = currentText.companionList;
-      btnStarter.textContent = currentText.companionBtn;
+checkSession()
 
-      el("tBestTitle").textContent = currentText.bestTitle;
-      el("tBestLead").textContent = currentText.bestLead;
-      el("tBestList").innerHTML = currentText.bestList;
-      btnPlus.textContent = currentText.bestBtn;
+</script>
 
-      btnLogin.textContent = currentText.notLogged;
-      el("tLogin").textContent = currentText.login;
-      el("tBackTalk").textContent = currentText.backTalk;
-
-      el("tLegal1").innerHTML = currentText.legal1;
-      el("tLegal2").textContent = currentText.legal2;
-      el("tLegalHint").textContent = currentText.legalHint;
-
-      updateCheckoutEnabled();
-    }
-
-    tabDE.onclick = () => setLang("de");
-    tabEN.onclick = () => setLang("en");
-
-    const navLang = (navigator.language || "").toLowerCase();
-    if (navLang.startsWith("en")) setLang("en");
-    else setLang("de");
-
-    updateCheckoutEnabled();
-  </script>
 </body>
 </html>
