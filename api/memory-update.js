@@ -285,19 +285,12 @@ export default async function handler(req, res) {
     // OpenAI extraction
     // ---------------------------
     const system =
-      "You extract structured memory from the transcript. " +
-      "Assistant statements are untrusted for durable USER facts. " +
+      "You extract ONLY durable memory about the USER (not the assistant). " +
+      "Treat assistant statements as untrusted. " +
+      "Only store facts/preferences explicitly stated BY THE USER in USER messages. " +
+      "Never guess, never infer, never fill placeholders. If unsure, return empty strings/empty arrays/null. " +
+      "Do NOT copy the assistant persona (e.g., interior designer) into the user's profile.";
 
-      "PROFILE: Only store durable facts/preferences explicitly stated BY THE USER in USER messages. " +
-      "Never guess or infer PROFILE fields. If unsure, return empty strings/empty arrays/null. " +
-      "Do NOT copy the assistant persona (e.g., interior designer) into the user's profile. " +
-
-      "RELATIONSHIP: These fields are Sophie’s conservative best-guess assessment based on the interaction. " +
-      "You MAY infer them from the transcript (tone, openness, recurring emotional patterns), even if the user did not state them explicitly. " +
-      "Do not hallucinate specific life facts; keep it general and grounded in the transcript. " +
-      "Always provide a reasonable best-guess for tone_baseline and openness_level; use neutral/low if uncertain. " +
-      "emotional_patterns should be short, concrete patterns (or empty if nothing is evident).";
-       
     const userMsg = `
 CURRENT structured profile (existing DB values):
 first_name: ${existing.first_name}
