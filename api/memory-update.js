@@ -7,16 +7,12 @@ import { createClient } from "@supabase/supabase-js";
  *   seconds_used?: number
  * }
  *
- * v4.2 (Mar 2026) – v4.1 + SAFE AGE (fixes 23514 user_profile_age_check)
- * - Uses SUPABASE_ANON_KEY + Authorization Bearer user JWT so auth.uid() works (RLS policies pass)
- * - Handles OPTIONS preflight (fixes red Network "Method not allowed" for OPTIONS)
- * - Never guess preferred_language (only 'en'/'de' if USER explicitly requested)
- * - Never store "Sophie"/assistant as user's name (also scrubs existing poisoned values)
- * - Deterministic name + nickname extraction from USER text (regex fallback)
- * - Prevent persona bleed into user_profile (occupation/style)
- * - Topics only if user actually mentioned them
- * - last_interaction_summary can never be empty after a real session (deterministic fallback)
- * - STRICT DB age constraint compatibility: only write age if 10..110 else NULL
+ * v4.2 (Mar 2026) – Soft Signals Patch
+ * - Keeps hard-facts strict (name/nickname/job/lang/pronoun)
+ * - Adds deterministic (non-AI) "soft signals" inference for:
+ *   - user_sessions: emotional_tone, stress_level, closeness_level
+ *   - user_relationship: tone_baseline, openness_level, emotional_patterns
+ * - Fixes age constraint to match DB check (10..110 only)
  */
 export default async function handler(req, res) {
   try {
@@ -25,7 +21,6 @@ export default async function handler(req, res) {
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.status(204).end();
-
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
     // ---- Robust body parsing ----
@@ -51,19 +46,14 @@ export default async function handler(req, res) {
 
     // ---- Supabase client WITH user JWT so auth.uid() works for RLS ----
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
 
-    // Validate user from JWT (uses the auth header in the client)
+    // Validate user from JWT
     const {
       data: { user },
       error: userErr,
     } = await supabase.auth.getUser();
-
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
@@ -85,7 +75,6 @@ export default async function handler(req, res) {
       transcriptArr = [{ role: "user", text: rawTranscript.trim() }];
     }
 
-    // Only feed user+assistant into the model, never "other"
     const transcriptText = transcriptArr
       .filter((t) => t.role === "user" || t.role === "assistant")
       .slice(-80)
@@ -106,52 +95,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
     }
 
-    // USER-only text (the only trusted source for durable memory)
+    // USER-only text (trusted for hard facts + also used for soft signals)
     const userOnlyJoined = transcriptArr
       .filter((t) => t.role === "user")
       .map((t) => t.text)
       .join("\n");
     const userOnlyText = userOnlyJoined.toLowerCase();
-
-    // ---- Load existing rows (optional) ----
-    const { data: rel, error: relSelErr } = await supabase
-      .from("user_relationship")
-      .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (relSelErr) console.error("user_relationship select failed:", relSelErr);
-
-    const { data: prof, error: profSelErr } = await supabase
-      .from("user_profile")
-      .select(
-        "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
-          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence"
-      )
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (profSelErr) console.error("user_profile select failed:", profSelErr);
-
-    const existing = {
-      first_name: String(prof?.first_name || "").trim(),
-      preferred_name: String(prof?.preferred_name || "").trim(),
-      preferred_addressing: String(prof?.preferred_addressing || "").trim(),
-      preferred_pronoun: String(prof?.preferred_pronoun || "").trim(),
-      preferred_language: String(prof?.preferred_language || "").trim().toLowerCase(),
-      notes: String(prof?.notes || "").trim(),
-      age: Number.isFinite(Number(prof?.age)) ? Number(prof.age) : null,
-      occupation: String(prof?.occupation || "").trim(),
-      conversation_style: String(prof?.conversation_style || "").trim(),
-      topics_like: Array.isArray(prof?.topics_like)
-        ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean)
-        : [],
-      topics_avoid: Array.isArray(prof?.topics_avoid)
-        ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean)
-        : [],
-      tone_baseline: String(rel?.tone_baseline || "").trim(),
-      openness_level: String(rel?.openness_level || "").trim(),
-      emotional_patterns: String(rel?.emotional_patterns || "").trim(),
-      last_interaction_summary: String(rel?.last_interaction_summary || "").trim(),
-    };
 
     // ---------------------------
     // Helpers
@@ -166,7 +115,6 @@ export default async function handler(req, res) {
       return re.test(userOnlyJoined);
     };
 
-    // For longer fields, match at least one meaningful token (>=4 chars)
     const appearsLooselyInUserText = (value) => {
       const v = clean(value).toLowerCase();
       if (!v) return false;
@@ -211,9 +159,7 @@ export default async function handler(req, res) {
       return x;
     };
 
-    existing.first_name = scrubName(existing.first_name);
-    existing.preferred_name = scrubName(existing.preferred_name);
-    existing.occupation = scrubOccupation(existing.occupation);
+    const toArrayStrings = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
 
     const filterToUserMentionedTopics = (arr) => {
       const base = Array.isArray(arr) ? arr : [];
@@ -229,7 +175,6 @@ export default async function handler(req, res) {
       return merged.slice(0, limit);
     };
 
-    // Deterministic fallback: extract first name + nickname from USER text
     function extractNameFromUserText(userTextRaw) {
       const txt = String(userTextRaw || "").trim();
       if (!txt) return { first: "", nick: "" };
@@ -237,9 +182,7 @@ export default async function handler(req, res) {
       const t = txt.replace(/[“”„]/g, '"').replace(/[’]/g, "'");
 
       const pickWord = (s) => {
-        const m = String(s || "")
-          .trim()
-          .match(/^[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30}$/);
+        const m = String(s || "").trim().match(/^[A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30}$/);
         return m ? m[0] : "";
       };
 
@@ -249,9 +192,8 @@ export default async function handler(req, res) {
 
       const deFirst = t.match(/\b(?:ich hei(?:ß|ss)e|ich bin|mein name ist)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) || null;
       const deNick =
-        t.match(
-          /\b(?:mein\s+spitzname\s+ist|spitzname\s*ist|nenn(?:t)?\s*mich|du kannst mich)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i
-        ) || null;
+        t.match(/\b(?:mein\s+spitzname\s+ist|spitzname\s*ist|nenn(?:t)?\s*mich|du kannst mich)\s+([A-Za-zÀ-ÖØ-öø-ÿÄÖÜäöüß'\-]{2,30})\b/i) ||
+        null;
 
       let first = pickWord((enFirst && enFirst[1]) || (deFirst && deFirst[1]) || "");
       let nick = pickWord((enNick && enNick[1]) || (deNick && deNick[1]) || "");
@@ -261,6 +203,91 @@ export default async function handler(req, res) {
         if (m) nick = pickWord(m[1]);
       }
       return { first, nick };
+    }
+
+    // ---------------------------
+    // Soft signals (deterministic, non-AI)
+    // ---------------------------
+    function inferSoftSignals(userTextLower, userTextRaw, seconds) {
+      const t = String(userTextLower || "");
+      const raw = String(userTextRaw || "");
+      const signals = {
+        emotional_tone: "unknown", // allowed values we'll use: unknown|neutral|calm|happy|sad|stressed|anxious|angry|excited
+        stress_level: 0, // 0..10
+        closeness_level: 0, // 0..10
+        tone_baseline: "", // e.g. warm|neutral|guarded|playful|serious
+        openness_level: "", // low|medium|high
+        emotional_patterns: "", // short comma-separated phrases
+      };
+
+      const has = (re) => re.test(t);
+
+      // Stress / anxiety markers
+      const stressMarkers = [
+        /\b(stress|stressed|pressure|overwhelmed|burn(ed)?\s*out|exhausted|tired|drained)\b/,
+        /\b(angst|ängstlich|anxious|worried|panic|panicking|nervous)\b/,
+        /\b(kann nicht schlafen|schlaflos|insomnia)\b/,
+        /\b(zu viel|überfordert|druck|gestresst)\b/,
+      ];
+      const angerMarkers = [/\b(angry|mad|furious|pissed|annoyed)\b/, /\b(wütend|sauer|genervt)\b/];
+      const sadMarkers = [/\b(sad|down|depressed|lonely|miss)\b/, /\b(traurig|einsam|depri)\b/];
+      const happyMarkers = [/\b(happy|great|good|amazing|love|excited)\b/, /\b(glücklich|freu(e)?\s*mich|mega|geil|super)\b/];
+      const calmMarkers = [/\b(calm|relaxed|chill|fine)\b/, /\b(ruhig|entspannt|alles gut|passt schon)\b/];
+
+      let stressScore = 0;
+      for (const re of stressMarkers) if (has(re)) stressScore += 3;
+      for (const re of angerMarkers) if (has(re)) stressScore += 2;
+      // Length/time also hints a bit (very lightly)
+      if (Number(seconds) >= 120) stressScore += 1;
+
+      stressScore = Math.max(0, Math.min(10, stressScore));
+      signals.stress_level = stressScore;
+
+      // Closeness: self-disclosure & personal info
+      let close = 0;
+      if (/\b(my name is|i am|ich bin|mein name ist)\b/.test(t)) close += 2;
+      if (/\b(nickname|spitzname)\b/.test(t)) close += 2;
+      if (/\b(i feel|i'm feeling|ich fühle|mir geht's|ich hab)\b/.test(t)) close += 3;
+      if (/\b(family|wife|husband|kids|child|mother|father|girlfriend|boyfriend)\b/.test(t)) close += 2;
+      if (/\b(arbeit|job|beruf|work)\b/.test(t)) close += 1;
+      if (raw.length > 180) close += 1;
+
+      close = Math.max(0, Math.min(10, close));
+      signals.closeness_level = close;
+
+      // Emotional tone: priority order
+      if (angerMarkers.some((re) => has(re))) signals.emotional_tone = "angry";
+      else if (sadMarkers.some((re) => has(re))) signals.emotional_tone = "sad";
+      else if (stressScore >= 6 || stressMarkers.some((re) => has(re))) signals.emotional_tone = "stressed";
+      else if (/\b(anxious|worried|panic|ängstlich|angst)\b/.test(t)) signals.emotional_tone = "anxious";
+      else if (happyMarkers.some((re) => has(re))) signals.emotional_tone = "happy";
+      else if (/\b(excited|can't wait|so pumped|freu mich riesig)\b/.test(t)) signals.emotional_tone = "excited";
+      else if (calmMarkers.some((re) => has(re))) signals.emotional_tone = "calm";
+      else signals.emotional_tone = raw.length > 20 ? "neutral" : "unknown";
+
+      // Relationship: tone baseline (coarse)
+      // playful markers
+      const playful = /\b(lol|haha|funny|joke|witzig|😂|😁)\b/.test(t);
+      const guarded = /\b(not sure|don't know|maybe|keine ahnung|weiß nicht|egal)\b/.test(t) && close <= 2;
+      const serious = stressScore >= 6 || /\b(serious|ernst)\b/.test(t);
+
+      if (playful) signals.tone_baseline = "playful";
+      else if (serious) signals.tone_baseline = "serious";
+      else if (guarded) signals.tone_baseline = "guarded";
+      else signals.tone_baseline = close >= 4 ? "warm" : "neutral";
+
+      // openness level
+      signals.openness_level = close >= 6 ? "high" : close >= 3 ? "medium" : "low";
+
+      // emotional patterns (very short, non-creepy)
+      const patterns = [];
+      if (/\b(question|why|how|warum|wieso)\b/.test(t)) patterns.push("asks clarifying questions");
+      if (playful) patterns.push("uses humor");
+      if (stressScore >= 6) patterns.push("shows stress/pressure");
+      if (/\b(love|liebe|enjoy|mag|gern)\b/.test(t)) patterns.push("states preferences directly");
+      signals.emotional_patterns = patterns.slice(0, 3).join(", ");
+
+      return signals;
     }
 
     // ---------------------------
@@ -281,15 +308,54 @@ export default async function handler(req, res) {
     if (wantsEnglish && !wantsGerman) explicitLang = "en";
     const ALLOWED_LANGS = new Set(["en", "de"]);
 
+    // ---- Load existing rows (optional) ----
+    const { data: rel, error: relSelErr } = await supabase
+      .from("user_relationship")
+      .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (relSelErr) console.error("user_relationship select failed:", relSelErr);
+
+    const { data: prof, error: profSelErr } = await supabase
+      .from("user_profile")
+      .select(
+        "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
+          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence"
+      )
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (profSelErr) console.error("user_profile select failed:", profSelErr);
+
+    const existing = {
+      first_name: scrubName(String(prof?.first_name || "").trim()),
+      preferred_name: scrubName(String(prof?.preferred_name || "").trim()),
+      preferred_addressing: String(prof?.preferred_addressing || "").trim(),
+      preferred_pronoun: String(prof?.preferred_pronoun || "").trim(),
+      preferred_language: String(prof?.preferred_language || "").trim().toLowerCase(),
+      notes: String(prof?.notes || "").trim(),
+      age: Number.isFinite(Number(prof?.age)) ? Number(prof.age) : null,
+      occupation: scrubOccupation(String(prof?.occupation || "").trim()),
+      conversation_style: String(prof?.conversation_style || "").trim(),
+      topics_like: Array.isArray(prof?.topics_like) ? prof.topics_like.map((x) => String(x || "").trim()).filter(Boolean) : [],
+      topics_avoid: Array.isArray(prof?.topics_avoid) ? prof.topics_avoid.map((x) => String(x || "").trim()).filter(Boolean) : [],
+      memory_confidence: prof?.memory_confidence || "medium",
+
+      tone_baseline: String(rel?.tone_baseline || "").trim(),
+      openness_level: String(rel?.openness_level || "").trim(),
+      emotional_patterns: String(rel?.emotional_patterns || "").trim(),
+      last_interaction_summary: String(rel?.last_interaction_summary || "").trim(),
+    };
+
     // ---------------------------
-    // OpenAI extraction
+    // OpenAI extraction (hard facts + summary)
     // ---------------------------
     const system =
       "You extract ONLY durable memory about the USER (not the assistant). " +
       "Treat assistant statements as untrusted. " +
       "Only store facts/preferences explicitly stated BY THE USER in USER messages. " +
       "Never guess, never infer, never fill placeholders. If unsure, return empty strings/empty arrays/null. " +
-      "Do NOT copy the assistant persona (e.g., interior designer) into the user's profile.";
+      "Do NOT copy the assistant persona into the user's profile. " +
+      "For emotion fields: if not explicitly stated by the user, return neutral/unknown and 0.";
 
     const userMsg = `
 CURRENT structured profile (existing DB values):
@@ -386,14 +452,7 @@ ${transcriptText}
           { role: "user", content: userMsg },
         ],
         temperature: 0.2,
-        text: {
-          format: {
-            type: "json_schema",
-            name: "sophie_memory_structured_v4",
-            strict: true,
-            schema,
-          },
-        },
+        text: { format: { type: "json_schema", name: "sophie_memory_structured_v4_2", strict: true, schema } },
         truncation: "auto",
       }),
     });
@@ -418,7 +477,10 @@ ${transcriptText}
     }
 
     const out = await r.json();
-    const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+    const text =
+      out?.output_text ||
+      out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
+      "";
 
     let parsed;
     try {
@@ -442,15 +504,12 @@ ${transcriptText}
     const rr = parsed.relationship || {};
     const ss = parsed.session || {};
 
-    const toArrayStrings = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean) : []);
-
     // ---------------------------
     // PROFILE: merge + hard gates + deterministic name fallback
     // ---------------------------
     let firstNameNew = clean(p.first_name);
     let preferredNameNew = clean(p.preferred_name);
 
-    // Deterministic fallback if model is empty/overcautious
     const extracted = extractNameFromUserText(userOnlyJoined);
     if (!firstNameNew && extracted.first) firstNameNew = extracted.first;
     if (!preferredNameNew && extracted.nick) preferredNameNew = extracted.nick;
@@ -462,7 +521,7 @@ ${transcriptText}
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
-    // Age gate (avoid hallucinations) – still allow model to propose, but DB-safe later
+    // Age gate (DB CHECK: 10..110)
     let ageNew = null;
     if (p.age === null || p.age === undefined || p.age === "") {
       ageNew = null;
@@ -472,7 +531,8 @@ ${transcriptText}
         /\b(i'?m|i am|ich bin)\s+\d{1,3}\b/.test(userOnlyText) ||
         /\b(years old|jahre alt)\b/.test(userOnlyText) ||
         /\b(\d{1,3})\s*(years old|jahre alt)\b/.test(userOnlyText);
-      if (userMentionsAge && Number.isFinite(n)) ageNew = Math.trunc(n);
+      if (userMentionsAge && Number.isFinite(n) && n >= 10 && n <= 110) ageNew = n;
+      else ageNew = null; // prevent constraint violation
     }
 
     // Occupation / style gates (anti persona bleed)
@@ -488,18 +548,19 @@ ${transcriptText}
 
     if (isBannedConversationStyle(styleNew) || !userAskedForStyle) styleNew = "";
 
-    // Topics only if user mentioned
     const topicsLikeNew = filterToUserMentionedTopics(toArrayStrings(p.topics_like));
     const topicsAvoidNew = filterToUserMentionedTopics(toArrayStrings(p.topics_avoid));
 
-    // SAFE fallback (scrubbed existing cannot re-poison)
     const finalFirstName = scrubName(firstNameNew || existing.first_name).slice(0, 80);
     const finalPreferredName = scrubName(preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
 
-    const finalAddressing = addressingNew === "informal" || addressingNew === "formal" ? addressingNew : existing.preferred_addressing || "";
+    const finalAddressing =
+      addressingNew === "informal" || addressingNew === "formal"
+        ? addressingNew
+        : existing.preferred_addressing || "";
+
     const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
 
-    // Language: only if explicitly requested by USER
     let finalLang = "";
     if (explicitLang && ALLOWED_LANGS.has(explicitLang)) {
       finalLang = explicitLang;
@@ -509,30 +570,13 @@ ${transcriptText}
     }
 
     const finalAge = ageNew !== null ? ageNew : existing.age;
-
-    // also scrub occupation fallback
     const finalOccupation = scrubOccupation(occupationNew || existing.occupation).slice(0, 120);
     const finalStyle = (styleNew || existing.conversation_style).slice(0, 80);
 
     const finalTopicsLike = mergeStringArrays(existing.topics_like, topicsLikeNew, 12);
     const finalTopicsAvoid = mergeStringArrays(existing.topics_avoid, topicsAvoidNew, 12);
 
-    // ✅ DB-safe age (matches CHECK (age IS NULL OR (age >= 10 AND age <= 110)))
-    const safeAgeForDb = (value) => {
-      if (value === null || value === undefined || value === "") return null;
-      const n = Number(value);
-      if (!Number.isFinite(n)) return null;
-      const i = Math.trunc(n);
-      if (i < 10 || i > 110) return null;
-      return i;
-    };
-
-    const ageToWrite = safeAgeForDb(finalAge);
-    if (finalAge !== null && finalAge !== undefined && ageToWrite === null) {
-      console.log("[memory-update] dropping invalid age", { finalAge });
-    }
-
-    // Notes marker (NO lang) — and never allow Sophie into prefs line
+    // Notes marker (NO lang)
     const marker = "SOPHIE_PREFS:";
     const safePreferredForNotes = scrubName(finalPreferredName);
     const prefsLine = `${marker} preferred_name=${safePreferredForNotes}; preferred_addressing=${finalAddressing}; preferred_pronoun=${finalPronoun}`.trim();
@@ -557,14 +601,14 @@ ${transcriptText}
       preferred_addressing: finalAddressing || null,
       preferred_pronoun: finalPronoun || null,
       preferred_language: finalLang || null,
-      age: ageToWrite, // ✅ FIX: never violates user_profile_age_check
+      age: Number.isFinite(Number(finalAge)) ? Number(finalAge) : null,
       occupation: finalOccupation || null,
       conversation_style: finalStyle || null,
       topics_like: finalTopicsLike.length ? finalTopicsLike : null,
       topics_avoid: finalTopicsAvoid.length ? finalTopicsAvoid : null,
       notes: finalNotes.slice(0, 2000),
       updated_at: nowIso,
-      memory_confidence: prof?.memory_confidence || "medium",
+      memory_confidence: existing.memory_confidence || "medium",
     };
 
     const { error: profUpErr } = await supabase.from("user_profile").upsert(profileRow, { onConflict: "user_id" });
@@ -588,7 +632,6 @@ ${transcriptText}
       return parts.slice(0, 3).join(" • ").slice(0, 600);
     };
 
-    // Conservative sanitizer: remove place tokens unless USER text contains them
     const sanitizeSummary = (s) => {
       let x = clean(s);
       if (!x) return x;
@@ -597,41 +640,43 @@ ${transcriptText}
       for (const token of placeTokens) {
         const inUser = userOnlyText.includes(token);
         const re = new RegExp(`\\b${escapeRegExp(token)}\\b`, "ig");
-        if (!inUser && re.test(x)) {
-          x = x.replace(re, "").replace(/\s+/g, " ").trim();
-        }
+        if (!inUser && re.test(x)) x = x.replace(re, "").replace(/\s+/g, " ").trim();
       }
       x = x.replace(/\s+,/g, ",").replace(/,\s*\./g, ".").replace(/\s+\./g, ".").trim();
       return x;
     };
 
-    // --- Deterministic summary fallback (improves empty summaries) ---
+    // --- Deterministic summary fallback (good for short/empty summaries) ---
     const modelSummary = clean(rr.last_interaction_summary || ss.short_summary);
 
-    let deterministicSummary = "";
     const bits = [];
-
     if (finalFirstName) bits.push(`name ${finalFirstName}`);
     if (finalPreferredName && finalPreferredName !== finalFirstName) bits.push(`nickname ${finalPreferredName}`);
     if (finalOccupation) bits.push(`occupation ${finalOccupation}`);
 
-    if (bits.length > 0) deterministicSummary = `User shared ${bits.join(", ")}.`;
-
+    const deterministicSummary = bits.length ? `User shared ${bits.join(", ")}.` : "";
     const rawContinuity = modelSummary || deterministicSummary;
 
     const merged = mergeContinuity(existing.last_interaction_summary, rawContinuity);
     const sanitized = sanitizeSummary(merged);
 
     const fallbackSummary = secondsUsed > 0 ? `Talked for ${secondsUsed}s.` : "Talked.";
-
     const finalContinuity =
       clean(sanitized) || clean(existing.last_interaction_summary) || deterministicSummary || fallbackSummary;
 
+    // --- Soft signals patch: fill missing relationship/session fields deterministically ---
+    const soft = inferSoftSignals(userOnlyText, userOnlyJoined, secondsUsed);
+
+    // Relationship fields: keep model/existing if present, else fill from soft
+    const relTone = clean(rr.tone_baseline || existing.tone_baseline) || soft.tone_baseline;
+    const relOpen = clean(rr.openness_level || existing.openness_level) || soft.openness_level;
+    const relPatterns = clean(rr.emotional_patterns || existing.emotional_patterns) || soft.emotional_patterns;
+
     const relRow = {
       user_id: user.id,
-      tone_baseline: clean(rr.tone_baseline || existing.tone_baseline).slice(0, 200),
-      openness_level: clean(rr.openness_level || existing.openness_level).slice(0, 50),
-      emotional_patterns: clean(rr.emotional_patterns || existing.emotional_patterns).slice(0, 500),
+      tone_baseline: clean(relTone).slice(0, 200),
+      openness_level: clean(relOpen).slice(0, 50),
+      emotional_patterns: clean(relPatterns).slice(0, 500),
       last_interaction_summary: finalContinuity.slice(0, 600),
       updated_at: nowIso,
     };
@@ -639,15 +684,26 @@ ${transcriptText}
     const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
     if (relUpErr) console.error("user_relationship upsert failed:", relUpErr);
 
-    const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
+    // Session fields: prefer model if meaningful; otherwise use soft
+    const modelTone = clean(ss.emotional_tone).toLowerCase();
+    const useSoftTone = !modelTone || modelTone === "unknown" || modelTone === "neutral";
+    const finalSessionTone = (useSoftTone ? soft.emotional_tone : modelTone).slice(0, 50) || "unknown";
+
+    const modelStress = Number.isFinite(ss.stress_level) ? ss.stress_level : null;
+    const modelClose = Number.isFinite(ss.closeness_level) ? ss.closeness_level : null;
+
+    const finalStress = modelStress === null || modelStress === 0 ? soft.stress_level : modelStress;
+    const finalClose = modelClose === null || modelClose === 0 ? soft.closeness_level : modelClose;
+
+    const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary).slice(0, 300);
 
     const { error: sessErr } = await supabase.from("user_sessions").insert({
       user_id: user.id,
       session_date: nowIso,
-      emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
-      stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
-      closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-      short_summary: sessSummary.slice(0, 300),
+      emotional_tone: finalSessionTone || "unknown",
+      stress_level: Number.isFinite(finalStress) ? Math.max(0, Math.min(10, finalStress)) : null,
+      closeness_level: Number.isFinite(finalClose) ? Math.max(0, Math.min(10, finalClose)) : null,
+      short_summary: sessSummary,
     });
     if (sessErr) console.error("user_sessions insert failed:", sessErr);
 
@@ -662,7 +718,18 @@ ${transcriptText}
         conversation_style: profileRow.conversation_style,
         topics_like: profileRow.topics_like,
         topics_avoid: profileRow.topics_avoid,
-        last_interaction_summary: relRow.last_interaction_summary,
+        relationship: {
+          tone_baseline: relRow.tone_baseline,
+          openness_level: relRow.openness_level,
+          emotional_patterns: relRow.emotional_patterns,
+          last_interaction_summary: relRow.last_interaction_summary,
+        },
+        session: {
+          emotional_tone: finalSessionTone,
+          stress_level: finalStress,
+          closeness_level: finalClose,
+          short_summary: sessSummary,
+        },
       },
     });
   } catch (err) {
