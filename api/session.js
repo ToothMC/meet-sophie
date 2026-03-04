@@ -548,10 +548,10 @@ ${memoryBlock}
       },
       body: JSON.stringify({
         // GA Realtime model (preview models are being retired)
-        model: "gpt-4o-realtime-2025-02-01",
+        model: "gpt-realtime",
         voice: "shimmer",
         // Required for GA Realtime to reliably start audio + text
-        modalities: ["audio", "text"],
+        output_modalities: ["audio", "text"],
         temperature: 1.05,
         instructions: sophiePrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
