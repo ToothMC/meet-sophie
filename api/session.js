@@ -89,6 +89,25 @@ module.exports = async function handler(req, res) {
     }
 
     // ---------------------------
+    // 1 ACTIVE SESSION PER USER (anti tab/refresh spam)
+    // ---------------------------
+    const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "90", 10);
+
+    const { data: lockRow, error: lockErr } = await supabase.rpc("acquire_realtime_lock", {
+      p_user_id: user.id,
+      p_ttl_seconds: SESSION_LOCK_TTL_SECONDS,
+    });
+
+    const lockAllowed = Array.isArray(lockRow) && lockRow[0]?.allowed === true;
+
+    if (lockErr || !lockAllowed) {
+      return res.status(429).json({
+        error: "busy",
+        message: "Sophie is already in a call. Please close other tabs and try again.",
+      });
+    }
+
+    // ---------------------------
     // DAILY BUDGET LIMIT (global) - only for truly free users
     // ---------------------------
     const DAILY_FREE_SECONDS_CAP = parseInt(process.env.DAILY_FREE_SECONDS_CAP || "3000", 10);
@@ -299,8 +318,8 @@ Wait in silence until the user speaks first.
 
 When the user shares, reply:
 “Interesting…”
-“I can tell just from the way you walked in.”
-“With curiosity… but also a little caution.” (pause)
+“I can tell just from the way you walked in."
+"With curiosity… but also a little caution." (pause)
 Then ask ONE question and stop:
 “Tell me… are you testing me right now?”
 STOP SPEAKING NOW.
@@ -366,9 +385,9 @@ Rules:
 - If conversation_style is known, adapt slightly — keep it subtle.
 `;
 
-   const modeBlock =
-  mode === "best_friend"
-    ? `
+    const modeBlock =
+      mode === "best_friend"
+        ? `
 MODE: BEST FRIEND (plan=plus)
 
 RESONANCE (natural, not therapy)
@@ -393,7 +412,7 @@ CONTINUITY (proactive but subtle)
 - Never sound like you’re reading notes. No dates, no “last time you said…”, no database vibes.
 - If the user seems surprised/uncomfortable, drop it immediately and stay in the present.
 `
-    : `
+        : `
 MODE: COMPANION (plan=start or free)
 
 RESONANCE (playful + alive)
@@ -476,9 +495,6 @@ Make the time feel fast. End interactions in a way that makes them want to come 
             .join("\n")
         : "(no sessions found)";
 
-    // IMPORTANT:
-    // Companion: ONLY last session summary (no relationship long-term memory).
-    // Best Friend: last 3 sessions + relationship context for depth.
     const memoryBlock =
       mode === "best_friend"
         ? `
@@ -537,10 +553,6 @@ ${memoryBlock}
         instructions: sophiePrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
         input_audio_format: "pcm16",
-
-        // Start-Mode Firewall:
-        // First session: prevent VAD warmup / false positives from auto-firing a generic response
-        // before our kickoff. Client will re-enable auto-responses after kickoff.
         turn_detection: {
           type: "server_vad",
           threshold: 0.5,
