@@ -127,7 +127,7 @@ button:disabled{
   border:1px solid rgba(255,255,255,.18);
 }
 
-/* NEW: prepaid section */
+/* prepaid section */
 .divider{
   margin:22px 0 14px;
   height:1px;
@@ -172,12 +172,14 @@ button:disabled{
 
 .pack:hover{ background:rgba(255,255,255,.14); }
 
+/* NEW: keep only amount + “Sophie Time” */
 .pack span{
   display:block;
   font-size:12px;
-  font-weight:600;
-  opacity:.75;
+  font-weight:700;
+  opacity:.8;
   margin-top:4px;
+  letter-spacing:.2px;
 }
 
 @media (max-width:520px){
@@ -246,7 +248,7 @@ button:disabled{
     <button id="btnContinue" disabled></button>
     <button class="btn-secondary" id="btnLogin"></button>
 
-    <!-- NEW: Prepaid -->
+    <!-- Prepaid -->
     <div class="divider"></div>
     <p class="subhead" id="tPrepaidTitle"></p>
     <p class="prepaid-note" id="tPrepaidNote"></p>
@@ -254,15 +256,15 @@ button:disabled{
     <div class="packs">
       <button class="pack" id="topup5"  disabled>
         €5
-        <span id="tPack5"></span>
+        <span id="tSophieTime"></span>
       </button>
       <button class="pack" id="topup10" disabled>
         €10
-        <span id="tPack10"></span>
+        <span id="tSophieTime2"></span>
       </button>
       <button class="pack" id="topup20" disabled>
         €20
-        <span id="tPack20"></span>
+        <span id="tSophieTime3"></span>
       </button>
     </div>
 
@@ -309,11 +311,9 @@ const TEXT = {
     loading:"Einen Moment…",
     checkoutError:"Fehler beim Starten des Checkouts.",
     topupError:"Fehler beim Starten des Top-ups.",
-    prepaidTitle:"Prepaid Zeit (ohne Abo)",
-    prepaidNote:"Perfekt, wenn du nur gelegentlich reden willst. Kein Abo nötig.",
-    pack5:"ca. 60 Min",
-    pack10:"ca. 140 Min",
-    pack20:"ca. 320 Min",
+    prepaidTitle:"Prepaid (ohne Abo)",
+    prepaidNote:"Für gelegentliche Gespräche. Kein Abo nötig.",
+    sophieTime:"Sophie Time",
     topupLoading:"Checkout wird geöffnet…",
     legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
     legal2:`Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
@@ -329,11 +329,9 @@ const TEXT = {
     loading:"One moment…",
     checkoutError:"Failed to start checkout.",
     topupError:"Failed to start top-up checkout.",
-    prepaidTitle:"Prepaid time (no subscription)",
-    prepaidNote:"Perfect if you just want to talk occasionally. No subscription required.",
-    pack5:"~60 min",
-    pack10:"~140 min",
-    pack20:"~320 min",
+    prepaidTitle:"Prepaid (no subscription)",
+    prepaidNote:"For occasional conversations. No subscription required.",
+    sophieTime:"Sophie Time",
     topupLoading:"Opening checkout…",
     legal1:`I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
     legal2:`I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
@@ -347,7 +345,6 @@ const msg = document.getElementById("msg");
 const c1 = document.getElementById("legal1");
 const c2 = document.getElementById("legal2");
 
-// NEW: topup buttons
 const topup5 = document.getElementById("topup5");
 const topup10 = document.getElementById("topup10");
 const topup20 = document.getElementById("topup20");
@@ -371,12 +368,13 @@ function setLang(l){
   btnContinue.textContent = t.btn;
   btnLogin.textContent = t.login;
 
-  // NEW: prepaid text
   document.getElementById("tPrepaidTitle").textContent = t.prepaidTitle;
   document.getElementById("tPrepaidNote").textContent = t.prepaidNote;
-  document.getElementById("tPack5").textContent = t.pack5;
-  document.getElementById("tPack10").textContent = t.pack10;
-  document.getElementById("tPack20").textContent = t.pack20;
+
+  // NEW: same label under each amount
+  document.getElementById("tSophieTime").textContent = t.sophieTime;
+  document.getElementById("tSophieTime2").textContent = t.sophieTime;
+  document.getElementById("tSophieTime3").textContent = t.sophieTime;
 
   document.getElementById("tLegal1").innerHTML = t.legal1;
   document.getElementById("tLegal2").innerHTML = t.legal2;
@@ -391,7 +389,6 @@ function updateEnabled(){
   const ok = (c1.checked && c2.checked);
   btnContinue.disabled = !ok;
 
-  // NEW: allow topup only if legal accepted as well
   topup5.disabled = !ok;
   topup10.disabled = !ok;
   topup20.disabled = !ok;
@@ -400,7 +397,6 @@ c1.onchange = updateEnabled;
 c2.onchange = updateEnabled;
 
 function goLogin(){
-  // ✅ nach Login wieder hierher zurück
   const redirect = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `/login/?redirect=${redirect}`;
 }
@@ -474,11 +470,9 @@ async function startTopup(pack){
     return;
   }
 
-  // disable pack buttons while loading
   const t = TEXT[currentLang];
-  const old = { b: btnContinue.textContent };
-  btnContinue.textContent = t.btn;
   topup5.disabled = true; topup10.disabled = true; topup20.disabled = true;
+  btnContinue.disabled = true;
   msg.textContent = t.topupLoading;
 
   try {
@@ -525,7 +519,6 @@ topup5.onclick = () => startTopup(5);
 topup10.onclick = () => startTopup(10);
 topup20.onclick = () => startTopup(20);
 
-// Hide login button if already logged in
 (async function init(){
   setLang(currentLang);
 
