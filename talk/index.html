@@ -131,6 +131,24 @@ body{
   height:100%;
   object-fit:cover;
 }
+
+/* ✅ NEW: tiny footer link (hidden by default) */
+#billingFooter{
+  position:fixed;
+  left:0; right:0;
+  bottom:10px;
+  z-index:4;
+  text-align:center;
+  font-size:12px;
+  opacity:.55;
+  pointer-events:none; /* only enable when link visible */
+}
+#billingFooter a{
+  color:rgba(255,255,255,.9);
+  text-decoration:none;
+  pointer-events:auto;
+}
+#billingFooter a:hover{ text-decoration:underline; }
 </style>
 </head>
 
@@ -153,6 +171,11 @@ body{
   <button id="end" class="btn" disabled>Leave the Room</button>
 </div>
 
+<!-- ✅ NEW: Footer "Manage subscription" (only shown for Plus users) -->
+<div id="billingFooter" aria-label="billing-footer">
+  <a href="#" id="manageSubLink" style="display:none;">Manage subscription</a>
+</div>
+
 <!-- LIMIT VIDEO OVERLAY -->
 <div id="limitOverlay">
   <video id="limitVideo" playsinline preload="auto">
@@ -173,6 +196,54 @@ const { data: { session } } = await supabase.auth.getSession();
 if (!session?.user) {
   window.location.href = "/login/";
 }
+
+// ✅ NEW: Manage subscription link (Stripe Customer Portal)
+// - Only show if /api/create-portal-session returns 200 (Plus users)
+// - Prepaid-only users will typically get 404 -> keep hidden
+const manageSubLink = document.getElementById("manageSubLink");
+const billingFooter = document.getElementById("billingFooter");
+
+async function initManageSubscriptionLink(){
+  try{
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    // "Probe" call: do not redirect, just see if user has subscription customer
+    const res = await fetch("/api/create-portal-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: "{}",
+    });
+
+    if (res.status === 200) {
+      manageSubLink.style.display = "inline";
+      billingFooter.style.pointerEvents = "auto";
+    }
+  } catch(_) {}
+}
+
+manageSubLink?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  try{
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    const res = await fetch("/api/create-portal-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: "{}",
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (data?.url) window.location.href = data.url;
+  } catch(_) {}
+});
 
 // --- Tracking helper (POST /api/track) ---
 async function track(event_name, meta = {}) {
@@ -952,6 +1023,9 @@ logoutBtn.onclick = async () => {
 
 startBtn.addEventListener("click", startVoice);
 endBtn.addEventListener("click", () => stopVoice(false));
+
+// ✅ NEW: init footer link after page loads (no other behavior changes)
+initManageSubscriptionLink();
 </script>
 
 </body>
