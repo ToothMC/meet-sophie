@@ -57,7 +57,6 @@ export default async function handler(req, res) {
     }
 
     // --- LEGAL ENFORCEMENT (server-side) ---
-    // Versions: keep these in sync with your legal pages
     const TERMS_VERSION = "2026-03-03";
     const PRIVACY_VERSION = "2026-03-03";
     const WAIVER_VERSION = "2026-03-03";
@@ -74,18 +73,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Legal acceptance required: withdrawal waiver" });
     }
 
-    // Robust origin (works on Vercel prod + preview)
     const proto = (req.headers["x-forwarded-proto"] || "https").toString();
     const host = (req.headers["x-forwarded-host"] || req.headers.host || "meet-sophie.com").toString();
     const origin = `${proto}://${host}`;
 
-    // --- Log acceptance in Supabase (minimal proof) ---
-    // Optional: store IP/UA (you can remove if you want even less data)
     const ip =
       (req.headers["x-forwarded-for"] || "")
         .toString()
         .split(",")[0]
         .trim() || null;
+
     const userAgent = (req.headers["user-agent"] || "").toString().slice(0, 300) || null;
 
     const acceptInsert = {
@@ -104,23 +101,26 @@ export default async function handler(req, res) {
       ip,
     };
 
-    const supaInsertResp = await fetch(`${supabaseUrl}/rest/v1/legal_acceptances`, {
-      method: "POST",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify(acceptInsert),
-    });
+    // ✅ UPSERT statt INSERT (verhindert duplicate key Fehler)
+    const supaInsertResp = await fetch(
+      `${supabaseUrl}/rest/v1/legal_acceptances?on_conflict=user_id,event,terms_version,privacy_version,waiver_version,plan`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(acceptInsert),
+      }
+    );
 
     if (!supaInsertResp.ok) {
       const t = await supaInsertResp.text();
       return res.status(500).json({ error: "Failed to store legal acceptance", detail: t });
     }
 
-    // Empfehlenswert: direkt zurück in Talk
     const successUrl = `${origin}/talk/?paid=1`;
     const cancelUrl = `${origin}/pricing/?canceled=1`;
 
@@ -132,10 +132,8 @@ export default async function handler(req, res) {
     stripeBody.append("line_items[0][price]", priceId);
     stripeBody.append("line_items[0][quantity]", "1");
 
-    // Hilft beim Matching ohne metadata parsing
     stripeBody.append("client_reference_id", userId);
 
-    // Metadata (include versions to aid later disputes)
     stripeBody.append("metadata[user_id]", userId);
     stripeBody.append("metadata[plan]", p);
     stripeBody.append("metadata[terms_version]", TERMS_VERSION);
