@@ -242,7 +242,10 @@ button:disabled{
 
     <div class="price">
       19,90€
-      <div class="per" id="tPer"></div>
+      <div class="per">
+        <span id="tPer"></span>
+        <span id="tPerHint" style="font-size:12px;opacity:.7;margin-left:6px;"></span>
+      </div>
     </div>
 
     <button id="btnContinue" disabled></button>
@@ -251,7 +254,7 @@ button:disabled{
     <!-- Prepaid -->
     <div class="divider"></div>
     <p class="subhead" id="tPrepaidTitle"></p>
-    <p class="prepaid-note" id="tPrepaidNote"></p>
+    <p class="prepaid-note" id="tPrepaidHint" style="font-size:12px;opacity:.7;margin-top:6px;"></p>
 
     <div class="packs">
       <button class="pack" id="topup5"  disabled>
@@ -306,13 +309,14 @@ const TEXT = {
     lead:"Sophie wollte dich gerade etwas fragen.",
     note:"Wenn du willst, machen wir genau hier weiter.",
     per:"pro Monat",
+    perHint:"(inkl. Gesprächszeit)",
     btn:"Weiter mit Sophie",
     login:"Ich bin noch nicht eingeloggt",
     loading:"Einen Moment…",
     checkoutError:"Fehler beim Starten des Checkouts.",
     topupError:"Fehler beim Starten des Top-ups.",
     prepaidTitle:"Prepaid (ohne Abo)",
-    prepaidNote:"Für gelegentliche Gespräche. Kein Abo nötig.",
+    prepaidHint:"(Zusätzliche Zeit kann als Prepaid-Guthaben gekauft werden.)",
     sophieTime:"Sophie Time",
     topupLoading:"Checkout wird geöffnet…",
     legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
@@ -324,13 +328,14 @@ const TEXT = {
     lead:"Sophie was about to ask you something.",
     note:"If you want, we continue right here.",
     per:"per month",
+    perHint:"(incl. conversation time)",
     btn:"Continue with Sophie",
     login:"I'm not logged in",
     loading:"One moment…",
     checkoutError:"Failed to start checkout.",
     topupError:"Failed to start top-up checkout.",
     prepaidTitle:"Prepaid (no subscription)",
-    prepaidNote:"For occasional conversations. No subscription required.",
+    prepaidHint:"(Additional time can be purchased as prepaid credit)",
     sophieTime:"Sophie Time",
     topupLoading:"Opening checkout…",
     legal1:`I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
@@ -364,12 +369,13 @@ function setLang(l){
   document.getElementById("tLead").textContent = t.lead;
   document.getElementById("tNote").textContent = t.note;
   document.getElementById("tPer").textContent = t.per;
+  document.getElementById("tPerHint").textContent = t.perHint;
 
   btnContinue.textContent = t.btn;
   btnLogin.textContent = t.login;
 
   document.getElementById("tPrepaidTitle").textContent = t.prepaidTitle;
-  document.getElementById("tPrepaidNote").textContent = t.prepaidNote;
+  document.getElementById("tPrepaidHint").textContent = t.prepaidHint;
 
   // NEW: same label under each amount
   document.getElementById("tSophieTime").textContent = t.sophieTime;
