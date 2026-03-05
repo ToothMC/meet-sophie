@@ -9,16 +9,16 @@ const DEFAULT_FREE_SECONDS_TOTAL = 120;
 
 function includedSecondsForPlan(plan) {
   const p = String(plan || "").toLowerCase().trim();
-  if (p === "starter") return 120 * 60; // Companion: 120 min
-  if (p === "plus") return 300 * 60;    // Best Friend: 300 min
+  if (p === "starter") return 15 * 60; // Companion: 15 min
+  if (p === "plus") return 25 * 60;    // Best Friend: 25 min
   return 0;
 }
 
 function topupSecondsForPack(pack) {
   const k = Number(pack);
-  if (k === 5) return 60 * 60;     // 60 min
-  if (k === 10) return 140 * 60;   // 140 min
-  if (k === 20) return 320 * 60;   // 320 min
+  if (k === 5) return 5 * 60;     // 5 min
+  if (k === 10) return 10 * 60;   // 10 min
+  if (k === 20) return 20 * 60;   // 20 min
   return 0;
 }
 
