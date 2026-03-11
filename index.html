@@ -64,6 +64,12 @@
       opacity:.94;
     }
 
+    .nav-right{
+      display:flex;
+      align-items:center;
+      gap:18px;
+    }
+
     .nav-links{
       display:flex;
       align-items:center;
@@ -77,6 +83,24 @@
     }
 
     .nav-links a:hover{color:var(--text)}
+
+    .login-link{
+      text-decoration:none;
+      font-size:14px;
+      font-weight:600;
+      color:var(--text);
+      border:1px solid rgba(255,255,255,.12);
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      transition:transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+
+    .login-link:hover{
+      transform:translateY(-1px);
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.18);
+    }
 
     .hero{
       position:relative;
@@ -388,6 +412,12 @@
       gap:20px;
     }
 
+    .cta-actions{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+    }
+
     .site-footer{
       border-top:1px solid rgba(255,255,255,.08);
       padding:26px 0 36px;
@@ -445,6 +475,7 @@
       .cta-box{padding:22px}
       .hero-actions{display:grid;grid-template-columns:1fr}
       .btn{width:100%}
+      .login-link{padding:9px 12px}
     }
   </style>
 </head>
@@ -452,13 +483,16 @@
   <header class="site-header">
     <div class="wrap nav">
       <a class="brand" href="/">meet-sophie.com</a>
-      <nav class="nav-links" aria-label="Primary">
-        <a href="#why">Why Sophie</a>
-        <a href="#difference">How it works</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#trust">Trust</a>
-        <a href="#faq">FAQ</a>
-      </nav>
+      <div class="nav-right">
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#why">Why Sophie</a>
+          <a href="#difference">How it works</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#trust">Trust</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="login-link" href="/login/">Log in</a>
+      </div>
     </div>
   </header>
 
@@ -470,10 +504,10 @@
           <h1>A private voice companion that remembers you</h1>
           <p class="hero-copy">Talk through your day, reflect on what matters, and pick up where you left off. Sophie is designed for calm, personal conversations that feel natural over time.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="/login/">Try Sophie for free</a>
+            <a class="btn btn-primary" href="/login/">Try Sophie</a>
             <a class="btn btn-secondary" href="#pricing">See pricing</a>
           </div>
-          <div class="trust-line">Start with a free first conversation • Clear AI identity • Memory that adds continuity</div>
+          <div class="trust-line">Start free. Continue anytime with Sophie Plus.</div>
         </div>
 
         <div class="hero-visual">
@@ -554,11 +588,12 @@
           <p class="example-copy">The best way to understand Sophie is not to read about it. It is to have one real conversation first. Start free, see how it feels, and continue only if it feels useful.</p>
           <div class="dialogue">
             <div class="bubble you"><strong>Free:</strong> A short first conversation to experience Sophie.</div>
-            <div class="bubble sophie"><strong>Plus:</strong> Longer conversations, ongoing access, and more continuity over time.</div>
+            <div class="bubble sophie"><strong>Sophie Plus:</strong> Longer conversations, ongoing access, and more continuity over time.</div>
           </div>
           <div style="margin-top:20px">
-            <a class="btn btn-primary" href="/login/">Try Sophie for free</a>
+            <a class="btn btn-primary" href="/login/">Try Sophie</a>
           </div>
+          <div class="trust-line">Start free. Continue anytime with Sophie Plus.</div>
         </div>
 
         <div class="trust-box">
@@ -570,7 +605,7 @@
               <span class="list-text">Start with a free first conversation and get a real feel for the experience.</span>
             </li>
             <li>
-              <span class="list-title">Plus</span>
+              <span class="list-title">Sophie Plus</span>
               <span class="list-text">Upgrade for longer conversations and continued access once you know it is for you.</span>
             </li>
             <li>
@@ -673,7 +708,7 @@
             </div>
             <div class="faq-item">
               <span class="faq-q">How do I start?</span>
-              <div class="faq-a">Start with a free first conversation and see whether it feels useful, natural, and worth coming back to.</div>
+              <div class="faq-a">Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.</div>
             </div>
           </div>
         </div>
@@ -684,11 +719,12 @@
       <div class="wrap cta-box">
         <div>
           <span class="muted-label">Start simple</span>
-          <h3>Try Sophie for free and see how it feels</h3>
-          <p class="cta-copy">Start with a free first conversation and decide for yourself whether Sophie feels useful, natural, and worth coming back to.</p>
+          <h3>Try Sophie and see how it feels</h3>
+          <p class="cta-copy">Start free. Continue anytime with Sophie Plus.</p>
         </div>
-        <div>
-          <a class="btn btn-primary" href="/login/">Try Sophie for free</a>
+        <div class="cta-actions">
+          <a class="btn btn-primary" href="/login/">Try Sophie</a>
+          <div class="trust-line">Start free. Continue anytime with Sophie Plus.</div>
         </div>
       </div>
     </section>
