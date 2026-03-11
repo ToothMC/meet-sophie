@@ -84,6 +84,67 @@
 
     .nav-links a:hover{color:var(--text)}
 
+    .lang-dropdown{
+      position:relative;
+      display:inline-block;
+    }
+
+    .lang-btn{
+      text-decoration:none;
+      font-size:14px;
+      font-weight:600;
+      color:var(--text);
+      border:1px solid rgba(255,255,255,.12);
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      transition:transform .18s ease, background .18s ease, border-color .18s ease;
+      appearance:none;
+      cursor:pointer;
+      line-height:1;
+    }
+
+    .lang-btn:hover{
+      transform:translateY(-1px);
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.18);
+    }
+
+    .lang-menu{
+      position:absolute;
+      top:calc(100% + 10px);
+      right:0;
+      min-width:170px;
+      padding:8px;
+      border-radius:18px;
+      background:rgba(10,12,18,.94);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:var(--shadow);
+      display:none;
+      z-index:100;
+      backdrop-filter:blur(18px);
+    }
+
+    .lang-menu.open{display:block}
+
+    .lang-menu button{
+      width:100%;
+      appearance:none;
+      border:0;
+      background:transparent;
+      color:var(--text);
+      text-align:left;
+      padding:11px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:500;
+    }
+
+    .lang-menu button:hover{
+      background:rgba(255,255,255,.07);
+    }
+
     .login-link{
       text-decoration:none;
       font-size:14px;
@@ -475,7 +536,8 @@
       .cta-box{padding:22px}
       .hero-actions{display:grid;grid-template-columns:1fr}
       .btn{width:100%}
-      .login-link{padding:9px 12px}
+      .login-link,
+      .lang-btn{padding:9px 12px}
     }
   </style>
 </head>
@@ -485,13 +547,25 @@
       <a class="brand" href="/">meet-sophie.com</a>
       <div class="nav-right">
         <nav class="nav-links" aria-label="Primary">
-          <a href="#use-cases">Use cases</a>
-          <a href="#difference">How it works</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#trust">Trust</a>
-          <a href="#faq">FAQ</a>
+          <a href="#use-cases" id="nav-use-cases">Use cases</a>
+          <a href="#difference" id="nav-how-it-works">How it works</a>
+          <a href="#pricing" id="nav-pricing">Pricing</a>
+          <a href="#trust" id="nav-trust">Trust</a>
+          <a href="#faq" id="nav-faq">FAQ</a>
         </nav>
-        <a class="login-link" href="/login/">Log in</a>
+
+        <div class="lang-dropdown">
+          <button class="lang-btn" id="langToggle" aria-expanded="false" aria-haspopup="true">
+            <span id="lang-label">Language</span>
+          </button>
+          <div class="lang-menu" id="langMenu">
+            <button type="button" onclick="setLang('en')">English</button>
+            <button type="button" onclick="setLang('de')">Deutsch</button>
+            <button type="button" onclick="setLang('fr')">Français</button>
+          </div>
+        </div>
+
+        <a class="login-link" href="/login/" id="login-link">Log in</a>
       </div>
     </div>
   </header>
@@ -500,21 +574,21 @@
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <div class="eyebrow">A new category of AI</div>
-          <h1>Your AI Thinking Partner</h1>
-          <p class="hero-copy">A private voice space to explore ideas, test decisions, and think things through.</p>
+          <div class="eyebrow" id="hero-eyebrow">A new category of AI</div>
+          <h1 id="hero-title">Your AI Thinking Partner</h1>
+          <p class="hero-copy" id="hero-copy">A private conversation to explore ideas, test decisions, and think things through.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="/login/">Think with Sophie</a>
-            <a class="btn btn-secondary" href="#use-cases">See use cases</a>
+            <a class="btn btn-primary" href="/login/" id="hero-btn-primary">Think with Sophie</a>
+            <a class="btn btn-secondary" href="#use-cases" id="hero-btn-secondary">See use cases</a>
           </div>
-          <div class="trust-line">Speak naturally. No typing required.</div>
+          <div class="trust-line" id="hero-trust-line">Speak naturally. No typing required.</div>
         </div>
 
         <div class="hero-visual">
           <div class="hero-card">
             <div class="floating-panel">
-              <div class="floating-label">A different kind of conversation</div>
-              <div class="floating-text">“Okay. What matters more here — speed, or long-term upside?”</div>
+              <div class="floating-label" id="floating-label">A different kind of conversation</div>
+              <div class="floating-text" id="floating-text">“Okay. What matters more here — speed, or long-term upside?”</div>
             </div>
           </div>
         </div>
@@ -523,32 +597,32 @@
 
     <section class="section" id="use-cases">
       <div class="wrap">
-        <h2 class="section-title">How people use Sophie</h2>
-        <p class="section-intro">Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.</p>
+        <h2 class="section-title" id="use-cases-title">How people use Sophie</h2>
+        <p class="section-intro" id="use-cases-intro">Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.</p>
         <div class="cards">
           <article class="card">
-            <h3>Exploring ideas</h3>
-            <p>Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.</p>
+            <h3 id="card1-title">Exploring ideas</h3>
+            <p id="card1-copy">Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.</p>
           </article>
           <article class="card">
-            <h3>Thinking through decisions</h3>
-            <p>Compare options, test assumptions, and clarify what really matters before you act.</p>
+            <h3 id="card2-title">Thinking through decisions</h3>
+            <p id="card2-copy">Compare options, test assumptions, and clarify what really matters before you act.</p>
           </article>
           <article class="card">
-            <h3>Reflecting on experiences</h3>
-            <p>Process something that happened, make sense of your thoughts, and understand your own thinking better.</p>
+            <h3 id="card3-title">Reflecting on experiences</h3>
+            <p id="card3-copy">Process something that happened, make sense of your thoughts, and understand your own thinking better.</p>
           </article>
           <article class="card">
-            <h3>Preparing for important conversations</h3>
-            <p>Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.</p>
+            <h3 id="card4-title">Preparing for important conversations</h3>
+            <p id="card4-copy">Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.</p>
           </article>
           <article class="card">
-            <h3>Founder and management sparring</h3>
-            <p>Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.</p>
+            <h3 id="card5-title">Founder and management sparring</h3>
+            <p id="card5-copy">Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.</p>
           </article>
           <article class="card">
-            <h3>Returning to ongoing thoughts</h3>
-            <p>Because Sophie can carry useful context across sessions, you do not have to start from zero each time.</p>
+            <h3 id="card6-title">Returning to ongoing thoughts</h3>
+            <p id="card6-copy">Because Sophie can carry useful context across sessions, you do not have to start from zero each time.</p>
           </article>
         </div>
       </div>
@@ -557,36 +631,36 @@
     <section class="section" id="difference">
       <div class="wrap split">
         <div class="example-box">
-          <span class="muted-label">How it works</span>
-          <h3>Not answers. Better thinking.</h3>
-          <p class="example-copy">Sophie is not designed to rush to solutions. She helps you explore ideas, test decisions, and ask better questions before you act.</p>
+          <span class="muted-label" id="difference-label-1">How it works</span>
+          <h3 id="difference-title-1">First think. Then act.</h3>
+          <p class="example-copy" id="difference-copy-1">Sophie is not designed to rush to solutions. She helps you explore ideas, test decisions, and ask better questions before you act.</p>
           <ul class="bullet-list">
             <li>
-              <span class="list-title">Voice-first by design</span>
-              <span class="list-text">Talking can feel faster, lighter, and more natural than typing into a chat window.</span>
+              <span class="list-title" id="difference-list1-title">Voice-first by design</span>
+              <span class="list-text" id="difference-list1-text">Talking can feel faster, lighter, and more natural than typing into a chat window.</span>
             </li>
             <li>
-              <span class="list-title">Different thinking modes</span>
-              <span class="list-text">Sophie can explore ideas, think strategically, or help you reflect — depending on what you need.</span>
+              <span class="list-title" id="difference-list2-title">Different thinking modes</span>
+              <span class="list-text" id="difference-list2-text">Sophie can explore ideas, think strategically, or help you reflect — depending on what you need.</span>
             </li>
             <li>
-              <span class="list-title">Built for continuity</span>
-              <span class="list-text">Useful context can carry forward, so your thinking can continue instead of resetting every time.</span>
+              <span class="list-title" id="difference-list3-title">Built for continuity</span>
+              <span class="list-text" id="difference-list3-text">Useful context can carry forward, so your thinking can continue instead of resetting every time.</span>
             </li>
             <li>
-              <span class="list-title">Thoughtful questions</span>
-              <span class="list-text">The goal is not instant advice. It is sharper thinking.</span>
+              <span class="list-title" id="difference-list4-title">Thoughtful questions</span>
+              <span class="list-text" id="difference-list4-text">The goal is not instant advice. It is sharper thinking.</span>
             </li>
           </ul>
         </div>
 
         <div class="example-box">
-          <span class="muted-label">What it feels like</span>
-          <h3>A relevant response, not just a reply</h3>
-          <p class="example-copy">The difference is not just that Sophie can talk. The difference is how she helps you think.</p>
+          <span class="muted-label" id="difference-label-2">What it feels like</span>
+          <h3 id="difference-title-2">A relevant response, not just a reply</h3>
+          <p class="example-copy" id="difference-copy-2">The difference is not just that Sophie can talk. The difference is how she helps you think.</p>
           <div class="dialogue">
-            <div class="bubble you"><strong>You:</strong> “I have an idea for a project but I’m not sure it’s good.”</div>
-            <div class="bubble sophie"><strong>Sophie:</strong> “Interesting… is the exciting part the product itself — or the shift it could create?”</div>
+            <div class="bubble you" id="dialogue-you"><strong>You:</strong> “I have an idea for a project but I’m not sure it’s good.”</div>
+            <div class="bubble sophie" id="dialogue-sophie"><strong>Sophie:</strong> “Interesting… is the exciting part the product itself — or the shift it could create?”</div>
           </div>
         </div>
       </div>
@@ -595,38 +669,38 @@
     <section class="section" id="pricing">
       <div class="wrap split">
         <div class="example-box">
-          <span class="muted-label">Start free</span>
-          <h3>Try Sophie first. Decide after.</h3>
-          <p class="example-copy">The best way to understand Sophie is not to read about it. It is to have one real conversation first. Start free, see how it feels, and continue only if it feels useful.</p>
+          <span class="muted-label" id="pricing-label-left">Start free</span>
+          <h3 id="pricing-title-left">Try Sophie first. Decide after.</h3>
+          <p class="example-copy" id="pricing-copy-left">The best way to understand Sophie is not to read about it. It is to have one real conversation first. Start free, see how it feels, and continue only if it feels useful.</p>
           <div class="dialogue">
-            <div class="bubble you"><strong>Free:</strong> A short first conversation to experience Sophie.</div>
-            <div class="bubble sophie"><strong>Sophie Plus:</strong> Longer conversations, ongoing access, and more continuity over time.</div>
+            <div class="bubble you" id="pricing-bubble-free"><strong>Free:</strong> A short first conversation to experience Sophie.</div>
+            <div class="bubble sophie" id="pricing-bubble-plus"><strong>Sophie Plus:</strong> Longer conversations, ongoing access, and more continuity over time.</div>
           </div>
           <div style="margin-top:20px">
-            <a class="btn btn-primary" href="/login/">Try Sophie</a>
+            <a class="btn btn-primary" href="/login/" id="pricing-btn">Try Sophie</a>
           </div>
-          <div class="trust-line">Start free. Continue anytime with Sophie Plus.</div>
+          <div class="trust-line" id="pricing-trust-line">Start free. Continue anytime with Sophie Plus.</div>
         </div>
 
         <div class="trust-box">
-          <span class="muted-label">Pricing</span>
-          <h3>Simple access, no pressure</h3>
+          <span class="muted-label" id="pricing-label-right">Pricing</span>
+          <h3 id="pricing-title-right">Simple access, no pressure</h3>
           <ul class="trust-list">
             <li>
-              <span class="list-title">Free</span>
-              <span class="list-text">Start with a free first conversation and get a real feel for the experience.</span>
+              <span class="list-title" id="pricing-list1-title">Free</span>
+              <span class="list-text" id="pricing-list1-text">Start with a free first conversation and get a real feel for the experience.</span>
             </li>
             <li>
-              <span class="list-title">Sophie Plus</span>
-              <span class="list-text">Upgrade for longer conversations and continued access once you know it is for you.</span>
+              <span class="list-title" id="pricing-list2-title">Sophie Plus</span>
+              <span class="list-text" id="pricing-list2-text">Upgrade for longer conversations and continued access once you know it is for you.</span>
             </li>
             <li>
-              <span class="list-title">Low-friction entry</span>
-              <span class="list-text">No need to commit before you understand what Sophie actually feels like.</span>
+              <span class="list-title" id="pricing-list3-title">Low-friction entry</span>
+              <span class="list-text" id="pricing-list3-text">No need to commit before you understand what Sophie actually feels like.</span>
             </li>
             <li>
-              <span class="list-title">Built for trust</span>
-              <span class="list-text">The goal is not pressure. The goal is a fair first experience.</span>
+              <span class="list-title" id="pricing-list4-title">Built for trust</span>
+              <span class="list-text" id="pricing-list4-text">The goal is not pressure. The goal is a fair first experience.</span>
             </li>
           </ul>
         </div>
@@ -636,46 +710,46 @@
     <section class="section" id="trust">
       <div class="wrap split">
         <div class="trust-box">
-          <span class="muted-label">Designed for trust</span>
-          <h3>Built to feel clear, calm, and useful</h3>
-          <p class="trust-copy">With a product like Sophie, clarity matters more than hype. The experience should feel understandable, respectful, and easy to step into.</p>
+          <span class="muted-label" id="trust-label-left">Designed for trust</span>
+          <h3 id="trust-title-left">Built to feel clear, calm, and useful</h3>
+          <p class="trust-copy" id="trust-copy-left">With a product like Sophie, clarity matters more than hype. The experience should feel understandable, respectful, and easy to step into.</p>
           <ul class="trust-list">
             <li>
-              <span class="list-title">Always clearly AI</span>
-              <span class="list-text">Sophie does not pretend to be human.</span>
+              <span class="list-title" id="trust-list1-title">Always clearly AI</span>
+              <span class="list-text" id="trust-list1-text">Sophie does not pretend to be human.</span>
             </li>
             <li>
-              <span class="list-title">Built for thinking, not dependency</span>
-              <span class="list-text">The goal is useful conversation, not emotional attachment.</span>
+              <span class="list-title" id="trust-list2-title">Built for thinking, not dependency</span>
+              <span class="list-text" id="trust-list2-text">The goal is useful conversation, not emotional attachment.</span>
             </li>
             <li>
-              <span class="list-title">Memory should feel useful</span>
-              <span class="list-text">The goal is continuity of thought — not intrusion.</span>
+              <span class="list-title" id="trust-list3-title">Memory should feel useful</span>
+              <span class="list-text" id="trust-list3-text">The goal is continuity of thought — not intrusion.</span>
             </li>
             <li>
-              <span class="list-title">Not therapy or crisis support</span>
-              <span class="list-text">Sophie is not a therapist and not a substitute for professional or emergency care.</span>
+              <span class="list-title" id="trust-list4-title">Not therapy or crisis support</span>
+              <span class="list-text" id="trust-list4-text">Sophie is not a therapist and not a substitute for professional or emergency care.</span>
             </li>
           </ul>
         </div>
 
         <div class="trust-box">
-          <span class="muted-label">Who it is for</span>
-          <h3>Sophie might be for you if…</h3>
+          <span class="muted-label" id="trust-label-right-top">Who it is for</span>
+          <h3 id="trust-title-right">Sophie might be for you if…</h3>
           <ul class="bullet-list">
-            <li><span class="list-text">you like thinking out loud</span></li>
-            <li><span class="list-text">you want help exploring ideas before acting on them</span></li>
-            <li><span class="list-text">you want a private voice space to reflect or prepare</span></li>
-            <li><span class="list-text">you want conversations that do not reset every time</span></li>
-            <li><span class="list-text">you are curious about AI that feels more useful than a normal chatbot</span></li>
+            <li><span class="list-text" id="trust-for1">you like thinking out loud</span></li>
+            <li><span class="list-text" id="trust-for2">you want help exploring ideas before acting on them</span></li>
+            <li><span class="list-text" id="trust-for3">you want a private voice space to reflect or prepare</span></li>
+            <li><span class="list-text" id="trust-for4">you want conversations that do not reset every time</span></li>
+            <li><span class="list-text" id="trust-for5">you are curious about AI that feels more useful than a normal chatbot</span></li>
           </ul>
           <div style="height:18px"></div>
-          <span class="muted-label">Probably not for you if…</span>
+          <span class="muted-label" id="trust-label-right-bottom">Probably not for you if…</span>
           <ul class="bullet-list">
-            <li><span class="list-text">you only want quick factual answers</span></li>
-            <li><span class="list-text">you expect human therapy or crisis support</span></li>
-            <li><span class="list-text">you want a gimmick more than a real conversation</span></li>
-            <li><span class="list-text">you are uncomfortable with AI as a thinking format</span></li>
+            <li><span class="list-text" id="trust-not1">you only want quick factual answers</span></li>
+            <li><span class="list-text" id="trust-not2">you expect human therapy or crisis support</span></li>
+            <li><span class="list-text" id="trust-not3">you want a gimmick more than a real conversation</span></li>
+            <li><span class="list-text" id="trust-not4">you are uncomfortable with AI as a thinking format</span></li>
           </ul>
         </div>
       </div>
@@ -683,44 +757,44 @@
 
     <section class="section" id="faq">
       <div class="wrap faq-box">
-        <span class="muted-label">Frequently asked questions</span>
-        <h3>Questions people usually have first</h3>
-        <p class="faq-copy">This category is new for many people. So the first questions matter.</p>
+        <span class="muted-label" id="faq-label">Frequently asked questions</span>
+        <h3 id="faq-title">Questions people usually have first</h3>
+        <p class="faq-copy" id="faq-copy">This category is new for many people. So the first questions matter.</p>
         <div class="two-col">
           <div>
             <div class="faq-item">
-              <span class="faq-q">Is Sophie a real person?</span>
-              <div class="faq-a">No. Sophie is an AI voice thinking partner.</div>
+              <span class="faq-q" id="faq-q1">Is Sophie a real person?</span>
+              <div class="faq-a" id="faq-a1">No. Sophie is an AI voice thinking partner.</div>
             </div>
             <div class="faq-item">
-              <span class="faq-q">What is Sophie for?</span>
-              <div class="faq-a">Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.</div>
+              <span class="faq-q" id="faq-q2">What is Sophie for?</span>
+              <div class="faq-a" id="faq-a2">Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.</div>
             </div>
             <div class="faq-item">
-              <span class="faq-q">What makes Sophie different from a normal chatbot?</span>
-              <div class="faq-a">Sophie is voice-first and built to help you think better — with more continuity, better questions, and more natural conversation.</div>
+              <span class="faq-q" id="faq-q3">What makes Sophie different from a normal chatbot?</span>
+              <div class="faq-a" id="faq-a3">Sophie is voice-first and built to help you think better — with more continuity, better questions, and more natural conversation.</div>
             </div>
             <div class="faq-item">
-              <span class="faq-q">Does Sophie remember things?</span>
-              <div class="faq-a">Sophie can retain relevant context to make future conversations feel more continuous and useful.</div>
+              <span class="faq-q" id="faq-q4">Does Sophie remember things?</span>
+              <div class="faq-a" id="faq-a4">Sophie can retain relevant context to make future conversations feel more continuous and useful.</div>
             </div>
           </div>
           <div>
             <div class="faq-item">
-              <span class="faq-q">Is Sophie therapy?</span>
-              <div class="faq-a">No. Sophie is not a therapist and is not intended for crisis or medical support.</div>
+              <span class="faq-q" id="faq-q5">Is Sophie therapy?</span>
+              <div class="faq-a" id="faq-a5">No. Sophie is not a therapist and is not intended for crisis or medical support.</div>
             </div>
             <div class="faq-item">
-              <span class="faq-q">Is Sophie always clearly AI?</span>
-              <div class="faq-a">Yes. Sophie is always presented as AI.</div>
+              <span class="faq-q" id="faq-q6">Is Sophie always clearly AI?</span>
+              <div class="faq-a" id="faq-a6">Yes. Sophie is always presented as AI.</div>
             </div>
             <div class="faq-item">
-              <span class="faq-q">Why would someone use Sophie?</span>
-              <div class="faq-a">To think something through before acting — an idea, a decision, a difficult meeting, or something that is still on your mind.</div>
+              <span class="faq-q" id="faq-q7">Why would someone use Sophie?</span>
+              <div class="faq-a" id="faq-a7">To think something through before acting — an idea, a decision, a difficult meeting, or something that is still on your mind.</div>
             </div>
             <div class="faq-item">
-              <span class="faq-q">How do I start?</span>
-              <div class="faq-a">Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.</div>
+              <span class="faq-q" id="faq-q8">How do I start?</span>
+              <div class="faq-a" id="faq-a8">Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.</div>
             </div>
           </div>
         </div>
@@ -730,13 +804,13 @@
     <section class="bottom-cta">
       <div class="wrap cta-box">
         <div>
-          <span class="muted-label">Start simple</span>
-          <h3>Think with Sophie</h3>
-          <p class="cta-copy">Start a conversation and see where it goes.</p>
+          <span class="muted-label" id="bottom-cta-label">Start simple</span>
+          <h3 id="bottom-cta-title">Think with Sophie</h3>
+          <p class="cta-copy" id="bottom-cta-copy">Start a conversation and see where it goes.</p>
         </div>
         <div class="cta-actions">
-          <a class="btn btn-primary" href="/login/">Start talking</a>
-          <div class="trust-line">Start free. Continue anytime with Sophie Plus.</div>
+          <a class="btn btn-primary" href="/login/" id="bottom-cta-btn">Start talking</a>
+          <div class="trust-line" id="bottom-cta-trust-line">Start free. Continue anytime with Sophie Plus.</div>
         </div>
       </div>
     </section>
@@ -746,12 +820,612 @@
     <div class="wrap footer-row">
       <a class="footer-brand" href="/">meet-sophie.com</a>
       <div class="footer-links">
-        <a href="/impressum.html">Impressum</a>
-        <a href="/privacy.html">Datenschutz</a>
-        <a href="/terms.html">AGB</a>
-        <a href="/withdrawal.html">Widerruf</a>
+        <a href="/impressum.html" id="footer-imprint">Impressum</a>
+        <a href="/privacy.html" id="footer-privacy">Datenschutz</a>
+        <a href="/terms.html" id="footer-terms">AGB</a>
+        <a href="/withdrawal.html" id="footer-withdrawal">Widerruf</a>
       </div>
     </div>
   </footer>
+
+  <script>
+    const translations = {
+      en: {
+        page_title: "Meet Sophie — Your AI Thinking Partner",
+        meta_description: "Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.",
+        lang_label: "Language",
+
+        nav_use_cases: "Use cases",
+        nav_how_it_works: "How it works",
+        nav_pricing: "Pricing",
+        nav_trust: "Trust",
+        nav_faq: "FAQ",
+        login_link: "Log in",
+
+        hero_eyebrow: "A new category of AI",
+        hero_title: "Your AI Thinking Partner",
+        hero_copy: "A private conversation to explore ideas, test decisions, and think things through.",
+        hero_btn_primary: "Think with Sophie",
+        hero_btn_secondary: "See use cases",
+        hero_trust_line: "Speak naturally. No typing required.",
+        floating_label: "A different kind of conversation",
+        floating_text: "“Okay. What matters more here — speed, or long-term upside?”",
+
+        use_cases_title: "How people use Sophie",
+        use_cases_intro: "Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.",
+
+        card1_title: "Exploring ideas",
+        card1_copy: "Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.",
+        card2_title: "Thinking through decisions",
+        card2_copy: "Compare options, test assumptions, and clarify what really matters before you act.",
+        card3_title: "Reflecting on experiences",
+        card3_copy: "Process something that happened, make sense of your thoughts, and understand your own thinking better.",
+        card4_title: "Preparing for important conversations",
+        card4_copy: "Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.",
+        card5_title: "Founder and management sparring",
+        card5_copy: "Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.",
+        card6_title: "Returning to ongoing thoughts",
+        card6_copy: "Because Sophie can carry useful context across sessions, you do not have to start from zero each time.",
+
+        difference_label_1: "How it works",
+        difference_title_1: "First think. Then act.",
+        difference_copy_1: "Sophie is not designed to rush to solutions. She helps you explore ideas, test decisions, and ask better questions before you act.",
+        difference_list1_title: "Voice-first by design",
+        difference_list1_text: "Talking can feel faster, lighter, and more natural than typing into a chat window.",
+        difference_list2_title: "Different thinking modes",
+        difference_list2_text: "Sophie can explore ideas, think strategically, or help you reflect — depending on what you need.",
+        difference_list3_title: "Built for continuity",
+        difference_list3_text: "Useful context can carry forward, so your thinking can continue instead of resetting every time.",
+        difference_list4_title: "Thoughtful questions",
+        difference_list4_text: "The goal is not instant advice. It is sharper thinking.",
+
+        difference_label_2: "What it feels like",
+        difference_title_2: "A relevant response, not just a reply",
+        difference_copy_2: "The difference is not just that Sophie can talk. The difference is how she helps you think.",
+        dialogue_you: "<strong>You:</strong> “I have an idea for a project but I’m not sure it’s good.”",
+        dialogue_sophie: "<strong>Sophie:</strong> “Interesting… is the exciting part the product itself — or the shift it could create?”",
+
+        pricing_label_left: "Start free",
+        pricing_title_left: "Try Sophie first. Decide after.",
+        pricing_copy_left: "The best way to understand Sophie is not to read about it. It is to have one real conversation first. Start free, see how it feels, and continue only if it feels useful.",
+        pricing_bubble_free: "<strong>Free:</strong> A short first conversation to experience Sophie.",
+        pricing_bubble_plus: "<strong>Sophie Plus:</strong> Longer conversations, ongoing access, and more continuity over time.",
+        pricing_btn: "Try Sophie",
+        pricing_trust_line: "Start free. Continue anytime with Sophie Plus.",
+
+        pricing_label_right: "Pricing",
+        pricing_title_right: "Simple access, no pressure",
+        pricing_list1_title: "Free",
+        pricing_list1_text: "Start with a free first conversation and get a real feel for the experience.",
+        pricing_list2_title: "Sophie Plus",
+        pricing_list2_text: "Upgrade for longer conversations and continued access once you know it is for you.",
+        pricing_list3_title: "Low-friction entry",
+        pricing_list3_text: "No need to commit before you understand what Sophie actually feels like.",
+        pricing_list4_title: "Built for trust",
+        pricing_list4_text: "The goal is not pressure. The goal is a fair first experience.",
+
+        trust_label_left: "Designed for trust",
+        trust_title_left: "Built to feel clear, calm, and useful",
+        trust_copy_left: "With a product like Sophie, clarity matters more than hype. The experience should feel understandable, respectful, and easy to step into.",
+        trust_list1_title: "Always clearly AI",
+        trust_list1_text: "Sophie does not pretend to be human.",
+        trust_list2_title: "Built for thinking, not dependency",
+        trust_list2_text: "The goal is useful conversation, not emotional attachment.",
+        trust_list3_title: "Memory should feel useful",
+        trust_list3_text: "The goal is continuity of thought — not intrusion.",
+        trust_list4_title: "Not therapy or crisis support",
+        trust_list4_text: "Sophie is not a therapist and not a substitute for professional or emergency care.",
+
+        trust_label_right_top: "Who it is for",
+        trust_title_right: "Sophie might be for you if…",
+        trust_for1: "you like thinking out loud",
+        trust_for2: "you want help exploring ideas before acting on them",
+        trust_for3: "you want a private voice space to reflect or prepare",
+        trust_for4: "you want conversations that do not reset every time",
+        trust_for5: "you are curious about AI that feels more useful than a normal chatbot",
+
+        trust_label_right_bottom: "Probably not for you if…",
+        trust_not1: "you only want quick factual answers",
+        trust_not2: "you expect human therapy or crisis support",
+        trust_not3: "you want a gimmick more than a real conversation",
+        trust_not4: "you are uncomfortable with AI as a thinking format",
+
+        faq_label: "Frequently asked questions",
+        faq_title: "Questions people usually have first",
+        faq_copy: "This category is new for many people. So the first questions matter.",
+        faq_q1: "Is Sophie a real person?",
+        faq_a1: "No. Sophie is an AI voice thinking partner.",
+        faq_q2: "What is Sophie for?",
+        faq_a2: "Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.",
+        faq_q3: "What makes Sophie different from a normal chatbot?",
+        faq_a3: "Sophie is voice-first and built to help you think better — with more continuity, better questions, and more natural conversation.",
+        faq_q4: "Does Sophie remember things?",
+        faq_a4: "Sophie can retain relevant context to make future conversations feel more continuous and useful.",
+        faq_q5: "Is Sophie therapy?",
+        faq_a5: "No. Sophie is not a therapist and is not intended for crisis or medical support.",
+        faq_q6: "Is Sophie always clearly AI?",
+        faq_a6: "Yes. Sophie is always presented as AI.",
+        faq_q7: "Why would someone use Sophie?",
+        faq_a7: "To think something through before acting — an idea, a decision, a difficult meeting, or something that is still on your mind.",
+        faq_q8: "How do I start?",
+        faq_a8: "Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.",
+
+        bottom_cta_label: "Start simple",
+        bottom_cta_title: "Think with Sophie",
+        bottom_cta_copy: "Start a conversation and see where it goes.",
+        bottom_cta_btn: "Start talking",
+        bottom_cta_trust_line: "Start free. Continue anytime with Sophie Plus.",
+
+        footer_imprint: "Impressum",
+        footer_privacy: "Datenschutz",
+        footer_terms: "AGB",
+        footer_withdrawal: "Widerruf"
+      },
+
+      de: {
+        page_title: "Meet Sophie — Deine KI-Denkpartnerin",
+        meta_description: "Sprachgespräche mit Sophie — deiner KI-Denkpartnerin zum Erkunden von Ideen, Prüfen von Entscheidungen und Reflektieren dessen, was wirklich zählt.",
+        lang_label: "Language",
+
+        nav_use_cases: "Anwendungsfälle",
+        nav_how_it_works: "So funktioniert es",
+        nav_pricing: "Preise",
+        nav_trust: "Vertrauen",
+        nav_faq: "FAQ",
+        login_link: "Einloggen",
+
+        hero_eyebrow: "Eine neue Kategorie von KI",
+        hero_title: "Deine KI-Denkpartnerin",
+        hero_copy: "Ein privates Gespräch, um Ideen zu erkunden, Entscheidungen zu prüfen und Dinge wirklich durchzudenken.",
+        hero_btn_primary: "Mit Sophie denken",
+        hero_btn_secondary: "Anwendungsfälle ansehen",
+        hero_trust_line: "Sprich ganz natürlich. Kein Tippen nötig.",
+        floating_label: "Eine andere Art von Gespräch",
+        floating_text: "„Okay. Was zählt hier mehr — Geschwindigkeit oder langfristiges Potenzial?“",
+
+        use_cases_title: "Wie Menschen Sophie nutzen",
+        use_cases_intro: "Manchmal brauchst du keine sofortigen Antworten. Du brauchst Raum, um etwas wirklich zu durchdenken — eine Idee, eine Entscheidung, ein Meeting oder etwas, das dich schon länger beschäftigt.",
+
+        card1_title: "Ideen erkunden",
+        card1_copy: "Sprich über ein neues Projekt, Konzept oder eine Möglichkeit. Entdecke Blickwinkel, die du vorher nicht gesehen hast, und verwandle vage Gedanken in klarere Richtungen.",
+        card2_title: "Entscheidungen durchdenken",
+        card2_copy: "Vergleiche Optionen, prüfe Annahmen und kläre, was wirklich zählt, bevor du handelst.",
+        card3_title: "Erlebnisse reflektieren",
+        card3_copy: "Verarbeite etwas, das passiert ist, ordne deine Gedanken und verstehe dein eigenes Denken besser.",
+        card4_title: "Wichtige Gespräche vorbereiten",
+        card4_copy: "Nicht jeder Gedanke gehört direkt in den Meetingraum. Sprich zuerst mit Sophie und geh besser vorbereitet ins Gespräch.",
+        card5_title: "Sparring für Gründer und Management",
+        card5_copy: "Führung kann einsam sein. Nutze Sophie, um Ideen zu testen, Argumente zu schärfen und verschwendete Meetingzeit zu reduzieren.",
+        card6_title: "Zu laufenden Gedanken zurückkehren",
+        card6_copy: "Weil Sophie nützlichen Kontext über Sitzungen hinweg mitnehmen kann, musst du nicht jedes Mal bei null anfangen.",
+
+        difference_label_1: "So funktioniert es",
+        difference_title_1: "Erst denken. Dann handeln.",
+        difference_copy_1: "Sophie ist nicht dafür gemacht, vorschnell zu Lösungen zu springen. Sie hilft dir, Ideen zu erkunden, Entscheidungen zu prüfen und bessere Fragen zu stellen, bevor du handelst.",
+        difference_list1_title: "Voice-first by design",
+        difference_list1_text: "Sprechen kann sich schneller, leichter und natürlicher anfühlen, als in ein Chatfenster zu tippen.",
+        difference_list2_title: "Verschiedene Denkmodi",
+        difference_list2_text: "Sophie kann Ideen erkunden, strategisch mitdenken oder dir bei Reflexion helfen — je nachdem, was du brauchst.",
+        difference_list3_title: "Für Kontinuität gebaut",
+        difference_list3_text: "Nützlicher Kontext kann erhalten bleiben, sodass dein Denken weitergehen kann, statt jedes Mal neu zu starten.",
+        difference_list4_title: "Durchdachte Fragen",
+        difference_list4_text: "Das Ziel ist keine Sofortberatung. Das Ziel ist schärferes Denken.",
+
+        difference_label_2: "So fühlt es sich an",
+        difference_title_2: "Eine relevante Reaktion, nicht nur eine Antwort",
+        difference_copy_2: "Der Unterschied ist nicht nur, dass Sophie sprechen kann. Der Unterschied ist, wie sie dir beim Denken hilft.",
+        dialogue_you: "<strong>Du:</strong> „Ich habe eine Idee für ein Projekt, bin mir aber nicht sicher, ob sie gut ist.“",
+        dialogue_sophie: "<strong>Sophie:</strong> „Interessant … liegt der spannende Teil im Produkt selbst — oder in der Veränderung, die es auslösen könnte?“",
+
+        pricing_label_left: "Kostenlos starten",
+        pricing_title_left: "Probier Sophie zuerst aus. Entscheide danach.",
+        pricing_copy_left: "Der beste Weg, Sophie zu verstehen, ist nicht, darüber zu lesen. Es ist, zuerst ein echtes Gespräch zu führen. Starte kostenlos, schau, wie es sich anfühlt, und mach nur weiter, wenn es dir wirklich etwas bringt.",
+        pricing_bubble_free: "<strong>Kostenlos:</strong> Ein kurzes erstes Gespräch, um Sophie zu erleben.",
+        pricing_bubble_plus: "<strong>Sophie Plus:</strong> Längere Gespräche, fortlaufender Zugang und mehr Kontinuität über die Zeit.",
+        pricing_btn: "Sophie ausprobieren",
+        pricing_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
+
+        pricing_label_right: "Preise",
+        pricing_title_right: "Einfacher Zugang, ohne Druck",
+        pricing_list1_title: "Kostenlos",
+        pricing_list1_text: "Starte mit einem kostenlosen ersten Gespräch und bekomme ein echtes Gefühl für die Erfahrung.",
+        pricing_list2_title: "Sophie Plus",
+        pricing_list2_text: "Upgrade auf längere Gespräche und fortlaufenden Zugang, sobald du weißt, dass es zu dir passt.",
+        pricing_list3_title: "Niedrige Einstiegshürde",
+        pricing_list3_text: "Kein Grund, dich festzulegen, bevor du verstanden hast, wie Sophie sich wirklich anfühlt.",
+        pricing_list4_title: "Auf Vertrauen gebaut",
+        pricing_list4_text: "Das Ziel ist nicht Druck. Das Ziel ist eine faire erste Erfahrung.",
+
+        trust_label_left: "Für Vertrauen gestaltet",
+        trust_title_left: "Gebaut, um klar, ruhig und nützlich zu wirken",
+        trust_copy_left: "Bei einem Produkt wie Sophie zählt Klarheit mehr als Hype. Die Erfahrung sollte verständlich, respektvoll und leicht zugänglich sein.",
+        trust_list1_title: "Immer klar als KI erkennbar",
+        trust_list1_text: "Sophie tut nicht so, als wäre sie ein Mensch.",
+        trust_list2_title: "Für Denken gebaut, nicht für Abhängigkeit",
+        trust_list2_text: "Das Ziel ist ein nützliches Gespräch, nicht emotionale Bindung.",
+        trust_list3_title: "Erinnerung soll nützlich wirken",
+        trust_list3_text: "Das Ziel ist Kontinuität im Denken — nicht Eindringen.",
+        trust_list4_title: "Keine Therapie oder Krisenhilfe",
+        trust_list4_text: "Sophie ist keine Therapeutin und kein Ersatz für professionelle oder notfallbezogene Hilfe.",
+
+        trust_label_right_top: "Für wen es ist",
+        trust_title_right: "Sophie könnte etwas für dich sein, wenn …",
+        trust_for1: "du gern laut denkst",
+        trust_for2: "du Hilfe möchtest, Ideen zu erkunden, bevor du danach handelst",
+        trust_for3: "du einen privaten Sprachraum zum Reflektieren oder Vorbereiten möchtest",
+        trust_for4: "du Gespräche willst, die nicht jedes Mal wieder bei null anfangen",
+        trust_for5: "du neugierig auf KI bist, die sich nützlicher anfühlt als ein normaler Chatbot",
+
+        trust_label_right_bottom: "Wahrscheinlich nichts für dich, wenn …",
+        trust_not1: "du nur schnelle sachliche Antworten willst",
+        trust_not2: "du menschliche Therapie oder Krisenhilfe erwartest",
+        trust_not3: "du eher einen Gimmick willst als ein echtes Gespräch",
+        trust_not4: "dir KI als Denkformat unangenehm ist",
+
+        faq_label: "Häufig gestellte Fragen",
+        faq_title: "Fragen, die Menschen meistens zuerst haben",
+        faq_copy: "Diese Kategorie ist für viele Menschen neu. Deshalb sind die ersten Fragen wichtig.",
+        faq_q1: "Ist Sophie eine echte Person?",
+        faq_a1: "Nein. Sophie ist eine KI-Sprachpartnerin zum Denken.",
+        faq_q2: "Wofür ist Sophie da?",
+        faq_a2: "Sophie ist dafür gemacht, Ideen zu erkunden, Entscheidungen durchzudenken, Erfahrungen zu reflektieren und wichtige Gespräche vorzubereiten.",
+        faq_q3: "Was macht Sophie anders als einen normalen Chatbot?",
+        faq_a3: "Sophie ist voice-first und dafür gebaut, dir beim besseren Denken zu helfen — mit mehr Kontinuität, besseren Fragen und natürlicherem Gespräch.",
+        faq_q4: "Erinnert sich Sophie an Dinge?",
+        faq_a4: "Sophie kann relevanten Kontext behalten, damit sich künftige Gespräche kontinuierlicher und nützlicher anfühlen.",
+        faq_q5: "Ist Sophie Therapie?",
+        faq_a5: "Nein. Sophie ist keine Therapeutin und nicht für Krisen- oder medizinische Unterstützung gedacht.",
+        faq_q6: "Ist Sophie immer klar als KI erkennbar?",
+        faq_a6: "Ja. Sophie wird immer als KI dargestellt.",
+        faq_q7: "Warum sollte jemand Sophie nutzen?",
+        faq_a7: "Um etwas zu durchdenken, bevor man handelt — eine Idee, eine Entscheidung, ein schwieriges Meeting oder etwas, das einem noch im Kopf herumgeht.",
+        faq_q8: "Wie fange ich an?",
+        faq_a8: "Probier Sophie aus, starte kostenlos und mach jederzeit mit Sophie Plus weiter, wenn sich die Erfahrung für dich richtig anfühlt.",
+
+        bottom_cta_label: "Einfach starten",
+        bottom_cta_title: "Mit Sophie denken",
+        bottom_cta_copy: "Starte ein Gespräch und schau, wohin es führt.",
+        bottom_cta_btn: "Gespräch starten",
+        bottom_cta_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
+
+        footer_imprint: "Impressum",
+        footer_privacy: "Datenschutz",
+        footer_terms: "AGB",
+        footer_withdrawal: "Widerruf"
+      },
+
+      fr: {
+        page_title: "Meet Sophie — Votre partenaire de réflexion IA",
+        meta_description: "Des conversations vocales avec Sophie — votre partenaire de réflexion IA pour explorer des idées, tester des décisions et réfléchir à ce qui compte vraiment.",
+        lang_label: "Language",
+
+        nav_use_cases: "Cas d’usage",
+        nav_how_it_works: "Comment ça marche",
+        nav_pricing: "Tarifs",
+        nav_trust: "Confiance",
+        nav_faq: "FAQ",
+        login_link: "Connexion",
+
+        hero_eyebrow: "Une nouvelle catégorie d’IA",
+        hero_title: "Votre partenaire de réflexion IA",
+        hero_copy: "Un conversation privée pour explorer des idées, tester des décisions et aller au fond des choses.",
+        hero_btn_primary: "Réfléchir avec Sophie",
+        hero_btn_secondary: "Voir les cas d’usage",
+        hero_trust_line: "Parlez naturellement. Pas besoin de taper.",
+        floating_label: "Un autre type de conversation",
+        floating_text: "« D’accord. Qu’est-ce qui compte le plus ici — la vitesse, ou le potentiel à long terme ? »",
+
+        use_cases_title: "Comment les gens utilisent Sophie",
+        use_cases_intro: "Parfois, vous n’avez pas besoin de réponses immédiates. Vous avez besoin d’espace pour réfléchir à quelque chose — une idée, une décision, une réunion, ou quelque chose qui vous accompagne depuis un moment.",
+
+        card1_title: "Explorer des idées",
+        card1_copy: "Parlez d’un nouveau projet, concept ou d’une possibilité. Découvrez des angles que vous n’aviez pas vus et transformez des pensées vagues en directions plus claires.",
+        card2_title: "Réfléchir aux décisions",
+        card2_copy: "Comparez les options, testez les hypothèses et clarifiez ce qui compte vraiment avant d’agir.",
+        card3_title: "Réfléchir à ses expériences",
+        card3_copy: "Traitez quelque chose qui s’est passé, donnez du sens à vos pensées et comprenez mieux votre propre manière de penser.",
+        card4_title: "Préparer des conversations importantes",
+        card4_copy: "Toutes les pensées n’ont pas leur place directement dans la salle de réunion. Parlez d’abord avec Sophie et entrez dans la conversation mieux préparé.",
+        card5_title: "Sparring pour fondateurs et management",
+        card5_copy: "Le leadership peut être solitaire. Utilisez Sophie pour tester des idées, affiner des arguments et réduire le temps perdu en réunion.",
+        card6_title: "Revenir à des réflexions en cours",
+        card6_copy: "Comme Sophie peut conserver un contexte utile d’une session à l’autre, vous n’avez pas besoin de repartir de zéro à chaque fois.",
+
+        difference_label_1: "Comment ça marche",
+        difference_title_1: "D’abord réfléchir. Puis agir.",
+        difference_copy_1: "Sophie n’est pas conçue pour se précipiter vers des solutions. Elle vous aide à explorer des idées, tester des décisions et poser de meilleures questions avant d’agir.",
+        difference_list1_title: "Pensée d’abord pour la voix",
+        difference_list1_text: "Parler peut sembler plus rapide, plus léger et plus naturel que taper dans une fenêtre de chat.",
+        difference_list2_title: "Différents modes de réflexion",
+        difference_list2_text: "Sophie peut explorer des idées, réfléchir de manière stratégique ou vous aider à prendre du recul — selon ce dont vous avez besoin.",
+        difference_list3_title: "Conçue pour la continuité",
+        difference_list3_text: "Un contexte utile peut être conservé, afin que votre réflexion continue au lieu de repartir de zéro à chaque fois.",
+        difference_list4_title: "Des questions pertinentes",
+        difference_list4_text: "L’objectif n’est pas un conseil instantané. L’objectif est une réflexion plus affûtée.",
+
+        difference_label_2: "Ce que l’on ressent",
+        difference_title_2: "Une réponse pertinente, pas juste une réplique",
+        difference_copy_2: "La différence, ce n’est pas seulement que Sophie peut parler. La différence, c’est la manière dont elle vous aide à réfléchir.",
+        dialogue_you: "<strong>Vous :</strong> « J’ai une idée de projet mais je ne suis pas sûr qu’elle soit bonne. »",
+        dialogue_sophie: "<strong>Sophie :</strong> « Intéressant… la partie la plus excitante, c’est le produit lui-même — ou le changement qu’il pourrait créer ? »",
+
+        pricing_label_left: "Commencez gratuitement",
+        pricing_title_left: "Essayez Sophie d’abord. Décidez ensuite.",
+        pricing_copy_left: "La meilleure façon de comprendre Sophie, ce n’est pas de lire à son sujet. C’est d’avoir d’abord une vraie conversation. Commencez gratuitement, voyez ce que cela fait, et continuez seulement si cela vous semble utile.",
+        pricing_bubble_free: "<strong>Gratuit :</strong> Une courte première conversation pour découvrir Sophie.",
+        pricing_bubble_plus: "<strong>Sophie Plus :</strong> Des conversations plus longues, un accès continu et davantage de continuité dans le temps.",
+        pricing_btn: "Essayer Sophie",
+        pricing_trust_line: "Commencez gratuitement. Continuez à tout moment avec Sophie Plus.",
+
+        pricing_label_right: "Tarifs",
+        pricing_title_right: "Un accès simple, sans pression",
+        pricing_list1_title: "Gratuit",
+        pricing_list1_text: "Commencez par une première conversation gratuite et ressentez réellement l’expérience.",
+        pricing_list2_title: "Sophie Plus",
+        pricing_list2_text: "Passez à des conversations plus longues et à un accès continu une fois que vous savez que cela vous convient.",
+        pricing_list3_title: "Entrée sans friction",
+        pricing_list3_text: "Pas besoin de vous engager avant d’avoir compris ce que Sophie procure réellement.",
+        pricing_list4_title: "Conçu pour la confiance",
+        pricing_list4_text: "Le but n’est pas de mettre la pression. Le but est une première expérience juste.",
+
+        trust_label_left: "Conçue pour la confiance",
+        trust_title_left: "Pensée pour être claire, calme et utile",
+        trust_copy_left: "Avec un produit comme Sophie, la clarté compte plus que le buzz. L’expérience doit sembler compréhensible, respectueuse et facile à adopter.",
+        trust_list1_title: "Toujours clairement une IA",
+        trust_list1_text: "Sophie ne prétend pas être humaine.",
+        trust_list2_title: "Conçue pour réfléchir, pas pour créer une dépendance",
+        trust_list2_text: "Le but est une conversation utile, pas un attachement émotionnel.",
+        trust_list3_title: "La mémoire doit sembler utile",
+        trust_list3_text: "Le but est la continuité de la réflexion — pas l’intrusion.",
+        trust_list4_title: "Pas une thérapie ni un soutien de crise",
+        trust_list4_text: "Sophie n’est pas une thérapeute et ne remplace pas une aide professionnelle ou d’urgence.",
+
+        trust_label_right_top: "Pour qui c’est",
+        trust_title_right: "Sophie pourrait être faite pour vous si…",
+        trust_for1: "vous aimez réfléchir à voix haute",
+        trust_for2: "vous voulez de l’aide pour explorer des idées avant d’agir",
+        trust_for3: "vous voulez un espace vocal privé pour réfléchir ou vous préparer",
+        trust_for4: "vous voulez des conversations qui ne repartent pas de zéro à chaque fois",
+        trust_for5: "vous êtes curieux d’une IA qui semble plus utile qu’un chatbot classique",
+
+        trust_label_right_bottom: "Probablement pas pour vous si…",
+        trust_not1: "vous voulez seulement des réponses factuelles rapides",
+        trust_not2: "vous attendez une thérapie humaine ou un soutien de crise",
+        trust_not3: "vous voulez plus un gadget qu’une vraie conversation",
+        trust_not4: "vous êtes mal à l’aise avec l’IA comme format de réflexion",
+
+        faq_label: "Questions fréquemment posées",
+        faq_title: "Les questions que les gens se posent généralement d’abord",
+        faq_copy: "Cette catégorie est nouvelle pour beaucoup de personnes. Donc les premières questions comptent.",
+        faq_q1: "Sophie est-elle une vraie personne ?",
+        faq_a1: "Non. Sophie est un partenaire vocal de réflexion basé sur l’IA.",
+        faq_q2: "À quoi sert Sophie ?",
+        faq_a2: "Sophie est conçue pour explorer des idées, réfléchir à des décisions, revenir sur des expériences et préparer des conversations importantes.",
+        faq_q3: "Qu’est-ce qui rend Sophie différente d’un chatbot normal ?",
+        faq_a3: "Sophie est pensée d’abord pour la voix et conçue pour vous aider à mieux réfléchir — avec plus de continuité, de meilleures questions et une conversation plus naturelle.",
+        faq_q4: "Est-ce que Sophie se souvient des choses ?",
+        faq_a4: "Sophie peut conserver un contexte pertinent pour rendre les futures conversations plus continues et plus utiles.",
+        faq_q5: "Sophie est-elle une thérapie ?",
+        faq_a5: "Non. Sophie n’est pas une thérapeute et n’est pas destinée à fournir un soutien de crise ou médical.",
+        faq_q6: "Sophie est-elle toujours clairement une IA ?",
+        faq_a6: "Oui. Sophie est toujours présentée comme une IA.",
+        faq_q7: "Pourquoi quelqu’un utiliserait Sophie ?",
+        faq_a7: "Pour réfléchir à quelque chose avant d’agir — une idée, une décision, une réunion difficile ou quelque chose qui est encore dans votre esprit.",
+        faq_q8: "Comment commencer ?",
+        faq_a8: "Essayez Sophie, commencez gratuitement, puis continuez à tout moment avec Sophie Plus si l’expérience vous semble juste.",
+
+        bottom_cta_label: "Commencez simplement",
+        bottom_cta_title: "Réfléchir avec Sophie",
+        bottom_cta_copy: "Commencez une conversation et voyez où elle vous mène.",
+        bottom_cta_btn: "Commencer à parler",
+        bottom_cta_trust_line: "Commencez gratuitement. Continuez à tout moment avec Sophie Plus.",
+
+        footer_imprint: "Mentions légales",
+        footer_privacy: "Confidentialité",
+        footer_terms: "CGV",
+        footer_withdrawal: "Rétractation"
+      }
+    };
+
+    function applyTranslations(lang) {
+      const t = translations[lang] || translations.en;
+
+      document.documentElement.lang = lang;
+      document.title = t.page_title;
+
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) metaDescription.setAttribute("content", t.meta_description);
+
+      const textMap = {
+        "lang-label": t.lang_label,
+
+        "nav-use-cases": t.nav_use_cases,
+        "nav-how-it-works": t.nav_how_it_works,
+        "nav-pricing": t.nav_pricing,
+        "nav-trust": t.nav_trust,
+        "nav-faq": t.nav_faq,
+        "login-link": t.login_link,
+
+        "hero-eyebrow": t.hero_eyebrow,
+        "hero-title": t.hero_title,
+        "hero-copy": t.hero_copy,
+        "hero-btn-primary": t.hero_btn_primary,
+        "hero-btn-secondary": t.hero_btn_secondary,
+        "hero-trust-line": t.hero_trust_line,
+        "floating-label": t.floating_label,
+        "floating-text": t.floating_text,
+
+        "use-cases-title": t.use_cases_title,
+        "use-cases-intro": t.use_cases_intro,
+
+        "card1-title": t.card1_title,
+        "card1-copy": t.card1_copy,
+        "card2-title": t.card2_title,
+        "card2-copy": t.card2_copy,
+        "card3-title": t.card3_title,
+        "card3-copy": t.card3_copy,
+        "card4-title": t.card4_title,
+        "card4-copy": t.card4_copy,
+        "card5-title": t.card5_title,
+        "card5-copy": t.card5_copy,
+        "card6-title": t.card6_title,
+        "card6-copy": t.card6_copy,
+
+        "difference-label-1": t.difference_label_1,
+        "difference-title-1": t.difference_title_1,
+        "difference-copy-1": t.difference_copy_1,
+        "difference-list1-title": t.difference_list1_title,
+        "difference-list1-text": t.difference_list1_text,
+        "difference-list2-title": t.difference_list2_title,
+        "difference-list2-text": t.difference_list2_text,
+        "difference-list3-title": t.difference_list3_title,
+        "difference-list3-text": t.difference_list3_text,
+        "difference-list4-title": t.difference_list4_title,
+        "difference-list4-text": t.difference_list4_text,
+
+        "difference-label-2": t.difference_label_2,
+        "difference-title-2": t.difference_title_2,
+        "difference-copy-2": t.difference_copy_2,
+
+        "pricing-label-left": t.pricing_label_left,
+        "pricing-title-left": t.pricing_title_left,
+        "pricing-copy-left": t.pricing_copy_left,
+        "pricing-btn": t.pricing_btn,
+        "pricing-trust-line": t.pricing_trust_line,
+
+        "pricing-label-right": t.pricing_label_right,
+        "pricing-title-right": t.pricing_title_right,
+        "pricing-list1-title": t.pricing_list1_title,
+        "pricing-list1-text": t.pricing_list1_text,
+        "pricing-list2-title": t.pricing_list2_title,
+        "pricing-list2-text": t.pricing_list2_text,
+        "pricing-list3-title": t.pricing_list3_title,
+        "pricing-list3-text": t.pricing_list3_text,
+        "pricing-list4-title": t.pricing_list4_title,
+        "pricing-list4-text": t.pricing_list4_text,
+
+        "trust-label-left": t.trust_label_left,
+        "trust-title-left": t.trust_title_left,
+        "trust-copy-left": t.trust_copy_left,
+        "trust-list1-title": t.trust_list1_title,
+        "trust-list1-text": t.trust_list1_text,
+        "trust-list2-title": t.trust_list2_title,
+        "trust-list2-text": t.trust_list2_text,
+        "trust-list3-title": t.trust_list3_title,
+        "trust-list3-text": t.trust_list3_text,
+        "trust-list4-title": t.trust_list4_title,
+        "trust-list4-text": t.trust_list4_text,
+
+        "trust-label-right-top": t.trust_label_right_top,
+        "trust-title-right": t.trust_title_right,
+        "trust-for1": t.trust_for1,
+        "trust-for2": t.trust_for2,
+        "trust-for3": t.trust_for3,
+        "trust-for4": t.trust_for4,
+        "trust-for5": t.trust_for5,
+        "trust-label-right-bottom": t.trust_label_right_bottom,
+        "trust-not1": t.trust_not1,
+        "trust-not2": t.trust_not2,
+        "trust-not3": t.trust_not3,
+        "trust-not4": t.trust_not4,
+
+        "faq-label": t.faq_label,
+        "faq-title": t.faq_title,
+        "faq-copy": t.faq_copy,
+        "faq-q1": t.faq_q1,
+        "faq-a1": t.faq_a1,
+        "faq-q2": t.faq_q2,
+        "faq-a2": t.faq_a2,
+        "faq-q3": t.faq_q3,
+        "faq-a3": t.faq_a3,
+        "faq-q4": t.faq_q4,
+        "faq-a4": t.faq_a4,
+        "faq-q5": t.faq_q5,
+        "faq-a5": t.faq_a5,
+        "faq-q6": t.faq_q6,
+        "faq-a6": t.faq_a6,
+        "faq-q7": t.faq_q7,
+        "faq-a7": t.faq_a7,
+        "faq-q8": t.faq_q8,
+        "faq-a8": t.faq_a8,
+
+        "bottom-cta-label": t.bottom_cta_label,
+        "bottom-cta-title": t.bottom_cta_title,
+        "bottom-cta-copy": t.bottom_cta_copy,
+        "bottom-cta-btn": t.bottom_cta_btn,
+        "bottom-cta-trust-line": t.bottom_cta_trust_line,
+
+        "footer-imprint": t.footer_imprint,
+        "footer-privacy": t.footer_privacy,
+        "footer-terms": t.footer_terms,
+        "footer-withdrawal": t.footer_withdrawal
+      };
+
+      Object.entries(textMap).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      });
+
+      const htmlMap = {
+        "dialogue-you": t.dialogue_you,
+        "dialogue-sophie": t.dialogue_sophie,
+        "pricing-bubble-free": t.pricing_bubble_free,
+        "pricing-bubble-plus": t.pricing_bubble_plus
+      };
+
+      Object.entries(htmlMap).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = value;
+      });
+
+      localStorage.setItem("preferredLanguage", lang);
+    }
+
+    function detectLanguage() {
+      const saved = localStorage.getItem("preferredLanguage");
+      if (saved && translations[saved]) return saved;
+
+      const browserLang = (navigator.language || "en").toLowerCase();
+      if (browserLang.startsWith("de")) return "de";
+      if (browserLang.startsWith("fr")) return "fr";
+      return "en";
+    }
+
+    function setLang(lang) {
+      applyTranslations(lang);
+      closeLangMenu();
+    }
+
+    const langToggle = document.getElementById("langToggle");
+    const langMenu = document.getElementById("langMenu");
+
+    function openLangMenu() {
+      langMenu.classList.add("open");
+      langToggle.setAttribute("aria-expanded", "true");
+    }
+
+    function closeLangMenu() {
+      langMenu.classList.remove("open");
+      langToggle.setAttribute("aria-expanded", "false");
+    }
+
+    if (langToggle && langMenu) {
+      langToggle.addEventListener("click", () => {
+        if (langMenu.classList.contains("open")) {
+          closeLangMenu();
+        } else {
+          openLangMenu();
+        }
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".lang-dropdown")) {
+          closeLangMenu();
+        }
+      });
+    }
+
+    applyTranslations(detectLanguage());
+  </script>
 </body>
 </html>
