@@ -307,6 +307,15 @@
       font-size:17px;
       line-height:1.5;
       color:rgba(246,247,251,.92);
+      opacity:1;
+      transform:translateY(0);
+      transition:opacity .4s ease, transform .4s ease;
+      min-height:3.1em;
+    }
+
+    .floating-text.is-changing{
+      opacity:0;
+      transform:translateY(6px);
     }
 
     .section{
@@ -539,6 +548,7 @@
       .btn{width:100%}
       .login-link,
       .lang-btn{padding:9px 12px}
+      .floating-text{min-height:4.6em}
     }
   </style>
 </head>
@@ -586,8 +596,8 @@
         <div class="hero-visual">
           <div class="hero-card">
             <div class="floating-panel">
-              <div class="floating-label" id="floating-label">A different kind of conversation</div>
-              <div class="floating-text" id="floating-text">“Okay. What matters more here — speed, or long-term upside?”</div>
+              <div class="floating-label" id="floating-label">A different kind of AI</div>
+              <div class="floating-text" id="floating-text">“Sophie says: Think one moment longer before you react.”</div>
             </div>
           </div>
         </div>
@@ -845,8 +855,19 @@
         hero_title: "THINK FIRST.<br>THEN ACT.",
         hero_copy: "Sophie, your AI, helps you do that.",
         hero_btn_primary: "Try for free",
-        floating_label: "A different kind of conversation",
-        floating_text: "“Okay. What matters more here — speed, or long-term upside?”",
+        floating_label: "A different kind of AI",
+        floating_lines: [
+          "“Sophie says: Think one moment longer before you react.”",
+          "“Sophie says: Not every decision has to be made immediately.”",
+          "“Sophie says: Understand first. Judge later.”",
+          "“Sophie says: What would the wiser version of you do now?”",
+          "“Sophie says: Pause for a moment. What really matters here?”",
+          "“Sophie says: Don’t think only about today.”",
+          "“Sophie says: Your first reaction is rarely your best one.”",
+          "“Sophie says: What would you advise your best friend to do?”",
+          "“Sophie says: Which decision will still feel right tomorrow?”",
+          "“Sophie says: Think one step further.”"
+        ],
 
         use_cases_title: "How people use Sophie",
         use_cases_intro: "Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.",
@@ -975,8 +996,19 @@
         hero_title: "ERST DENKEN.<br>DANN HANDELN.",
         hero_copy: "Deine KI Sophie hilft dir dabei.",
         hero_btn_primary: "Kostenlos testen",
-        floating_label: "Eine andere Art von Gespräch",
-        floating_text: "„Okay. Was zählt hier mehr — Geschwindigkeit oder langfristiges Potenzial?“",
+        floating_label: "Eine andere Art von KI",
+        floating_lines: [
+          "„Sophie says: Bevor du reagierst, denk einen Moment länger.“",
+          "„Sophie says: Nicht jede Entscheidung muss sofort fallen.“",
+          "„Sophie says: Versteh zuerst. Urteile später.“",
+          "„Sophie says: Was würde die klügere Version von dir jetzt tun?“",
+          "„Sophie says: Stopp kurz. Was ist hier wirklich wichtig?“",
+          "„Sophie says: Denk nicht nur an heute.“",
+          "„Sophie says: Die erste Reaktion ist selten die beste.“",
+          "„Sophie says: Was würdest du deinem besten Freund raten?“",
+          "„Sophie says: Welche Entscheidung fühlt sich morgen noch richtig an?“",
+          "„Sophie says: Denk einen Schritt weiter.“"
+        ],
 
         use_cases_title: "Wie Menschen Sophie nutzen",
         use_cases_intro: "Manchmal brauchst du keine sofortigen Antworten. Du brauchst Raum, um etwas wirklich zu durchdenken — eine Idee, eine Entscheidung, ein Meeting oder etwas, das dich schon länger beschäftigt.",
@@ -1105,8 +1137,19 @@
         hero_title: "D’ABORD RÉFLÉCHIR.<br>PUIS AGIR.",
         hero_copy: "Votre IA Sophie vous aide à le faire.",
         hero_btn_primary: "Essayer gratuitement",
-        floating_label: "Un autre type de conversation",
-        floating_text: "« D’accord. Qu’est-ce qui compte le plus ici — la vitesse, ou le potentiel à long terme ? »",
+        floating_label: "Une autre forme d’IA",
+        floating_lines: [
+          "« Sophie dit : Réfléchis un instant de plus avant de réagir. »",
+          "« Sophie dit : Toutes les décisions n’ont pas besoin d’être prises immédiatement. »",
+          "« Sophie dit : Comprends d’abord. Juge ensuite. »",
+          "« Sophie dit : Que ferait la version plus sage de toi maintenant ? »",
+          "« Sophie dit : Fais une pause. Qu’est-ce qui compte vraiment ici ? »",
+          "« Sophie dit : Ne pense pas seulement à aujourd’hui. »",
+          "« Sophie dit : Ta première réaction est rarement la meilleure. »",
+          "« Sophie dit : Que conseillerais-tu à ton meilleur ami ? »",
+          "« Sophie dit : Quelle décision semblera encore juste demain ? »",
+          "« Sophie dit : Pense un pas plus loin. »"
+        ],
 
         use_cases_title: "Comment les gens utilisent Sophie",
         use_cases_intro: "Parfois, vous n’avez pas besoin de réponses immédiates. Vous avez besoin d’espace pour réfléchir à quelque chose — une idée, une décision, une réunion, ou quelque chose qui vous accompagne depuis un moment.",
@@ -1220,6 +1263,38 @@
       }
     };
 
+    let floatingInterval = null;
+    let currentFloatingIndex = 0;
+    let currentFloatingLang = "en";
+
+    function startFloatingRotation(lang) {
+      const textEl = document.getElementById("floating-text");
+      const lines = (translations[lang] && translations[lang].floating_lines) || translations.en.floating_lines;
+
+      if (!textEl || !lines || !lines.length) return;
+
+      if (floatingInterval) {
+        clearInterval(floatingInterval);
+        floatingInterval = null;
+      }
+
+      currentFloatingLang = lang;
+      currentFloatingIndex = 0;
+      textEl.classList.remove("is-changing");
+      textEl.textContent = lines[currentFloatingIndex];
+
+      floatingInterval = setInterval(() => {
+        const activeLines = (translations[currentFloatingLang] && translations[currentFloatingLang].floating_lines) || translations.en.floating_lines;
+        textEl.classList.add("is-changing");
+
+        setTimeout(() => {
+          currentFloatingIndex = (currentFloatingIndex + 1) % activeLines.length;
+          textEl.textContent = activeLines[currentFloatingIndex];
+          textEl.classList.remove("is-changing");
+        }, 400);
+      }, 4200);
+    }
+
     function applyTranslations(lang) {
       const t = translations[lang] || translations.en;
 
@@ -1243,7 +1318,6 @@
         "hero-copy": t.hero_copy,
         "hero-btn-primary": t.hero_btn_primary,
         "floating-label": t.floating_label,
-        "floating-text": t.floating_text,
 
         "use-cases-title": t.use_cases_title,
         "use-cases-intro": t.use_cases_intro,
@@ -1369,6 +1443,7 @@
         if (el) el.innerHTML = value;
       });
 
+      startFloatingRotation(lang);
       localStorage.setItem("preferredLanguage", lang);
     }
 
