@@ -284,7 +284,8 @@ async function sendMemoryUpdate(secondsUsed) {
         transcript: payload,
         seconds_used: secondsUsed,
         session_started_at: startedAtIso,
-        session_ended_at: endedAtIso
+        session_ended_at: endedAtIso,
+        session_id: sessionId
       }),
       keepalive: true,
     });
@@ -295,6 +296,9 @@ async function sendMemoryUpdate(secondsUsed) {
     let parsed = null;
     try {
       parsed = txt ? JSON.parse(txt) : null;
+      if (parsed?.session_id) {
+        sessionId = parsed.session_id;
+      }
     } catch (_) {}
 
     convoLog = [];
@@ -341,6 +345,7 @@ let plan = null;
 
 // Session meta
 let talkStartedAt = null;
+let sessionId = null;
 
 // dynamic reset interval
 let dynamicResetInterval = null;
@@ -796,6 +801,7 @@ async function startVoice(){
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
+  sessionId = null;
 
   limitTriggered = false;
   startModeTriggered = false;
