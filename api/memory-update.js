@@ -13,28 +13,196 @@ function buildStructuredSummary({ shortSummary = "", emotionalTone = "", stressL
   };
 }
 
-function buildKeyInsights(transcriptArr, sessionSummary) {
-  const userMessages = transcriptArr.filter((t) => t.role === "user").map((t) => t.text).filter(Boolean);
-  const assistantMessages = transcriptArr.filter((t) => t.role === "assistant").map((t) => t.text).filter(Boolean);
-
+function buildFallbackKeyInsights(sessionSummary) {
+  const s = cleanText(sessionSummary);
+  if (!s) return [];
   return [
-    sessionSummary ? { type: "session_summary", text: sessionSummary } : null,
-    userMessages[0] ? { type: "user_focus", text: userMessages[0].slice(0, 300) } : null,
-    assistantMessages[assistantMessages.length - 1]
-      ? { type: "assistant_closing_point", text: assistantMessages[assistantMessages.length - 1].slice(0, 300) }
-      : null,
-  ].filter(Boolean);
+    { type: "session_summary", text: s.slice(0, 300) },
+  ];
 }
 
-function buildActionPlan(shortSummary) {
-  const s = cleanText(shortSummary);
+function buildFallbackActionPlan(sessionSummary) {
+  const s = cleanText(sessionSummary);
   if (!s) return [];
   return [
     {
-      label: "Review summary",
+      label: "Clarify next step",
       detail: s.slice(0, 300),
     },
   ];
+}
+
+function buildFallbackOpenQuestions() {
+  return [];
+}
+
+function sanitizeInsightItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const type = cleanText(item.type).slice(0, 80);
+      const text = cleanText(item.text).slice(0, 500);
+      if (!text) return null;
+      return {
+        type: type || "insight",
+        text,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function sanitizeActionItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const label = cleanText(item.label).slice(0, 120);
+      const detail = cleanText(item.detail).slice(0, 500);
+      if (!label && !detail) return null;
+      return {
+        label: label || "Next step",
+        detail: detail || "",
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function sanitizeOpenQuestions(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => cleanText(item).slice(0, 300))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+async function generateConversationOutput({
+  transcriptText,
+  fallbackSummary,
+  emotionalTone,
+  stressLevel,
+  closenessLevel,
+  openAiKey,
+  model,
+}) {
+  const system =
+    "You create a high-quality post-conversation summary artifact from a transcript. " +
+    "Your job is NOT durable memory extraction. Your job is session understanding. " +
+    "Focus on the real substance of the conversation, not greetings, filler, testing phrases, or goodbyes. " +
+    "Do not just repeat the first user message or the final assistant goodbye. " +
+    "Identify the actual issue, tension, decision, concern, or topic discussed. " +
+    "Write concise, useful output for a real user who wants to continue thinking after the conversation. " +
+    "Key insights must reflect the real substance of the conversation. " +
+    "Action plan must contain practical next steps only if they genuinely make sense. " +
+    "If the conversation was too short or too shallow, be honest and keep the output minimal instead of inventing depth.";
+
+  const userMsg = `
+Fallback summary from session memory:
+${cleanText(fallbackSummary) || "None"}
+
+Transcript:
+${transcriptText}
+`.trim();
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      short_summary: { type: "string" },
+      key_insights: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            type: { type: "string" },
+            text: { type: "string" },
+          },
+          required: ["type", "text"],
+        },
+      },
+      action_plan: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string" },
+            detail: { type: "string" },
+          },
+          required: ["label", "detail"],
+        },
+      },
+      open_questions: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["short_summary", "key_insights", "action_plan", "open_questions"],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openAiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        { role: "system", content: system },
+        { role: "user", content: userMsg },
+      ],
+      temperature: 0.3,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "sophie_conversation_output_v1",
+          strict: true,
+          schema,
+        },
+      },
+      truncation: "auto",
+    }),
+  });
+
+  if (!r.ok) {
+    const errorText = await r.text().catch(() => "");
+    throw new Error(`Conversation output model error ${r.status}: ${errorText.slice(0, 300)}`);
+  }
+
+  const out = await r.json();
+  const text =
+    out?.output_text ||
+    out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
+    "";
+
+  let parsed;
+  try {
+    parsed = JSON.parse(String(text || "").trim());
+  } catch {
+    throw new Error("Bad JSON from conversation output model");
+  }
+
+  const shortSummary = cleanText(parsed?.short_summary || fallbackSummary).slice(0, 300);
+  const keyInsights = sanitizeInsightItems(parsed?.key_insights);
+  const actionPlan = sanitizeActionItems(parsed?.action_plan);
+  const openQuestions = sanitizeOpenQuestions(parsed?.open_questions);
+
+  return {
+    short_summary: shortSummary || cleanText(fallbackSummary).slice(0, 300),
+    structured_summary: buildStructuredSummary({
+      shortSummary: shortSummary || fallbackSummary,
+      emotionalTone,
+      stressLevel,
+      closenessLevel,
+    }),
+    key_insights: keyInsights.length ? keyInsights : buildFallbackKeyInsights(fallbackSummary),
+    action_plan: actionPlan.length ? actionPlan : buildFallbackActionPlan(fallbackSummary),
+    open_questions: openQuestions.length ? openQuestions : buildFallbackOpenQuestions(),
+  };
 }
 
 /**
@@ -46,11 +214,11 @@ function buildActionPlan(shortSummary) {
  *   session_ended_at?: string
  * }
  *
- * v5.0 (Mar 2026) – memory + transcript + structured output
+ * v6.0 (Mar 2026) – memory + transcript + model-generated conversation insights
  * - Keeps existing memory extraction behavior
  * - Stores full transcript in conversation_messages
  * - Stores structured session output in conversation_outputs
- * - Stores richer session metadata in user_sessions
+ * - Uses a second structured model call for high-quality summary/insights/action plan
  * - Uses existing endpoint only (no extra Vercel function)
  */
 export default async function handler(req, res) {
@@ -754,21 +922,54 @@ ${transcriptText}
       }
     }
 
+    let conversationOutput;
+    try {
+      conversationOutput = await generateConversationOutput({
+        transcriptText,
+        fallbackSummary: sessSummary,
+        emotionalTone: clean(ss.emotional_tone),
+        stressLevel: ss.stress_level,
+        closenessLevel: ss.closeness_level,
+        openAiKey: process.env.OPENAI_API_KEY,
+        model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
+      });
+    } catch (e) {
+      console.error("conversation output generation failed:", e?.message || e);
+      conversationOutput = {
+        short_summary: sessSummary.slice(0, 300),
+        structured_summary: buildStructuredSummary({
+          shortSummary: sessSummary,
+          emotionalTone: clean(ss.emotional_tone),
+          stressLevel: ss.stress_level,
+          closenessLevel: ss.closeness_level,
+        }),
+        key_insights: buildFallbackKeyInsights(sessSummary),
+        action_plan: buildFallbackActionPlan(sessSummary),
+        open_questions: buildFallbackOpenQuestions(),
+      };
+    }
+
     const outputRow = {
       session_id: insertedSession.id,
       title: finalSessionTitle.slice(0, 120),
-      short_summary: sessSummary.slice(0, 300),
-      structured_summary: buildStructuredSummary({
+      short_summary: cleanText(conversationOutput.short_summary || sessSummary).slice(0, 300),
+      structured_summary: conversationOutput.structured_summary || buildStructuredSummary({
         shortSummary: sessSummary,
         emotionalTone: clean(ss.emotional_tone),
         stressLevel: ss.stress_level,
         closenessLevel: ss.closeness_level,
       }),
-      key_insights: buildKeyInsights(transcriptArr, sessSummary),
-      action_plan: buildActionPlan(sessSummary),
-      open_questions: [],
-      model: process.env.MEMORY_MODEL || "gpt-4o-mini",
-      prompt_version: "branch2-v1",
+      key_insights: Array.isArray(conversationOutput.key_insights)
+        ? conversationOutput.key_insights
+        : buildFallbackKeyInsights(sessSummary),
+      action_plan: Array.isArray(conversationOutput.action_plan)
+        ? conversationOutput.action_plan
+        : buildFallbackActionPlan(sessSummary),
+      open_questions: Array.isArray(conversationOutput.open_questions)
+        ? conversationOutput.open_questions
+        : buildFallbackOpenQuestions(),
+      model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
+      prompt_version: "conversation-insights-v1",
     };
 
     const { error: outErr } = await supabase.from("conversation_outputs").insert(outputRow);
