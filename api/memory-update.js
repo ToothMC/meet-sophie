@@ -88,15 +88,14 @@ async function generateConversationOutput({
   model,
 }) {
   const system =
-    "You create a high-quality post-conversation summary artifact from a transcript. " +
-    "Your job is NOT durable memory extraction. Your job is session understanding. " +
-    "Focus on the real substance of the conversation, not greetings, filler, testing phrases, or goodbyes. " +
-    "Do not just repeat the first user message or the final assistant goodbye. " +
-    "Identify the actual issue, tension, decision, concern, or topic discussed. " +
-    "Write concise, useful output for a real user who wants to continue thinking after the conversation. " +
-    "Key insights must reflect the real substance of the conversation. " +
-    "Action plan must contain practical next steps only if they genuinely make sense. " +
-    "If the conversation was too short or too shallow, be honest and keep the output minimal instead of inventing depth.";
+  "You create a structured THINKING REPORT after a conversation. " +
+  "Your task is not superficial summarization. Your task is to extract the thinking structure behind the conversation. " +
+  "Focus on the real substance of the discussion, not greetings, filler phrases, or testing sentences. " +
+  "Identify the central question, the key insights that emerged, the factors influencing decisions, and possible directions. " +
+  "Produce thoughtful and useful output that helps the user continue thinking after the conversation. " +
+  "Avoid repeating obvious transcript sentences. Extract meaning instead. " +
+  "If the conversation is short or shallow, keep the report short and honest instead of inventing depth. " +
+  "IMPORTANT: Write the entire output in the SAME language as the transcript.";
 
   const userMsg = `
 Fallback summary from session memory:
