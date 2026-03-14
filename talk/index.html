@@ -794,7 +794,7 @@ async function reportUsage(seconds) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
 
-    const res = await fetch("/api/update-usage", {
+    const res = await fetch("/api/usage", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
