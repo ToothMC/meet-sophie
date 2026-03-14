@@ -419,20 +419,25 @@ function buildTranscriptText(log = []) {
     .join("\n\n");
 }
 
-function renderSimpleList(items, emptyText = "—") {
+function renderInsightsList(items, emptyText = "—") {
   if (!Array.isArray(items) || !items.length) return emptyText;
+
+  const labelMap = {
+    session_summary: "Summary",
+    user_focus: "What you brought in",
+    assistant_closing_point: "What Sophie highlighted",
+  };
 
   return items
     .map((item) => {
-      if (typeof item === "string") return `• ${item}`;
-      if (item && typeof item === "object") {
-        const a = String(item.label || item.type || "").trim();
-        const b = String(item.detail || item.text || "").trim();
-        if (a && b) return `• ${a}: ${b}`;
-        if (b) return `• ${b}`;
-        if (a) return `• ${a}`;
-      }
-      return "";
+      if (!item || typeof item !== "object") return "";
+
+      const rawType = String(item.type || "").trim();
+      const text = String(item.text || item.detail || "").trim();
+      if (!text) return "";
+
+      const label = labelMap[rawType] || "Insight";
+      return `• ${label}: ${text}`;
     })
     .filter(Boolean)
     .join("\n");
@@ -454,7 +459,7 @@ function showPostCallResults(apiResult, transcriptLog) {
     apiResult?.session?.short_summary ||
     "No summary available.";
 
-  const insights = renderSimpleList(apiResult?.output?.key_insights, "—");
+  const insights = renderInsightsList(apiResult?.output?.key_insights, "—");
   const actions = renderSimpleList(apiResult?.output?.action_plan, "—");
   const transcriptText = buildTranscriptText(transcriptLog);
 
