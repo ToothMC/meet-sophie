@@ -443,6 +443,25 @@ function renderInsightsList(items, emptyText = "—") {
     .join("\n");
 }
 
+function renderActionsList(items, emptyText = "—") {
+  if (!Array.isArray(items) || !items.length) return emptyText;
+
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+
+      const label = String(item.label || "").trim();
+      const detail = String(item.detail || item.text || "").trim();
+
+      if (label && detail) return `• ${label}: ${detail}`;
+      if (detail) return `• ${detail}`;
+      if (label) return `• ${label}`;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 function downloadTextFile(filename, text) {
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -460,7 +479,7 @@ function showPostCallResults(apiResult, transcriptLog) {
     "No summary available.";
 
   const insights = renderInsightsList(apiResult?.output?.key_insights, "—");
-  const actions = renderSimpleList(apiResult?.output?.action_plan, "—");
+  const actions = renderActionsList(apiResult?.output?.action_plan, "—");
   const transcriptText = buildTranscriptText(transcriptLog);
 
   postCallSummary.textContent = summary;
@@ -849,49 +868,49 @@ function attachChannel(ch) {
         }
       }
 
-       if (msg?.type === "response.audio_transcript.delta") {
-          const chunk = String(msg?.delta || "");
-         if (chunk) partialAssistant += chunk;
-         return;
-}
+      if (msg?.type === "response.audio_transcript.delta") {
+        const chunk = String(msg?.delta || "");
+        if (chunk) partialAssistant += chunk;
+        return;
+      }
 
-       if (msg?.type === "response.audio_transcript.done") {
-         const full = String(msg?.transcript || msg?.text || "").trim();
-         if (full) partialAssistant = full;
-         return;
-}
+      if (msg?.type === "response.audio_transcript.done") {
+        const full = String(msg?.transcript || msg?.text || "").trim();
+        if (full) partialAssistant = full;
+        return;
+      }
 
-// Ignore parallel text streams to avoid duplicate assistant transcript
-       if (msg?.type === "response.output_text.delta") {
-          return;
-}
+      // Ignore parallel text streams to avoid duplicate assistant transcript
+      if (msg?.type === "response.output_text.delta") {
+        return;
+      }
 
-        if (msg?.type === "response.output_text.done") {
-           return;
-}
+      if (msg?.type === "response.output_text.done") {
+        return;
+      }
 
-        if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
-           return;
-}
+      if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") {
+        return;
+      }
 
       if (msg?.type === "response.done") {
-         const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
-         const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
+        const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+        const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
 
-         if (final && final !== last) {
-            convoLog.push({ role: "assistant", text: final });
-            lastAssistantFinal = final;
-  }
+        if (final && final !== last) {
+          convoLog.push({ role: "assistant", text: final });
+          lastAssistantFinal = final;
+        }
 
-  partialAssistant = "";
+        partialAssistant = "";
 
-  // ✅ After kickoff done: enable auto responses
-  if (kickoffInProgress) {
-    console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
-    kickoffInProgress = false;
-    await setAutoResponses(true);
-  }
-}
+        // ✅ After kickoff done: enable auto responses
+        if (kickoffInProgress) {
+          console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
+          kickoffInProgress = false;
+          await setAutoResponses(true);
+        }
+      }
     } catch (_) {}
   });
 }
@@ -940,7 +959,6 @@ async function reportUsage(seconds) {
   }
 }  
 
-  
 async function startVoice(){
   // PRIME video inside user click context
   await preloadLimitVideo();
@@ -1115,7 +1133,7 @@ Max 12 words.
   const memoryResult = await sendMemoryUpdate(durationSeconds);
 
   if (memoryResult?.output || memoryResult?.session) {
-  showPostCallResults(memoryResult, convoLog);
+    showPostCallResults(memoryResult, convoLog);
   }
 
   track("talk_ended", {
