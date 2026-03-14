@@ -199,8 +199,8 @@ body{
   </div>
 
   <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
-    <button id="copyTranscriptBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Copy Transcript</button>
-    <button id="downloadTranscriptBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Download .txt</button>
+    <button id="downloadSummaryBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Conversation Summary</button>
+    <button id="downloadTranscriptBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Full Transcript</button>
   </div>
 </div>
   
@@ -351,7 +351,7 @@ const postCallSummary = document.getElementById("postCallSummary");
 const postCallInsights = document.getElementById("postCallInsights");
 const postCallActions = document.getElementById("postCallActions");
 const postCallTranscript = document.getElementById("postCallTranscript");
-const copyTranscriptBtn = document.getElementById("copyTranscriptBtn");
+const downloadSummaryBtn = document.getElementById("downloadSummaryBtn");
 const downloadTranscriptBtn = document.getElementById("downloadTranscriptBtn");
 
 // Limit video elements
@@ -464,14 +464,24 @@ function showPostCallResults(apiResult, transcriptLog) {
   postCallTranscript.textContent = transcriptText || "No transcript available.";
   postCallPanel.style.display = "block";
 
-  copyTranscriptBtn.onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(transcriptText || "");
-      copyTranscriptBtn.textContent = "Copied";
-      setTimeout(() => {
-        copyTranscriptBtn.textContent = "Copy Transcript";
-      }, 1200);
-    } catch (_) {}
+  downloadSummaryBtn.onclick = () => {
+    const summaryText = postCallSummary.textContent || "";
+    const insightsText = postCallInsights.textContent || "";
+    const actionsText = postCallActions.textContent || "";
+
+    const text =
+`Conversation Summary
+
+${summaryText}
+
+Key Insights
+${insightsText}
+
+Action Plan
+${actionsText}
+`;
+
+    downloadTextFile("sophie-summary.txt", text);
   };
 
   downloadTranscriptBtn.onclick = () => {
