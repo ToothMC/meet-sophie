@@ -788,6 +788,31 @@ function setupDataChannelLogging() {
 function track(name, payload = {}) {
   console.log("[track]", name, payload);
 }
+
+async function reportUsage(seconds) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    const res = await fetch("/api/update-usage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ seconds_used: seconds }),
+      keepalive: true,
+    });
+
+    const data = await res.json().catch(() => null);
+    console.log("[reportUsage]", res.status, data);
+    return data;
+  } catch (e) {
+    console.log("[reportUsage] failed", e);
+    return null;
+  }
+}  
+
   
 async function startVoice(){
   // PRIME video inside user click context
