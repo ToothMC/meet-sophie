@@ -250,47 +250,10 @@ manageSubLink?.addEventListener("click", async (e) => {
 });
 
 // --- Tracking helper (POST /api/track) ---
-async function track(event_name, meta = {}) {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    await fetch("/api/track", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ event_name, meta }),
-      keepalive: true,
-    });
-  } catch (_) {}
-}
-
-// --- Usage reporting helper (POST /api/usage) ---
-async function reportUsage(secondsUsed) {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    await fetch("/api/usage", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ seconds_used: secondsUsed }),
-      keepalive: true,
-    });
-  } catch (_) {}
-}
-
-// --- Memory update helper (POST /api/memory-update) ---
-// FIX: request is awaited + response is read (prevents aborted/canceled + DevTools "no resource")
 async function sendMemoryUpdate(secondsUsed) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
+    if (!session?.access_token) return null;
 
     const finalA = (partialAssistant || "").trim();
     if (finalA) {
@@ -308,25 +271,44 @@ async function sendMemoryUpdate(secondsUsed) {
 
     const payload = cleaned.slice(-80);
 
+    const startedAtIso = talkStartedAt ? new Date(talkStartedAt).toISOString() : null;
+    const endedAtIso = new Date().toISOString();
+
     const r = await fetch("/api/memory-update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ transcript: payload, seconds_used: secondsUsed }),
+      body: JSON.stringify({
+        transcript: payload,
+        seconds_used: secondsUsed,
+        session_started_at: startedAtIso,
+        session_ended_at: endedAtIso,
+        session_id: sessionId
+      }),
       keepalive: true,
     });
 
     const txt = await r.text().catch(() => "");
-    console.log(`[${runId}] [memory-update] status=${r.status} body=${txt.slice(0, 200)}`);
+    console.log(`[${runId}] [memory-update] status=${r.status} body=${txt.slice(0, 500)}`);
+
+    let parsed = null;
+    try {
+      parsed = txt ? JSON.parse(txt) : null;
+      if (parsed?.session?.id) {
+        sessionId = parsed.session.id;
+      }
+    } catch (_) {}
 
     convoLog = [];
+    return parsed;
   } catch (e) {
     console.log(`[${runId}] [memory-update] failed`, e);
+    return null;
   }
 }
-
+  
 // UI Elements
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
@@ -363,6 +345,7 @@ let plan = null;
 
 // Session meta
 let talkStartedAt = null;
+let sessionId = null;
 
 // dynamic reset interval
 let dynamicResetInterval = null;
@@ -818,6 +801,7 @@ async function startVoice(){
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
+  sessionId = null;
 
   limitTriggered = false;
   startModeTriggered = false;

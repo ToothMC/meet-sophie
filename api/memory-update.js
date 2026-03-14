@@ -1,22 +1,57 @@
 import { createClient } from "@supabase/supabase-js";
 
+function cleanText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function buildStructuredSummary({ shortSummary = "", emotionalTone = "", stressLevel = null, closenessLevel = null }) {
+  return {
+    summary: cleanText(shortSummary),
+    emotional_tone: cleanText(emotionalTone) || "unknown",
+    stress_level: Number.isFinite(Number(stressLevel)) ? Number(stressLevel) : null,
+    closeness_level: Number.isFinite(Number(closenessLevel)) ? Number(closenessLevel) : null,
+  };
+}
+
+function buildKeyInsights(transcriptArr, sessionSummary) {
+  const userMessages = transcriptArr.filter((t) => t.role === "user").map((t) => t.text).filter(Boolean);
+  const assistantMessages = transcriptArr.filter((t) => t.role === "assistant").map((t) => t.text).filter(Boolean);
+
+  return [
+    sessionSummary ? { type: "session_summary", text: sessionSummary } : null,
+    userMessages[0] ? { type: "user_focus", text: userMessages[0].slice(0, 300) } : null,
+    assistantMessages[assistantMessages.length - 1]
+      ? { type: "assistant_closing_point", text: assistantMessages[assistantMessages.length - 1].slice(0, 300) }
+      : null,
+  ].filter(Boolean);
+}
+
+function buildActionPlan(shortSummary) {
+  const s = cleanText(shortSummary);
+  if (!s) return [];
+  return [
+    {
+      label: "Review summary",
+      detail: s.slice(0, 300),
+    },
+  ];
+}
+
 /**
  * POST /api/memory-update
  * Body: {
  *   transcript: Array<{ role: "user"|"assistant"|string, text: string }> | string,
- *   seconds_used?: number
+ *   seconds_used?: number,
+ *   session_started_at?: string,
+ *   session_ended_at?: string
  * }
  *
- * v4.2 (Mar 2026) – v4.1 + SAFE AGE (fixes 23514 user_profile_age_check)
- * - Uses SUPABASE_ANON_KEY + Authorization Bearer user JWT so auth.uid() works (RLS policies pass)
- * - Handles OPTIONS preflight (fixes red Network "Method not allowed" for OPTIONS)
- * - Never guess preferred_language (only 'en'/'de' if USER explicitly requested)
- * - Never store "Sophie"/assistant as user's name (also scrubs existing poisoned values)
- * - Deterministic name + nickname extraction from USER text (regex fallback)
- * - Prevent persona bleed into user_profile (occupation/style)
- * - Topics only if user actually mentioned them
- * - last_interaction_summary can never be empty after a real session (deterministic fallback)
- * - STRICT DB age constraint compatibility: only write age if 10..110 else NULL
+ * v5.0 (Mar 2026) – memory + transcript + structured output
+ * - Keeps existing memory extraction behavior
+ * - Stores full transcript in conversation_messages
+ * - Stores structured session output in conversation_outputs
+ * - Stores richer session metadata in user_sessions
+ * - Uses existing endpoint only (no extra Vercel function)
  */
 export default async function handler(req, res) {
   try {
@@ -58,7 +93,7 @@ export default async function handler(req, res) {
       },
     });
 
-    // Validate user from JWT (uses the auth header in the client)
+    // Validate user from JWT
     const {
       data: { user },
       error: userErr,
@@ -68,6 +103,14 @@ export default async function handler(req, res) {
 
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
     const nowIso = new Date().toISOString();
+    const sessionStartedAt =
+      typeof body.session_started_at === "string" && body.session_started_at.trim()
+        ? body.session_started_at.trim()
+        : null;
+    const sessionEndedAt =
+      typeof body.session_ended_at === "string" && body.session_ended_at.trim()
+        ? body.session_ended_at.trim()
+        : nowIso;
 
     // ---- Transcript normalization with strict role mapping ----
     const rawTranscript = body.transcript;
@@ -92,18 +135,38 @@ export default async function handler(req, res) {
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
-    const baseSession = { user_id: user.id, session_date: nowIso };
+    const baseSession = {
+      user_id: user.id,
+      session_date: sessionEndedAt || nowIso,
+      started_at: sessionStartedAt,
+      ended_at: sessionEndedAt || nowIso,
+      duration_seconds: secondsUsed,
+      has_transcript: false,
+      has_output: false,
+    };
 
     if (!transcriptText || transcriptText.trim().length < 10) {
-      const { error: sessErr } = await supabase.from("user_sessions").insert({
-        ...baseSession,
-        emotional_tone: "unknown",
-        stress_level: null,
-        closeness_level: null,
-        short_summary: `No transcript captured. duration=${secondsUsed}s`.slice(0, 300),
-      });
+      const { data: emptySession, error: sessErr } = await supabase
+        .from("user_sessions")
+        .insert({
+          ...baseSession,
+          emotional_tone: "unknown",
+          stress_level: null,
+          closeness_level: null,
+          short_summary: `No transcript captured. duration=${secondsUsed}s`.slice(0, 300),
+          title: "Conversation",
+        })
+        .select("id, session_date, short_summary, title")
+        .single();
+
       if (sessErr) console.error("user_sessions insert failed:", sessErr);
-      return res.status(200).json({ ok: true, skipped: true, reason: "No transcript" });
+
+      return res.status(200).json({
+        ok: true,
+        skipped: true,
+        reason: "No transcript",
+        session: emptySession || null,
+      });
     }
 
     // USER-only text (the only trusted source for durable memory)
@@ -287,17 +350,15 @@ export default async function handler(req, res) {
     const system =
       "You extract structured memory from the transcript. " +
       "Assistant statements are untrusted for durable USER facts. " +
-
       "PROFILE: Only store durable facts/preferences explicitly stated BY THE USER in USER messages. " +
       "Never guess or infer PROFILE fields. If unsure, return empty strings/empty arrays/null. " +
       "Do NOT copy the assistant persona (e.g., interior designer) into the user's profile. " +
-
       "RELATIONSHIP: These fields are Sophie’s conservative best-guess assessment based on the interaction. " +
       "You MAY infer them from the transcript (tone, openness, recurring emotional patterns), even if the user did not state them explicitly. " +
       "Do not hallucinate specific life facts; keep it general and grounded in the transcript. " +
       "Always provide a reasonable best-guess for tone_baseline and openness_level; use neutral/low if uncertain. " +
       "emotional_patterns should be short, concrete patterns (or empty if nothing is evident).";
-       
+
     const userMsg = `
 CURRENT structured profile (existing DB values):
 first_name: ${existing.first_name}
@@ -409,19 +470,27 @@ ${transcriptText}
       const errorText = await r.text().catch(() => "");
       console.error("OpenAI memory error:", r.status, errorText);
 
-      const { error: sessErr } = await supabase.from("user_sessions").insert({
-        ...baseSession,
-        emotional_tone: "error",
-        stress_level: null,
-        closeness_level: null,
-        short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText).replace(/\s+/g, " ").slice(0, 200)} duration=${secondsUsed}s`.slice(
-          0,
-          300
-        ),
-      });
+      const { data: errorSession, error: sessErr } = await supabase
+        .from("user_sessions")
+        .insert({
+          ...baseSession,
+          emotional_tone: "error",
+          stress_level: null,
+          closeness_level: null,
+          short_summary: `Memory model error (HTTP ${r.status}). ${String(errorText)
+            .replace(/\s+/g, " ")
+            .slice(0, 200)} duration=${secondsUsed}s`.slice(0, 300),
+          title: "Conversation",
+        })
+        .select("id, session_date, short_summary, title")
+        .single();
+
       if (sessErr) console.error("user_sessions insert (error) failed:", sessErr);
 
-      return res.status(r.status).json({ error: errorText });
+      return res.status(r.status).json({
+        error: errorText,
+        session: errorSession || null,
+      });
     }
 
     const out = await r.json();
@@ -433,16 +502,27 @@ ${transcriptText}
     } catch {
       console.error("Bad JSON from memory model:", text);
 
-      const { error: sessErr } = await supabase.from("user_sessions").insert({
-        ...baseSession,
-        emotional_tone: "error",
-        stress_level: null,
-        closeness_level: null,
-        short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
-      });
+      const { data: badJsonSession, error: sessErr } = await supabase
+        .from("user_sessions")
+        .insert({
+          ...baseSession,
+          emotional_tone: "error",
+          stress_level: null,
+          closeness_level: null,
+          short_summary: `Bad JSON from model. duration=${secondsUsed}s`.slice(0, 300),
+          title: "Conversation",
+        })
+        .select("id, session_date, short_summary, title")
+        .single();
+
       if (sessErr) console.error("user_sessions insert (bad json) failed:", sessErr);
 
-      return res.status(200).json({ ok: false, skipped: true, reason: "Bad JSON" });
+      return res.status(200).json({
+        ok: false,
+        skipped: true,
+        reason: "Bad JSON",
+        session: badJsonSession || null,
+      });
     }
 
     const p = parsed.profile || {};
@@ -457,19 +537,16 @@ ${transcriptText}
     let firstNameNew = clean(p.first_name);
     let preferredNameNew = clean(p.preferred_name);
 
-    // Deterministic fallback if model is empty/overcautious
     const extracted = extractNameFromUserText(userOnlyJoined);
     if (!firstNameNew && extracted.first) firstNameNew = extracted.first;
     if (!preferredNameNew && extracted.nick) preferredNameNew = extracted.nick;
 
-    // Name hard gates (new values only)
     if (isBannedName(firstNameNew) || !appearsInUserTextExact(firstNameNew)) firstNameNew = "";
     if (isBannedName(preferredNameNew) || !appearsInUserTextExact(preferredNameNew)) preferredNameNew = "";
 
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
 
-    // Age gate (avoid hallucinations) – still allow model to propose, but DB-safe later
     let ageNew = null;
     if (p.age === null || p.age === undefined || p.age === "") {
       ageNew = null;
@@ -482,7 +559,6 @@ ${transcriptText}
       if (userMentionsAge && Number.isFinite(n)) ageNew = Math.trunc(n);
     }
 
-    // Occupation / style gates (anti persona bleed)
     let occupationNew = clean(p.occupation);
     let styleNew = clean(p.conversation_style);
 
@@ -495,18 +571,15 @@ ${transcriptText}
 
     if (isBannedConversationStyle(styleNew) || !userAskedForStyle) styleNew = "";
 
-    // Topics only if user mentioned
     const topicsLikeNew = filterToUserMentionedTopics(toArrayStrings(p.topics_like));
     const topicsAvoidNew = filterToUserMentionedTopics(toArrayStrings(p.topics_avoid));
 
-    // SAFE fallback (scrubbed existing cannot re-poison)
     const finalFirstName = scrubName(firstNameNew || existing.first_name).slice(0, 80);
     const finalPreferredName = scrubName(preferredNameNew || finalFirstName || existing.preferred_name).slice(0, 80);
 
     const finalAddressing = addressingNew === "informal" || addressingNew === "formal" ? addressingNew : existing.preferred_addressing || "";
     const finalPronoun = (pronounNew || existing.preferred_pronoun).slice(0, 24);
 
-    // Language: only if explicitly requested by USER
     let finalLang = "";
     if (explicitLang && ALLOWED_LANGS.has(explicitLang)) {
       finalLang = explicitLang;
@@ -516,15 +589,12 @@ ${transcriptText}
     }
 
     const finalAge = ageNew !== null ? ageNew : existing.age;
-
-    // also scrub occupation fallback
     const finalOccupation = scrubOccupation(occupationNew || existing.occupation).slice(0, 120);
     const finalStyle = (styleNew || existing.conversation_style).slice(0, 80);
 
     const finalTopicsLike = mergeStringArrays(existing.topics_like, topicsLikeNew, 12);
     const finalTopicsAvoid = mergeStringArrays(existing.topics_avoid, topicsAvoidNew, 12);
 
-    // ✅ DB-safe age (matches CHECK (age IS NULL OR (age >= 10 AND age <= 110)))
     const safeAgeForDb = (value) => {
       if (value === null || value === undefined || value === "") return null;
       const n = Number(value);
@@ -539,7 +609,6 @@ ${transcriptText}
       console.log("[memory-update] dropping invalid age", { finalAge });
     }
 
-    // Notes marker (NO lang) — and never allow Sophie into prefs line
     const marker = "SOPHIE_PREFS:";
     const safePreferredForNotes = scrubName(finalPreferredName);
     const prefsLine = `${marker} preferred_name=${safePreferredForNotes}; preferred_addressing=${finalAddressing}; preferred_pronoun=${finalPronoun}`.trim();
@@ -554,7 +623,7 @@ ${transcriptText}
         .join("\n")
         .trim();
     } else {
-      finalNotes = (finalNotes + "\n" + prefsLine).trim();
+      finalNotes = `${finalNotes}\n${prefsLine}`.trim();
     }
 
     const profileRow = {
@@ -564,7 +633,7 @@ ${transcriptText}
       preferred_addressing: finalAddressing || null,
       preferred_pronoun: finalPronoun || null,
       preferred_language: finalLang || null,
-      age: ageToWrite, // ✅ FIX: never violates user_profile_age_check
+      age: ageToWrite,
       occupation: finalOccupation || null,
       conversation_style: finalStyle || null,
       topics_like: finalTopicsLike.length ? finalTopicsLike : null,
@@ -595,7 +664,6 @@ ${transcriptText}
       return parts.slice(0, 3).join(" • ").slice(0, 600);
     };
 
-    // Conservative sanitizer: remove place tokens unless USER text contains them
     const sanitizeSummary = (s) => {
       let x = clean(s);
       if (!x) return x;
@@ -612,7 +680,6 @@ ${transcriptText}
       return x;
     };
 
-    // --- Deterministic summary fallback (improves empty summaries) ---
     const modelSummary = clean(rr.last_interaction_summary || ss.short_summary);
 
     let deterministicSummary = "";
@@ -625,10 +692,8 @@ ${transcriptText}
     if (bits.length > 0) deterministicSummary = `User shared ${bits.join(", ")}.`;
 
     const rawContinuity = modelSummary || deterministicSummary;
-
     const merged = mergeContinuity(existing.last_interaction_summary, rawContinuity);
     const sanitized = sanitizeSummary(merged);
-
     const fallbackSummary = secondsUsed > 0 ? `Talked for ${secondsUsed}s.` : "Talked.";
 
     const finalContinuity =
@@ -648,18 +713,102 @@ ${transcriptText}
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
 
-    const { error: sessErr } = await supabase.from("user_sessions").insert({
-      user_id: user.id,
-      session_date: nowIso,
-      emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
-      stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
-      closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+    const finalSessionTitle = clean(profileRow.preferred_name || profileRow.first_name)
+      ? `Conversation with ${clean(profileRow.preferred_name || profileRow.first_name)}`
+      : "Conversation";
+
+    const { data: insertedSession, error: sessErr } = await supabase
+      .from("user_sessions")
+      .insert({
+        ...baseSession,
+        title: finalSessionTitle.slice(0, 120),
+        emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+        stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+        closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+        short_summary: sessSummary.slice(0, 300),
+        has_transcript: transcriptArr.length > 0,
+        has_output: false,
+      })
+      .select("id, user_id, session_date, short_summary, title")
+      .single();
+
+    if (sessErr || !insertedSession?.id) {
+      console.error("user_sessions insert failed:", sessErr);
+      return res.status(500).json({
+        error: "user_sessions insert failed",
+        detail: sessErr?.message || "Missing session id",
+      });
+    }
+
+    const messageRows = transcriptArr.map((t, idx) => ({
+      session_id: insertedSession.id,
+      seq: idx,
+      role: t.role || "other",
+      text: clean(t.text),
+    }));
+
+    if (messageRows.length) {
+      const { error: msgErr } = await supabase.from("conversation_messages").insert(messageRows);
+      if (msgErr) {
+        console.error("conversation_messages insert failed:", msgErr);
+      }
+    }
+
+    const outputRow = {
+      session_id: insertedSession.id,
+      title: finalSessionTitle.slice(0, 120),
       short_summary: sessSummary.slice(0, 300),
-    });
-    if (sessErr) console.error("user_sessions insert failed:", sessErr);
+      structured_summary: buildStructuredSummary({
+        shortSummary: sessSummary,
+        emotionalTone: clean(ss.emotional_tone),
+        stressLevel: ss.stress_level,
+        closenessLevel: ss.closeness_level,
+      }),
+      key_insights: buildKeyInsights(transcriptArr, sessSummary),
+      action_plan: buildActionPlan(sessSummary),
+      open_questions: [],
+      model: process.env.MEMORY_MODEL || "gpt-4o-mini",
+      prompt_version: "branch2-v1",
+    };
+
+    const { error: outErr } = await supabase.from("conversation_outputs").insert(outputRow);
+
+    if (outErr) {
+      console.error("conversation_outputs insert failed:", outErr);
+    } else {
+      const { error: sessFlagErr } = await supabase
+        .from("user_sessions")
+        .update({ has_output: true })
+        .eq("id", insertedSession.id);
+
+      if (sessFlagErr) console.error("user_sessions has_output update failed:", sessFlagErr);
+    }
+
+    const { error: sessTranscriptFlagErr } = await supabase
+      .from("user_sessions")
+      .update({ has_transcript: transcriptArr.length > 0 })
+      .eq("id", insertedSession.id);
+
+    if (sessTranscriptFlagErr) {
+      console.error("user_sessions has_transcript update failed:", sessTranscriptFlagErr);
+    }
 
     return res.status(200).json({
       ok: true,
+      session: {
+        id: insertedSession.id,
+        title: insertedSession.title,
+        short_summary: insertedSession.short_summary,
+        session_date: insertedSession.session_date,
+      },
+      output: {
+        title: outputRow.title,
+        short_summary: outputRow.short_summary,
+        structured_summary: outputRow.structured_summary,
+        key_insights: outputRow.key_insights,
+        action_plan: outputRow.action_plan,
+        open_questions: outputRow.open_questions,
+      },
       extracted: {
         first_name: profileRow.first_name,
         preferred_name: profileRow.preferred_name,
