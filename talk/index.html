@@ -296,8 +296,8 @@ async function sendMemoryUpdate(secondsUsed) {
     let parsed = null;
     try {
       parsed = txt ? JSON.parse(txt) : null;
-      if (parsed?.session_id) {
-        sessionId = parsed.session_id;
+      if (parsed?.session?.id) {
+        sessionId = parsed.session.id;
       }
     } catch (_) {}
 
