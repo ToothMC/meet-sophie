@@ -548,15 +548,6 @@ function getDatePrefix() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
-
-function buildTopicFromSummary(summary = "") {
-  const cleaned = String(summary || "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const shortTopic = cleaned.split(/[.!?]/)[0].slice(0, 60);
-  return slugifyFilenamePart(shortTopic);
-}
   
 function showPostCallResults(apiResult, transcriptLog) {
   const summary =
@@ -567,8 +558,13 @@ function showPostCallResults(apiResult, transcriptLog) {
   const insights = renderInsightsList(apiResult?.output?.key_insights, "—");
   const actions = renderActionsList(apiResult?.output?.action_plan, "—");
   const transcriptText = buildTranscriptText(transcriptLog);
+
   const datePrefix = getDatePrefix();
-  const topicSlug = buildTopicFromSummary(summary);
+  const sessionTitle =
+    apiResult?.output?.session_title ||
+    apiResult?.session?.title ||
+    "session";
+  const topicSlug = slugifyFilenamePart(sessionTitle);
   
   postCallSummary.textContent = summary;
   postCallInsights.textContent = insights;
