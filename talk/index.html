@@ -501,6 +501,12 @@ let softEndSummarySeconds = 22;
 let softEndWarningTriggered = false;
 let softEndSummaryTriggered = false;
 let softEndFinalizing = false;
+let closingStartedAt = 0;
+let closingHasSpoken = false;
+let closingRetryUsed = false;
+let closingForceTimeout = null;
+let closingRetryTimeout = null;
+let closingFinishTimeout = null;
 
 let talkStartedAt = null;
 let sessionId = null;
@@ -613,6 +619,28 @@ function getDatePrefix() {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function clearClosingTimers() {
+  if (closingForceTimeout) {
+    clearTimeout(closingForceTimeout);
+    closingForceTimeout = null;
+  }
+  if (closingRetryTimeout) {
+    clearTimeout(closingRetryTimeout);
+    closingRetryTimeout = null;
+  }
+  if (closingFinishTimeout) {
+    clearTimeout(closingFinishTimeout);
+    closingFinishTimeout = null;
+  }
+}
+
+function resetClosingState() {
+  clearClosingTimers();
+  closingStartedAt = 0;
+  closingHasSpoken = false;
+  closingRetryUsed = false;
 }
 
 function configurePostCallCta(triggeredByLimit = false) {
@@ -822,18 +850,36 @@ async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
-async function setAutoResponses(on){
+async function setTurnBehavior({ createResponse, interruptResponse }) {
   try{
     await sendWhenChannelOpen({
       type: "session.update",
       session: {
-        turn_detection: { type: "server_vad", create_response: !!on, interrupt_response: true }
+        turn_detection: {
+          type: "server_vad",
+          create_response: !!createResponse,
+          interrupt_response: !!interruptResponse
+        }
       }
     }, 5000);
-    console.log(`[${runId}] [auto] create_response=${!!on}`);
+    console.log(`[${runId}] [turn] create_response=${!!createResponse} interrupt_response=${!!interruptResponse}`);
   } catch(e) {
-    console.log(`[${runId}] [auto] failed`, e);
+    console.log(`[${runId}] [turn] failed`, e);
   }
+}
+
+async function setAutoResponses(on){
+  return setTurnBehavior({
+    createResponse: !!on,
+    interruptResponse: true
+  });
+}
+
+async function lockClosingMode() {
+  return setTurnBehavior({
+    createResponse: false,
+    interruptResponse: false
+  });
 }
 
 async function triggerStartModeKickoff() {
@@ -877,7 +923,7 @@ Open with:
 “You’re new here, aren’t you?” (pause 900ms)
 
 Then ask ONE question and stop:
-“What should I call you?”
+“What should I call you?"
 STOP SPEAKING IMMEDIATELY.
 Wait in silence. Do not say anything else until the user speaks.
 
@@ -946,6 +992,7 @@ async function handleTimeLimitReached(){
 
   stopCountdown();
   stopDynamicResets();
+  clearClosingTimers();
   setSoftHint("");
   setStatus("Wrapping up…");
 
@@ -956,21 +1003,14 @@ async function handleTimeLimitReached(){
   } catch (_) {}
 }
 
-async function maybeTriggerSoftEnding(){
-  if (!softEndEnabled || softEndFinalizing) return;
-  if (!dc || dc.readyState !== "open") return;
+function scheduleClosingRetry() {
+  if (closingRetryUsed) return;
 
-  if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
-    softEndWarningTriggered = true;
-    setSoftHint("Sophie is preparing a short closing.");
-    console.log(`[${runId}] [softend] warning threshold reached: ${remainingSeconds}s`);
-  }
+  closingRetryTimeout = setTimeout(async () => {
+    if (closingHasSpoken || softEndFinalizing || limitTriggered) return;
 
-  if (!softEndSummaryTriggered && remainingSeconds <= softEndSummarySeconds) {
-    softEndSummaryTriggered = true;
-    stopDynamicResets();
-    setSoftHint("Sophie is bringing it to a close.");
-    console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
+    closingRetryUsed = true;
+    console.log(`[${runId}] [softend] retrying closing`);
 
     try {
       await cancelAnyOngoingResponse();
@@ -1011,14 +1051,86 @@ calm, warm, natural, complete
 `
         }
       }, 5000);
+    } catch (e) {
+      console.log(`[${runId}] [softend] retry failed`, e);
+    }
+  }, 1800);
+}
 
-      try {
-        await setAutoResponses(false);
-      } catch (e) {
-        console.log(`[${runId}] [softend] disabling auto responses failed`, e);
-      }
+function scheduleClosingForceEnd() {
+  closingForceTimeout = setTimeout(() => {
+    console.log(`[${runId}] [softend] force end`);
+    void handleTimeLimitReached();
+  }, 8000);
+}
+
+async function maybeTriggerSoftEnding(){
+  if (!softEndEnabled || softEndFinalizing) return;
+  if (!dc || dc.readyState !== "open") return;
+
+  if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
+    softEndWarningTriggered = true;
+    setSoftHint("Sophie is preparing a short closing.");
+    console.log(`[${runId}] [softend] warning threshold reached: ${remainingSeconds}s`);
+  }
+
+  if (!softEndSummaryTriggered && remainingSeconds <= softEndSummarySeconds) {
+    softEndSummaryTriggered = true;
+    stopDynamicResets();
+    stopCountdown();
+    setSoftHint("Sophie is bringing it to a close.");
+    console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
+
+    closingStartedAt = Date.now();
+    closingHasSpoken = false;
+    closingRetryUsed = false;
+
+    try {
+      await cancelAnyOngoingResponse();
+      await lockClosingMode();
+
+      await sendWhenChannelOpen({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: `
+Closing mode now.
+
+Speak in the same language that was used most recently in the conversation.
+
+Your first sentence MUST be a short natural transition, not the summary itself.
+
+Good examples of the transition:
+- "Unsere Zeit ist fast um. Ich fasse kurz zusammen."
+- "Ganz kurz noch, bevor wir rausgehen."
+- "Our time is almost up. Let me wrap up."
+- "Before we stop, let me wrap up."
+
+Hard rules:
+- maximum 2 sentences total
+- maximum 18 words per sentence
+- do not list more than 1 key point
+- do not explain
+- do not introduce anything new
+- do not ask a question
+- do not mention subscriptions, pricing, plans, timers, technical issues, or limits
+- make it short enough to finish safely before the session ends
+
+Structure:
+1. one very short transition sentence
+2. one very short sentence with topic + key takeaway or next step
+
+Tone:
+calm, warm, natural, complete
+`
+        }
+      }, 5000);
+
+      scheduleClosingRetry();
+      scheduleClosingForceEnd();
     } catch (e) {
       console.log(`[${runId}] [softend] summary trigger failed`, e);
+      scheduleClosingForceEnd();
     }
   }
 }
@@ -1032,7 +1144,7 @@ function startCountdown(){
 
     void maybeTriggerSoftEnding();
 
-    if (remainingSeconds <= 0) {
+    if (remainingSeconds <= 0 && !softEndSummaryTriggered) {
       void handleTimeLimitReached();
     }
   }, 1000);
@@ -1105,13 +1217,19 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
-        if (chunk) partialAssistant += chunk;
+        if (chunk) {
+          partialAssistant += chunk;
+          if (softEndSummaryTriggered) closingHasSpoken = true;
+        }
         return;
       }
 
       if (msg?.type === "response.audio_transcript.done") {
         const full = String(msg?.transcript || msg?.text || "").trim();
-        if (full) partialAssistant = full;
+        if (full) {
+          partialAssistant = full;
+          if (softEndSummaryTriggered) closingHasSpoken = true;
+        }
         return;
       }
 
@@ -1134,6 +1252,15 @@ function attachChannel(ch) {
           console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
           kickoffInProgress = false;
           await setAutoResponses(true);
+          return;
+        }
+
+        if (softEndSummaryTriggered && !softEndFinalizing) {
+          console.log(`[${runId}] [softend] response.done -> finishing session`);
+          clearClosingTimers();
+          closingFinishTimeout = setTimeout(() => {
+            void handleTimeLimitReached();
+          }, 700);
         }
       }
     } catch (_) {}
@@ -1205,6 +1332,7 @@ async function startVoice(){
   softEndWarningTriggered = false;
   softEndSummaryTriggered = false;
   softEndFinalizing = false;
+  resetClosingState();
 
   stopDynamicResets();
   isFirstSession = false;
@@ -1338,6 +1466,7 @@ async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
   stopDynamicResets();
   stopCountdown();
+  clearClosingTimers();
 
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
@@ -1428,6 +1557,7 @@ Max 12 words.
   setStatus(triggeredByLimit ? "Session complete." : "Ended.");
   setSoftHint("");
   softEndFinalizing = false;
+  resetClosingState();
 }
 
 logoutBtn.onclick = async () => {
