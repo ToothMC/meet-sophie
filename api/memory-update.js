@@ -4,6 +4,38 @@ function cleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function buildSessionTitle(value = "") {
+  const text = cleanText(value);
+
+  if (!text) return "Session";
+
+  const cleaned = text
+    .replace(/^der benutzer\s+/i, "")
+    .replace(/^the user\s+/i, "")
+    .replace(/^user\s+/i, "")
+    .replace(/^conversation about\s+/i, "")
+    .replace(/^meeting about\s+/i, "")
+    .replace(/^discussion about\s+/i, "")
+    .trim();
+
+  const lower = cleaned.toLowerCase();
+
+  if (lower.includes("jobrad")) return "Jobrad";
+  if (lower.includes("iran")) return "Iran-Konflikt";
+  if (lower.includes("gehalt")) return "Gehalt";
+  if (lower.includes("salary")) return "Salary Negotiation";
+  if (lower.includes("meeting")) return "Meeting";
+  if (lower.includes("bewerbung")) return "Bewerbung";
+
+  const firstChunk = cleaned
+    .split(/[.!?]/)[0]
+    .split(",")[0]
+    .trim()
+    .slice(0, 40);
+
+  return firstChunk || "Session";
+}
+
 function buildStructuredSummary({ shortSummary = "", emotionalTone = "", stressLevel = null, closenessLevel = null }) {
   return {
     summary: cleanText(shortSummary),
@@ -88,14 +120,17 @@ async function generateConversationOutput({
   model,
 }) {
   const system =
-  "You create a structured THINKING REPORT after a conversation. " +
-  "Your task is not superficial summarization. Your task is to extract the thinking structure behind the conversation. " +
-  "Focus on the real substance of the discussion, not greetings, filler phrases, or testing sentences. " +
-  "Identify the central question, the key insights that emerged, the factors influencing decisions, and possible directions. " +
-  "Produce thoughtful and useful output that helps the user continue thinking after the conversation. " +
-  "Avoid repeating obvious transcript sentences. Extract meaning instead. " +
-  "If the conversation is short or shallow, keep the report short and honest instead of inventing depth. " +
-  "IMPORTANT: Write the entire output in the SAME language as the transcript.";
+    "You create a structured THINKING REPORT after a conversation. " +
+    "Your task is not superficial summarization. Your task is to extract the thinking structure behind the conversation. " +
+    "Focus on the real substance of the discussion, not greetings, filler phrases, or testing sentences. " +
+    "Identify the central question, the key insights that emerged, the factors influencing decisions, and possible directions. " +
+    "Produce thoughtful and useful output that helps the user continue thinking after the conversation. " +
+    "Avoid repeating obvious transcript sentences. Extract meaning instead. " +
+    "If the conversation is short or shallow, keep the report short and honest instead of inventing depth. " +
+    "Also generate a short session_title with max 4 words. " +
+    "The title must name the main topic only, not a sentence. " +
+    "Avoid generic titles like Conversation, Session, Discussion. " +
+    "IMPORTANT: Write the entire output in the SAME language as the transcript.";
 
   const userMsg = `
 Fallback summary from session memory:
@@ -109,6 +144,7 @@ ${transcriptText}
     type: "object",
     additionalProperties: false,
     properties: {
+      session_title: { type: "string" },
       short_summary: { type: "string" },
       key_insights: {
         type: "array",
@@ -139,7 +175,7 @@ ${transcriptText}
         items: { type: "string" },
       },
     },
-    required: ["short_summary", "key_insights", "action_plan", "open_questions"],
+    required: ["session_title", "short_summary", "key_insights", "action_plan", "open_questions"],
   };
 
   const r = await fetch("https://api.openai.com/v1/responses", {
@@ -186,11 +222,13 @@ ${transcriptText}
   }
 
   const shortSummary = cleanText(parsed?.short_summary || fallbackSummary).slice(0, 300);
+  const sessionTitle = buildSessionTitle(parsed?.session_title || shortSummary || fallbackSummary);
   const keyInsights = sanitizeInsightItems(parsed?.key_insights);
   const actionPlan = sanitizeActionItems(parsed?.action_plan);
   const openQuestions = sanitizeOpenQuestions(parsed?.open_questions);
 
   return {
+    session_title: sessionTitle,
     short_summary: shortSummary || cleanText(fallbackSummary).slice(0, 300),
     structured_summary: buildStructuredSummary({
       shortSummary: shortSummary || fallbackSummary,
@@ -935,6 +973,7 @@ ${transcriptText}
     } catch (e) {
       console.error("conversation output generation failed:", e?.message || e);
       conversationOutput = {
+        session_title: buildSessionTitle(sessSummary),
         short_summary: sessSummary.slice(0, 300),
         structured_summary: buildStructuredSummary({
           shortSummary: sessSummary,
@@ -950,7 +989,7 @@ ${transcriptText}
 
     const outputRow = {
       session_id: insertedSession.id,
-      title: finalSessionTitle.slice(0, 120),
+      title: cleanText(conversationOutput.session_title || finalSessionTitle).slice(0, 120),
       short_summary: cleanText(conversationOutput.short_summary || sessSummary).slice(0, 300),
       structured_summary: conversationOutput.structured_summary || buildStructuredSummary({
         shortSummary: sessSummary,
@@ -1003,6 +1042,7 @@ ${transcriptText}
       },
       output: {
         title: outputRow.title,
+        session_title: outputRow.title,
         short_summary: outputRow.short_summary,
         structured_summary: outputRow.structured_summary,
         key_insights: outputRow.key_insights,
