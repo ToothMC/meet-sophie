@@ -501,6 +501,7 @@ let softEndSummarySeconds = 22;
 let softEndWarningTriggered = false;
 let softEndSummaryTriggered = false;
 let softEndFinalizing = false;
+let closingStartedAt = 0;
 let closingHasSpoken = false;
 let closingRetryUsed = false;
 let closingForceTimeout = null;
@@ -511,6 +512,7 @@ let talkStartedAt = null;
 let sessionId = null;
 
 let dynamicResetInterval = null;
+
 let limitTriggered = false;
 
 let startModeTriggered = false;
@@ -636,32 +638,9 @@ function clearClosingTimers() {
 
 function resetClosingState() {
   clearClosingTimers();
+  closingStartedAt = 0;
   closingHasSpoken = false;
   closingRetryUsed = false;
-}
-
-function muteLocalMic() {
-  if (!stream) return;
-  try {
-    stream.getAudioTracks().forEach(track => {
-      track.enabled = false;
-    });
-    console.log(`[${runId}] [mic] muted`);
-  } catch (e) {
-    console.log(`[${runId}] [mic] mute failed`, e);
-  }
-}
-
-function unmuteLocalMic() {
-  if (!stream) return;
-  try {
-    stream.getAudioTracks().forEach(track => {
-      track.enabled = true;
-    });
-    console.log(`[${runId}] [mic] unmuted`);
-  } catch (e) {
-    console.log(`[${runId}] [mic] unmute failed`, e);
-  }
 }
 
 function configurePostCallCta(triggeredByLimit = false) {
@@ -1099,15 +1078,14 @@ async function maybeTriggerSoftEnding(){
     softEndSummaryTriggered = true;
     stopDynamicResets();
     stopCountdown();
-    endBtn.disabled = true;
     setSoftHint("Sophie is bringing it to a close.");
     console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
 
+    closingStartedAt = Date.now();
     closingHasSpoken = false;
     closingRetryUsed = false;
 
     try {
-      muteLocalMic();
       await cancelAnyOngoingResponse();
       await lockClosingMode();
 
@@ -1425,7 +1403,6 @@ async function startVoice(){
     setupDataChannelLogging();
 
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    unmuteLocalMic();
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     audioEl = document.createElement("audio");
@@ -1553,10 +1530,7 @@ Max 12 words.
   }
 
   if(stream){
-    try {
-      unmuteLocalMic();
-      stream.getTracks().forEach(t => t.stop());
-    } catch(e){}
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
     stream = null;
   }
 
