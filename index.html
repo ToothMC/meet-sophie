@@ -336,6 +336,127 @@
       color:var(--muted);
     }
 
+    .thinking-section{
+      padding:84px 0 58px;
+    }
+
+    .thinking-shell{
+      position:relative;
+      max-width:980px;
+      margin:0 auto;
+      padding:56px 42px;
+      border-radius:34px;
+      background:
+        radial-gradient(circle at top right, rgba(142,178,255,.10), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(255,199,146,.08), transparent 28%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 40px 120px rgba(0,0,0,.34);
+      overflow:hidden;
+    }
+
+    .thinking-shell::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+    }
+
+    .thinking-inner{
+      position:relative;
+      z-index:1;
+      text-align:center;
+    }
+
+    .thinking-eyebrow{
+      display:inline-block;
+      margin-bottom:18px;
+      font-size:12px;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:rgba(246,247,251,.58);
+    }
+
+    .thinking-title{
+      margin:0 auto 22px;
+      max-width:760px;
+      font-size:clamp(34px, 5vw, 60px);
+      line-height:1.02;
+      letter-spacing:-.04em;
+      font-weight:650;
+    }
+
+    .thinking-copy{
+      margin:0 auto;
+      max-width:720px;
+      color:var(--muted);
+      font-size:18px;
+      line-height:1.72;
+    }
+
+    .thinking-copy p{
+      margin:0 0 16px;
+    }
+
+    .thinking-copy p:last-child{
+      margin-bottom:0;
+    }
+
+    .thinking-highlight{
+      margin:48px auto 0;
+      max-width:760px;
+      font-size:clamp(28px, 4vw, 44px);
+      line-height:1.18;
+      letter-spacing:-.035em;
+      font-weight:600;
+      color:var(--text);
+      text-wrap:balance;
+    }
+
+    .thinking-sources{
+      margin:34px auto 0;
+      max-width:860px;
+      text-align:center;
+    }
+
+    .thinking-sources-label{
+      margin-bottom:14px;
+      font-size:12px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      color:rgba(246,247,251,.54);
+    }
+
+    .thinking-sources-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+
+    .thinking-source-card{
+      display:block;
+      padding:16px 16px 15px;
+      border-radius:18px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .thinking-source-title{
+      display:block;
+      margin-bottom:4px;
+      font-size:15px;
+      font-weight:600;
+      color:var(--text);
+    }
+
+    .thinking-source-text{
+      display:block;
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
     .cards{
       display:grid;
       grid-template-columns:repeat(3,1fr);
@@ -528,6 +649,7 @@
       }
 
       .cards{grid-template-columns:1fr}
+      .thinking-sources-grid{grid-template-columns:1fr}
       .hero-visual{min-height:auto}
       .hero-card{min-height:540px}
       .nav-links{display:none}
@@ -536,6 +658,10 @@
     @media (max-width:640px){
       .hero{padding:34px 0 26px}
       .section{padding:34px 0}
+      .thinking-section{padding:56px 0 34px}
+      .thinking-shell{padding:34px 22px;border-radius:28px}
+      .thinking-copy{font-size:17px}
+      .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
       .hero-card{min-height:470px;border-radius:28px}
       .floating-panel{left:14px;right:14px;bottom:14px;padding:16px}
@@ -570,9 +696,9 @@
             <span id="lang-label">Language</span>
           </button>
           <div class="lang-menu" id="langMenu">
-            <button type="button" onclick="setLang('en')">English</button>
-            <button type="button" onclick="setLang('de')">Deutsch</button>
-            <button type="button" onclick="setLang('fr')">Français</button>
+            <button type="button" data-lang="en">English</button>
+            <button type="button" data-lang="de">Deutsch</button>
+            <button type="button" data-lang="fr">Français</button>
           </div>
         </div>
 
@@ -598,6 +724,48 @@
             <div class="floating-panel">
               <div class="floating-label" id="floating-label">A different kind of AI</div>
               <div class="floating-text" id="floating-text">“Sophie says: Think one moment longer before you react.”</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="thinking-section" id="thinking-through-conversation">
+      <div class="wrap">
+        <div class="thinking-shell">
+          <div class="thinking-inner">
+            <div class="thinking-eyebrow" id="thinking-eyebrow">Research-backed</div>
+            <h2 class="thinking-title" id="thinking-title">Thinking through conversation</h2>
+
+            <div class="thinking-copy">
+              <p id="thinking-copy-1">Thinking becomes even more powerful when the conversation partner is designed to help you reason.</p>
+              <p id="thinking-copy-2">Sophie listens carefully, asks thoughtful questions and helps you explore different perspectives.</p>
+              <p id="thinking-copy-3">Instead of giving quick answers, she helps you organize your thinking — so your own conclusions become clearer.</p>
+            </div>
+
+            <div class="thinking-highlight" id="thinking-highlight">
+              Conversation clarifies thinking.<br>
+              Conversation with an intelligent AI can take it even further.
+            </div>
+
+            <div class="thinking-sources">
+              <div class="thinking-sources-label" id="thinking-sources-label">Research references</div>
+              <div class="thinking-sources-grid">
+                <div class="thinking-source-card">
+                  <span class="thinking-source-title" id="source-1-title">Ericsson &amp; Simon</span>
+                  <span class="thinking-source-text" id="source-1-text">Protocol Analysis</span>
+                </div>
+
+                <div class="thinking-source-card">
+                  <span class="thinking-source-title" id="source-2-title">Mercer</span>
+                  <span class="thinking-source-text" id="source-2-text">Dialogic Learning</span>
+                </div>
+
+                <div class="thinking-source-card">
+                  <span class="thinking-source-title" id="source-3-title">Socratic Method</span>
+                  <span class="thinking-source-text" id="source-3-text">Stanford Encyclopedia of Philosophy</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -869,6 +1037,20 @@
           "“Sophie says: Think one step further.”"
         ],
 
+        thinking_eyebrow: "Research-backed",
+        thinking_title: "Thinking through conversation",
+        thinking_copy_1: "Thinking becomes even more powerful when the conversation partner is designed to help you reason.",
+        thinking_copy_2: "Sophie listens carefully, asks thoughtful questions and helps you explore different perspectives.",
+        thinking_copy_3: "Instead of giving quick answers, she helps you organize your thinking — so your own conclusions become clearer.",
+        thinking_highlight: "Conversation clarifies thinking.<br>Conversation with an intelligent AI can take it even further.",
+        thinking_sources_label: "Research references",
+        source_1_title: "Ericsson & Simon",
+        source_1_text: "Protocol Analysis",
+        source_2_title: "Mercer",
+        source_2_text: "Dialogic Learning",
+        source_3_title: "Socratic Method",
+        source_3_text: "Stanford Encyclopedia of Philosophy",
+
         use_cases_title: "How people use Sophie",
         use_cases_intro: "Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.",
 
@@ -983,7 +1165,7 @@
       de: {
         page_title: "Meet Sophie — Deine KI-Denkpartnerin",
         meta_description: "Sprachgespräche mit Sophie — deiner KI-Denkpartnerin zum Erkunden von Ideen, Prüfen von Entscheidungen und Reflektieren dessen, was wirklich zählt.",
-        lang_label: "Language",
+        lang_label: "Sprache",
 
         nav_use_cases: "Anwendungsfälle",
         nav_how_it_works: "So funktioniert es",
@@ -1009,6 +1191,20 @@
           "„Sophie says: Welche Entscheidung fühlt sich morgen noch richtig an?“",
           "„Sophie says: Denk einen Schritt weiter.“"
         ],
+
+        thinking_eyebrow: "Fundiert durch Forschung",
+        thinking_title: "Denken im Gespräch",
+        thinking_copy_1: "Der Effekt wird noch stärker, wenn der Gesprächspartner darauf ausgelegt ist, beim Denken zu helfen.",
+        thinking_copy_2: "Sophie hört aufmerksam zu, stellt kluge Fragen und hilft dir, verschiedene Perspektiven zu betrachten.",
+        thinking_copy_3: "Statt schnelle Antworten zu geben, hilft sie dir, deine Gedanken zu ordnen — damit deine eigenen Schlussfolgerungen klarer werden.",
+        thinking_highlight: "Gespräche klären Gedanken.<br>Ein Gespräch mit intelligenter KI kann diesen Effekt noch verstärken.",
+        thinking_sources_label: "Wissenschaftlicher Hintergrund",
+        source_1_title: "Ericsson & Simon",
+        source_1_text: "Protocol Analysis",
+        source_2_title: "Mercer",
+        source_2_text: "Dialogic Learning",
+        source_3_title: "Sokratische Methode",
+        source_3_text: "Stanford Encyclopedia of Philosophy",
 
         use_cases_title: "Wie Menschen Sophie nutzen",
         use_cases_intro: "Manchmal brauchst du keine sofortigen Antworten. Du brauchst Raum, um etwas wirklich zu durchdenken — eine Idee, eine Entscheidung, ein Meeting oder etwas, das dich schon länger beschäftigt.",
@@ -1124,7 +1320,7 @@
       fr: {
         page_title: "Meet Sophie — Votre partenaire de réflexion IA",
         meta_description: "Des conversations vocales avec Sophie — votre partenaire de réflexion IA pour explorer des idées, tester des décisions et réfléchir à ce qui compte vraiment.",
-        lang_label: "Language",
+        lang_label: "Langue",
 
         nav_use_cases: "Cas d’usage",
         nav_how_it_works: "Comment ça marche",
@@ -1150,6 +1346,20 @@
           "« Sophie dit : Quelle décision semblera encore juste demain ? »",
           "« Sophie dit : Pense un pas plus loin. »"
         ],
+
+        thinking_eyebrow: "Fondé sur la recherche",
+        thinking_title: "Réfléchir par la conversation",
+        thinking_copy_1: "L’effet devient encore plus fort lorsque l’interlocuteur est conçu pour vous aider à raisonner.",
+        thinking_copy_2: "Sophie écoute attentivement, pose des questions pertinentes et vous aide à explorer différentes perspectives.",
+        thinking_copy_3: "Au lieu de donner des réponses rapides, elle vous aide à organiser votre réflexion — pour que vos propres conclusions deviennent plus claires.",
+        thinking_highlight: "La conversation clarifie la pensée.<br>Une conversation avec une IA intelligente peut aller encore plus loin.",
+        thinking_sources_label: "Références de recherche",
+        source_1_title: "Ericsson & Simon",
+        source_1_text: "Protocol Analysis",
+        source_2_title: "Mercer",
+        source_2_text: "Dialogic Learning",
+        source_3_title: "Méthode socratique",
+        source_3_text: "Stanford Encyclopedia of Philosophy",
 
         use_cases_title: "Comment les gens utilisent Sophie",
         use_cases_intro: "Parfois, vous n’avez pas besoin de réponses immédiates. Vous avez besoin d’espace pour réfléchir à quelque chose — une idée, une décision, une réunion, ou quelque chose qui vous accompagne depuis un moment.",
@@ -1319,6 +1529,19 @@
         "hero-btn-primary": t.hero_btn_primary,
         "floating-label": t.floating_label,
 
+        "thinking-eyebrow": t.thinking_eyebrow,
+        "thinking-title": t.thinking_title,
+        "thinking-copy-1": t.thinking_copy_1,
+        "thinking-copy-2": t.thinking_copy_2,
+        "thinking-copy-3": t.thinking_copy_3,
+        "thinking-sources-label": t.thinking_sources_label,
+        "source-1-title": t.source_1_title,
+        "source-1-text": t.source_1_text,
+        "source-2-title": t.source_2_title,
+        "source-2-text": t.source_2_text,
+        "source-3-title": t.source_3_title,
+        "source-3-text": t.source_3_text,
+
         "use-cases-title": t.use_cases_title,
         "use-cases-intro": t.use_cases_intro,
 
@@ -1432,6 +1655,7 @@
 
       const htmlMap = {
         "hero-title": t.hero_title,
+        "thinking-highlight": t.thinking_highlight,
         "dialogue-you": t.dialogue_you,
         "dialogue-sophie": t.dialogue_sophie,
         "pricing-bubble-free": t.pricing_bubble_free,
@@ -1462,26 +1686,39 @@
       closeLangMenu();
     }
 
+    window.setLang = setLang;
+
     const langToggle = document.getElementById("langToggle");
     const langMenu = document.getElementById("langMenu");
 
     function openLangMenu() {
+      if (!langMenu || !langToggle) return;
       langMenu.classList.add("open");
       langToggle.setAttribute("aria-expanded", "true");
     }
 
     function closeLangMenu() {
+      if (!langMenu || !langToggle) return;
       langMenu.classList.remove("open");
       langToggle.setAttribute("aria-expanded", "false");
     }
 
     if (langToggle && langMenu) {
-      langToggle.addEventListener("click", () => {
+      langToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
         if (langMenu.classList.contains("open")) {
           closeLangMenu();
         } else {
           openLangMenu();
         }
+      });
+
+      langMenu.querySelectorAll("[data-lang]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const lang = btn.getAttribute("data-lang");
+          if (lang) setLang(lang);
+        });
       });
 
       document.addEventListener("click", (e) => {
