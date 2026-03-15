@@ -175,32 +175,85 @@ body{
   <button id="end" class="btn" disabled>Leave the Room</button>
 </div>
 
-<div id="postCallPanel" style="display:none; position:relative; z-index:2; width:90%; max-width:820px; margin:24px auto 40px; text-align:left; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); border-radius:18px; padding:20px;">
-  <h3 style="margin:0 0 14px; font-size:22px;">Conversation Summary</h3>
+<div id="postCallPanel" style="
+display:none;
+position:fixed;
+left:0;
+right:0;
+bottom:0;
+height:70%;
+transform:translateY(60%);
+transition:transform .35s ease;
+z-index:20;
+background:#0b0d14;
+border-top-left-radius:22px;
+border-top-right-radius:22px;
+box-shadow:0 -10px 40px rgba(0,0,0,.5);
+padding:0;
+">
+  <div style="
+    width:40px;
+    height:4px;
+    background:#555;
+    border-radius:2px;
+    margin:10px auto;
+  "></div>
 
-  <div style="margin-bottom:18px;">
-    <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Short Summary</div>
-    <div id="postCallSummary" style="font-size:16px; line-height:1.5;"></div>
+  <div style="
+    text-align:center;
+    font-weight:600;
+    margin-bottom:6px;
+    font-size:18px;
+  ">
+    Session Insights
   </div>
 
-  <div style="margin-bottom:18px;">
-    <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Key Insights</div>
-    <div id="postCallInsights" style="font-size:15px; line-height:1.6; white-space:pre-line;"></div>
-  </div>
+  <div style="
+    overflow-y:auto;
+    padding:20px;
+    height:calc(100% - 50px);
+    color:#e8e8e8;
+    font-size:15px;
+    text-align:left;
+    max-width:820px;
+    margin:0 auto;
+  ">
 
-  <div style="margin-bottom:18px;">
-    <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Action Plan</div>
-    <div id="postCallActions" style="font-size:15px; line-height:1.6; white-space:pre-line;"></div>
-  </div>
+    <div style="margin-bottom:22px;">
+      <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Summary</div>
+      <div id="postCallSummary" style="font-size:16px; line-height:1.5;"></div>
+    </div>
 
-  <div style="margin-bottom:10px;">
-    <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Full Transcript</div>
-    <pre id="postCallTranscript" style="white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:14px; line-height:1.5; background:rgba(255,255,255,.05); border-radius:12px; padding:14px; max-height:320px; overflow:auto;"></pre>
-  </div>
+    <div style="margin-bottom:22px;">
+      <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Key Insights</div>
+      <div id="postCallInsights" style="font-size:15px; line-height:1.6; white-space:pre-line;"></div>
+    </div>
 
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
-    <button id="downloadSummaryBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Conversation Summary</button>
-    <button id="downloadTranscriptBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Full Transcript</button>
+    <div style="margin-bottom:22px;">
+      <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Action Plan</div>
+      <div id="postCallActions" style="font-size:15px; line-height:1.6; white-space:pre-line;"></div>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <div style="font-size:13px; opacity:.7; margin-bottom:6px;">Full Transcript</div>
+      <pre id="postCallTranscript" style="
+        white-space:pre-wrap;
+        word-break:break-word;
+        font-family:inherit;
+        font-size:14px;
+        line-height:1.5;
+        background:rgba(255,255,255,.05);
+        border-radius:12px;
+        padding:14px;
+        max-height:320px;
+        overflow:auto;
+      "></pre>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+      <button id="downloadSummaryBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Conversation Summary</button>
+      <button id="downloadTranscriptBtn" type="button" class="btn" style="width:auto; margin:0; padding:12px 16px; font-size:15px;">Full Transcript</button>
+    </div>
   </div>
 </div>
   
@@ -472,6 +525,30 @@ function downloadTextFile(filename, text) {
   URL.revokeObjectURL(url);
 }
 
+function slugifyFilenamePart(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 50) || "session";
+}
+
+function getDatePrefix() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+  
 function showPostCallResults(apiResult, transcriptLog) {
   const summary =
     apiResult?.output?.short_summary ||
@@ -482,11 +559,24 @@ function showPostCallResults(apiResult, transcriptLog) {
   const actions = renderActionsList(apiResult?.output?.action_plan, "—");
   const transcriptText = buildTranscriptText(transcriptLog);
 
+  const datePrefix = getDatePrefix();
+  const sessionTitle =
+    apiResult?.output?.session_title ||
+    apiResult?.session?.title ||
+    "session";
+  const topicSlug = slugifyFilenamePart(sessionTitle);
+  
   postCallSummary.textContent = summary;
   postCallInsights.textContent = insights;
   postCallActions.textContent = actions;
   postCallTranscript.textContent = transcriptText || "No transcript available.";
   postCallPanel.style.display = "block";
+  postCallPanel.style.transform = "translateY(60%)";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      postCallPanel.style.transform = "translateY(0)";
+    });
+  });
 
   downloadSummaryBtn.onclick = () => {
     const summaryText = postCallSummary.textContent || "";
@@ -505,16 +595,19 @@ Action Plan
 ${actionsText}
 `;
 
-    downloadTextFile("sophie-summary.txt", text);
+    downloadTextFile(`${datePrefix}_sophie-summary_${topicSlug}.txt`, text);
   };
 
   downloadTranscriptBtn.onclick = () => {
-    downloadTextFile("sophie-transcript.txt", transcriptText || "");
+    downloadTextFile(`${datePrefix}_sophie-transcript_${topicSlug}.txt`, transcriptText || "");
   };
 }
 
 function hidePostCallResults() {
-  postCallPanel.style.display = "none";
+  postCallPanel.style.transform = "translateY(60%)";
+  setTimeout(() => {
+    postCallPanel.style.display = "none";
+  }, 350);
   postCallSummary.textContent = "";
   postCallInsights.textContent = "";
   postCallActions.textContent = "";
