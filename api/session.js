@@ -3,26 +3,60 @@ const { createClient } = require("@supabase/supabase-js");
 
 module.exports = async function handler(req, res) {
   try {
-    if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
 
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
+    if (!token) {
+      return res.status(401).json({ error: "Missing Authorization Bearer token" });
+    }
 
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
     }
+
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     const {
       data: { user },
       error: userErr,
     } = await supabase.auth.getUser(token);
-    if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
+
+    if (userErr || !user) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // ---------------------------
+    // Session ending config
+    // ---------------------------
+    // These values are meant for the frontend timer logic.
+    // Example:
+    // - at <= 30s remaining: prepare soft ending / summary request
+    // - at <= 15s remaining: play spoken summary + show summary card
+    const SOFT_END_WARNING_SECONDS = parseInt(process.env.SOFT_END_WARNING_SECONDS || "30", 10);
+    const SOFT_END_SUMMARY_SECONDS = parseInt(process.env.SOFT_END_SUMMARY_SECONDS || "15", 10);
+
+    // Safety normalization
+    const softEndWarningSeconds =
+      Number.isFinite(SOFT_END_WARNING_SECONDS) && SOFT_END_WARNING_SECONDS > 5
+        ? SOFT_END_WARNING_SECONDS
+        : 30;
+
+    const softEndSummarySeconds =
+      Number.isFinite(SOFT_END_SUMMARY_SECONDS) &&
+      SOFT_END_SUMMARY_SECONDS > 0 &&
+      SOFT_END_SUMMARY_SECONDS < softEndWarningSeconds
+        ? SOFT_END_SUMMARY_SECONDS
+        : 15;
 
     // ---------------------------
     // Subscription status (nur UI/Status)
@@ -37,7 +71,9 @@ module.exports = async function handler(req, res) {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (subErr) console.warn("Subscription lookup error:", subErr.message);
+      if (subErr) {
+        console.warn("Subscription lookup error:", subErr.message);
+      }
 
       const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
       isPremium = active;
@@ -65,7 +101,9 @@ module.exports = async function handler(req, res) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (usageErr) return res.status(500).json({ error: usageErr.message });
+    if (usageErr) {
+      return res.status(500).json({ error: usageErr.message });
+    }
 
     const freeTotal = usage?.free_seconds_total ?? 120;
     const freeUsed = usage?.free_seconds_used ?? 0;
@@ -85,6 +123,9 @@ module.exports = async function handler(req, res) {
         remaining_seconds: 0,
         is_premium: isPremium,
         plan: plan,
+        soft_end_enabled: true,
+        soft_end_warning_seconds: softEndWarningSeconds,
+        soft_end_summary_seconds: softEndSummarySeconds,
       });
     }
 
@@ -171,7 +212,9 @@ module.exports = async function handler(req, res) {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (profErr) console.warn("Profile lookup error:", profErr.message);
+      if (profErr) {
+        console.warn("Profile lookup error:", profErr.message);
+      }
 
       if (prof) {
         profile = {
@@ -202,7 +245,9 @@ module.exports = async function handler(req, res) {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (relErr) console.warn("Relationship lookup error:", relErr.message);
+      if (relErr) {
+        console.warn("Relationship lookup error:", relErr.message);
+      }
 
       if (relData) {
         rel = {
@@ -228,8 +273,13 @@ module.exports = async function handler(req, res) {
         .order("session_date", { ascending: false })
         .limit(sessionLimit);
 
-      if (sessErr) console.warn("Sessions lookup error:", sessErr.message);
-      if (Array.isArray(sess)) recentSessions = sess;
+      if (sessErr) {
+        console.warn("Sessions lookup error:", sessErr.message);
+      }
+
+      if (Array.isArray(sess)) {
+        recentSessions = sess;
+      }
     } catch (e) {
       console.warn("Sessions lookup crashed:", e?.message || e);
     }
@@ -240,7 +290,11 @@ module.exports = async function handler(req, res) {
     const prefsLine =
       (profile.notes || "").split("\n").find((ln) => ln.includes("SOPHIE_PREFS:")) || "";
 
-    const notesFallback = { preferred_name: "", preferred_addressing: "", preferred_pronoun: "" };
+    const notesFallback = {
+      preferred_name: "",
+      preferred_addressing: "",
+      preferred_pronoun: "",
+    };
 
     if (prefsLine) {
       const mName = prefsLine.match(/preferred_name=([^;]*)/i);
@@ -255,16 +309,25 @@ module.exports = async function handler(req, res) {
     const effectivePreferredName =
       profile.preferred_name || notesFallback.preferred_name || profile.first_name || "";
 
-    let effectiveAddressing = (profile.preferred_addressing || notesFallback.preferred_addressing || "")
+    let effectiveAddressing = (
+      profile.preferred_addressing ||
+      notesFallback.preferred_addressing ||
+      ""
+    )
       .toLowerCase()
       .trim();
-    if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") effectiveAddressing = "";
+
+    if (effectiveAddressing !== "informal" && effectiveAddressing !== "formal") {
+      effectiveAddressing = "";
+    }
 
     const effectivePronoun = profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
 
     // ✅ HARD language whitelist (prevents fr/es/ja etc.)
     let preferredLanguage = (profile.preferred_language || "en").toLowerCase().trim();
-    if (!["en", "de"].includes(preferredLanguage)) preferredLanguage = "en";
+    if (!["en", "de"].includes(preferredLanguage)) {
+      preferredLanguage = "en";
+    }
 
     // ✅ First-session Heuristik
     const isFirstSession =
@@ -407,8 +470,8 @@ User: "I have an idea for a project."
 
 Response style:
 
-"Interesting…  
-Is the idea more about solving a problem —  
+"Interesting…
+Is the idea more about solving a problem —
 or creating something people didn't even know they wanted?"
 
 Explorer mode should feel like thinking out loud together.
@@ -436,8 +499,8 @@ User: "I'm thinking about quitting my job."
 
 Response style:
 
-"Okay.  
-Is this more about moving toward something —  
+"Okay.
+Is this more about moving toward something —
 or escaping something?"
 
 Strategist mode should feel like a calm strategic sparring partner.
@@ -464,7 +527,7 @@ User: "Something weird happened today."
 
 Response style:
 
-"Hm…  
+"Hm…
 What part of it stayed with you the most?"
 
 Reflection mode should feel calm and human.
@@ -476,9 +539,9 @@ Choose the mode naturally based on the user's situation.
 
 Examples:
 
-ideas → Explorer  
-decisions → Strategist  
-experiences → Reflection  
+ideas → Explorer
+decisions → Strategist
+experiences → Reflection
 
 Do not explicitly mention the modes to the user.
 
@@ -573,8 +636,8 @@ INTERACTION FLOW
 
 Usually:
 
-1 react briefly  
-2 understand the situation  
+1 react briefly
+2 understand the situation
 3 explore the thinking
 
 
@@ -589,10 +652,10 @@ TONE
 
 Be:
 
-warm  
-curious  
-thoughtful  
-calm  
+warm
+curious
+thoughtful
+calm
 lightly playful
 
 
@@ -665,6 +728,51 @@ Rules:
 - Do not force references to old conversations.
 `;
 
+    const sessionClosingBlock =
+      preferredLanguage === "de"
+        ? `
+SESSION CLOSING / WRAP-UP
+
+If the user asks for a summary, a wrap-up, a quick recap, or says the time is almost over:
+- switch into closing mode immediately
+- keep it calm, clear, and short
+- do not introduce new ideas
+- do not ask multiple new questions
+- do not sound salesy
+
+Your closing structure:
+1. one short sentence naming the topic
+2. up to three short key insights
+3. one concrete next step
+
+Important:
+- speak naturally, not like a report
+- no bullet words like "first, second, third"
+- no mention of subscriptions, plans, prices, timers, technical limits, or system behavior
+- the user should feel mentally completed, not interrupted
+`
+        : `
+SESSION CLOSING / WRAP-UP
+
+If the user asks for a summary, a wrap-up, a quick recap, or says the time is almost over:
+- switch into closing mode immediately
+- keep it calm, clear, and short
+- do not introduce new ideas
+- do not ask multiple new questions
+- do not sound salesy
+
+Your closing structure:
+1. one short sentence naming the topic
+2. up to three short key insights
+3. one concrete next step
+
+Important:
+- speak naturally, not like a report
+- no bullet words like "first, second, third"
+- no mention of subscriptions, plans, prices, timers, technical limits, or system behavior
+- the user should feel mentally completed, not interrupted
+`;
+
     const sophiePrompt = `
 You are Sophie.
 
@@ -679,6 +787,8 @@ ${identityBlock}
 ${coreStyle}
 
 ${memoryBlock}
+
+${sessionClosingBlock}
 `;
 
     // ---------------------------
@@ -691,10 +801,8 @@ ${memoryBlock}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        // GA Realtime model (preview models are being retired)
         model: "gpt-realtime",
         voice: "shimmer",
-        // Required for GA Realtime to reliably start audio + text
         modalities: ["audio", "text"],
         temperature: 0.85,
         instructions: sophiePrompt,
@@ -728,6 +836,17 @@ ${memoryBlock}
       user_id: user.id,
       preferred_language: preferredLanguage,
       is_first_session: isFirstSession,
+
+      // Soft ending config for frontend
+      soft_end_enabled: true,
+      soft_end_warning_seconds: softEndWarningSeconds,
+      soft_end_summary_seconds: softEndSummarySeconds,
+      summary_required_before_cut: true,
+
+      // Helpful info for UI / debug
+      free_remaining_seconds: freeRemaining,
+      paid_remaining_seconds: paidRemaining,
+      topup_remaining_seconds: topupRemaining,
     });
   } catch (error) {
     console.error("Server error:", error);
