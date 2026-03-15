@@ -525,6 +525,39 @@ function downloadTextFile(filename, text) {
   URL.revokeObjectURL(url);
 }
 
+function slugifyFilenamePart(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 50) || "session";
+}
+
+function getDatePrefix() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildTopicFromSummary(summary = "") {
+  const cleaned = String(summary || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const shortTopic = cleaned.split(/[.!?]/)[0].slice(0, 60);
+  return slugifyFilenamePart(shortTopic);
+}
+  
 function showPostCallResults(apiResult, transcriptLog) {
   const summary =
     apiResult?.output?.short_summary ||
@@ -534,7 +567,9 @@ function showPostCallResults(apiResult, transcriptLog) {
   const insights = renderInsightsList(apiResult?.output?.key_insights, "—");
   const actions = renderActionsList(apiResult?.output?.action_plan, "—");
   const transcriptText = buildTranscriptText(transcriptLog);
-
+  const datePrefix = getDatePrefix();
+  const topicSlug = buildTopicFromSummary(summary);
+  
   postCallSummary.textContent = summary;
   postCallInsights.textContent = insights;
   postCallActions.textContent = actions;
@@ -564,11 +599,11 @@ Action Plan
 ${actionsText}
 `;
 
-    downloadTextFile("sophie-summary.txt", text);
+    downloadTextFile(`${datePrefix}_sophie-summary_${topicSlug}.txt`, text);
   };
 
   downloadTranscriptBtn.onclick = () => {
-    downloadTextFile("sophie-transcript.txt", transcriptText || "");
+    downloadTextFile(`${datePrefix}_sophie-transcript_${topicSlug}.txt`, transcriptText || "");
   };
 }
 
