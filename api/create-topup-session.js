@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     }
 
     const origin = req.headers.origin || "https://meet-sophie.com";
-    const successUrl = `${origin}/success`;
+    const successUrl = `${origin}/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/pricing`;
 
     const body = new URLSearchParams();
