@@ -69,46 +69,79 @@
   </div>
 
   <script>
-    const TEXT = {
-      de: {
-        title: "Zahlung erfolgreich ✅",
-        body: "Dein Abonnement ist aktiv. Du kannst jetzt mit Sophie weitermachen.",
-        wait: "Einen Moment… wird aktiviert.",
-        ready: "Bereit.",
-        btn: "Weiter zu Sophie",
-        manage: "Abo verwalten",
-      },
-      en: {
-        title: "Payment successful ✅",
-        body: "Your subscription is active. You can continue with Sophie now.",
-        wait: "One moment… activating.",
-        ready: "Ready.",
-        btn: "Enter the Room",
-        manage: "Manage subscription",
-      }
-    };
+  const TEXT = {
+    de: {
+      title: "Zahlung erfolgreich ✅",
+      body: "Dein Zugang wird jetzt aktiviert.",
+      wait: "Einen Moment… wird geprüft.",
+      ready: "Bereit.",
+      btn: "Weiter zu Sophie",
+      manage: "Abo verwalten",
+      error: "Die Aktivierung konnte nicht bestätigt werden. Bitte versuche es gleich noch einmal.",
+    },
+    en: {
+      title: "Payment successful ✅",
+      body: "Your access is being activated now.",
+      wait: "One moment… verifying.",
+      ready: "Ready.",
+      btn: "Enter the Room",
+      manage: "Manage subscription",
+      error: "Activation could not be confirmed yet. Please try again in a moment.",
+    }
+  };
 
-    let lang = (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "de";
+  let lang = (navigator.language || "").toLowerCase().startsWith("en") ? "en" : "de";
 
-    function setLang(l){
-      lang = l;
-      document.documentElement.lang = l;
-      document.getElementById("tTitle").textContent = TEXT[l].title;
-      document.getElementById("tBody").textContent  = TEXT[l].body;
-      document.getElementById("wait").textContent   = TEXT[l].wait;
-      document.getElementById("go").textContent     = TEXT[l].btn;
-      document.getElementById("tManage").textContent= TEXT[l].manage;
+  function setLang(l){
+    lang = l;
+    document.documentElement.lang = l;
+    document.getElementById("tTitle").textContent = TEXT[l].title;
+    document.getElementById("tBody").textContent  = TEXT[l].body;
+    document.getElementById("wait").textContent   = TEXT[l].wait;
+    document.getElementById("go").textContent     = TEXT[l].btn;
+    document.getElementById("tManage").textContent= TEXT[l].manage;
+  }
+
+  document.getElementById("de").onclick = (e)=>{ e.preventDefault(); setLang("de"); };
+  document.getElementById("en").onclick = (e)=>{ e.preventDefault(); setLang("en"); };
+
+  setLang(lang);
+
+  async function confirmCheckout() {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+
+    if (!sessionId) {
+      document.getElementById("wait").textContent = TEXT[lang].error;
+      document.getElementById("go").style.display = "inline-block";
+      return;
     }
 
-    document.getElementById("de").onclick = (e)=>{ e.preventDefault(); setLang("de"); };
-    document.getElementById("en").onclick = (e)=>{ e.preventDefault(); setLang("en"); };
+    try {
+      const res = await fetch(`/api/confirm-checkout?session_id=${encodeURIComponent(sessionId)}`, {
+        method: "GET",
+        credentials: "same-origin"
+      });
 
-    setLang(lang);
+      const json = await res.json().catch(() => ({}));
 
-    setTimeout(() => {
+      if (!res.ok) {
+        console.error("confirm-checkout failed:", json);
+        document.getElementById("wait").textContent = TEXT[lang].error;
+        document.getElementById("go").style.display = "inline-block";
+        return;
+      }
+
       document.getElementById("wait").textContent = TEXT[lang].ready;
+      window.location.href = "/talk/?paid=1";
+    } catch (err) {
+      console.error("confirm-checkout error:", err);
+      document.getElementById("wait").textContent = TEXT[lang].error;
       document.getElementById("go").style.display = "inline-block";
-    }, 1200);
-  </script>
+    }
+  }
+
+  confirmCheckout();
+</script>
 </body>
 </html>

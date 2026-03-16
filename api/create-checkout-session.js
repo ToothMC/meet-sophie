@@ -121,7 +121,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Failed to store legal acceptance", detail: t });
     }
 
-    const successUrl = `${origin}/talk/?paid=1`;
+    const successUrl = `${origin}/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/pricing/?canceled=1`;
 
     const stripeBody = new URLSearchParams();
