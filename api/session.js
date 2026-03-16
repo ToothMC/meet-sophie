@@ -118,16 +118,22 @@ module.exports = async function handler(req, res) {
     const remaining = freeRemaining + paidRemaining + topupRemaining;
 
     if (remaining <= 0) {
-      return res.status(402).json({
-        error: "No remaining time",
-        remaining_seconds: 0,
-        is_premium: isPremium,
-        plan: plan,
-        soft_end_enabled: true,
-        soft_end_warning_seconds: softEndWarningSeconds,
-        soft_end_summary_seconds: softEndSummarySeconds,
-      });
-    }
+      const reason = isPremium
+      ? "subscription_quota_exhausted"
+      : "no_active_subscription";
+
+    return res.status(402).json({
+      error: "No remaining time",
+      reason,
+      remaining_seconds: 0,
+      is_premium: isPremium,
+      plan: plan,
+      subscription_active: isPremium,
+      soft_end_enabled: true,
+      soft_end_warning_seconds: softEndWarningSeconds,
+      soft_end_summary_seconds: softEndSummarySeconds,
+  });
+}
 
     // ---------------------------
     // 1 ACTIVE SESSION PER USER (anti tab/refresh spam)
