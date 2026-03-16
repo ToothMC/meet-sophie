@@ -1377,10 +1377,88 @@ async function startVoice(){
     const data = await safeJson(tokenRes);
 
     if (tokenRes.status === 402) {
-      track("time_limit_reached");
+      const reason = data?.reason || "";
+      const premiumActive = !!data?.is_premium;
+
+  track("time_limit_reached", {
+    reason,
+    is_premium: premiumActive,
+    plan: data?.plan || null
+  });
+
+  showBackground(false);
+  startBtn.disabled = false;
+  logoutBtn.disabled = false;
+  headline.textContent = premiumActive
+    ? "Your included time is used up."
+    : "Continue with Sophie";
+  setStatus(
+    premiumActive
+      ? "Add top-up time or manage your subscription."
+      : "Choose a plan or add top-up time."
+  );
+  setSoftHint("");
+
+  postCallCta.style.display = "block";
+
+  if (premiumActive || reason === "subscription_quota_exhausted") {
+    postCallCtaTitle.textContent = "Continue with Sophie";
+    postCallPrimaryBtn.textContent = "Add top-up";
+    postCallPrimaryBtn.onclick = () => {
+      window.location.href = "/pricing/?mode=topup";
+    };
+
+    postCallSecondaryBtn.textContent = "Manage subscription";
+    postCallSecondaryBtn.onclick = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          window.location.href = "/pricing/";
+          return;
+        }
+
+        const res = await fetch("/api/create-portal-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: "{}",
+        });
+
+        const portal = await res.json().catch(() => ({}));
+        if (portal?.url) {
+          window.location.href = portal.url;
+        } else {
+          window.location.href = "/pricing/";
+        }
+      } catch (_) {
+        window.location.href = "/pricing/";
+      }
+    };
+  } else {
+    postCallCtaTitle.textContent = "Continue with Sophie";
+    postCallPrimaryBtn.textContent = "See plans";
+    postCallPrimaryBtn.onclick = () => {
       window.location.href = "/pricing/";
-      return;
-    }
+    };
+
+    postCallSecondaryBtn.textContent = "Add top-up";
+    postCallSecondaryBtn.onclick = () => {
+      window.location.href = "/pricing/?mode=topup";
+    };
+  }
+
+  postCallPanel.style.display = "block";
+  postCallPanel.style.transform = "translateY(60%)";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      postCallPanel.style.transform = "translateY(0)";
+    });
+  });
+
+  return;
+}
 
     if (!tokenRes.ok) {
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
