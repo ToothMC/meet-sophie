@@ -1282,26 +1282,28 @@ function track(name, payload = {}) {
   console.log("[track]", name, payload);
 }
 
-async function reportUsage(seconds) {
+async function finalizeSessionAfterSummary() {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
 
-    const res = await fetch("/api/usage", {
+    const res = await fetch("/api/finalize-session", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ seconds_used: seconds }),
+      body: JSON.stringify({
+        reason: "time_limit_reached"
+      }),
       keepalive: true,
     });
 
     const data = await res.json().catch(() => null);
-    console.log("[reportUsage]", res.status, data);
+    console.log("[finalizeSessionAfterSummary]", res.status, data);
     return data;
   } catch (e) {
-    console.log("[reportUsage] failed", e);
+    console.log("[finalizeSessionAfterSummary] failed", e);
     return null;
   }
 }
@@ -1497,6 +1499,10 @@ Max 12 words.
     await reportUsage(durationSeconds);
   }
 
+  if (triggeredByLimit) {
+    await finalizeSessionAfterSummary();
+  }
+  
   const transcriptSnapshot = [...convoLog];
   const memoryResult = await sendMemoryUpdate(durationSeconds);
 
