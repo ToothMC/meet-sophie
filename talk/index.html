@@ -1528,6 +1528,28 @@ Max 12 words.
   }
   
   const transcriptSnapshot = [...convoLog];
+  if (triggeredByLimit) {
+    if (dc) {
+      try { dc.close(); } catch(e){}
+      dc = null;
+  }
+
+    if (stream) {
+      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+      stream = null;
+  }
+
+    if (pc) {
+      try { pc.close(); } catch(e){}
+      pc = null;
+  }
+
+    if (audioEl) {
+      try { audioEl.srcObject = null; } catch(e){}
+      audioEl = null;
+  }
+}
+  
   const memoryResult = await sendMemoryUpdate(durationSeconds);
 
   if (memoryResult?.output || memoryResult?.session) {
