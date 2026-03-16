@@ -1305,7 +1305,7 @@ async function reportUsage(seconds) {
     return null;
   }
 }
-  
+
 async function finalizeSessionAfterSummary() {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1519,6 +1519,32 @@ Max 12 words.
     ? Math.round((Date.now() - talkStartedAt) / 1000)
     : 0;
 
+  const transcriptSnapshot = [...convoLog];
+
+  // Bei Time-Limit sofort die Live-Verbindung schließen,
+  // bevor weitere API-Calls laufen.
+  if (triggeredByLimit) {
+    if (dc) {
+      try { dc.close(); } catch(e){}
+      dc = null;
+    }
+
+    if (stream) {
+      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+      stream = null;
+    }
+
+    if (pc) {
+      try { pc.close(); } catch(e){}
+      pc = null;
+    }
+
+    if (audioEl) {
+      try { audioEl.srcObject = null; } catch(e){}
+      audioEl = null;
+    }
+  }
+
   if (durationSeconds > 0) {
     await reportUsage(durationSeconds);
   }
@@ -1526,30 +1552,7 @@ Max 12 words.
   if (triggeredByLimit) {
     await finalizeSessionAfterSummary();
   }
-  
-  const transcriptSnapshot = [...convoLog];
-  if (triggeredByLimit) {
-    if (dc) {
-      try { dc.close(); } catch(e){}
-      dc = null;
-  }
 
-    if (stream) {
-      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-      stream = null;
-  }
-
-    if (pc) {
-      try { pc.close(); } catch(e){}
-      pc = null;
-  }
-
-    if (audioEl) {
-      try { audioEl.srcObject = null; } catch(e){}
-      audioEl = null;
-  }
-}
-  
   const memoryResult = await sendMemoryUpdate(durationSeconds);
 
   if (memoryResult?.output || memoryResult?.session) {
@@ -1576,23 +1579,24 @@ Max 12 words.
 
   talkStartedAt = null;
 
+  // Fallback cleanup für normalen manuellen Abbruch
   if (dc) {
     try { dc.close(); } catch(e){}
     dc = null;
   }
 
-  if(stream){
+  if (stream) {
     try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
     stream = null;
   }
 
-  if(pc){
-    try{ pc.close(); } catch(e){}
+  if (pc) {
+    try { pc.close(); } catch(e){}
     pc = null;
   }
 
-  if(audioEl){
-    try{ audioEl.srcObject = null; } catch(e){}
+  if (audioEl) {
+    try { audioEl.srcObject = null; } catch(e){}
     audioEl = null;
   }
 
