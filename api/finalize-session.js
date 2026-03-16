@@ -31,6 +31,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    const { reason } = req.body || {};
+    const forceFinalize = reason === "time_limit_reached";
+
     const { data: usage, error: usageErr } = await supabase
       .from("user_usage")
       .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
@@ -61,9 +64,7 @@ export default async function handler(req, res) {
 
     const totalRemaining = freeRemaining + paidRemaining + topupRemaining;
 
-    // Nur finalisieren, wenn wirklich nichts Sinnvolles mehr übrig ist.
-    // Kleine Reste <= 3 Sekunden werden hart geschlossen.
-    if (totalRemaining > 3) {
+    if (!forceFinalize && totalRemaining > 3) {
       return res.status(200).json({
         ok: true,
         finalized: false,
@@ -97,6 +98,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       finalized: true,
+      forced: forceFinalize,
       remaining_seconds: finalRemaining,
       usage: updated,
     });
