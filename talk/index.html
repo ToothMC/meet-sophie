@@ -1568,9 +1568,18 @@ async function startVoice(){
 
 async function stopVoice(triggeredByLimit = false){
   endBtn.disabled = true;
+  startBtn.disabled = true;
+  logoutBtn.disabled = true;
+
   stopDynamicResets();
   stopCountdown();
   clearClosingTimers();
+
+  // UI sofort aus dem Live-Zustand holen
+  headline.textContent = "Preparing your Thinking Report…";
+  setStatus("Sophie is wrapping up.");
+  setSoftHint("");
+  timerEl.style.display = "none";
 
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
