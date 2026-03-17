@@ -778,7 +778,6 @@ function renderTimer(){
   timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
 }
 renderTimer();
-timerEl.style.display = "block";
   
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
