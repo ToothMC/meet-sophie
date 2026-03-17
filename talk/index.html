@@ -459,32 +459,27 @@ body{
   transform:none;
 }
 
+/* Inline report loader */
 #reportLoader{
-  position:fixed;
-  inset:0;
   display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:200;
-  background:rgba(0,0,0,.72);
-  backdrop-filter:blur(8px);
+  margin:0 0 22px;
 }
 
 .loaderCard{
-  width:min(360px, calc(100vw - 32px));
-  padding:28px 24px;
-  background:linear-gradient(180deg, rgba(16,18,28,.98) 0%, rgba(10,12,20,.98) 100%);
+  width:100%;
+  padding:16px 16px 14px;
+  background:rgba(255,255,255,.04);
   border:1px solid rgba(255,255,255,.08);
-  border-radius:20px;
-  text-align:center;
-  box-shadow:0 18px 50px rgba(0,0,0,.45);
+  border-radius:18px;
+  text-align:left;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
 }
 
 .loaderTitle{
-  font-size:20px;
+  font-size:16px;
   font-weight:700;
   color:#f5f7fb;
-  margin-bottom:18px;
+  margin-bottom:12px;
   letter-spacing:-0.02em;
 }
 
@@ -505,11 +500,19 @@ body{
 }
 
 .loaderText{
-  margin-top:14px;
+  margin-top:12px;
   font-size:13px;
   color:rgba(255,255,255,.7);
 }
-  
+
+/* Hide report content while building */
+#postCallPanel.loading-report .reportModeBar,
+#postCallPanel.loading-report .reportView,
+#postCallPanel.loading-report .report-export,
+#postCallPanel.loading-report .postCallCta{
+  display:none;
+}
+
 @media (max-width:640px){
   #postCallPanel{
     height:82%;
@@ -595,6 +598,16 @@ body{
       <p class="postCallSubtitle">A short summary of your conversation with Sophie.</p>
     </div>
 
+    <div id="reportLoader">
+      <div class="loaderCard">
+        <div class="loaderTitle">Preparing your Thinking Report</div>
+        <div class="loaderBar">
+          <div id="loaderProgress"></div>
+        </div>
+        <div id="loaderText" class="loaderText">Analyzing conversation…</div>
+      </div>
+    </div>
+
     <div class="reportModeBar">
       <button id="showSummaryBtn" type="button" class="reportModeBtn active">Conversation Summary</button>
       <button id="showTranscriptBtn" type="button" class="reportModeBtn">Full Transcript</button>
@@ -661,18 +674,6 @@ body{
   </div>
 </div>
 
-<div id="reportLoader">
-  <div class="loaderCard">
-    <div class="loaderTitle">Preparing your Thinking Report</div>
-
-    <div class="loaderBar">
-      <div id="loaderProgress"></div>
-    </div>
-
-    <div id="loaderText" class="loaderText">Analyzing conversation…</div>
-  </div>
-</div>
-  
 <div id="limitOverlay">
   <video id="limitVideo" playsinline preload="auto">
     <source src="/video/sophie_limit.mp4" type="video/mp4">
@@ -833,7 +834,7 @@ const limitVideo = document.getElementById("limitVideo");
 const reportLoader = document.getElementById("reportLoader");
 const loaderProgress = document.getElementById("loaderProgress");
 const loaderText = document.getElementById("loaderText");
-  
+
 let pc = null;
 let stream = null;
 let audioEl = null;
@@ -1012,18 +1013,19 @@ ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
 }
 
 async function copyReport() {
-
   const summary = (postCallSummary.textContent || "").trim();
 
-  const insightLines = postCallInsights.textContent
-    .split("\n")
-    .map(x => x.trim())
+  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+    .map(li => li.textContent.trim())
     .filter(Boolean);
 
-  const actionLines = postCallActions.textContent
-    .split("\n")
-    .map(x => x.trim())
-    .filter(Boolean);
+  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+    .map((node) => {
+      const title = node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "";
+      const detail = node.querySelector(".report-action-detail")?.textContent.trim() || "";
+      return { title, detail };
+    })
+    .filter(item => item.title || item.detail);
 
   const plainText =
 `Thinking Report
@@ -1032,10 +1034,14 @@ Summary
 ${summary || "—"}
 
 Key Insights
-${insightLines.length ? insightLines.join("\n") : "—"}
+${insightLines.length ? insightLines.map(x => `• ${x}`).join("\n") : "—"}
 
 Action Plan
-${actionLines.length ? actionLines.join("\n") : "—"}
+${actionItems.length ? actionItems.map(item => {
+  if (item.title && item.detail) return `• ${item.title}:\n  ${item.detail}`;
+  if (item.detail) return `• ${item.detail}`;
+  return `• ${item.title}`;
+}).join("\n\n") : "—"}
 `;
 
   const html = `
@@ -1044,19 +1050,30 @@ ${actionLines.length ? actionLines.join("\n") : "—"}
 
   <div style="margin:0 0 22px 0;">
     <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Summary</div>
-    <div>${summary || "—"}</div>
+    <div>${escapeHtml(summary || "—")}</div>
   </div>
 
   <div style="margin:0 0 22px 0;">
     <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Key Insights</div>
-    <ul style="margin:0;padding-left:22px;">
-      ${insightLines.map(x => `<li style="margin:0 0 10px 0;">${x}</li>`).join("")}
-    </ul>
+    ${
+      insightLines.length
+        ? `<ul style="margin:0;padding-left:22px;">${insightLines.map(x => `<li style="margin:0 0 10px 0;">${escapeHtml(x)}</li>`).join("")}</ul>`
+        : `<div>—</div>`
+    }
   </div>
 
   <div style="margin:0 0 8px 0;">
     <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Action Plan</div>
-    ${actionLines.map(x => `<div style="margin:0 0 12px 0;">${x}</div>`).join("")}
+    ${
+      actionItems.length
+        ? actionItems.map(item => `
+          <div style="margin:0 0 16px 0;">
+            ${item.title ? `<div style="font-weight:700;margin:0 0 4px 0;">• ${escapeHtml(item.title)}</div>` : ""}
+            ${item.detail ? `<div>${escapeHtml(item.detail)}</div>` : ""}
+          </div>
+        `).join("")
+        : `<div>—</div>`
+    }
   </div>
 </div>
 `;
@@ -1075,7 +1092,6 @@ ${actionLines.length ? actionLines.join("\n") : "—"}
     setSoftHint("Copied as plain text.");
     setTimeout(() => setSoftHint(""), 1800);
   }
-
 }
 
 async function shareReport() {
@@ -1138,7 +1154,8 @@ function getDatePrefix() {
 function startFakeReportLoader() {
   if (!reportLoader || !loaderProgress) return;
 
-  reportLoader.style.display = "flex";
+  postCallPanel.classList.add("loading-report");
+  reportLoader.style.display = "block";
   loaderProgress.style.width = "0%";
   if (loaderText) loaderText.textContent = "Analyzing conversation…";
 
@@ -1180,9 +1197,10 @@ function stopFakeReportLoader() {
     reportLoader.style.display = "none";
     loaderProgress.style.width = "0%";
     if (loaderText) loaderText.textContent = "Analyzing conversation…";
+    postCallPanel.classList.remove("loading-report");
   }, 420);
 }
-  
+
 function clearClosingTimers() {
   if (closingForceTimeout) {
     clearTimeout(closingForceTimeout);
@@ -1289,6 +1307,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   configurePostCallCta(triggeredByLimit);
   showSummaryView();
 
+  postCallPanel.classList.remove("loading-report");
   postCallPanel.style.display = "block";
   postCallPanel.style.transform = "translateY(60%)";
   requestAnimationFrame(() => {
@@ -1300,6 +1319,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
 function hidePostCallResults() {
   stopFakeReportLoader();
+  postCallPanel.classList.remove("loading-report");
   postCallPanel.style.transform = "translateY(60%)";
   setTimeout(() => {
     postCallPanel.style.display = "none";
@@ -1333,7 +1353,7 @@ function renderTimer(){
   timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
 }
 renderTimer();
-  
+
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
 }
@@ -1954,6 +1974,8 @@ async function startVoice(){
       );
       setSoftHint("");
 
+      postCallPanel.style.display = "block";
+      postCallPanel.classList.remove("loading-report");
       postCallCta.style.display = "block";
 
       if (premiumActive || reason === "subscription_quota_exhausted") {
@@ -2004,7 +2026,6 @@ async function startVoice(){
         };
       }
 
-      postCallPanel.style.display = "block";
       postCallPanel.style.transform = "translateY(60%)";
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -2134,14 +2155,19 @@ async function stopVoice(triggeredByLimit = false){
   setStatus("Sophie is wrapping up.");
   setSoftHint("");
   timerEl.style.display = "none";
+
+  postCallPanel.style.display = "block";
+  postCallPanel.style.transform = "translateY(0)";
+  showSummaryView();
   startFakeReportLoader();
-  
-  if (!triggeredByLimit && dc && dc.readyState === "open") {
-    try {
-      dcSend({
-        type: "response.create",
-        response: {
-          instructions: `
+
+  try {
+    if (!triggeredByLimit && dc && dc.readyState === "open") {
+      try {
+        dcSend({
+          type: "response.create",
+          response: {
+            instructions: `
 Say one short, soft goodbye line.
 Use the same language that was used in the last conversation.
 Match the emotional tone of the last exchange.
@@ -2149,21 +2175,77 @@ Calm. Intimate. Low energy.
 No explanation. No repetition.
 Max 12 words.
 `,
-          modalities: ["audio", "text"]
+            modalities: ["audio", "text"]
+          }
+        });
+
+        await new Promise(r => setTimeout(r, 900));
+      } catch (_) {}
+    }
+
+    const durationSeconds = talkStartedAt
+      ? Math.round((Date.now() - talkStartedAt) / 1000)
+      : 0;
+
+    const transcriptSnapshot = [...convoLog];
+
+    if (triggeredByLimit) {
+      if (dc) {
+        try { dc.close(); } catch(e){}
+        dc = null;
+      }
+
+      if (stream) {
+        try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+        stream = null;
+      }
+
+      if (pc) {
+        try { pc.close(); } catch(e){}
+        pc = null;
+      }
+
+      if (audioEl) {
+        try { audioEl.srcObject = null; } catch(e){}
+        audioEl = null;
+      }
+    }
+
+    if (durationSeconds > 0) {
+      await reportUsage(durationSeconds);
+    }
+
+    if (triggeredByLimit) {
+      await finalizeSessionAfterSummary();
+    }
+
+    const memoryResult = await sendMemoryUpdate(durationSeconds);
+    stopFakeReportLoader();
+
+    if (memoryResult?.output || memoryResult?.session) {
+      showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
+    } else if (transcriptSnapshot.length) {
+      showPostCallResults({
+        output: {
+          short_summary: triggeredByLimit
+            ? "The conversation ended cleanly, but no generated summary was returned."
+            : "No generated summary was returned for this conversation.",
+          key_insights: [],
+          action_plan: []
         }
-      });
+      }, transcriptSnapshot, { triggeredByLimit });
+    }
 
-      await new Promise(r => setTimeout(r, 900));
-    } catch (_) {}
-  }
+    track("talk_ended", {
+      duration_seconds: durationSeconds || null,
+      is_premium: isPremium,
+      plan: plan || null,
+      remaining_seconds_at_end: remainingSeconds,
+      triggered_by_limit: !!triggeredByLimit
+    });
 
-  const durationSeconds = talkStartedAt
-    ? Math.round((Date.now() - talkStartedAt) / 1000)
-    : 0;
+    talkStartedAt = null;
 
-  const transcriptSnapshot = [...convoLog];
-
-  if (triggeredByLimit) {
     if (dc) {
       try { dc.close(); } catch(e){}
       dc = null;
@@ -2183,77 +2265,30 @@ Max 12 words.
       try { audioEl.srcObject = null; } catch(e){}
       audioEl = null;
     }
+
+    convoLog = [];
+    partialAssistant = "";
+    lastAssistantFinal = "";
+    userTranscriptBuffer.clear();
+
+    showBackground(false);
+
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+    headline.textContent = "Sophie is waiting.";
+    setStatus(triggeredByLimit ? "Session complete." : "Ended.");
+    setSoftHint("");
+    softEndFinalizing = false;
+    resetClosingState();
+
+  } catch (e) {
+    stopFakeReportLoader();
+    postCallPanel.classList.remove("loading-report");
+    console.error(e);
+    setSoftHint("Report generation failed.");
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
   }
-
-  if (durationSeconds > 0) {
-    await reportUsage(durationSeconds);
-  }
-
-  if (triggeredByLimit) {
-    await finalizeSessionAfterSummary();
-  }
-
-  const memoryResult = await sendMemoryUpdate(durationSeconds);
-  stopFakeReportLoader();
-  
-  if (memoryResult?.output || memoryResult?.session) {
-    showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
-  } else if (transcriptSnapshot.length) {
-    showPostCallResults({
-      output: {
-        short_summary: triggeredByLimit
-          ? "The conversation ended cleanly, but no generated summary was returned."
-          : "No generated summary was returned for this conversation.",
-        key_insights: [],
-        action_plan: []
-      }
-    }, transcriptSnapshot, { triggeredByLimit });
-  }
-
-  track("talk_ended", {
-    duration_seconds: durationSeconds || null,
-    is_premium: isPremium,
-    plan: plan || null,
-    remaining_seconds_at_end: remainingSeconds,
-    triggered_by_limit: !!triggeredByLimit
-  });
-
-  talkStartedAt = null;
-
-  if (dc) {
-    try { dc.close(); } catch(e){}
-    dc = null;
-  }
-
-  if (stream) {
-    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-    stream = null;
-  }
-
-  if (pc) {
-    try { pc.close(); } catch(e){}
-    pc = null;
-  }
-
-  if (audioEl) {
-    try { audioEl.srcObject = null; } catch(e){}
-    audioEl = null;
-  }
-
-  convoLog = [];
-  partialAssistant = "";
-  lastAssistantFinal = "";
-  userTranscriptBuffer.clear();
-
-  showBackground(false);
-
-  startBtn.disabled = false;
-  logoutBtn.disabled = false;
-  headline.textContent = "Sophie is waiting.";
-  setStatus(triggeredByLimit ? "Session complete." : "Ended.");
-  setSoftHint("");
-  softEndFinalizing = false;
-  resetClosingState();
 }
 
 logoutBtn.onclick = async () => {
