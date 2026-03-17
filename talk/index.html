@@ -1135,6 +1135,54 @@ function getDatePrefix() {
   return `${year}-${month}-${day}`;
 }
 
+function startFakeReportLoader() {
+  if (!reportLoader || !loaderProgress) return;
+
+  reportLoader.style.display = "flex";
+  loaderProgress.style.width = "0%";
+  if (loaderText) loaderText.textContent = "Analyzing conversation…";
+
+  let progress = 8;
+  loaderProgress.style.width = progress + "%";
+
+  window.__sophieLoaderInterval = setInterval(() => {
+    if (progress < 35) {
+      progress += Math.random() * 10;
+      if (loaderText) loaderText.textContent = "Analyzing conversation…";
+    } else if (progress < 62) {
+      progress += Math.random() * 7;
+      if (loaderText) loaderText.textContent = "Extracting insights…";
+    } else if (progress < 84) {
+      progress += Math.random() * 4;
+      if (loaderText) loaderText.textContent = "Preparing action plan…";
+    } else if (progress < 92) {
+      progress += Math.random() * 1.5;
+      if (loaderText) loaderText.textContent = "Finalizing report…";
+    }
+
+    if (progress > 92) progress = 92;
+    loaderProgress.style.width = progress + "%";
+  }, 380);
+}
+
+function stopFakeReportLoader() {
+  if (window.__sophieLoaderInterval) {
+    clearInterval(window.__sophieLoaderInterval);
+    window.__sophieLoaderInterval = null;
+  }
+
+  if (!reportLoader || !loaderProgress) return;
+
+  loaderProgress.style.width = "100%";
+  if (loaderText) loaderText.textContent = "Done.";
+
+  setTimeout(() => {
+    reportLoader.style.display = "none";
+    loaderProgress.style.width = "0%";
+    if (loaderText) loaderText.textContent = "Analyzing conversation…";
+  }, 420);
+}
+  
 function clearClosingTimers() {
   if (closingForceTimeout) {
     clearTimeout(closingForceTimeout);
