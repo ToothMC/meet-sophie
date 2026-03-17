@@ -158,10 +158,29 @@ body{
 
 .softHint{
   margin-top:-4px;
-  margin-bottom:14px;
+  margin-bottom:10px;
   font-size:13px;
   color:rgba(255,255,255,.72);
   min-height:18px;
+}
+
+.inlineReportProgress{
+  width:100%;
+  max-width:320px;
+  height:6px;
+  margin:8px auto 18px;
+  background:rgba(255,255,255,.08);
+  border-radius:999px;
+  overflow:hidden;
+  display:none;
+}
+
+.inlineReportProgressBar{
+  width:0%;
+  height:100%;
+  background:rgba(255,255,255,.92);
+  border-radius:999px;
+  transition:width .35s ease;
 }
 
 #postCallPanel{
@@ -525,6 +544,10 @@ body{
   <div class="timer" id="timer">Zeit: --:--</div>
   <div class="softHint" id="softHint"></div>
 
+  <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
+    <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
+  </div>
+
   <button id="start" class="btn">Enter the Room</button>
   <button id="end" class="btn" disabled>Leave the Room</button>
 </div>
@@ -744,6 +767,9 @@ const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
 const softHint = document.getElementById("softHint");
 
+const inlineReportProgress = document.getElementById("inlineReportProgress");
+const inlineReportProgressBar = document.getElementById("inlineReportProgressBar");
+
 const postCallPanel = document.getElementById("postCallPanel");
 const postCallSummary = document.getElementById("postCallSummary");
 const postCallInsights = document.getElementById("postCallInsights");
@@ -945,13 +971,83 @@ ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
 }
 
 async function copyReport() {
-  const report = buildReportText();
+  const summary = (postCallSummary.textContent || "").trim();
+
+  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+    .map(li => li.textContent.trim())
+    .filter(Boolean);
+
+  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+    .map((node) => {
+      const title = node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "";
+      const detail = node.querySelector(".report-action-detail")?.textContent.trim() || "";
+      return { title, detail };
+    })
+    .filter(item => item.title || item.detail);
+
+  const plainText =
+`Thinking Report
+
+Summary
+${summary || "—"}
+
+Key Insights
+${insightLines.length ? insightLines.map(x => `• ${x}`).join("\n") : "—"}
+
+Action Plan
+${actionItems.length ? actionItems.map(item => {
+  if (item.title && item.detail) return `• ${item.title}:\n  ${item.detail}`;
+  if (item.detail) return `• ${item.detail}`;
+  return `• ${item.title}`;
+}).join("\n\n") : "—"}
+`;
+
+  const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111;line-height:1.6;font-size:16px;">
+  <div style="font-size:24px;font-weight:700;margin:0 0 18px 0;">Thinking Report</div>
+
+  <div style="margin:0 0 22px 0;">
+    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Summary</div>
+    <div>${escapeHtml(summary || "—")}</div>
+  </div>
+
+  <div style="margin:0 0 22px 0;">
+    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Key Insights</div>
+    ${
+      insightLines.length
+        ? `<ul style="margin:0;padding-left:22px;">${insightLines.map(x => `<li style="margin:0 0 10px 0;">${escapeHtml(x)}</li>`).join("")}</ul>`
+        : `<div>—</div>`
+    }
+  </div>
+
+  <div style="margin:0 0 8px 0;">
+    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Action Plan</div>
+    ${
+      actionItems.length
+        ? actionItems.map(item => `
+          <div style="margin:0 0 16px 0;">
+            ${item.title ? `<div style="font-weight:700;margin:0 0 4px 0;">• ${escapeHtml(item.title)}</div>` : ""}
+            ${item.detail ? `<div>${escapeHtml(item.detail)}</div>` : ""}
+          </div>
+        `).join("")
+        : `<div>—</div>`
+    }
+  </div>
+</div>
+`;
+
   try {
-    await navigator.clipboard.writeText(report.summary);
-    setSoftHint("Report copied.");
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+        "text/html": new Blob([html], { type: "text/html" })
+      })
+    ]);
+    setSoftHint("Formatted report copied.");
     setTimeout(() => setSoftHint(""), 1800);
-  } catch (_) {
-    setSoftHint("Copy failed.");
+  } catch (err) {
+    await navigator.clipboard.writeText(plainText);
+    setSoftHint("Copied as plain text.");
     setTimeout(() => setSoftHint(""), 1800);
   }
 }
@@ -1011,6 +1107,47 @@ function getDatePrefix() {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function startFakeReportLoader() {
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
+
+  inlineReportProgress.style.display = "block";
+  inlineReportProgressBar.style.width = "0%";
+
+  let progress = 8;
+  inlineReportProgressBar.style.width = progress + "%";
+
+  window.__sophieLoaderInterval = setInterval(() => {
+    if (progress < 35) {
+      progress += Math.random() * 10;
+    } else if (progress < 62) {
+      progress += Math.random() * 7;
+    } else if (progress < 84) {
+      progress += Math.random() * 4;
+    } else if (progress < 92) {
+      progress += Math.random() * 1.5;
+    }
+
+    if (progress > 92) progress = 92;
+    inlineReportProgressBar.style.width = progress + "%";
+  }, 380);
+}
+
+function stopFakeReportLoader() {
+  if (window.__sophieLoaderInterval) {
+    clearInterval(window.__sophieLoaderInterval);
+    window.__sophieLoaderInterval = null;
+  }
+
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
+
+  inlineReportProgressBar.style.width = "100%";
+
+  setTimeout(() => {
+    inlineReportProgress.style.display = "none";
+    inlineReportProgressBar.style.width = "0%";
+  }, 420);
 }
 
 function clearClosingTimers() {
@@ -1129,6 +1266,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 }
 
 function hidePostCallResults() {
+  stopFakeReportLoader();
   postCallPanel.style.transform = "translateY(60%)";
   setTimeout(() => {
     postCallPanel.style.display = "none";
@@ -1162,7 +1300,7 @@ function renderTimer(){
   timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
 }
 renderTimer();
-  
+
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
 }
@@ -1964,12 +2102,15 @@ async function stopVoice(triggeredByLimit = false){
   setSoftHint("");
   timerEl.style.display = "none";
 
-  if (!triggeredByLimit && dc && dc.readyState === "open") {
-    try {
-      dcSend({
-        type: "response.create",
-        response: {
-          instructions: `
+  startFakeReportLoader();
+
+  try {
+    if (!triggeredByLimit && dc && dc.readyState === "open") {
+      try {
+        dcSend({
+          type: "response.create",
+          response: {
+            instructions: `
 Say one short, soft goodbye line.
 Use the same language that was used in the last conversation.
 Match the emotional tone of the last exchange.
@@ -1977,21 +2118,77 @@ Calm. Intimate. Low energy.
 No explanation. No repetition.
 Max 12 words.
 `,
-          modalities: ["audio", "text"]
+            modalities: ["audio", "text"]
+          }
+        });
+
+        await new Promise(r => setTimeout(r, 900));
+      } catch (_) {}
+    }
+
+    const durationSeconds = talkStartedAt
+      ? Math.round((Date.now() - talkStartedAt) / 1000)
+      : 0;
+
+    const transcriptSnapshot = [...convoLog];
+
+    if (triggeredByLimit) {
+      if (dc) {
+        try { dc.close(); } catch(e){}
+        dc = null;
+      }
+
+      if (stream) {
+        try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+        stream = null;
+      }
+
+      if (pc) {
+        try { pc.close(); } catch(e){}
+        pc = null;
+      }
+
+      if (audioEl) {
+        try { audioEl.srcObject = null; } catch(e){}
+        audioEl = null;
+      }
+    }
+
+    if (durationSeconds > 0) {
+      await reportUsage(durationSeconds);
+    }
+
+    if (triggeredByLimit) {
+      await finalizeSessionAfterSummary();
+    }
+
+    const memoryResult = await sendMemoryUpdate(durationSeconds);
+    stopFakeReportLoader();
+
+    if (memoryResult?.output || memoryResult?.session) {
+      showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
+    } else if (transcriptSnapshot.length) {
+      showPostCallResults({
+        output: {
+          short_summary: triggeredByLimit
+            ? "The conversation ended cleanly, but no generated summary was returned."
+            : "No generated summary was returned for this conversation.",
+          key_insights: [],
+          action_plan: []
         }
-      });
+      }, transcriptSnapshot, { triggeredByLimit });
+    }
 
-      await new Promise(r => setTimeout(r, 900));
-    } catch (_) {}
-  }
+    track("talk_ended", {
+      duration_seconds: durationSeconds || null,
+      is_premium: isPremium,
+      plan: plan || null,
+      remaining_seconds_at_end: remainingSeconds,
+      triggered_by_limit: !!triggeredByLimit
+    });
 
-  const durationSeconds = talkStartedAt
-    ? Math.round((Date.now() - talkStartedAt) / 1000)
-    : 0;
+    talkStartedAt = null;
 
-  const transcriptSnapshot = [...convoLog];
-
-  if (triggeredByLimit) {
     if (dc) {
       try { dc.close(); } catch(e){}
       dc = null;
@@ -2011,76 +2208,29 @@ Max 12 words.
       try { audioEl.srcObject = null; } catch(e){}
       audioEl = null;
     }
+
+    convoLog = [];
+    partialAssistant = "";
+    lastAssistantFinal = "";
+    userTranscriptBuffer.clear();
+
+    showBackground(false);
+
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+    headline.textContent = "Sophie is waiting.";
+    setStatus(triggeredByLimit ? "Session complete." : "Ended.");
+    setSoftHint("");
+    softEndFinalizing = false;
+    resetClosingState();
+
+  } catch (e) {
+    stopFakeReportLoader();
+    console.error(e);
+    setSoftHint("Report generation failed.");
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
   }
-
-  if (durationSeconds > 0) {
-    await reportUsage(durationSeconds);
-  }
-
-  if (triggeredByLimit) {
-    await finalizeSessionAfterSummary();
-  }
-
-  const memoryResult = await sendMemoryUpdate(durationSeconds);
-
-  if (memoryResult?.output || memoryResult?.session) {
-    showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
-  } else if (transcriptSnapshot.length) {
-    showPostCallResults({
-      output: {
-        short_summary: triggeredByLimit
-          ? "The conversation ended cleanly, but no generated summary was returned."
-          : "No generated summary was returned for this conversation.",
-        key_insights: [],
-        action_plan: []
-      }
-    }, transcriptSnapshot, { triggeredByLimit });
-  }
-
-  track("talk_ended", {
-    duration_seconds: durationSeconds || null,
-    is_premium: isPremium,
-    plan: plan || null,
-    remaining_seconds_at_end: remainingSeconds,
-    triggered_by_limit: !!triggeredByLimit
-  });
-
-  talkStartedAt = null;
-
-  if (dc) {
-    try { dc.close(); } catch(e){}
-    dc = null;
-  }
-
-  if (stream) {
-    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-    stream = null;
-  }
-
-  if (pc) {
-    try { pc.close(); } catch(e){}
-    pc = null;
-  }
-
-  if (audioEl) {
-    try { audioEl.srcObject = null; } catch(e){}
-    audioEl = null;
-  }
-
-  convoLog = [];
-  partialAssistant = "";
-  lastAssistantFinal = "";
-  userTranscriptBuffer.clear();
-
-  showBackground(false);
-
-  startBtn.disabled = false;
-  logoutBtn.disabled = false;
-  headline.textContent = "Sophie is waiting.";
-  setStatus(triggeredByLimit ? "Session complete." : "Ended.");
-  setSoftHint("");
-  softEndFinalizing = false;
-  resetClosingState();
 }
 
 logoutBtn.onclick = async () => {
