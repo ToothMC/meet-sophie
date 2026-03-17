@@ -2133,7 +2133,8 @@ async function stopVoice(triggeredByLimit = false){
   setStatus("Sophie is wrapping up.");
   setSoftHint("");
   timerEl.style.display = "none";
-
+  startFakeReportLoader();
+  
   if (!triggeredByLimit && dc && dc.readyState === "open") {
     try {
       dcSend({
@@ -2192,7 +2193,8 @@ Max 12 words.
   }
 
   const memoryResult = await sendMemoryUpdate(durationSeconds);
-
+  stopFakeReportLoader();
+  
   if (memoryResult?.output || memoryResult?.session) {
     showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
   } else if (transcriptSnapshot.length) {
