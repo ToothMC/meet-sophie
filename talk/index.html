@@ -120,6 +120,51 @@ body{
 .status{ margin-bottom:10px; opacity:.88; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
 
+.live-badge{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin:0 0 12px;
+  color:#ff5a5a;
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  opacity:.95;
+}
+
+.live-badge.active{
+  display:flex;
+}
+
+.live-dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#ff4d4d;
+  box-shadow:0 0 0 0 rgba(255,77,77,.28);
+  animation:livePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes livePulse{
+  0%{
+    opacity:.95;
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(255,77,77,.20);
+  }
+  50%{
+    opacity:.55;
+    transform:scale(1.12);
+    box-shadow:0 0 0 8px rgba(255,77,77,0);
+  }
+  100%{
+    opacity:.95;
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(255,77,77,0);
+  }
+}
+
 #timer{
   display:none;
 }
@@ -566,6 +611,10 @@ body{
 <div class="wrap">
   <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Whenever you’re ready.</div>
+  <div id="liveBadge" class="live-badge" aria-hidden="true">
+    <span class="live-dot"></span>
+    <span class="live-text">LIVE</span>
+  </div>
   <div class="timer" id="timer">Zeit: --:--</div>
   <div class="softHint" id="softHint"></div>
 
@@ -791,6 +840,7 @@ const bg = document.getElementById("bg");
 const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
 const softHint = document.getElementById("softHint");
+const liveBadge = document.getElementById("liveBadge");
 
 const inlineReportProgress = document.getElementById("inlineReportProgress");
 const inlineReportProgressBar = document.getElementById("inlineReportProgressBar");
@@ -876,6 +926,20 @@ function dcSend(obj) {
 
 function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
+
+function showLiveBadge(on){
+  if (!liveBadge) return;
+  if (on) liveBadge.classList.add("active");
+  else liveBadge.classList.remove("active");
+}
+
+function playReadySound(){
+  try{
+    const audio = new Audio("/audio/ready.mp3");
+    audio.volume = 0.28;
+    audio.play().catch(() => {});
+  } catch(_) {}
+}
 
 function escapeHtml(value = "") {
   return String(value)
@@ -1885,6 +1949,7 @@ async function startVoice(){
   headline.textContent = "Sophie is joining…";
   setStatus("connecting..");
   setSoftHint("");
+  showLiveBadge(false);
   showBackground(true);
 
   track("talk_start_clicked");
@@ -2010,6 +2075,7 @@ async function startVoice(){
       setStatus(msg);
       headline.textContent = "Sophie is waiting.";
       showBackground(false);
+      showLiveBadge(false);
       startBtn.disabled = false;
       logoutBtn.disabled = false;
       track("talk_start_failed", { http_status: tokenRes.status, message: msg });
@@ -2085,6 +2151,11 @@ async function startVoice(){
     endBtn.disabled = false;
     setStatus("Live.");
     headline.textContent = "Sophie is listening.";
+    showLiveBadge(true);
+
+    setTimeout(() => {
+      playReadySound();
+    }, 150);
 
     startDynamicResets();
 
@@ -2106,6 +2177,7 @@ async function startVoice(){
     setStatus("Fail to Start.");
     headline.textContent = "Sophie is waiting.";
     setSoftHint("");
+    showLiveBadge(false);
     track("talk_start_exception", { message: String(err?.message || err) });
     stopVoice(false);
   }
@@ -2119,6 +2191,7 @@ async function stopVoice(triggeredByLimit = false){
   stopDynamicResets();
   stopCountdown();
   clearClosingTimers();
+  showLiveBadge(false);
 
   headline.textContent = "Preparing your Thinking Report…";
   setStatus("Sophie is wrapping up.");
