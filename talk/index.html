@@ -1299,6 +1299,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 }
 
 function hidePostCallResults() {
+  stopFakeReportLoader();
   postCallPanel.style.transform = "translateY(60%)";
   setTimeout(() => {
     postCallPanel.style.display = "none";
