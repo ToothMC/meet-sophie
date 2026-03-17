@@ -158,10 +158,29 @@ body{
 
 .softHint{
   margin-top:-4px;
-  margin-bottom:14px;
+  margin-bottom:10px;
   font-size:13px;
   color:rgba(255,255,255,.72);
   min-height:18px;
+}
+
+.inlineReportProgress{
+  width:100%;
+  max-width:320px;
+  height:6px;
+  margin:8px auto 18px;
+  background:rgba(255,255,255,.08);
+  border-radius:999px;
+  overflow:hidden;
+  display:none;
+}
+
+.inlineReportProgressBar{
+  width:0%;
+  height:100%;
+  background:rgba(255,255,255,.92);
+  border-radius:999px;
+  transition:width .35s ease;
 }
 
 #postCallPanel{
@@ -459,60 +478,6 @@ body{
   transform:none;
 }
 
-/* Inline report loader */
-#reportLoader{
-  display:none;
-  margin:0 0 22px;
-}
-
-.loaderCard{
-  width:100%;
-  padding:16px 16px 14px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:18px;
-  text-align:left;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
-}
-
-.loaderTitle{
-  font-size:16px;
-  font-weight:700;
-  color:#f5f7fb;
-  margin-bottom:12px;
-  letter-spacing:-0.02em;
-}
-
-.loaderBar{
-  width:100%;
-  height:10px;
-  background:rgba(255,255,255,.08);
-  border-radius:999px;
-  overflow:hidden;
-}
-
-#loaderProgress{
-  width:0%;
-  height:100%;
-  background:#ffffff;
-  border-radius:999px;
-  transition:width .35s ease;
-}
-
-.loaderText{
-  margin-top:12px;
-  font-size:13px;
-  color:rgba(255,255,255,.7);
-}
-
-/* Hide report content while building */
-#postCallPanel.loading-report .reportModeBar,
-#postCallPanel.loading-report .reportView,
-#postCallPanel.loading-report .report-export,
-#postCallPanel.loading-report .postCallCta{
-  display:none;
-}
-
 @media (max-width:640px){
   #postCallPanel{
     height:82%;
@@ -579,6 +544,10 @@ body{
   <div class="timer" id="timer">Zeit: --:--</div>
   <div class="softHint" id="softHint"></div>
 
+  <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
+    <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
+  </div>
+
   <button id="start" class="btn">Enter the Room</button>
   <button id="end" class="btn" disabled>Leave the Room</button>
 </div>
@@ -596,16 +565,6 @@ body{
     <div class="postCallHero">
       <h3 class="postCallTitle">Your Thinking Report</h3>
       <p class="postCallSubtitle">A short summary of your conversation with Sophie.</p>
-    </div>
-
-    <div id="reportLoader">
-      <div class="loaderCard">
-        <div class="loaderTitle">Preparing your Thinking Report</div>
-        <div class="loaderBar">
-          <div id="loaderProgress"></div>
-        </div>
-        <div id="loaderText" class="loaderText">Analyzing conversation…</div>
-      </div>
     </div>
 
     <div class="reportModeBar">
@@ -808,6 +767,9 @@ const overlay = document.getElementById("overlay");
 const logoutBtn = document.getElementById("logoutBtn");
 const softHint = document.getElementById("softHint");
 
+const inlineReportProgress = document.getElementById("inlineReportProgress");
+const inlineReportProgressBar = document.getElementById("inlineReportProgressBar");
+
 const postCallPanel = document.getElementById("postCallPanel");
 const postCallSummary = document.getElementById("postCallSummary");
 const postCallInsights = document.getElementById("postCallInsights");
@@ -830,10 +792,6 @@ const postCallSecondaryBtn = document.getElementById("postCallSecondaryBtn");
 
 const limitOverlay = document.getElementById("limitOverlay");
 const limitVideo = document.getElementById("limitVideo");
-
-const reportLoader = document.getElementById("reportLoader");
-const loaderProgress = document.getElementById("loaderProgress");
-const loaderText = document.getElementById("loaderText");
 
 let pc = null;
 let stream = null;
@@ -1152,33 +1110,27 @@ function getDatePrefix() {
 }
 
 function startFakeReportLoader() {
-  if (!reportLoader || !loaderProgress) return;
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
 
-  postCallPanel.classList.add("loading-report");
-  reportLoader.style.display = "block";
-  loaderProgress.style.width = "0%";
-  if (loaderText) loaderText.textContent = "Analyzing conversation…";
+  inlineReportProgress.style.display = "block";
+  inlineReportProgressBar.style.width = "0%";
 
   let progress = 8;
-  loaderProgress.style.width = progress + "%";
+  inlineReportProgressBar.style.width = progress + "%";
 
   window.__sophieLoaderInterval = setInterval(() => {
     if (progress < 35) {
       progress += Math.random() * 10;
-      if (loaderText) loaderText.textContent = "Analyzing conversation…";
     } else if (progress < 62) {
       progress += Math.random() * 7;
-      if (loaderText) loaderText.textContent = "Extracting insights…";
     } else if (progress < 84) {
       progress += Math.random() * 4;
-      if (loaderText) loaderText.textContent = "Preparing action plan…";
     } else if (progress < 92) {
       progress += Math.random() * 1.5;
-      if (loaderText) loaderText.textContent = "Finalizing report…";
     }
 
     if (progress > 92) progress = 92;
-    loaderProgress.style.width = progress + "%";
+    inlineReportProgressBar.style.width = progress + "%";
   }, 380);
 }
 
@@ -1188,16 +1140,13 @@ function stopFakeReportLoader() {
     window.__sophieLoaderInterval = null;
   }
 
-  if (!reportLoader || !loaderProgress) return;
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
 
-  loaderProgress.style.width = "100%";
-  if (loaderText) loaderText.textContent = "Done.";
+  inlineReportProgressBar.style.width = "100%";
 
   setTimeout(() => {
-    reportLoader.style.display = "none";
-    loaderProgress.style.width = "0%";
-    if (loaderText) loaderText.textContent = "Analyzing conversation…";
-    postCallPanel.classList.remove("loading-report");
+    inlineReportProgress.style.display = "none";
+    inlineReportProgressBar.style.width = "0%";
   }, 420);
 }
 
@@ -1307,7 +1256,6 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   configurePostCallCta(triggeredByLimit);
   showSummaryView();
 
-  postCallPanel.classList.remove("loading-report");
   postCallPanel.style.display = "block";
   postCallPanel.style.transform = "translateY(60%)";
   requestAnimationFrame(() => {
@@ -1319,7 +1267,6 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
 function hidePostCallResults() {
   stopFakeReportLoader();
-  postCallPanel.classList.remove("loading-report");
   postCallPanel.style.transform = "translateY(60%)";
   setTimeout(() => {
     postCallPanel.style.display = "none";
@@ -1974,8 +1921,6 @@ async function startVoice(){
       );
       setSoftHint("");
 
-      postCallPanel.style.display = "block";
-      postCallPanel.classList.remove("loading-report");
       postCallCta.style.display = "block";
 
       if (premiumActive || reason === "subscription_quota_exhausted") {
@@ -2026,6 +1971,7 @@ async function startVoice(){
         };
       }
 
+      postCallPanel.style.display = "block";
       postCallPanel.style.transform = "translateY(60%)";
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -2156,9 +2102,6 @@ async function stopVoice(triggeredByLimit = false){
   setSoftHint("");
   timerEl.style.display = "none";
 
-  postCallPanel.style.display = "block";
-  postCallPanel.style.transform = "translateY(0)";
-  showSummaryView();
   startFakeReportLoader();
 
   try {
@@ -2283,7 +2226,6 @@ Max 12 words.
 
   } catch (e) {
     stopFakeReportLoader();
-    postCallPanel.classList.remove("loading-report");
     console.error(e);
     setSoftHint("Report generation failed.");
     startBtn.disabled = false;
