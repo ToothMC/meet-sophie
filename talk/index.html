@@ -996,43 +996,41 @@ ${insightLines.length ? insightLines.map(x => `• ${x}`).join("\n") : "—"}
 
 Action Plan
 ${actionItems.length ? actionItems.map(item => {
-  if (item.title && item.detail) return `• ${item.title}:\n  ${item.detail}`;
+  if (item.title && item.detail) return `• ${item.title}: ${item.detail}`;
   if (item.detail) return `• ${item.detail}`;
   return `• ${item.title}`;
-}).join("\n\n") : "—"}
+}).join("\n") : "—"}
 `;
 
-  const html = `
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111;line-height:1.6;font-size:16px;">
-  <div style="font-size:24px;font-weight:700;margin:0 0 18px 0;">Thinking Report</div>
+ const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;color:#111;max-width:680px;">
 
-  <div style="margin:0 0 22px 0;">
-    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Summary</div>
-    <div>${escapeHtml(summary || "—")}</div>
-  </div>
+<div style="font-size:18px;font-weight:700;margin-bottom:14px;">
+Thinking Report
+</div>
 
-  <div style="margin:0 0 22px 0;">
-    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Key Insights</div>
-    ${
-      insightLines.length
-        ? `<ul style="margin:0;padding-left:22px;">${insightLines.map(x => `<li style="margin:0 0 10px 0;">${escapeHtml(x)}</li>`).join("")}</ul>`
-        : `<div>—</div>`
-    }
-  </div>
+<div style="font-weight:700;margin-bottom:4px;">Summary</div>
 
-  <div style="margin:0 0 8px 0;">
-    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Action Plan</div>
-    ${
-      actionItems.length
-        ? actionItems.map(item => `
-          <div style="margin:0 0 16px 0;">
-            ${item.title ? `<div style="font-weight:700;margin:0 0 4px 0;">• ${escapeHtml(item.title)}</div>` : ""}
-            ${item.detail ? `<div>${escapeHtml(item.detail)}</div>` : ""}
-          </div>
-        `).join("")
-        : `<div>—</div>`
-    }
-  </div>
+<div style="margin-bottom:16px;">
+${escapeHtml(summary || "—")}
+</div>
+
+<div style="font-weight:700;margin-bottom:6px;">Key Insights</div>
+
+<div style="margin-left:8px;margin-bottom:18px;">
+${insightLines.map(x => `<div style="margin-bottom:6px;">• ${escapeHtml(x)}</div>`).join("")}
+</div>
+
+<div style="font-weight:700;margin-bottom:6px;">Action Plan</div>
+
+<div style="margin-left:8px;">
+${actionItems.map(item => `
+<div style="margin-bottom:10px;">
+<strong>• ${escapeHtml(item.title)}:</strong> ${escapeHtml(item.detail)}
+</div>
+`).join("")}
+</div>
+
 </div>
 `;
 
