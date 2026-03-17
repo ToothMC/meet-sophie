@@ -945,15 +945,70 @@ ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
 }
 
 async function copyReport() {
-  const report = buildReportText();
+
+  const summary = (postCallSummary.textContent || "").trim();
+
+  const insightLines = postCallInsights.textContent
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const actionLines = postCallActions.textContent
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const plainText =
+`Thinking Report
+
+Summary
+${summary || "—"}
+
+Key Insights
+${insightLines.length ? insightLines.join("\n") : "—"}
+
+Action Plan
+${actionLines.length ? actionLines.join("\n") : "—"}
+`;
+
+  const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111;line-height:1.6;font-size:16px;">
+  <div style="font-size:24px;font-weight:700;margin:0 0 18px 0;">Thinking Report</div>
+
+  <div style="margin:0 0 22px 0;">
+    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Summary</div>
+    <div>${summary || "—"}</div>
+  </div>
+
+  <div style="margin:0 0 22px 0;">
+    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Key Insights</div>
+    <ul style="margin:0;padding-left:22px;">
+      ${insightLines.map(x => `<li style="margin:0 0 10px 0;">${x}</li>`).join("")}
+    </ul>
+  </div>
+
+  <div style="margin:0 0 8px 0;">
+    <div style="font-size:20px;font-weight:700;margin:0 0 10px 0;">Action Plan</div>
+    ${actionLines.map(x => `<div style="margin:0 0 12px 0;">${x}</div>`).join("")}
+  </div>
+</div>
+`;
+
   try {
-    await navigator.clipboard.writeText(report.summary);
-    setSoftHint("Report copied.");
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+        "text/html": new Blob([html], { type: "text/html" })
+      })
+    ]);
+    setSoftHint("Formatted report copied.");
     setTimeout(() => setSoftHint(""), 1800);
-  } catch (_) {
-    setSoftHint("Copy failed.");
+  } catch (err) {
+    await navigator.clipboard.writeText(plainText);
+    setSoftHint("Copied as plain text.");
     setTimeout(() => setSoftHint(""), 1800);
   }
+
 }
 
 async function shareReport() {
