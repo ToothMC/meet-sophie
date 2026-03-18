@@ -159,7 +159,7 @@
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: "https://meet-sophie.com/login"
+          emailRedirectTo: window.location.origin + "/login"
         }
       });
 
