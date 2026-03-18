@@ -927,6 +927,15 @@ function dcSend(obj) {
 function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
+function showReadyStatus() {
+  statusEl.textContent = "Whenever you’re ready.";
+  statusEl.style.visibility = "visible";
+}
+
+function hideReadyStatus() {
+  statusEl.style.visibility = "hidden";
+}
+
 function showLiveBadge(on){
   if (!liveBadge) return;
   if (on) liveBadge.classList.add("active");
@@ -1792,6 +1801,16 @@ function attachChannel(ch) {
     try {
       const msg = JSON.parse(ev.data);
 
+      if (msg?.type === "input_audio_buffer.speech_started") {
+        hideReadyStatus();
+        return;
+      }
+
+      if (msg?.type === "response.created") {
+        hideReadyStatus();
+        return;
+      }
+
       if (msg?.type === "conversation.item.input_audio_transcription.delta") {
         const itemId = msg?.item_id;
         const delta = String(msg?.delta || "");
@@ -2149,7 +2168,7 @@ async function startVoice(){
     await pc.setRemoteDescription(answer);
 
     endBtn.disabled = false;
-    setStatus("Whenever you’re ready.");
+    showReadyStatus();
     headline.textContent = "Sophie is listening.";
     showLiveBadge(true);
 
@@ -2312,6 +2331,7 @@ Max 12 words.
 
     showBackground(false);
 
+    statusEl.style.visibility = "visible";
     startBtn.disabled = false;
     logoutBtn.disabled = false;
     headline.textContent = "Sophie is waiting.";
