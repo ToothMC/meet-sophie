@@ -1053,7 +1053,7 @@ Important:
 - the user should feel mentally completed, not interrupted
 `;
 
-    const sophiePrompt = `
+const sophiePrompt = `
 You are Sophie.
 
 ${startModeBlock}
@@ -1065,6 +1065,8 @@ ${addressingBlock}
 ${identityBlock}
 
 ${coreStyle}
+
+${bestFriendBlock}
 
 ${memoryBlock}
 
