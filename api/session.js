@@ -1129,7 +1129,7 @@ ${sessionClosingBlock}
           prefix_padding_ms: 300,
           silence_duration_ms: 200,
           idle_timeout_ms: null,
-          create_response: isFirstSession ? false : true,
+          create_response: true,
           interrupt_response: true,
         },
       }),

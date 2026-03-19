@@ -1,0 +1,2401 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sophie Voice</title>
+
+<style>
+*{box-sizing:border-box}
+
+html,body{
+  height:100%;
+}
+
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:white;
+  text-align:center;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0b0f14;
+  position:relative;
+  overflow:hidden;
+}
+
+/* Topbar */
+.topbar{
+  position:fixed;
+  top:0; left:0; right:0;
+  z-index:3;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 16px;
+}
+
+.topbar a{
+  color:rgba(255,255,255,.9);
+  text-decoration:none;
+  font-weight:600;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.18);
+}
+
+.topbar button{
+  color:rgba(255,255,255,.9);
+  font-weight:600;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.18);
+  cursor:pointer;
+}
+
+.topbar button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+/* Hintergrundbild */
+.bg{
+  position:fixed;
+  inset:0;
+  background:url("/sophie.jpg") center/cover no-repeat;
+  opacity:0;
+  transition:opacity .5s ease;
+  z-index:0;
+}
+
+/* dunkles Overlay */
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  opacity:0;
+  transition:opacity .5s ease;
+  z-index:1;
+}
+
+/* Aktiv-Zustand */
+.bg.active,
+.overlay.active{ opacity:1; }
+
+/* Vordergrund */
+.wrap{
+  position:relative;
+  z-index:2;
+  width:90%;
+  max-width:420px;
+  padding-top:40px;
+}
+
+/* Buttons */
+.btn{
+  display:block;
+  width:100%;
+  margin:0 auto 15px;
+  padding:18px 20px;
+  font-size:20px;
+  font-weight:700;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+}
+
+#start{ background:#ffffff; color:#000; }
+#end{
+  background:rgba(255,255,255,.15);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.3);
+}
+
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+.status{ margin-bottom:10px; opacity:.88; }
+.timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
+
+.live-badge{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin:0 0 12px;
+  color:#ff5a5a;
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  opacity:.95;
+}
+
+.live-badge.active{
+  display:flex;
+}
+
+.live-dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#ff4d4d;
+  box-shadow:0 0 0 0 rgba(255,77,77,.28);
+  animation:livePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes livePulse{
+  0%{
+    opacity:.95;
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(255,77,77,.20);
+  }
+  50%{
+    opacity:.55;
+    transform:scale(1.12);
+    box-shadow:0 0 0 8px rgba(255,77,77,0);
+  }
+  100%{
+    opacity:.95;
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(255,77,77,0);
+  }
+}
+
+#timer{
+  display:none;
+}
+
+#limitOverlay{
+  position:fixed;
+  inset:0;
+  background:#000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+#limitVideo{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+#billingFooter{
+  position:fixed;
+  left:0; right:0;
+  bottom:10px;
+  z-index:4;
+  text-align:center;
+  font-size:12px;
+  opacity:.55;
+  pointer-events:none;
+}
+#billingFooter a{
+  color:rgba(255,255,255,.9);
+  text-decoration:none;
+  pointer-events:auto;
+}
+#billingFooter a:hover{ text-decoration:underline; }
+
+.softHint{
+  margin-top:-4px;
+  margin-bottom:10px;
+  font-size:13px;
+  color:rgba(255,255,255,.72);
+  min-height:18px;
+}
+
+.inlineReportProgress{
+  width:100%;
+  max-width:320px;
+  height:6px;
+  margin:8px auto 18px;
+  background:rgba(255,255,255,.08);
+  border-radius:999px;
+  overflow:hidden;
+  display:none;
+}
+
+.inlineReportProgressBar{
+  width:0%;
+  height:100%;
+  background:rgba(255,255,255,.92);
+  border-radius:999px;
+  transition:width .35s ease;
+}
+
+#postCallPanel{
+  display:none;
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:78%;
+  transform:translateY(60%);
+  transition:transform .35s ease;
+  z-index:20;
+  background:linear-gradient(180deg, rgba(16,18,28,.98) 0%, rgba(10,12,20,.98) 100%);
+  border-top-left-radius:26px;
+  border-top-right-radius:26px;
+  box-shadow:0 -14px 50px rgba(0,0,0,.55);
+  padding:0;
+  backdrop-filter:blur(18px);
+}
+
+.postCallInner{
+  overflow-y:auto;
+  padding:0 22px 24px;
+  height:calc(100% - 58px);
+  color:#e8e8e8;
+  font-size:15px;
+  text-align:left;
+  max-width:820px;
+  margin:0 auto;
+}
+
+.postCallHero{
+  padding:6px 0 22px;
+  text-align:center;
+}
+
+.postCallTitle{
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:-0.02em;
+  margin:0 0 10px;
+  color:#f5f7fb;
+}
+
+.postCallSubtitle{
+  margin:0;
+  font-size:14px;
+  line-height:1.6;
+  color:rgba(255,255,255,.66);
+  max-width:420px;
+  margin-inline:auto;
+}
+
+.reportModeBar{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin:0 0 22px;
+}
+
+.reportModeBtn{
+  appearance:none;
+  border:none;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  color:#f1f3f7;
+  border-radius:16px;
+  padding:14px 18px;
+  min-width:180px;
+  font-size:15px;
+  font-weight:650;
+  cursor:pointer;
+  transition:all .18s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.reportModeBtn:hover{
+  background:rgba(255,255,255,.09);
+  transform:translateY(-1px);
+}
+
+.reportModeBtn.active{
+  background:rgba(255,255,255,.11);
+  border-color:rgba(255,255,255,.2);
+}
+
+.reportView{
+  display:none;
+}
+
+.reportView.active{
+  display:block;
+}
+
+.reportCard{
+  background:rgba(255,255,255,.025);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:24px;
+  padding:24px 22px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.report-section + .report-section{
+  margin-top:28px;
+  padding-top:26px;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+
+.report-heading{
+  margin:0 0 12px;
+  font-size:18px;
+  line-height:1.2;
+  font-weight:750;
+  color:#f8f9fb;
+  letter-spacing:-0.02em;
+}
+
+.report-summary-text{
+  margin:0;
+  font-size:16px;
+  line-height:1.75;
+  color:rgba(255,255,255,.9);
+}
+
+.report-insight-list{
+  margin:0;
+  padding-left:22px;
+}
+
+.report-insight-list li{
+  margin:0 0 14px;
+  font-size:16px;
+  line-height:1.7;
+  color:rgba(255,255,255,.88);
+}
+
+.report-insight-list li:last-child{
+  margin-bottom:0;
+}
+
+.report-action-item{
+  margin:0 0 20px;
+}
+
+.report-action-item:last-child{
+  margin-bottom:0;
+}
+
+.report-action-title{
+  display:block;
+  margin-bottom:8px;
+  font-size:16px;
+  line-height:1.45;
+  font-weight:700;
+  color:#f7f8fb;
+}
+
+.report-action-detail{
+  margin:0;
+  font-size:16px;
+  line-height:1.75;
+  color:rgba(255,255,255,.84);
+}
+
+.report-transcript{
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-family:inherit;
+  font-size:15px;
+  line-height:1.7;
+  color:rgba(255,255,255,.88);
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:18px;
+  max-height:360px;
+  overflow:auto;
+  margin:0;
+}
+
+.report-export{
+  margin:22px 0 0;
+}
+
+.report-export-line{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin:0 0 18px;
+}
+
+.report-export-line::before,
+.report-export-line::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:rgba(255,255,255,.08);
+}
+
+.report-export-title{
+  font-size:13px;
+  letter-spacing:.08em;
+  text-transform:none;
+  color:rgba(255,255,255,.72);
+}
+
+/* Premium Export Buttons */
+.export{
+  display:flex;
+  gap:22px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-top:24px;
+}
+
+.export-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  width:120px;
+  height:110px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.06);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 10px 25px rgba(0,0,0,0.35);
+  color:white;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .25s ease;
+}
+
+.export-btn:hover{
+  transform:translateY(-3px) scale(1.03);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    0 15px 40px rgba(0,0,0,0.5),
+    0 0 20px rgba(255,255,255,0.15);
+}
+
+.export-btn i{
+  width:30px;
+  height:30px;
+  stroke-width:2;
+  opacity:.95;
+}
+
+.export-btn span{
+  font-size:14px;
+  font-weight:600;
+  opacity:.88;
+}
+
+.export-btn.primary{
+  background:linear-gradient(
+    180deg,
+    rgba(255,255,255,0.18),
+    rgba(255,255,255,0.06)
+  );
+}
+
+.postCallCta{
+  display:none;
+  margin-top:26px;
+  padding-top:20px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+
+.postCallCtaTitle{
+  font-size:13px;
+  color:rgba(255,255,255,.68);
+  margin-bottom:12px;
+  text-align:center;
+}
+
+.postCallCtaButtons{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+.smallBtn{
+  width:auto;
+  margin:0;
+  padding:14px 18px;
+  font-size:15px;
+  border-radius:14px;
+  font-weight:700;
+  cursor:pointer;
+  border:none;
+  transition:all .16s ease;
+}
+
+.smallBtn.primary{
+  background:#ffffff;
+  color:#000;
+}
+
+.smallBtn.secondary{
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.16);
+}
+
+.smallBtn:hover{
+  transform:translateY(-1px);
+}
+
+.smallBtn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+  transform:none;
+}
+
+@media (max-width:640px){
+  #postCallPanel{
+    height:82%;
+  }
+
+  .postCallInner{
+    padding:0 16px 22px;
+  }
+
+  .postCallTitle{
+    font-size:20px;
+  }
+
+  .reportCard{
+    padding:20px 16px;
+    border-radius:20px;
+  }
+
+  .report-heading{
+    font-size:17px;
+  }
+
+  .report-summary-text,
+  .report-insight-list li,
+  .report-action-title,
+  .report-action-detail,
+  .report-transcript{
+    font-size:15px;
+  }
+
+  .reportModeBtn{
+    min-width:0;
+    flex:1 1 0;
+    padding:13px 12px;
+    font-size:14px;
+  }
+
+  .export{
+    gap:12px;
+  }
+
+  .export-btn{
+    width:96px;
+    height:88px;
+    border-radius:16px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="bg" id="bg"></div>
+<div class="overlay" id="overlay"></div>
+
+<div class="topbar">
+  <a href="/">← Landing</a>
+  <button id="logoutBtn" type="button">Logout</button>
+</div>
+
+<div class="wrap">
+  <h2 id="headline">Sophie is here.</h2>
+  <div class="status" id="status">Whenever you’re ready.</div>
+  <div id="liveBadge" class="live-badge" aria-hidden="true">
+    <span class="live-dot"></span>
+    <span class="live-text">LIVE</span>
+  </div>
+  <div class="timer" id="timer">Zeit: --:--</div>
+  <div class="softHint" id="softHint"></div>
+
+  <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
+    <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
+  </div>
+
+  <button id="start" class="btn">Enter the Room</button>
+  <button id="end" class="btn" disabled>Leave the Room</button>
+</div>
+
+<div id="postCallPanel">
+  <div style="
+    width:40px;
+    height:4px;
+    background:rgba(255,255,255,.22);
+    border-radius:2px;
+    margin:12px auto 10px;
+  "></div>
+
+  <div class="postCallInner">
+    <div class="postCallHero">
+      <h3 class="postCallTitle">Your Thinking Report</h3>
+      <p class="postCallSubtitle">A short summary of your conversation with Sophie.</p>
+    </div>
+
+    <div class="reportModeBar">
+      <button id="showSummaryBtn" type="button" class="reportModeBtn active">Conversation Summary</button>
+      <button id="showTranscriptBtn" type="button" class="reportModeBtn">Full Transcript</button>
+    </div>
+
+    <div id="summaryView" class="reportView active">
+      <div id="reportContent" class="reportCard">
+        <section class="report-section">
+          <h4 class="report-heading">Summary</h4>
+          <p id="postCallSummary" class="report-summary-text">—</p>
+        </section>
+
+        <section class="report-section">
+          <h4 class="report-heading">Key Insights</h4>
+          <div id="postCallInsights">—</div>
+        </section>
+
+        <section class="report-section">
+          <h4 class="report-heading">Action Plan</h4>
+          <div id="postCallActions">—</div>
+        </section>
+      </div>
+    </div>
+
+    <div id="transcriptView" class="reportView">
+      <div class="reportCard">
+        <section class="report-section" style="margin-top:0; padding-top:0; border-top:none;">
+          <h4 class="report-heading">Full Transcript</h4>
+          <pre id="postCallTranscript" class="report-transcript"></pre>
+        </section>
+      </div>
+    </div>
+
+    <div class="report-export">
+      <div class="report-export-line">
+        <div class="report-export-title">Export</div>
+      </div>
+
+      <div class="export">
+        <button id="copyReportBtn" class="export-btn" type="button">
+          <i data-lucide="copy"></i>
+          <span>Copy</span>
+        </button>
+
+        <button id="shareReportBtn" class="export-btn" type="button">
+          <i data-lucide="share"></i>
+          <span>Share</span>
+        </button>
+
+        <button id="downloadReportBtn" class="export-btn primary" type="button">
+          <i data-lucide="download"></i>
+          <span>Download</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="postCallCta" class="postCallCta">
+      <div class="postCallCtaTitle" id="postCallCtaTitle">Continue</div>
+      <div class="postCallCtaButtons">
+        <button id="postCallPrimaryBtn" type="button" class="smallBtn primary">Continue with Sophie</button>
+        <button id="postCallSecondaryBtn" type="button" class="smallBtn secondary">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="limitOverlay">
+  <video id="limitVideo" playsinline preload="auto">
+    <source src="/video/sophie_limit.mp4" type="video/mp4">
+  </video>
+</div>
+
+<div id="billingFooter" aria-label="billing-footer">
+  <a href="#" id="manageSubLink" style="display:none;">Manage subscription</a>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// SESSION WATCH
+supabase.auth.onAuthStateChange((event, session) => {
+  if (!session?.user) {
+    window.location.href = "/login-dev";
+  }
+});  
+
+// Clean magic-link hash/errors from URL without creating another history entry
+if (window.location.hash.includes("access_token") || window.location.hash.includes("error=")) {
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+}
+
+const { data: { session } } = await supabase.auth.getSession();
+if (!session?.user) {
+  window.location.href = "/login-dev";
+}
+
+const manageSubLink = document.getElementById("manageSubLink");
+const billingFooter = document.getElementById("billingFooter");
+
+async function initManageSubscriptionLink(){
+  try{
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    const res = await fetch("/api/create-portal-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: "{}",
+    });
+
+    if (res.status === 200) {
+      manageSubLink.style.display = "inline";
+      billingFooter.style.pointerEvents = "auto";
+    }
+  } catch(_) {}
+}
+
+manageSubLink?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  try{
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    const res = await fetch("/api/create-portal-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: "{}",
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (data?.url) window.location.href = data.url;
+  } catch(_) {}
+});
+
+async function sendMemoryUpdate(secondsUsed) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    const finalA = (partialAssistant || "").trim();
+    if (finalA) {
+      convoLog.push({ role: "assistant", text: finalA });
+      partialAssistant = "";
+    }
+
+    const cleaned = (convoLog || []).filter(t => {
+      const role = String(t?.role || "");
+      const text = String(t?.text || "").trim();
+      if (!text) return false;
+      if (role === "user" && text.toLowerCase() === "bye.") return false;
+      return true;
+    });
+
+    const payload = cleaned.slice(-80);
+
+    const startedAtIso = talkStartedAt ? new Date(talkStartedAt).toISOString() : null;
+    const endedAtIso = new Date().toISOString();
+
+    const r = await fetch("/api/memory-update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        transcript: payload,
+        seconds_used: secondsUsed,
+        session_started_at: startedAtIso,
+        session_ended_at: endedAtIso,
+        session_id: sessionId
+      }),
+      keepalive: true,
+    });
+
+    const txt = await r.text().catch(() => "");
+    console.log(`[${runId}] [memory-update] status=${r.status} body=${txt.slice(0, 500)}`);
+
+    let parsed = null;
+    try {
+      parsed = txt ? JSON.parse(txt) : null;
+      if (parsed?.session?.id) {
+        sessionId = parsed.session.id;
+      }
+    } catch (_) {}
+
+    return parsed;
+  } catch (e) {
+    console.log(`[${runId}] [memory-update] failed`, e);
+    return null;
+  }
+}
+
+const startBtn = document.getElementById("start");
+const endBtn   = document.getElementById("end");
+const statusEl = document.getElementById("status");
+const timerEl  = document.getElementById("timer");
+const headline = document.getElementById("headline");
+const bg = document.getElementById("bg");
+const overlay = document.getElementById("overlay");
+const logoutBtn = document.getElementById("logoutBtn");
+const softHint = document.getElementById("softHint");
+const liveBadge = document.getElementById("liveBadge");
+
+const inlineReportProgress = document.getElementById("inlineReportProgress");
+const inlineReportProgressBar = document.getElementById("inlineReportProgressBar");
+
+const postCallPanel = document.getElementById("postCallPanel");
+const postCallSummary = document.getElementById("postCallSummary");
+const postCallInsights = document.getElementById("postCallInsights");
+const postCallActions = document.getElementById("postCallActions");
+const postCallTranscript = document.getElementById("postCallTranscript");
+
+const summaryView = document.getElementById("summaryView");
+const transcriptView = document.getElementById("transcriptView");
+const showSummaryBtn = document.getElementById("showSummaryBtn");
+const showTranscriptBtn = document.getElementById("showTranscriptBtn");
+
+const copyReportBtn = document.getElementById("copyReportBtn");
+const shareReportBtn = document.getElementById("shareReportBtn");
+const downloadReportBtn = document.getElementById("downloadReportBtn");
+
+const postCallCta = document.getElementById("postCallCta");
+const postCallCtaTitle = document.getElementById("postCallCtaTitle");
+const postCallPrimaryBtn = document.getElementById("postCallPrimaryBtn");
+const postCallSecondaryBtn = document.getElementById("postCallSecondaryBtn");
+
+const limitOverlay = document.getElementById("limitOverlay");
+const limitVideo = document.getElementById("limitVideo");
+
+let pc = null;
+let stream = null;
+let audioEl = null;
+let dc = null;
+
+let convoLog = [];
+let partialAssistant = "";
+const userTranscriptBuffer = new Map();
+let lastAssistantFinal = "";
+
+let countdown = null;
+let remainingSeconds = 0;
+let isPremium = false;
+let plan = null;
+
+let softEndEnabled = true;
+let softEndWarningSeconds = 30;
+let softEndSummarySeconds = 22;
+let softEndWarningTriggered = false;
+let softEndSummaryTriggered = false;
+let softEndFinalizing = false;
+let closingStartedAt = 0;
+let closingHasSpoken = false;
+let closingRetryUsed = false;
+let closingForceTimeout = null;
+let closingRetryTimeout = null;
+let closingFinishTimeout = null;
+
+let talkStartedAt = null;
+let sessionId = null;
+
+let dynamicResetInterval = null;
+
+let limitTriggered = false;
+
+let startModeTriggered = false;
+let isFirstSession = false;
+let kickoffInProgress = false;
+
+let runId = Math.random().toString(16).slice(2, 8);
+let lastReportExport = {
+  summary: "",
+  transcript: "",
+  full: "",
+  topicSlug: "session"
+};
+
+function dcSend(obj) {
+  try {
+    console.log(`[${runId}] [dc send]`, obj?.type, obj);
+    dc.send(JSON.stringify(obj));
+  } catch (e) {
+    console.log(`[${runId}] [dc send failed]`, obj?.type, e);
+  }
+}
+
+function setStatus(txt){ statusEl.textContent = txt; }
+function setSoftHint(txt = "") { softHint.textContent = txt; }
+
+function showReadyStatus() {
+  statusEl.textContent = "Whenever you’re ready.";
+  statusEl.style.visibility = "visible";
+}
+
+function hideReadyStatus() {
+  statusEl.style.visibility = "hidden";
+}
+
+function showLiveBadge(on){
+  if (!liveBadge) return;
+  if (on) liveBadge.classList.add("active");
+  else liveBadge.classList.remove("active");
+}
+
+function playReadySound(){
+  try{
+    const audio = new Audio("/audio/ready.mp3");
+    audio.volume = 0.28;
+    audio.play().catch(() => {});
+  } catch(_) {}
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildTranscriptText(log = []) {
+  return (Array.isArray(log) ? log : [])
+    .map((t) => {
+      const role = t?.role === "assistant" ? "Sophie" : "You";
+      const text = String(t?.text || "").trim();
+      return text ? `${role}: ${text}` : "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function normalizeInsights(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "string") return item.trim();
+      return String(item.text || item.detail || item.label || "").trim();
+    })
+    .filter(Boolean);
+}
+
+function normalizeActions(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const title = String(item.label || item.title || "").trim();
+      const detail = String(item.detail || item.text || "").trim();
+      if (!title && !detail) return null;
+      return { title, detail };
+    })
+    .filter(Boolean);
+}
+
+function renderInsightsHtml(items) {
+  if (!items.length) return `<p class="report-summary-text" style="margin:0;">—</p>`;
+  return `
+    <ul class="report-insight-list">
+      ${items.map(text => `<li>${escapeHtml(text)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function renderActionsHtml(items) {
+  if (!items.length) return `<p class="report-summary-text" style="margin:0;">—</p>`;
+  return items.map(item => `
+    <div class="report-action-item">
+      ${item.title ? `<strong class="report-action-title">• ${escapeHtml(item.title)}</strong>` : ""}
+      ${item.detail ? `<p class="report-action-detail">${escapeHtml(item.detail)}</p>` : ""}
+    </div>
+  `).join("");
+}
+
+function buildReportText() {
+  const summary = (postCallSummary.textContent || "").trim();
+  const transcript = (postCallTranscript.textContent || "").trim();
+
+  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+    .map(li => `• ${li.textContent.trim()}`)
+    .filter(Boolean);
+
+  const actionBlocks = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+    .map((node) => {
+      const title = node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "";
+      const detail = node.querySelector(".report-action-detail")?.textContent.trim() || "";
+      if (title && detail) return `• ${title}:\n  ${detail}`;
+      if (detail) return `• ${detail}`;
+      if (title) return `• ${title}`;
+      return "";
+    })
+    .filter(Boolean);
+
+  const fullText =
+`Thinking Report
+
+Summary
+${summary || "—"}
+
+Key Insights
+${insightLines.length ? insightLines.join("\n") : "—"}
+
+Action Plan
+${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
+
+Full Transcript
+${transcript || "—"}
+`;
+
+  const summaryText =
+`Thinking Report
+
+Summary
+${summary || "—"}
+
+Key Insights
+${insightLines.length ? insightLines.join("\n") : "—"}
+
+Action Plan
+${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
+`;
+
+  lastReportExport.summary = summaryText;
+  lastReportExport.transcript = transcript || "—";
+  lastReportExport.full = fullText;
+
+  return lastReportExport;
+}
+
+async function copyReport() {
+  const summary = (postCallSummary.textContent || "").trim();
+
+  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+    .map(li => li.textContent.trim())
+    .filter(Boolean);
+
+  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+    .map((node) => {
+      const title = node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "";
+      const detail = node.querySelector(".report-action-detail")?.textContent.trim() || "";
+      return { title, detail };
+    })
+    .filter(item => item.title || item.detail);
+
+  const plainText =
+`Thinking Report
+
+Summary
+${summary || "—"}
+
+Key Insights
+${insightLines.length ? insightLines.map(x => `• ${x}`).join("\n") : "—"}
+
+Action Plan
+${actionItems.length ? actionItems.map(item => {
+  if (item.title && item.detail) return `• ${item.title}: ${item.detail}`;
+  if (item.detail) return `• ${item.detail}`;
+  return `• ${item.title}`;
+}).join("\n") : "—"}
+`;
+
+ const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;color:#111;max-width:680px;">
+
+<div style="font-size:18px;font-weight:700;margin-bottom:14px;">
+Thinking Report
+</div>
+
+<div style="font-weight:700;margin-bottom:4px;">Summary</div>
+
+<div style="margin-bottom:16px;">
+${escapeHtml(summary || "—")}
+</div>
+
+<div style="font-weight:700;margin-bottom:6px;">Key Insights</div>
+
+<div style="margin-left:8px;margin-bottom:18px;">
+${insightLines.map(x => `<div style="margin-bottom:6px;">• ${escapeHtml(x)}</div>`).join("")}
+</div>
+
+<div style="font-weight:700;margin-bottom:6px;">Action Plan</div>
+
+<div style="margin-left:8px;">
+${actionItems.map(item => `
+<div style="margin-bottom:10px;">
+<strong>• ${escapeHtml(item.title)}:</strong> ${escapeHtml(item.detail)}
+</div>
+`).join("")}
+</div>
+
+</div>
+`;
+
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+        "text/html": new Blob([html], { type: "text/html" })
+      })
+    ]);
+    setSoftHint("Formatted report copied.");
+    setTimeout(() => setSoftHint(""), 1800);
+  } catch (err) {
+    await navigator.clipboard.writeText(plainText);
+    setSoftHint("Copied as plain text.");
+    setTimeout(() => setSoftHint(""), 1800);
+  }
+}
+
+async function shareReport() {
+  const report = buildReportText();
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "Sophie Thinking Report",
+        text: report.summary
+      });
+      return;
+    }
+    await navigator.clipboard.writeText(report.summary);
+    setSoftHint("Sharing not available. Report copied instead.");
+    setTimeout(() => setSoftHint(""), 2200);
+  } catch (_) {}
+}
+
+function downloadReport() {
+  const report = buildReportText();
+  const datePrefix = getDatePrefix();
+  const topicSlug = lastReportExport.topicSlug || "session";
+  downloadTextFile(`${datePrefix}_sophie-thinking-report_${topicSlug}.txt`, report.full);
+}
+
+function downloadTextFile(filename, text) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function slugifyFilenamePart(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 50) || "session";
+}
+
+function getDatePrefix() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function startFakeReportLoader() {
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
+
+  inlineReportProgress.style.display = "block";
+  inlineReportProgressBar.style.width = "0%";
+
+  let progress = 8;
+  inlineReportProgressBar.style.width = progress + "%";
+
+  window.__sophieLoaderInterval = setInterval(() => {
+    if (progress < 35) {
+      progress += Math.random() * 10;
+    } else if (progress < 62) {
+      progress += Math.random() * 7;
+    } else if (progress < 84) {
+      progress += Math.random() * 4;
+    } else if (progress < 92) {
+      progress += Math.random() * 1.5;
+    }
+
+    if (progress > 92) progress = 92;
+    inlineReportProgressBar.style.width = progress + "%";
+  }, 380);
+}
+
+function stopFakeReportLoader() {
+  if (window.__sophieLoaderInterval) {
+    clearInterval(window.__sophieLoaderInterval);
+    window.__sophieLoaderInterval = null;
+  }
+
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
+
+  inlineReportProgressBar.style.width = "100%";
+
+  setTimeout(() => {
+    inlineReportProgress.style.display = "none";
+    inlineReportProgressBar.style.width = "0%";
+  }, 420);
+}
+
+function clearClosingTimers() {
+  if (closingForceTimeout) {
+    clearTimeout(closingForceTimeout);
+    closingForceTimeout = null;
+  }
+  if (closingRetryTimeout) {
+    clearTimeout(closingRetryTimeout);
+    closingRetryTimeout = null;
+  }
+  if (closingFinishTimeout) {
+    clearTimeout(closingFinishTimeout);
+    closingFinishTimeout = null;
+  }
+}
+
+function resetClosingState() {
+  clearClosingTimers();
+  closingStartedAt = 0;
+  closingHasSpoken = false;
+  closingRetryUsed = false;
+}
+
+function configurePostCallCta(triggeredByLimit = false) {
+  postCallCta.style.display = "block";
+
+  if (triggeredByLimit) {
+    if (isPremium || plan) {
+      postCallCtaTitle.textContent = "Your session ended cleanly.";
+      postCallPrimaryBtn.textContent = "Start new session";
+      postCallPrimaryBtn.onclick = () => {
+        postCallPanel.style.display = "none";
+        startVoice();
+      };
+
+      postCallSecondaryBtn.textContent = "Close";
+      postCallSecondaryBtn.onclick = () => {
+        postCallPanel.style.transform = "translateY(60%)";
+      };
+    } else {
+      postCallCtaTitle.textContent = "Continue with Sophie";
+      postCallPrimaryBtn.textContent = "See plans";
+      postCallPrimaryBtn.onclick = () => {
+        window.location.href = "/pricing";
+      };
+
+      postCallSecondaryBtn.textContent = "Close";
+      postCallSecondaryBtn.onclick = () => {
+        postCallPanel.style.transform = "translateY(60%)";
+      };
+    }
+  } else {
+    postCallCtaTitle.textContent = "";
+    postCallPrimaryBtn.textContent = "Start a new session";
+    postCallPrimaryBtn.onclick = () => {
+      postCallPanel.style.display = "none";
+      startVoice();
+    };
+
+    postCallSecondaryBtn.textContent = "Close";
+    postCallSecondaryBtn.onclick = () => {
+      postCallPanel.style.transform = "translateY(60%)";
+    };
+  }
+}
+
+function showSummaryView() {
+  summaryView.classList.add("active");
+  transcriptView.classList.remove("active");
+  showSummaryBtn.classList.add("active");
+  showTranscriptBtn.classList.remove("active");
+}
+
+function showTranscriptView() {
+  transcriptView.classList.add("active");
+  summaryView.classList.remove("active");
+  showTranscriptBtn.classList.add("active");
+  showSummaryBtn.classList.remove("active");
+}
+
+function showPostCallResults(apiResult, transcriptLog, opts = {}) {
+  const triggeredByLimit = !!opts.triggeredByLimit;
+
+  const summary =
+    apiResult?.output?.short_summary ||
+    apiResult?.session?.short_summary ||
+    "No summary available.";
+
+  const insights = normalizeInsights(apiResult?.output?.key_insights);
+  const actions = normalizeActions(apiResult?.output?.action_plan);
+  const transcriptText = buildTranscriptText(transcriptLog);
+
+  const sessionTitle =
+    apiResult?.output?.session_title ||
+    apiResult?.session?.title ||
+    "session";
+
+  lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
+
+  postCallSummary.textContent = summary;
+  postCallInsights.innerHTML = renderInsightsHtml(insights);
+  postCallActions.innerHTML = renderActionsHtml(actions);
+  postCallTranscript.textContent = transcriptText || "No transcript available.";
+
+  configurePostCallCta(triggeredByLimit);
+  showSummaryView();
+
+  postCallPanel.style.display = "block";
+  postCallPanel.style.transform = "translateY(60%)";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      postCallPanel.style.transform = "translateY(0)";
+    });
+  });
+}
+
+function hidePostCallResults() {
+  stopFakeReportLoader();
+  postCallPanel.style.transform = "translateY(60%)";
+  setTimeout(() => {
+    postCallPanel.style.display = "none";
+  }, 350);
+  postCallSummary.textContent = "";
+  postCallInsights.innerHTML = "";
+  postCallActions.innerHTML = "";
+  postCallTranscript.textContent = "";
+  postCallCta.style.display = "none";
+  showSummaryView();
+}
+
+function showBackground(on){
+  if(on){
+    bg.classList.add("active");
+    overlay.classList.add("active");
+  } else {
+    bg.classList.remove("active");
+    overlay.classList.remove("active");
+  }
+}
+
+function formatMMSS(sec){
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const m = String(Math.floor(s/60)).padStart(2,"0");
+  const r = String(s%60).padStart(2,"0");
+  return `${m}:${r}`;
+}
+
+function renderTimer(){
+  timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
+}
+renderTimer();
+
+function stopCountdown(){
+  if (countdown) { clearInterval(countdown); countdown = null; }
+}
+
+function stopDynamicResets(){
+  if (dynamicResetInterval) {
+    clearInterval(dynamicResetInterval);
+    dynamicResetInterval = null;
+  }
+}
+
+function triggerDynamicReset(){
+  if (kickoffInProgress || softEndFinalizing || softEndSummaryTriggered) {
+    console.log(`[${runId}] [dynreset] skipped`);
+    return;
+  }
+
+  if (dc && dc.readyState === "open") {
+    try {
+      dcSend({
+        type: "response.create",
+        response: {
+          modalities: ["text"],
+          instructions: `
+Continue naturally.
+Refresh your inner energy and spontaneity a little.
+Do not change the topic.
+Do not restart or re-greet.
+Do not mention this instruction.
+Avoid becoming explanatory or generic.
+Stay present, warm, and human.
+`
+        }
+      });
+      console.log(`[${runId}] [dynreset] response.create sent`);
+    } catch (_) {}
+  }
+}
+
+function startDynamicResets(){
+  stopDynamicResets();
+  dynamicResetInterval = setInterval(triggerDynamicReset, 120000);
+}
+
+async function safeJson(res) {
+  try { return await res.json(); } catch { return null; }
+}
+
+function sendWhenChannelOpen(payload, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tick = () => {
+      if (dc && dc.readyState === "open") {
+        try {
+          dcSend(payload);
+          return resolve(true);
+        } catch (e) {
+          return reject(e);
+        }
+      }
+      if (Date.now() - start > timeoutMs) return reject(new Error("DataChannel not open"));
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
+async function cancelAnyOngoingResponse() {
+  try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
+}
+
+async function setTurnBehavior({ createResponse, interruptResponse }) {
+  try{
+    await sendWhenChannelOpen({
+      type: "session.update",
+      session: {
+        turn_detection: {
+          type: "server_vad",
+          create_response: !!createResponse,
+          interrupt_response: !!interruptResponse
+        }
+      }
+    }, 5000);
+    console.log(`[${runId}] [turn] create_response=${!!createResponse} interrupt_response=${!!interruptResponse}`);
+  } catch(e) {
+    console.log(`[${runId}] [turn] failed`, e);
+  }
+}
+
+async function setAutoResponses(on){
+  return setTurnBehavior({
+    createResponse: !!on,
+    interruptResponse: true
+  });
+}
+
+async function lockClosingMode() {
+  return setTurnBehavior({
+    createResponse: false,
+    interruptResponse: false
+  });
+}
+
+async function triggerStartModeKickoff() {
+  if (startModeTriggered) return;
+  startModeTriggered = true;
+  kickoffInProgress = true;
+
+  console.log(`[${runId}] [startmode] kickoff begin`);
+
+  try {
+    await cancelAnyOngoingResponse();
+
+    await sendWhenChannelOpen({
+      type: "response.create",
+      response: {
+        modalities: ["audio", "text"],
+        instructions: `
+You are Sophie.
+
+LANGUAGE LOCK:
+Speak ENGLISH only. 
+Do not speak any other language unless the user explicitly asks.
+
+NAME RULE (CRITICAL):
+- Never invent, guess, or assume the user’s name.
+- Do NOT use any name until the user explicitly provides one.
+- Do NOT use placeholder names.
+- Do not use example names.
+- If no name was given, address the user only as "you".
+- When the user provides a name, repeat it EXACTLY as given.
+- Do not modify, translate, shorten, or replace the name.
+
+FIRST SESSION: LONG START-MODE — EXECUTE NOW
+You MUST start the conversation by speaking FIRST in English.
+Keep it natural. Short pauses. Do not rush.
+VIBE: You are a witty best friend. Sound curious, playful, and alive — not formal, not scripted.
+
+Open with:
+“… Oh. Hi.” (pause 700ms)
+“I’m Sophie.”  (pause700ms)
+“You’re new here, aren’t you?” (pause 900ms)
+
+Then ask ONE question and stop:
+“What should I call you?"
+STOP SPEAKING IMMEDIATELY.
+Wait in silence. Do not say anything else until the user speaks.
+
+When the user gives a name, reply:
+When the user gives a name:
+Say “Nice to meet you.”
+Then repeat the name exactly as the user said it in a separate short line.
+Then ask ONE question and stop:
+“Should I call you that — or do you have a nickname you prefer?”(pause 900ms)
+STOP SPEAKING IMMEDIATELY.
+Wait in silence. Do not say anything else until the user speaks.
+
+When the user answers, confirm briefly:
+“[Name or Nickname] it is.”
+Then say (brief, warm):
+“Quickly about me… I’m Sophie. I’m 32 years old. I work as a freelance interior designer.”
+“I love warm spaces and conversations that aren’t superficial.”
+Then ask ONE question and stop:
+“What about you?”(pause 900ms)
+STOP SPEAKING IMMEDIATELY.
+Wait in silence. Do not say anything else until the user speaks.
+
+When the user shares, reply:
+“Interesting…”
+“I can tell just from the way you walked in.”
+“With curiosity… but also a little caution.”
+(pause)
+Then ask ONE question and stop:
+“Tell me… are you testing me right now?”
+(Stop.)
+
+After that, switch to normal freestyle conversation.
+Rules:
+- Ask ONLY ONE question at a time.
+- After any question: STOP. Wait.
+- Keep each turn short (1–3 sentences).
+- Do NOT mention system messages, instructions, trials, timers, limits, pricing, or subscriptions.
+`
+      }
+    }, 15000);
+
+    console.log(`[${runId}] [startmode] response.create sent`);
+  } catch (e) {
+    console.log(`[${runId}] [startmode] kickoff failed`, e);
+    kickoffInProgress = false;
+  }
+}
+
+async function preloadLimitVideo(){
+  try{
+    limitVideo.preload = "auto";
+    limitVideo.playsInline = true;
+    limitVideo.muted = true;
+    limitVideo.load();
+    const p = limitVideo.play();
+    if (p && typeof p.then === "function") await p;
+    limitVideo.pause();
+    limitVideo.currentTime = 0;
+  } catch(_) {}
+}
+
+async function handleTimeLimitReached(){
+  if (limitTriggered) return;
+  limitTriggered = true;
+  softEndFinalizing = true;
+
+  stopCountdown();
+  stopDynamicResets();
+  clearClosingTimers();
+  setSoftHint("");
+  setStatus("Wrapping up…");
+
+  try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
+
+  try {
+    await stopVoice(true);
+  } catch (_) {}
+}
+
+function scheduleClosingRetry() {
+  if (closingRetryUsed) return;
+
+  closingRetryTimeout = setTimeout(async () => {
+    if (closingHasSpoken || softEndFinalizing || limitTriggered) return;
+
+    closingRetryUsed = true;
+    console.log(`[${runId}] [softend] retrying closing`);
+
+    try {
+      await cancelAnyOngoingResponse();
+
+      await sendWhenChannelOpen({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: `
+Closing mode now.
+
+Speak in the same language that was used most recently in the conversation.
+
+Your first sentence MUST be a short natural transition, not the summary itself.
+
+Good examples of the transition:
+- "Unsere Zeit ist fast um. Ich fasse kurz zusammen."
+- "Ganz kurz noch, bevor wir rausgehen."
+- "Our time is almost up. Let me wrap up."
+- "Before we stop, let me wrap up."
+
+Hard rules:
+- maximum 2 sentences total
+- maximum 18 words per sentence
+- do not list more than 1 key point
+- do not explain
+- do not introduce anything new
+- do not ask a question
+- do not mention subscriptions, pricing, plans, timers, technical issues, or limits
+- make it short enough to finish safely before the session ends
+
+Structure:
+1. one very short transition sentence
+2. one very short sentence with topic + key takeaway or next step
+
+Tone:
+calm, warm, natural, complete
+`
+        }
+      }, 5000);
+    } catch (e) {
+      console.log(`[${runId}] [softend] retry failed`, e);
+    }
+  }, 1800);
+}
+
+function scheduleClosingForceEnd() {
+  closingForceTimeout = setTimeout(() => {
+    console.log(`[${runId}] [softend] force end`);
+    void handleTimeLimitReached();
+  }, 8000);
+}
+
+async function maybeTriggerSoftEnding(){
+  if (!softEndEnabled || softEndFinalizing) return;
+  if (!dc || dc.readyState !== "open") return;
+
+  if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
+    softEndWarningTriggered = true;
+    setSoftHint("Sophie is preparing a short closing.");
+    console.log(`[${runId}] [softend] warning threshold reached: ${remainingSeconds}s`);
+  }
+
+  if (!softEndSummaryTriggered && remainingSeconds <= softEndSummarySeconds) {
+    softEndSummaryTriggered = true;
+    stopDynamicResets();
+    stopCountdown();
+    setSoftHint("Sophie is bringing it to a close.");
+    console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
+
+    closingStartedAt = Date.now();
+    closingHasSpoken = false;
+    closingRetryUsed = false;
+
+    try {
+      await cancelAnyOngoingResponse();
+      await lockClosingMode();
+
+      await sendWhenChannelOpen({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: `
+Closing mode now.
+
+Speak in the same language that was used most recently in the conversation.
+
+Your first sentence MUST be a short natural transition, not the summary itself.
+
+Good examples of the transition:
+- "Unsere Zeit ist fast um. Ich fasse kurz zusammen."
+- "Ganz kurz noch, bevor wir rausgehen."
+- "Our time is almost up. Let me wrap up."
+- "Before we stop, let me wrap up."
+
+Hard rules:
+- maximum 2 sentences total
+- maximum 18 words per sentence
+- do not list more than 1 key point
+- do not explain
+- do not introduce anything new
+- do not ask a question
+- do not mention subscriptions, pricing, plans, timers, technical issues, or limits
+- make it short enough to finish safely before the session ends
+
+Structure:
+1. one very short transition sentence
+2. one very short sentence with topic + key takeaway or next step
+
+Tone:
+calm, warm, natural, complete
+`
+        }
+      }, 5000);
+
+      scheduleClosingRetry();
+      scheduleClosingForceEnd();
+    } catch (e) {
+      console.log(`[${runId}] [softend] summary trigger failed`, e);
+      scheduleClosingForceEnd();
+    }
+  }
+}
+
+function startCountdown(){
+  if (countdown) clearInterval(countdown);
+
+  countdown = setInterval(() => {
+    remainingSeconds -= 1;
+    renderTimer();
+
+    void maybeTriggerSoftEnding();
+
+    if (remainingSeconds <= 0 && !softEndSummaryTriggered) {
+      void handleTimeLimitReached();
+    }
+  }, 1000);
+}
+
+function attachChannel(ch) {
+  dc = ch;
+
+  dc.addEventListener("open", async () => {
+    console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}`);
+
+    try {
+      dcSend({
+        type: "session.update",
+        session: {
+          input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
+          turn_detection: {
+            type: "server_vad",
+            create_response: isFirstSession ? false : true,
+            interrupt_response: true
+          }
+        }
+      });
+      console.log(`[${runId}] [dc] session.update sent`);
+    } catch (e) {
+      console.log(`[${runId}] [dc] session.update failed`, e);
+    }
+
+    if (isFirstSession && !startModeTriggered) {
+      console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
+      try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
+    }
+  });
+
+  dc.addEventListener("message", async (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+
+      if (msg?.type === "input_audio_buffer.speech_started") {
+        hideReadyStatus();
+        return;
+      }
+
+      if (msg?.type === "response.created") {
+        hideReadyStatus();
+        return;
+      }
+
+      if (msg?.type === "conversation.item.input_audio_transcription.delta") {
+        const itemId = msg?.item_id;
+        const delta = String(msg?.delta || "");
+        if (itemId && delta) {
+          const prev = userTranscriptBuffer.get(itemId) || "";
+          userTranscriptBuffer.set(itemId, (prev + delta));
+        }
+        return;
+      }
+
+      if (msg?.type === "conversation.item.input_audio_transcription.completed") {
+        const itemId = msg?.item_id;
+        const t1 = String(msg?.transcript || "").trim();
+        const tBuf = itemId ? String(userTranscriptBuffer.get(itemId) || "").trim() : "";
+        const text = (t1 || tBuf).trim();
+
+        if (itemId) userTranscriptBuffer.delete(itemId);
+
+        if (text) {
+          convoLog.push({ role: "user", text });
+        }
+        return;
+      }
+
+      if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
+        const item = msg?.item;
+        if (item?.role === "user" && Array.isArray(item?.content)) {
+          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
+          if (text) convoLog.push({ role: "user", text });
+        }
+      }
+
+      if (msg?.type === "response.audio_transcript.delta") {
+        const chunk = String(msg?.delta || "");
+        if (chunk) {
+          partialAssistant += chunk;
+          if (softEndSummaryTriggered) closingHasSpoken = true;
+        }
+        return;
+      }
+
+      if (msg?.type === "response.audio_transcript.done") {
+        const full = String(msg?.transcript || msg?.text || "").trim();
+        if (full) {
+          partialAssistant = full;
+          if (softEndSummaryTriggered) closingHasSpoken = true;
+        }
+        return;
+      }
+
+      if (msg?.type === "response.output_text.delta") return;
+      if (msg?.type === "response.output_text.done") return;
+      if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
+
+      if (msg?.type === "response.done") {
+        const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+        const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
+
+        if (final && final !== last) {
+          convoLog.push({ role: "assistant", text: final });
+          lastAssistantFinal = final;
+        }
+
+        partialAssistant = "";
+
+        if (kickoffInProgress) {
+          console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
+          kickoffInProgress = false;
+          await setAutoResponses(true);
+          return;
+        }
+
+        if (softEndSummaryTriggered && !softEndFinalizing) {
+          console.log(`[${runId}] [softend] response.done -> finishing session`);
+          clearClosingTimers();
+          closingFinishTimeout = setTimeout(() => {
+            void handleTimeLimitReached();
+          }, 700);
+        }
+      }
+    } catch (_) {}
+  });
+}
+
+function setupDataChannelLogging() {
+  try {
+    const ch = pc.createDataChannel("oai-events");
+    attachChannel(ch);
+  } catch (_) {}
+
+  pc.ondatachannel = (e) => {
+    try { e.channel.close(); } catch(_) {}
+  };
+}
+
+function track(name, payload = {}) {
+  console.log("[track]", name, payload);
+}
+
+async function reportUsage(seconds) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    const res = await fetch("/api/usage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ seconds_used: seconds }),
+      keepalive: true,
+    });
+
+    const data = await res.json().catch(() => null);
+    console.log("[reportUsage]", res.status, data);
+    return data;
+  } catch (e) {
+    console.log("[reportUsage] failed", e);
+    return null;
+  }
+}
+
+async function finalizeSessionAfterSummary() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    const res = await fetch("/api/finalize-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        reason: "time_limit_reached"
+      }),
+      keepalive: true,
+    });
+
+    const data = await res.json().catch(() => null);
+    console.log("[finalizeSessionAfterSummary]", res.status, data);
+    return data;
+  } catch (e) {
+    console.log("[finalizeSessionAfterSummary] failed", e);
+    return null;
+  }
+}
+
+async function startVoice(){
+
+  // prevent double session
+  if (pc || stream) {
+    console.log("Session already running → ignore");
+    return;
+  }
+  
+  await preloadLimitVideo();
+
+  startBtn.disabled = true;
+  logoutBtn.disabled = true;
+  headline.textContent = "Sophie is joining…";
+  setStatus("connecting..");
+  setSoftHint("");
+  showLiveBadge(false);
+  showBackground(true);
+
+  track("talk_start_clicked");
+
+  convoLog = [];
+  partialAssistant = "";
+  lastAssistantFinal = "";
+  userTranscriptBuffer.clear();
+  sessionId = null;
+  hidePostCallResults();
+
+  limitTriggered = false;
+  startModeTriggered = false;
+  kickoffInProgress = false;
+
+  softEndWarningTriggered = false;
+  softEndSummaryTriggered = false;
+  softEndFinalizing = false;
+  resetClosingState();
+
+  stopDynamicResets();
+  isFirstSession = false;
+
+  try{
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      window.location.href = "/login/";
+      return;
+    }
+
+    const tokenRes = await fetch("/api/session", {
+      headers: { Authorization: `Bearer ${session.access_token}` }
+    });
+
+    const data = await safeJson(tokenRes);
+
+    if (tokenRes.status === 402) {
+      const reason = data?.reason || "";
+      const premiumActive = !!data?.is_premium;
+
+      track("time_limit_reached", {
+        reason,
+        is_premium: premiumActive,
+        plan: data?.plan || null
+      });
+
+      showBackground(false);
+      startBtn.disabled = false;
+      logoutBtn.disabled = false;
+      headline.textContent = premiumActive
+        ? "Your included time is used up."
+        : "Continue with Sophie";
+      setStatus(
+        premiumActive
+          ? "Add top-up time or manage your subscription."
+          : "Choose a plan or add top-up time."
+      );
+      setSoftHint("");
+
+      postCallCta.style.display = "block";
+
+      if (premiumActive || reason === "subscription_quota_exhausted") {
+        postCallCtaTitle.textContent = "Continue with Sophie";
+        postCallPrimaryBtn.textContent = "Add top-up";
+        postCallPrimaryBtn.onclick = () => {
+          window.location.href = "/pricing/?mode=topup";
+        };
+
+        postCallSecondaryBtn.textContent = "Manage subscription";
+        postCallSecondaryBtn.onclick = async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+              window.location.href = "/pricing/";
+              return;
+            }
+
+            const res = await fetch("/api/create-portal-session", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: "{}",
+            });
+
+            const portal = await res.json().catch(() => ({}));
+            if (portal?.url) {
+              window.location.href = portal.url;
+            } else {
+              window.location.href = "/pricing/";
+            }
+          } catch (_) {
+            window.location.href = "/pricing/";
+          }
+        };
+      } else {
+        postCallCtaTitle.textContent = "Continue with Sophie";
+        postCallPrimaryBtn.textContent = "See plans";
+        postCallPrimaryBtn.onclick = () => {
+          window.location.href = "/pricing/";
+        };
+
+        postCallSecondaryBtn.textContent = "Add top-up";
+        postCallSecondaryBtn.onclick = () => {
+          window.location.href = "/pricing/?mode=topup";
+        };
+      }
+
+      postCallPanel.style.display = "block";
+      postCallPanel.style.transform = "translateY(60%)";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          postCallPanel.style.transform = "translateY(0)";
+        });
+      });
+
+      return;
+    }
+
+    if (!tokenRes.ok) {
+      const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
+      setStatus(msg);
+      headline.textContent = "Sophie is waiting.";
+      showBackground(false);
+      showLiveBadge(false);
+      startBtn.disabled = false;
+      logoutBtn.disabled = false;
+      track("talk_start_failed", { http_status: tokenRes.status, message: msg });
+      return;
+    }
+
+    isPremium = !!data?.is_premium;
+    plan = data?.plan || null;
+
+    softEndEnabled = data?.soft_end_enabled !== false;
+    softEndWarningSeconds = Number.isFinite(data?.soft_end_warning_seconds)
+      ? Math.max(12, Number(data.soft_end_warning_seconds))
+      : 30;
+
+    softEndSummarySeconds = Number.isFinite(data?.soft_end_summary_seconds)
+      ? Math.max(10, Number(data.soft_end_summary_seconds))
+      : 22;
+
+    if (softEndSummarySeconds >= softEndWarningSeconds) {
+      softEndSummarySeconds = Math.max(10, softEndWarningSeconds - 8);
+    }
+
+    if (typeof data?.remaining_seconds === "number") {
+      remainingSeconds = Math.max(0, data.remaining_seconds);
+    } else {
+      remainingSeconds = 0;
+    }
+
+    renderTimer();
+
+    if (remainingSeconds <= 0) {
+      track("time_limit_reached");
+      window.location.href = "/pricing/";
+      return;
+    }
+
+    isFirstSession = !!data?.is_first_session;
+
+    pc = new RTCPeerConnection();
+    setupDataChannelLogging();
+
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+    audioEl = document.createElement("audio");
+    audioEl.autoplay = true;
+    audioEl.playsInline = true;
+    pc.ontrack = e => audioEl.srcObject = e.streams[0];
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const baseUrl = "https://api.openai.com/v1/realtime";
+    const model = "gpt-realtime";
+
+    const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
+      method: "POST",
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${data.client_secret.value}`,
+        "Content-Type": "application/sdp"
+      },
+    });
+
+    if (!sdpRes.ok) {
+      const t = await sdpRes.text().catch(() => "");
+      throw new Error(`OpenAI SDP Fehler (HTTP ${sdpRes.status}): ${t.slice(0, 200)}`);
+    }
+
+    const answer = { type: "answer", sdp: await sdpRes.text() };
+    await pc.setRemoteDescription(answer);
+
+    endBtn.disabled = false;
+    showReadyStatus();
+    headline.textContent = "Sophie is listening.";
+    showLiveBadge(true);
+
+    setTimeout(() => {
+      playReadySound();
+    }, 150);
+
+    startDynamicResets();
+
+    talkStartedAt = Date.now();
+    track("talk_started", {
+      is_premium: isPremium,
+      plan: plan || null,
+      remaining_seconds_at_start: remainingSeconds,
+      is_first_session: !!isFirstSession,
+      soft_end_enabled: softEndEnabled,
+      soft_end_warning_seconds: softEndWarningSeconds,
+      soft_end_summary_seconds: softEndSummarySeconds
+    });
+
+    startCountdown();
+
+  } catch(err){
+    console.error(err);
+    setStatus("Fail to Start.");
+    headline.textContent = "Sophie is waiting.";
+    setSoftHint("");
+    showLiveBadge(false);
+    track("talk_start_exception", { message: String(err?.message || err) });
+    stopVoice(false);
+  }
+}
+
+async function stopVoice(triggeredByLimit = false){
+  endBtn.disabled = true;
+  startBtn.disabled = true;
+  logoutBtn.disabled = true;
+
+  stopDynamicResets();
+  stopCountdown();
+  clearClosingTimers();
+  showLiveBadge(false);
+
+  headline.textContent = "Preparing your Thinking Report…";
+  setStatus("Sophie is wrapping up.");
+  setSoftHint("");
+  timerEl.style.display = "none";
+
+  startFakeReportLoader();
+
+  try {
+    if (!triggeredByLimit && dc && dc.readyState === "open") {
+      try {
+        dcSend({
+          type: "response.create",
+          response: {
+            instructions: `
+Say one short, soft goodbye line.
+Use the same language that was used in the last conversation.
+Match the emotional tone of the last exchange.
+Calm. Intimate. Low energy.
+No explanation. No repetition.
+Max 12 words.
+`,
+            modalities: ["audio", "text"]
+          }
+        });
+
+        await new Promise(r => setTimeout(r, 900));
+      } catch (_) {}
+    }
+
+    const durationSeconds = talkStartedAt
+      ? Math.round((Date.now() - talkStartedAt) / 1000)
+      : 0;
+
+    const transcriptSnapshot = [...convoLog];
+
+    if (triggeredByLimit) {
+      if (dc) {
+        try { dc.close(); } catch(e){}
+        dc = null;
+      }
+
+      if (stream) {
+        try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+        stream = null;
+      }
+
+      if (pc) {
+        try { pc.close(); } catch(e){}
+        pc = null;
+      }
+
+      if (audioEl) {
+        try { audioEl.srcObject = null; } catch(e){}
+        audioEl = null;
+      }
+    }
+
+    if (durationSeconds > 0) {
+      await reportUsage(durationSeconds);
+    }
+
+    if (triggeredByLimit) {
+      await finalizeSessionAfterSummary();
+    }
+
+    const memoryResult = await sendMemoryUpdate(durationSeconds);
+    stopFakeReportLoader();
+
+    if (memoryResult?.output || memoryResult?.session) {
+      showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
+    } else if (transcriptSnapshot.length) {
+      showPostCallResults({
+        output: {
+          short_summary: triggeredByLimit
+            ? "The conversation ended cleanly, but no generated summary was returned."
+            : "No generated summary was returned for this conversation.",
+          key_insights: [],
+          action_plan: []
+        }
+      }, transcriptSnapshot, { triggeredByLimit });
+    }
+
+    track("talk_ended", {
+      duration_seconds: durationSeconds || null,
+      is_premium: isPremium,
+      plan: plan || null,
+      remaining_seconds_at_end: remainingSeconds,
+      triggered_by_limit: !!triggeredByLimit
+    });
+
+    talkStartedAt = null;
+
+    if (dc) {
+      try { dc.close(); } catch(e){}
+      dc = null;
+    }
+
+    if (stream) {
+      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+      stream = null;
+    }
+
+    if (pc) {
+      try { pc.close(); } catch(e){}
+      pc = null;
+    }
+
+    if (audioEl) {
+      try { audioEl.srcObject = null; } catch(e){}
+      audioEl = null;
+    }
+
+    convoLog = [];
+    partialAssistant = "";
+    lastAssistantFinal = "";
+    userTranscriptBuffer.clear();
+
+    showBackground(false);
+
+    statusEl.style.visibility = "visible";
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+    headline.textContent = "Sophie is waiting.";
+    setStatus(triggeredByLimit ? "Session complete." : "Ended.");
+    setSoftHint("");
+    softEndFinalizing = false;
+    resetClosingState();
+
+  } catch (e) {
+    stopFakeReportLoader();
+    console.error(e);
+    setSoftHint("Report generation failed.");
+    startBtn.disabled = false;
+    logoutBtn.disabled = false;
+  }
+}
+
+logoutBtn.onclick = async () => {
+  try {
+    track("logout_clicked");
+    if (pc || stream || talkStartedAt) {
+      await stopVoice(false);
+    }
+  } catch(e) {}
+
+  try { await supabase.auth.signOut(); } catch(e) {}
+  window.location.href = "/";
+};
+
+showSummaryBtn.addEventListener("click", showSummaryView);
+showTranscriptBtn.addEventListener("click", showTranscriptView);
+copyReportBtn.addEventListener("click", copyReport);
+shareReportBtn.addEventListener("click", shareReport);
+downloadReportBtn.addEventListener("click", downloadReport);
+
+startBtn.addEventListener("click", startVoice);
+endBtn.addEventListener("click", () => stopVoice(false));
+
+initManageSubscriptionLink();
+</script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+lucide.createIcons();
+</script>
+
+</body>
+</html>
