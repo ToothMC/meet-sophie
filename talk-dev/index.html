@@ -2377,7 +2377,7 @@ logoutBtn.onclick = async () => {
   } catch(e) {}
 
   try { await supabase.auth.signOut(); } catch(e) {}
-  window.location.href = "/";
+  window.location.href = "/login-dev";
 };
 
 showSummaryBtn.addEventListener("click", showSummaryView);
