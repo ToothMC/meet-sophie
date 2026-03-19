@@ -64,13 +64,13 @@
       if (!user) {
         setStatus("Login could not be completed.");
         setTimeout(() => {
-          window.location.href = "/login-dev";
+          window.location.href = "/loginv";
         }, 1500);
         return;
       }
 
       history.replaceState(null, "", window.location.pathname + window.location.search);
-      window.location.href = "/talk-dev";
+      window.location.href = "/talk";
     }
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -95,7 +95,7 @@
 
       setStatus("Login could not be completed.");
       setTimeout(() => {
-        window.location.href = "/login-dev";
+        window.location.href = "/login";
       }, 1500);
     }, 3000);
   </script>
