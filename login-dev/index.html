@@ -71,6 +71,7 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let authHandled = false;
+    let waitingForMagicLink = false;
 
     const $ = (id) => document.getElementById(id);
     const statusEl = $("status");
@@ -152,10 +153,18 @@
     }
     
     supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
+      // Skip if a Magic-Link is in flight — the callback tab will postMessage us instead.
+      if (session?.user && !waitingForMagicLink) {
         handleSuccessfulAuth();
-  }
-});
+      }
+    });
+
+    // Callback tab sends this after successful Magic-Link auth.
+    window.addEventListener("message", (e) => {
+      if (e.origin === window.location.origin && e.data?.type === "AUTH_SUCCESS") {
+        handleSuccessfulAuth();
+      }
+    });
     
     $("magicLinkBtn").onclick = async () => {
       const email = $("email").value.trim();
@@ -165,6 +174,7 @@
       }
 
       setStatus("Sending login link...");
+      waitingForMagicLink = true;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,
