@@ -731,7 +731,7 @@ if (window.location.hash.includes("access_token") || window.location.hash.includ
 
 const { data: { session } } = await supabase.auth.getSession();
 if (!session?.user) {
-  window.location.href = "/login/";
+  window.location.href = "/login";
 }
 
 const manageSubLink = document.getElementById("manageSubLink");
