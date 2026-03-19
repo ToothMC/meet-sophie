@@ -139,7 +139,7 @@
       await ensureUserRelationshipRow(user.id);
 
       setStatus("Login successful. Redirecting…", true);
-      window.location.href = "/talk";
+      window.location.href = "/talk-dev";
     }
 
     const { data: { session } } = await supabase.auth.getSession();
