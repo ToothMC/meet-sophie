@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Meet Sophie – Login</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 520px;
+      margin: 60px auto;
+      padding: 0 16px;
+      background: #f9f9f9;
+    }
+
+    h2 { margin-bottom: 24px; }
+
+    .box {
+      background: white;
+      border: 1px solid #e5e5e5;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+    }
+
+    .primary { background: #111; color: white; }
+
+    .ok { color: #0a7; }
+    .err { color: #c00; }
+
+    .muted {
+      font-size: 14px;
+      opacity: .7;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Before you enter the room…</h2>
+
+  <div class="box">
+    <label>Email</label>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+
+    <button id="magicLinkBtn" class="primary" type="button">
+      Send login link
+    </button>
+
+    <p id="status" class="muted"></p>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $("status");
+
+    function setStatus(msg, ok = true) {
+      statusEl.textContent = msg;
+      statusEl.className = ok ? "ok muted" : "err muted";
+    }
+
+    async function ensureUserMemoryRow(userId) {
+      const { data } = await supabase
+        .from("user_memory")
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!data) {
+        await supabase.from("user_memory").insert({
+          user_id: userId,
+          profile_notes: "",
+          relationship_summary: ""
+        });
+      }
+    }
+
+    async function ensureUserUsageRow(userId) {
+      const { data } = await supabase
+        .from("user_usage")
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!data) {
+        await supabase.from("user_usage").insert({
+          user_id: userId,
+          free_seconds_total: 120,
+          free_seconds_used: 0
+        });
+      }
+    }
+
+    async function ensureUserRelationshipRow(userId) {
+      const { data } = await supabase
+        .from("user_relationship")
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!data) {
+        await supabase.from("user_relationship").insert({
+          user_id: userId,
+          tone_baseline: "",
+          openness_level: "",
+          emotional_patterns: "",
+          last_interaction_summary: "",
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    async function handleSuccessfulAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await ensureUserMemoryRow(user.id);
+      await ensureUserUsageRow(user.id);
+      await ensureUserRelationshipRow(user.id);
+
+      setStatus("Login successful. Redirecting…", true);
+      window.location.href = "/talk";
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await handleSuccessfulAuth();
+    }
+
+    $("magicLinkBtn").onclick = async () => {
+      const email = $("email").value.trim();
+
+      if (!email) {
+        return setStatus("Please enter your email.", false);
+      }
+
+      setStatus("Sending login link...");
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin + "/talk"
+        }
+      });
+
+      if (error) return setStatus(error.message, false);
+
+      setStatus("Check your email and click the login link.");
+    };
+  </script>
+</body>
+</html>
