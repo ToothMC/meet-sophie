@@ -903,6 +903,8 @@ let closingForceTimeout = null;
 let closingRetryTimeout = null;
 let closingFinishTimeout = null;
 
+let hasUserSpoken = false;
+
 let talkStartedAt = null;
 let sessionId = null;
 
@@ -1452,6 +1454,103 @@ async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
+function cleanupLiveSession() {
+  stopDynamicResets();
+  stopCountdown();
+  clearClosingTimers();
+  stopFakeReportLoader();
+
+  if (dc) {
+    try { dc.close(); } catch(e){}
+    dc = null;
+  }
+
+  if (stream) {
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+    stream = null;
+  }
+
+  if (pc) {
+    try { pc.close(); } catch(e){}
+    pc = null;
+  }
+
+  if (audioEl) {
+    try { audioEl.srcObject = null; } catch(e){}
+    audioEl = null;
+  }
+
+  convoLog = [];
+  partialAssistant = "";
+  lastAssistantFinal = "";
+  userTranscriptBuffer.clear();
+  hasUserSpoken = false;
+
+  talkStartedAt = null;
+  sessionId = null;
+
+  softEndFinalizing = false;
+  resetClosingState();
+}
+
+async function fetchRealtimeAnswerSdp({ offerSdp, clientSecret, maxAttempts = 3 }) {
+  const baseUrl = "https://api.openai.com/v1/realtime";
+  const model = "gpt-realtime";
+
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offerSdp,
+        headers: {
+          Authorization: `Bearer ${clientSecret}`,
+          "Content-Type": "application/sdp"
+        },
+      });
+
+      if (!sdpRes.ok) {
+        const bodyText = await sdpRes.text().catch(() => "");
+        const err = new Error(`Realtime handshake failed (${sdpRes.status})`);
+        err.httpStatus = sdpRes.status;
+        err.bodyPreview = bodyText.slice(0, 300);
+        throw err;
+      }
+
+      const answerSdp = await sdpRes.text();
+
+      if (!answerSdp || answerSdp.trim().startsWith("<")) {
+        const err = new Error("Realtime returned invalid SDP");
+        err.httpStatus = 502;
+        err.bodyPreview = String(answerSdp || "").slice(0, 300);
+        throw err;
+      }
+
+      return answerSdp;
+    } catch (err) {
+      lastError = err;
+
+      const status = Number(err?.httpStatus || 0);
+      const retryable =
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        status === 0;
+
+      if (!retryable || attempt === maxAttempts) break;
+
+      const waitMs = 600 * attempt;
+      console.warn(`[realtime] handshake retry ${attempt}/${maxAttempts} after ${waitMs}ms`, err);
+      setStatus(`Connecting Sophie... retry ${attempt + 1}`);
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+  }
+
+  throw lastError || new Error("Realtime connection failed");
+}
+
 function sendWhenChannelOpen(payload, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -1700,6 +1799,10 @@ async function maybeTriggerSoftEnding(){
   }
 
   if (!softEndSummaryTriggered && remainingSeconds <= softEndSummarySeconds) {
+    if (!hasUserSpoken) {
+      console.log(`[${runId}] [softend] skipping summary – no user input`);
+      return;
+    }
     softEndSummaryTriggered = true;
     stopDynamicResets();
     stopCountdown();
@@ -1762,6 +1865,7 @@ calm, warm, natural, complete
 
 function startCountdown(){
   if (countdown) clearInterval(countdown);
+  timerEl.style.display = "none";
 
   countdown = setInterval(() => {
     remainingSeconds -= 1;
@@ -1788,7 +1892,7 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
-            create_response: true,
+            create_response: false,
             interrupt_response: true
           }
         }
@@ -1801,6 +1905,9 @@ function attachChannel(ch) {
     if (isFirstSession && !startModeTriggered) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
+    } else if (!isFirstSession) {
+      console.log(`[${runId}] [returning] enabling auto responses`);
+      try { await setAutoResponses(true); } catch(e) { console.log(`[${runId}] [returning] setAutoResponses failed`, e); }
     }
   });
 
@@ -1837,17 +1944,14 @@ function attachChannel(ch) {
         if (itemId) userTranscriptBuffer.delete(itemId);
 
         if (text) {
+          hasUserSpoken = true;
           convoLog.push({ role: "user", text });
         }
         return;
       }
 
       if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
-        const item = msg?.item;
-        if (item?.role === "user" && Array.isArray(item?.content)) {
-          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-          if (text) convoLog.push({ role: "user", text });
-        }
+        // user text is logged via transcription.completed; assistant text via response.audio_transcript.done
       }
 
       if (msg?.type === "response.audio_transcript.delta") {
@@ -1991,6 +2095,7 @@ async function startVoice(){
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
+  hasUserSpoken = false;
   sessionId = null;
   hidePostCallResults();
 
@@ -2161,24 +2266,15 @@ async function startVoice(){
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    const baseUrl = "https://api.openai.com/v1/realtime";
-    const model = "gpt-realtime";
+    setStatus("Connecting Sophie...");
 
-    const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
-      method: "POST",
-      body: offer.sdp,
-      headers: {
-        Authorization: `Bearer ${data.client_secret.value}`,
-        "Content-Type": "application/sdp"
-      },
+    const answerSdp = await fetchRealtimeAnswerSdp({
+      offerSdp: offer.sdp,
+      clientSecret: data.client_secret.value,
+      maxAttempts: 3
     });
 
-    if (!sdpRes.ok) {
-      const t = await sdpRes.text().catch(() => "");
-      throw new Error(`OpenAI SDP Fehler (HTTP ${sdpRes.status}): ${t.slice(0, 200)}`);
-    }
-
-    const answer = { type: "answer", sdp: await sdpRes.text() };
+    const answer = { type: "answer", sdp: answerSdp };
     await pc.setRemoteDescription(answer);
 
     endBtn.disabled = false;
@@ -2207,12 +2303,35 @@ async function startVoice(){
 
   } catch(err){
     console.error(err);
-    setStatus("Fail to Start.");
-    headline.textContent = "Sophie is waiting.";
-    setSoftHint("");
+
+    cleanupLiveSession();
+
+    showBackground(false);
     showLiveBadge(false);
-    track("talk_start_exception", { message: String(err?.message || err) });
-    stopVoice(false);
+
+    startBtn.disabled = false;
+    endBtn.disabled = true;
+    logoutBtn.disabled = false;
+    timerEl.style.display = "none";
+
+    headline.textContent = "Sophie is waiting.";
+
+    const status = Number(err?.httpStatus || 0);
+    if (status === 504 || status === 503) {
+      setStatus("Connection timed out. Please try again.");
+    } else if (status >= 500) {
+      setStatus("Connection failed. Please try again.");
+    } else {
+      setStatus("Could not start the call. Please try again.");
+    }
+
+    setSoftHint("");
+
+    track("talk_start_exception", {
+      message: String(err?.message || err),
+      http_status: status || null,
+      preview: String(err?.bodyPreview || "").slice(0, 180)
+    });
   }
 }
 
@@ -2234,7 +2353,7 @@ async function stopVoice(triggeredByLimit = false){
   startFakeReportLoader();
 
   try {
-    if (!triggeredByLimit && dc && dc.readyState === "open") {
+    if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
         dcSend({
           type: "response.create",
@@ -2262,6 +2381,7 @@ const durationSeconds = talkStartedAt
 const transcriptSnapshot = [...convoLog];
 
 const hasRealConversation =
+  hasUserSpoken &&
   durationSeconds >= 10 &&
   transcriptSnapshot.some(item => String(item?.text || "").trim());
 
@@ -2294,6 +2414,7 @@ if (!hasRealConversation) {
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
+  hasUserSpoken = false;
 
   showBackground(false);
 
@@ -2301,7 +2422,7 @@ if (!hasRealConversation) {
   startBtn.disabled = false;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie is waiting.";
-  setStatus("Ended.");
+  setStatus("Whenever you're ready.");
   setSoftHint("");
   softEndFinalizing = false;
   resetClosingState();
@@ -2390,6 +2511,7 @@ if (!hasRealConversation) {
     partialAssistant = "";
     lastAssistantFinal = "";
     userTranscriptBuffer.clear();
+    hasUserSpoken = false;
 
     showBackground(false);
 
