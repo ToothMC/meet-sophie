@@ -1905,6 +1905,9 @@ function attachChannel(ch) {
     if (isFirstSession && !startModeTriggered) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
+    } else if (!isFirstSession) {
+      console.log(`[${runId}] [returning] enabling auto responses`);
+      try { await setAutoResponses(true); } catch(e) { console.log(`[${runId}] [returning] setAutoResponses failed`, e); }
     }
   });
 
