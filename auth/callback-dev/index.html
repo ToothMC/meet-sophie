@@ -72,13 +72,17 @@
       setStatus("Signed in! Closing this tab…");
       history.replaceState(null, "", window.location.pathname + window.location.search);
 
-      // Close the Magic-Link tab when it was opened via window.open().
-      // If the browser blocks window.close() (tab opened directly from email),
-      // fall back to navigating to /talk-dev after a short delay.
-      window.close();
-      setTimeout(() => {
+      if (window.opener && !window.opener.closed) {
+        // Tab was opened from the login page — notify it, then close this tab.
+        // The login page will handle the redirect to /talk-dev.
+        window.opener.postMessage({ type: "AUTH_SUCCESS" }, window.location.origin);
+        window.close();
+        // Safety fallback if close is blocked despite having an opener.
+        setTimeout(() => { window.location.href = "/talk-dev"; }, 800);
+      } else {
+        // Link was opened directly from email (no opener) — navigate ourselves.
         window.location.href = "/talk-dev";
-      }, 800);
+      }
     }
 
     const { data: { session } } = await supabase.auth.getSession();
