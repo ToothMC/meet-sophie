@@ -1966,6 +1966,13 @@ async function finalizeSessionAfterSummary() {
 }
 
 async function startVoice(){
+
+  // prevent double session
+  if (pc || stream) {
+    console.log("Session already running → ignore");
+    return;
+  }
+  
   await preloadLimitVideo();
 
   startBtn.disabled = true;
