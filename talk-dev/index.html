@@ -732,8 +732,12 @@ if (session?.user) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }
 } else {
+  let authResolved = false;
+
   supabase.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
+      authResolved = true;
+
       if (window.location.hash.includes("access_token") || window.location.hash.includes("error=")) {
         history.replaceState(null, "", window.location.pathname + window.location.search);
       }
@@ -746,11 +750,13 @@ if (session?.user) {
   });
 
   setTimeout(async () => {
+    if (authResolved) return;
+
     const { data: { session: delayedSession } } = await supabase.auth.getSession();
     if (!delayedSession?.user) {
       window.location.href = "/login-dev";
     }
-  }, 1200);
+  }, 2000);
 }
 
 const manageSubLink = document.getElementById("manageSubLink");
