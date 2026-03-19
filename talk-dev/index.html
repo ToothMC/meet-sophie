@@ -727,7 +727,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // SESSION WATCH
 supabase.auth.onAuthStateChange((event, session) => {
   if (!session?.user) {
-    window.location.href = "/login";
+    window.location.href = "/login-dev";
   }
 });  
 
@@ -738,7 +738,7 @@ if (window.location.hash.includes("access_token") || window.location.hash.includ
 
 const { data: { session } } = await supabase.auth.getSession();
 if (!session?.user) {
-  window.location.href = "/login";
+  window.location.href = "/login-dev";
 }
 
 const manageSubLink = document.getElementById("manageSubLink");
