@@ -724,6 +724,13 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// SESSION WATCH
+supabase.auth.onAuthStateChange((event, session) => {
+  if (!session?.user) {
+    window.location.href = "/login";
+  }
+});  
+
 // Clean magic-link hash/errors from URL without creating another history entry
 if (window.location.hash.includes("access_token") || window.location.hash.includes("error=")) {
   history.replaceState(null, "", window.location.pathname + window.location.search);
