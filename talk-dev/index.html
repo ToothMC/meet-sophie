@@ -725,20 +725,32 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHVi
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // SESSION WATCH
-supabase.auth.onAuthStateChange((event, session) => {
-  if (!session?.user) {
-    window.location.href = "/login-dev";
-  }
-});  
-
-// Clean magic-link hash/errors from URL without creating another history entry
-if (window.location.hash.includes("access_token") || window.location.hash.includes("error=")) {
-  history.replaceState(null, "", window.location.pathname + window.location.search);
-}
-
 const { data: { session } } = await supabase.auth.getSession();
-if (!session?.user) {
-  window.location.href = "/login-dev";
+
+if (session?.user) {
+  if (window.location.hash.includes("access_token") || window.location.hash.includes("error=")) {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+} else {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      if (window.location.hash.includes("access_token") || window.location.hash.includes("error=")) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+      return;
+    }
+
+    if (event === "SIGNED_OUT") {
+      window.location.href = "/login-dev";
+    }
+  });
+
+  setTimeout(async () => {
+    const { data: { session: delayedSession } } = await supabase.auth.getSession();
+    if (!delayedSession?.user) {
+      window.location.href = "/login-dev";
+    }
+  }, 1200);
 }
 
 const manageSubLink = document.getElementById("manageSubLink");
