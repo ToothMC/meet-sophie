@@ -903,6 +903,8 @@ let closingForceTimeout = null;
 let closingRetryTimeout = null;
 let closingFinishTimeout = null;
 
+let hasUserSpoken = false;
+
 let talkStartedAt = null;
 let sessionId = null;
 
@@ -1700,6 +1702,10 @@ async function maybeTriggerSoftEnding(){
   }
 
   if (!softEndSummaryTriggered && remainingSeconds <= softEndSummarySeconds) {
+    if (!hasUserSpoken) {
+      console.log(`[${runId}] [softend] skipping summary – no user input`);
+      return;
+    }
     softEndSummaryTriggered = true;
     stopDynamicResets();
     stopCountdown();
@@ -1762,6 +1768,7 @@ calm, warm, natural, complete
 
 function startCountdown(){
   if (countdown) clearInterval(countdown);
+  timerEl.style.display = "block";
 
   countdown = setInterval(() => {
     remainingSeconds -= 1;
@@ -1788,7 +1795,7 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
-            create_response: true,
+            create_response: false,
             interrupt_response: true
           }
         }
@@ -1837,17 +1844,14 @@ function attachChannel(ch) {
         if (itemId) userTranscriptBuffer.delete(itemId);
 
         if (text) {
+          hasUserSpoken = true;
           convoLog.push({ role: "user", text });
         }
         return;
       }
 
       if (msg?.type === "conversation.item.created" || msg?.type === "conversation.item.done") {
-        const item = msg?.item;
-        if (item?.role === "user" && Array.isArray(item?.content)) {
-          const text = item.content.map(p => p?.transcript || p?.text || "").join(" ").trim();
-          if (text) convoLog.push({ role: "user", text });
-        }
+        // user text is logged via transcription.completed; assistant text via response.audio_transcript.done
       }
 
       if (msg?.type === "response.audio_transcript.delta") {
@@ -1991,6 +1995,7 @@ async function startVoice(){
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
+  hasUserSpoken = false;
   sessionId = null;
   hidePostCallResults();
 
@@ -2234,7 +2239,7 @@ async function stopVoice(triggeredByLimit = false){
   startFakeReportLoader();
 
   try {
-    if (!triggeredByLimit && dc && dc.readyState === "open") {
+    if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
         dcSend({
           type: "response.create",
@@ -2262,6 +2267,7 @@ const durationSeconds = talkStartedAt
 const transcriptSnapshot = [...convoLog];
 
 const hasRealConversation =
+  hasUserSpoken &&
   durationSeconds >= 10 &&
   transcriptSnapshot.some(item => String(item?.text || "").trim());
 
@@ -2294,6 +2300,7 @@ if (!hasRealConversation) {
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
+  hasUserSpoken = false;
 
   showBackground(false);
 
@@ -2301,7 +2308,7 @@ if (!hasRealConversation) {
   startBtn.disabled = false;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie is waiting.";
-  setStatus("Ended.");
+  setStatus("Whenever you're ready.");
   setSoftHint("");
   softEndFinalizing = false;
   resetClosingState();
@@ -2390,6 +2397,7 @@ if (!hasRealConversation) {
     partialAssistant = "";
     lastAssistantFinal = "";
     userTranscriptBuffer.clear();
+    hasUserSpoken = false;
 
     showBackground(false);
 
