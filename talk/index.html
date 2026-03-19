@@ -723,12 +723,19 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 const { data: { session } } = await supabase.auth.getSession();
+
 if (!session?.user) {
-  window.location.href = "/login/";
+  window.location.href = "/login";
 }
 
+// Session Watch (Logout / Session verloren)
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_OUT" || !session?.user) {
+    window.location.href = "/login";
+  }
+});  
+  
 const manageSubLink = document.getElementById("manageSubLink");
 const billingFooter = document.getElementById("billingFooter");
 
@@ -1288,7 +1295,7 @@ function configurePostCallCta(triggeredByLimit = false) {
       postCallCtaTitle.textContent = "Continue with Sophie";
       postCallPrimaryBtn.textContent = "See plans";
       postCallPrimaryBtn.onclick = () => {
-        window.location.href = "/pricing/";
+        window.location.href = "/pricing";
       };
 
       postCallSecondaryBtn.textContent = "Close";
@@ -1781,7 +1788,7 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
-            create_response: isFirstSession ? false : true,
+            create_response: true,
             interrupt_response: true
           }
         }
@@ -1961,6 +1968,13 @@ async function finalizeSessionAfterSummary() {
 }
 
 async function startVoice(){
+
+  // prevent double session
+  if (pc || stream) {
+    console.log("Session already running → ignore");
+    return;
+  }
+  
   await preloadLimitVideo();
 
   startBtn.disabled = true;
@@ -1995,7 +2009,7 @@ async function startVoice(){
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      window.location.href = "/login/";
+      window.location.href = "/login-dev";
       return;
     }
 
@@ -2034,7 +2048,7 @@ async function startVoice(){
         postCallCtaTitle.textContent = "Continue with Sophie";
         postCallPrimaryBtn.textContent = "Add top-up";
         postCallPrimaryBtn.onclick = () => {
-          window.location.href = "/pricing/?mode=topup";
+          window.location.href = "/pricing?mode=topup";
         };
 
         postCallSecondaryBtn.textContent = "Manage subscription";
@@ -2042,7 +2056,7 @@ async function startVoice(){
           try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) {
-              window.location.href = "/pricing/";
+              window.location.href = "/pricing";
               return;
             }
 
@@ -2059,22 +2073,22 @@ async function startVoice(){
             if (portal?.url) {
               window.location.href = portal.url;
             } else {
-              window.location.href = "/pricing/";
+              window.location.href = "/pricing";
             }
           } catch (_) {
-            window.location.href = "/pricing/";
+            window.location.href = "/pricing";
           }
         };
       } else {
         postCallCtaTitle.textContent = "Continue with Sophie";
         postCallPrimaryBtn.textContent = "See plans";
         postCallPrimaryBtn.onclick = () => {
-          window.location.href = "/pricing/";
+          window.location.href = "/pricing";
         };
 
         postCallSecondaryBtn.textContent = "Add top-up";
         postCallSecondaryBtn.onclick = () => {
-          window.location.href = "/pricing/?mode=topup";
+          window.location.href = "/pricing?mode=topup";
         };
       }
 
@@ -2127,7 +2141,7 @@ async function startVoice(){
 
     if (remainingSeconds <= 0) {
       track("time_limit_reached");
-      window.location.href = "/pricing/";
+      window.location.href = "/pricing";
       return;
     }
 
@@ -2241,12 +2255,60 @@ Max 12 words.
       } catch (_) {}
     }
 
-    const durationSeconds = talkStartedAt
-      ? Math.round((Date.now() - talkStartedAt) / 1000)
-      : 0;
+const durationSeconds = talkStartedAt
+  ? Math.round((Date.now() - talkStartedAt) / 1000)
+  : 0;
 
-    const transcriptSnapshot = [...convoLog];
+const transcriptSnapshot = [...convoLog];
 
+const hasRealConversation =
+  durationSeconds >= 10 &&
+  transcriptSnapshot.some(item => String(item?.text || "").trim());
+
+if (!hasRealConversation) {
+  stopFakeReportLoader();
+
+  talkStartedAt = null;
+
+  if (dc) {
+    try { dc.close(); } catch(e){}
+    dc = null;
+  }
+
+  if (stream) {
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+    stream = null;
+  }
+
+  if (pc) {
+    try { pc.close(); } catch(e){}
+    pc = null;
+  }
+
+  if (audioEl) {
+    try { audioEl.srcObject = null; } catch(e){}
+    audioEl = null;
+  }
+
+  convoLog = [];
+  partialAssistant = "";
+  lastAssistantFinal = "";
+  userTranscriptBuffer.clear();
+
+  showBackground(false);
+
+  statusEl.style.visibility = "visible";
+  startBtn.disabled = false;
+  logoutBtn.disabled = false;
+  headline.textContent = "Sophie is waiting.";
+  setStatus("Ended.");
+  setSoftHint("");
+  softEndFinalizing = false;
+  resetClosingState();
+
+  return;
+}
+    
     if (triggeredByLimit) {
       if (dc) {
         try { dc.close(); } catch(e){}
@@ -2358,7 +2420,7 @@ logoutBtn.onclick = async () => {
   } catch(e) {}
 
   try { await supabase.auth.signOut(); } catch(e) {}
-  window.location.href = "/";
+  window.location.href = "/login-dev";
 };
 
 showSummaryBtn.addEventListener("click", showSummaryView);
