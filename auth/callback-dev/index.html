@@ -79,10 +79,10 @@
     }
 
     supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await finishAuth();
-      }
-    });
+     if (event === "SIGNED_IN" && session?.user) {
+      await finishAuth();
+  }
+});
 
     setTimeout(async () => {
       if (handled) return;
