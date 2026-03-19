@@ -69,8 +69,16 @@
         return;
       }
 
+      setStatus("Signed in! Closing this tab…");
       history.replaceState(null, "", window.location.pathname + window.location.search);
-      window.location.href = "/talk-dev";
+
+      // Close the Magic-Link tab when it was opened via window.open().
+      // If the browser blocks window.close() (tab opened directly from email),
+      // fall back to navigating to /talk-dev after a short delay.
+      window.close();
+      setTimeout(() => {
+        window.location.href = "/talk-dev";
+      }, 800);
     }
 
     const { data: { session } } = await supabase.auth.getSession();
