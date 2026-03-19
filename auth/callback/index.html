@@ -56,27 +56,31 @@
     }
 
     async function finishAuth() {
-      if (handled) return;
-      handled = true;
+  if (handled) return;
+  handled = true;
 
-      const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        setStatus("Login could not be completed.");
-        setTimeout(() => {
-          window.location.href = "/loginv";
-        }, 1500);
-        return;
-      }
+  if (!user) {
+    setStatus("Login could not be completed.");
+    setTimeout(() => {
+      window.location.href = "/login";
+    }, 1500);
+    return;
+  }
 
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-      window.location.href = "/talk";
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.location.assign("/talk");
+      window.close();
+      return;
     }
+  } catch (_) {}
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await finishAuth();
-    }
+  window.location.href = "/talk";
+}
 
     supabase.auth.onAuthStateChange(async (event, session) => {
      if (event === "SIGNED_IN" && session?.user) {
