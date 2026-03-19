@@ -146,7 +146,13 @@
     if (session?.user) {
       await handleSuccessfulAuth();
     }
-
+    
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        handleSuccessfulAuth();
+  }
+});
+    
     $("magicLinkBtn").onclick = async () => {
       const email = $("email").value.trim();
 
