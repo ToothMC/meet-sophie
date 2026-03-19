@@ -1865,7 +1865,7 @@ calm, warm, natural, complete
 
 function startCountdown(){
   if (countdown) clearInterval(countdown);
-  timerEl.style.display = "block";
+  timerEl.style.display = "none";
 
   countdown = setInterval(() => {
     remainingSeconds -= 1;
@@ -2081,7 +2081,7 @@ async function startVoice(){
   startBtn.disabled = true;
   logoutBtn.disabled = true;
   headline.textContent = "Sophie is joining…";
-  setStatus("connecting..");
+  setStatus("Connecting Sophie...");
   setSoftHint("");
   showLiveBadge(false);
   showBackground(true);
