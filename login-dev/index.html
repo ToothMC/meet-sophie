@@ -132,6 +132,9 @@
     }
 
     async function handleSuccessfulAuth() {
+      if (authHandled) return;
+      authHandled = true;
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
