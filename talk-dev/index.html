@@ -728,6 +728,13 @@ const { data: { session } } = await supabase.auth.getSession();
 if (!session?.user) {
   window.location.href = "/login-dev";
 }
+
+// Session Watch (Logout / Session verloren)
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_OUT" || !session?.user) {
+    window.location.href = "/login-dev";
+  }
+});  
   
 // SESSION WATCH
 const { data: { session } } = await supabase.auth.getSession();
