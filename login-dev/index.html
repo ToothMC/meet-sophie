@@ -151,9 +151,16 @@
       await handleSuccessfulAuth();
     }
     
-    // No onAuthStateChange here — the callback tab handles navigation after
-    // Magic-Link auth (window.close + fallback redirect). Listening here too
-    // would cause a second /talk-dev tab to open.
+    // Listen for AUTH_SUCCESS from the callback tab via BroadcastChannel.
+    // This works regardless of how the email link was opened (no window.opener needed).
+    const bc = new BroadcastChannel("sophie_auth");
+    bc.onmessage = (e) => {
+      if (e.data === "AUTH_SUCCESS") {
+        bc.postMessage("ACK"); // tell callback tab it can skip fallback redirect
+        bc.close();
+        handleSuccessfulAuth();
+      }
+    };
     
     $("magicLinkBtn").onclick = async () => {
       const email = $("email").value.trim();
