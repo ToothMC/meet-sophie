@@ -2260,12 +2260,60 @@ Max 12 words.
       } catch (_) {}
     }
 
-    const durationSeconds = talkStartedAt
-      ? Math.round((Date.now() - talkStartedAt) / 1000)
-      : 0;
+const durationSeconds = talkStartedAt
+  ? Math.round((Date.now() - talkStartedAt) / 1000)
+  : 0;
 
-    const transcriptSnapshot = [...convoLog];
+const transcriptSnapshot = [...convoLog];
 
+const hasRealConversation =
+  durationSeconds >= 10 &&
+  transcriptSnapshot.some(item => String(item?.text || "").trim());
+
+if (!hasRealConversation) {
+  stopFakeReportLoader();
+
+  talkStartedAt = null;
+
+  if (dc) {
+    try { dc.close(); } catch(e){}
+    dc = null;
+  }
+
+  if (stream) {
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
+    stream = null;
+  }
+
+  if (pc) {
+    try { pc.close(); } catch(e){}
+    pc = null;
+  }
+
+  if (audioEl) {
+    try { audioEl.srcObject = null; } catch(e){}
+    audioEl = null;
+  }
+
+  convoLog = [];
+  partialAssistant = "";
+  lastAssistantFinal = "";
+  userTranscriptBuffer.clear();
+
+  showBackground(false);
+
+  statusEl.style.visibility = "visible";
+  startBtn.disabled = false;
+  logoutBtn.disabled = false;
+  headline.textContent = "Sophie is waiting.";
+  setStatus("Ended.");
+  setSoftHint("");
+  softEndFinalizing = false;
+  resetClosingState();
+
+  return;
+}
+    
     if (triggeredByLimit) {
       if (dc) {
         try { dc.close(); } catch(e){}
