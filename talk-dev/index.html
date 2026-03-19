@@ -2065,7 +2065,7 @@ async function startVoice(){
         postCallCtaTitle.textContent = "Continue with Sophie";
         postCallPrimaryBtn.textContent = "Add top-up";
         postCallPrimaryBtn.onclick = () => {
-          window.location.href = "/pricing/?mode=topup";
+          window.location.href = "/pricing?mode=topup";
         };
 
         postCallSecondaryBtn.textContent = "Manage subscription";
@@ -2073,7 +2073,7 @@ async function startVoice(){
           try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) {
-              window.location.href = "/pricing/";
+              window.location.href = "/pricing";
               return;
             }
 
@@ -2090,22 +2090,22 @@ async function startVoice(){
             if (portal?.url) {
               window.location.href = portal.url;
             } else {
-              window.location.href = "/pricing/";
+              window.location.href = "/pricing";
             }
           } catch (_) {
-            window.location.href = "/pricing/";
+            window.location.href = "/pricing";
           }
         };
       } else {
         postCallCtaTitle.textContent = "Continue with Sophie";
         postCallPrimaryBtn.textContent = "See plans";
         postCallPrimaryBtn.onclick = () => {
-          window.location.href = "/pricing/";
+          window.location.href = "/pricing";
         };
 
         postCallSecondaryBtn.textContent = "Add top-up";
         postCallSecondaryBtn.onclick = () => {
-          window.location.href = "/pricing/?mode=topup";
+          window.location.href = "/pricing?mode=topup";
         };
       }
 
