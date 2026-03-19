@@ -72,11 +72,19 @@
       setStatus("Signed in! Closing this tab…");
       history.replaceState(null, "", window.location.pathname + window.location.search);
 
-      // Try to close this Magic-Link tab.
-      // If the browser blocks it (e.g. link opened directly from email),
-      // the fallback redirect to /talk-dev kicks in after 800 ms.
+      // Notify the login tab via BroadcastChannel so it can navigate to /talk-dev.
+      // Then close this callback tab.
+      // If window.close() is blocked AND no login tab was listening (e.g. link
+      // opened in a fresh browser), fall back to navigating here after 1 s.
+      const bc = new BroadcastChannel("sophie_auth");
+      let acked = false;
+      bc.onmessage = (e) => { if (e.data === "ACK") acked = true; };
+      bc.postMessage("AUTH_SUCCESS");
       window.close();
-      setTimeout(() => { window.location.href = "/talk-dev"; }, 800);
+      setTimeout(() => {
+        bc.close();
+        if (!acked) window.location.href = "/talk-dev";
+      }, 1000);
     }
 
     const { data: { session } } = await supabase.auth.getSession();
