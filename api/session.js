@@ -138,7 +138,7 @@ module.exports = async function handler(req, res) {
     // ---------------------------
     // 1 ACTIVE SESSION PER USER (anti tab/refresh spam)
     // ---------------------------
-    const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "90", 10);
+    const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
     const { data: lockRow, error: lockErr } = await supabase.rpc("acquire_realtime_lock", {
       p_user_id: user.id,
