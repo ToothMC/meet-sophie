@@ -2014,7 +2014,7 @@ async function startVoice(){
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      window.location.href = "/login-dev/";
+      window.location.href = "/login-dev";
       return;
     }
 
