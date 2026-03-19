@@ -151,16 +151,11 @@
       await handleSuccessfulAuth();
     }
     
-    // Listen for AUTH_SUCCESS from the callback tab via BroadcastChannel.
-    // This works regardless of how the email link was opened (no window.opener needed).
-    const bc = new BroadcastChannel("sophie_auth");
-    bc.onmessage = (e) => {
-      if (e.data === "AUTH_SUCCESS") {
-        bc.postMessage("ACK"); // tell callback tab it can skip fallback redirect
-        bc.close();
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
         handleSuccessfulAuth();
       }
-    };
+    });
     
     $("magicLinkBtn").onclick = async () => {
       const email = $("email").value.trim();
