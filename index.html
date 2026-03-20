@@ -1429,6 +1429,7 @@
     const inputEl    = document.getElementById("chatInput");
     const sendBtn    = document.getElementById("chatSendBtn");
     let sessionId      = null;
+    let systemPrompt   = "";
     let history        = [];
     let turnCount      = 0;
     let authNudgeShown = false;
@@ -1470,11 +1471,15 @@
       const { data: { session } } = await supabase.auth.getSession();
       return session?.access_token || null;
     }
-    async function callChat(body) {
-      const token   = await getToken();
+    async function callChat(action, payload = {}) {
+      const token = await getToken();
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/chat", { method: "POST", headers, body: JSON.stringify(body) });
+      const res = await fetch(`/api/chat?action=${encodeURIComponent(action)}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || `HTTP ${res.status}`);
@@ -1482,14 +1487,23 @@
       return res.json();
     }
     async function startSession() {
-      const startData = await callChat({ action: "start" });
+      const startData = await callChat("start", {});
       sessionId = startData.session_id;
+      systemPrompt = startData.system_prompt || "";
       show(typingEl);
-      const kickoff = await callChat({ action: "message", session_id: sessionId, message: "[CHAT_START]", history: [] });
+      const kickoff = await callChat("message", {
+        session_id: sessionId,
+        system_prompt: systemPrompt,
+        messages: [
+          { role: "user", content: "[CHAT_START]" }
+        ],
+      });
       hide(typingEl);
       const greeting = kickoff.reply;
-      history.push({ role: "user", content: "[CHAT_START]" });
-      history.push({ role: "assistant", content: greeting });
+      history = [
+        { role: "user", content: "[CHAT_START]" },
+        { role: "assistant", content: greeting }
+      ];
       appendBubble("sophie", greeting);
     }
     async function sendMessage() {
@@ -1519,11 +1533,10 @@
       show(typingEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       try {
-        const data = await callChat({
-          action: "message",
+        const data = await callChat("message", {
           session_id: sessionId,
-          message: text,
-          history: history.slice(-20),
+          system_prompt: systemPrompt,
+          messages: history.slice(-20),
         });
         hide(typingEl);
         const reply = data.reply;
@@ -1558,10 +1571,15 @@
       const token   = await getToken().catch(() => null);
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const payload = JSON.stringify({ action: "end", session_id: sessionId, history });
+      const payload = JSON.stringify({ session_id: sessionId, transcript: history });
       navigator.sendBeacon
-        ? navigator.sendBeacon("/api/chat", new Blob([payload], { type: "application/json" }))
-        : fetch("/api/chat", { method: "POST", headers, body: payload, keepalive: true }).catch(() => {});
+        ? navigator.sendBeacon("/api/chat?action=end", new Blob([payload], { type: "application/json" }))
+        : fetch("/api/chat?action=end", {
+            method: "POST",
+            headers,
+            body: payload,
+            keepalive: true
+          }).catch(() => {});
     }
     sendBtn.addEventListener("click", sendMessage);
     inputEl.addEventListener("keydown", e => {
