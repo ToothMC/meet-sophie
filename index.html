@@ -675,7 +675,145 @@
       .login-link,
       .lang-btn{padding:9px 12px}
       .floating-text{min-height:4.6em}
+      .chat-widget{border-radius:28px}
+      .chat-msg-bubble{font-size:14px}
     }
+
+    /* ===== SOPHIE CHAT WIDGET (Phase 1) ===== */
+    .chat-widget{
+      position:absolute;inset:0;z-index:2;
+      display:flex;flex-direction:column;
+      background:linear-gradient(180deg,rgba(7,9,14,.90) 0%,rgba(7,9,14,.96) 100%);
+      border-radius:34px;overflow:hidden;
+    }
+    .chat-header{
+      display:flex;align-items:center;gap:12px;
+      padding:16px 20px 13px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      flex-shrink:0;
+    }
+    .chat-avatar-dot{
+      width:34px;height:34px;border-radius:50%;flex-shrink:0;
+      background:linear-gradient(135deg,#8eb2ff 0%,#c4a0ff 100%);
+      box-shadow:0 0 18px rgba(142,178,255,.38);
+    }
+    .chat-header-info{flex:1}
+    .chat-name{font-size:15px;font-weight:650;color:var(--text);line-height:1.2}
+    .chat-online-status{
+      font-size:12px;color:#7ecf7e;
+      display:flex;align-items:center;gap:5px;
+    }
+    .chat-online-status::before{
+      content:"";width:6px;height:6px;border-radius:50%;
+      background:#7ecf7e;flex-shrink:0;
+    }
+    .chat-messages{
+      flex:1;overflow-y:auto;
+      padding:14px 16px 6px;
+      display:flex;flex-direction:column;gap:9px;
+      scroll-behavior:smooth;
+      scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.10) transparent;
+    }
+    .chat-msg{display:flex;max-width:86%}
+    .chat-msg.sophie{align-self:flex-start}
+    .chat-msg.user{align-self:flex-end}
+    .chat-msg-bubble{
+      padding:10px 14px;border-radius:16px;
+      font-size:14.5px;line-height:1.52;color:var(--text);
+      white-space:pre-wrap;word-break:break-word;
+    }
+    .chat-msg.sophie .chat-msg-bubble{
+      background:rgba(142,178,255,.13);
+      border:1px solid rgba(142,178,255,.17);
+      border-bottom-left-radius:4px;
+    }
+    .chat-msg.user .chat-msg-bubble{
+      background:rgba(255,255,255,.09);
+      border:1px solid rgba(255,255,255,.11);
+      border-bottom-right-radius:4px;
+    }
+    .chat-typing{
+      display:flex;align-items:center;gap:5px;
+      padding:6px 20px 4px;flex-shrink:0;height:28px;
+    }
+    .chat-typing span{
+      width:6px;height:6px;border-radius:50%;
+      background:rgba(142,178,255,.55);
+      animation:typingBounce 1.2s infinite ease-in-out;
+    }
+    .chat-typing span:nth-child(2){animation-delay:.15s}
+    .chat-typing span:nth-child(3){animation-delay:.30s}
+    @keyframes typingBounce{
+      0%,60%,100%{transform:translateY(0);opacity:.55}
+      30%{transform:translateY(-5px);opacity:1}
+    }
+    .chat-auth{
+      margin:0 14px 10px;padding:13px 15px;
+      border-radius:14px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.09);
+      flex-shrink:0;
+    }
+    .chat-auth p{margin:0 0 9px;font-size:13.5px;color:var(--muted)}
+    .chat-auth-row{display:flex;gap:7px}
+    .chat-auth input[type="email"]{
+      flex:1;background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.13);
+      border-radius:9px;padding:8px 11px;
+      font-size:13.5px;color:var(--text);outline:none;font-family:inherit;
+    }
+    .chat-auth input[type="email"]:focus{border-color:rgba(142,178,255,.45)}
+    .chat-auth button{
+      padding:8px 14px;border-radius:9px;
+      background:rgba(142,178,255,.16);
+      border:1px solid rgba(142,178,255,.28);
+      color:#c8d8ff;font-size:13.5px;font-weight:600;
+      cursor:pointer;font-family:inherit;white-space:nowrap;
+      transition:background .15s ease;
+    }
+    .chat-auth button:hover{background:rgba(142,178,255,.26)}
+    .chat-auth-sent{font-size:13px;color:#7ecf7e;margin:8px 0 0}
+    .chat-report{
+      margin:0 14px 10px;padding:13px 15px;border-radius:14px;
+      background:rgba(142,178,255,.06);
+      border:1px solid rgba(142,178,255,.14);
+      flex-shrink:0;
+    }
+    .chat-report-label{
+      font-size:11px;letter-spacing:.10em;text-transform:uppercase;
+      color:rgba(142,178,255,.6);margin-bottom:5px;
+    }
+    .chat-report-title{font-size:14px;font-weight:650;color:var(--text);margin-bottom:5px}
+    .chat-report-insight{font-size:13.5px;color:var(--muted);margin-bottom:8px;font-style:italic}
+    .chat-report-action{
+      font-size:13px;color:rgba(142,178,255,.75);cursor:pointer;
+      text-decoration:underline;text-decoration-color:rgba(142,178,255,.3);
+      text-underline-offset:2px;
+    }
+    .chat-footer{
+      display:flex;align-items:flex-end;gap:8px;
+      padding:11px 14px 14px;
+      border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;
+    }
+    .chat-footer textarea{
+      flex:1;background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.11);
+      border-radius:13px;padding:9px 13px;
+      font-size:14.5px;color:var(--text);outline:none;resize:none;
+      font-family:inherit;line-height:1.44;max-height:100px;overflow-y:auto;
+    }
+    .chat-footer textarea::placeholder{color:rgba(246,247,251,.34)}
+    .chat-footer textarea:focus{border-color:rgba(142,178,255,.38)}
+    .chat-send{
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(255,255,255,.88);border:none;
+      color:#0b0e13;font-size:16px;font-weight:700;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;transition:transform .15s ease,background .15s ease;
+    }
+    .chat-send:hover:not(:disabled){transform:translateY(-1px);background:#ffffff}
+    .chat-send:disabled{opacity:.35;cursor:not-allowed}
+    .chat-hidden{display:none!important}
   </style>
 </head>
 <body>
@@ -719,11 +857,33 @@
           </div>
         </div>
 
-        <div class="hero-visual">
-          <div class="hero-card">
-            <div class="floating-panel">
-              <div class="floating-label" id="floating-label">A different kind of AI</div>
-              <div class="floating-text" id="floating-text">“Sophie says: Think one moment longer before you react.”</div>
+        <div class=”hero-visual”>
+          <div class=”hero-card”>
+            <div class=”chat-widget” id=”sophieChat”>
+              <div class=”chat-header”>
+                <div class=”chat-avatar-dot”></div>
+                <div class=”chat-header-info”>
+                  <div class=”chat-name”>Sophie</div>
+                  <div class=”chat-online-status” id=”chatOnlineStatus”>online</div>
+                </div>
+              </div>
+              <div class=”chat-messages” id=”chatMessages”></div>
+              <div class=”chat-typing chat-hidden” id=”chatTyping”>
+                <span></span><span></span><span></span>
+              </div>
+              <div class=”chat-auth chat-hidden” id=”chatAuth”>
+                <p id=”chatAuthText”>Save this conversation &amp; continue — free with your email.</p>
+                <div class=”chat-auth-row”>
+                  <input type=”email” id=”chatAuthEmail” placeholder=”your@email.com” />
+                  <button id=”chatAuthBtn” type=”button”>Send link</button>
+                </div>
+                <p class=”chat-auth-sent chat-hidden” id=”chatAuthSent”>Check your inbox ✓</p>
+              </div>
+              <div class=”chat-report chat-hidden” id=”chatReport”></div>
+              <div class=”chat-footer”>
+                <textarea id=”chatInput” placeholder=”Type a message…” rows=”1”></textarea>
+                <button class=”chat-send” id=”chatSendBtn” type=”button” aria-label=”Send”>↑</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1730,5 +1890,223 @@
 
     applyTranslations(detectLanguage());
   </script>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const AUTH_NUDGE_AT = 3; // show email prompt after this many turns
+const lang = (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+
+const T = {
+  de: {
+    placeholder: "Schreib eine Nachricht…",
+    authText: "Gespräch speichern & weitermachen — kostenlos mit deiner E-Mail.",
+    authBtn: "Link senden",
+    authSent: "Schau in dein Postfach ✓",
+    reportTitle: "Mehr als 3 Minuten mit Sophie gesprochen?",
+    reportCTA: "Starte jetzt — 19,90 € / Monat",
+    online: "online",
+  },
+  en: {
+    placeholder: "Type a message…",
+    authText: "Save this conversation & continue — free with your email.",
+    authBtn: "Send link",
+    authSent: "Check your inbox ✓",
+    reportTitle: "Talked with Sophie for more than 3 minutes?",
+    reportCTA: "Start now — €19.90 / month",
+    online: "online",
+  }
+};
+const t = T[lang];
+
+// DOM refs
+const messagesEl  = document.getElementById("chatMessages");
+const typingEl    = document.getElementById("chatTyping");
+const authEl      = document.getElementById("chatAuth");
+const authText    = document.getElementById("chatAuthText");
+const authEmail   = document.getElementById("chatAuthEmail");
+const authBtn     = document.getElementById("chatAuthBtn");
+const authSent    = document.getElementById("chatAuthSent");
+const reportEl    = document.getElementById("chatReport");
+const inputEl     = document.getElementById("chatInput");
+const sendBtn     = document.getElementById("chatSendBtn");
+const onlineEl    = document.getElementById("chatOnlineStatus");
+
+// State
+let sessionId = null;
+let systemPrompt = null;
+let history = []; // {role, content} for Claude
+let turnCount = 0;
+let authNudgeShown = false;
+let sessionEnded = false;
+let sending = false;
+
+// Apply i18n
+authText.textContent = t.authText;
+authBtn.textContent  = t.authBtn;
+inputEl.placeholder  = t.placeholder;
+onlineEl.textContent = t.online;
+
+function show(el)  { el.classList.remove("chat-hidden"); }
+function hide(el)  { el.classList.add("chat-hidden"); }
+
+function appendBubble(role, text) {
+  const wrap = document.createElement("div");
+  wrap.className = `chat-msg ${role}`;
+  const bubble = document.createElement("div");
+  bubble.className = "chat-msg-bubble";
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return bubble;
+}
+
+async function getToken() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
+async function callChat(body) {
+  const token = await getToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch("/api/chat", { method: "POST", headers, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function initChat() {
+  try {
+    const data = await callChat({ action: "start" });
+    sessionId    = data.session_id;
+    systemPrompt = data.system_prompt;
+
+    // Kickoff: send hidden [CHAT_START] so Sophie greets first
+    show(typingEl);
+    const kickoff = await callChat({ action: "message", session_id: sessionId, message: "[CHAT_START]", history: [] });
+    hide(typingEl);
+
+    const greeting = kickoff.reply;
+    history.push({ role: "user", content: "[CHAT_START]" });
+    history.push({ role: "assistant", content: greeting });
+    appendBubble("sophie", greeting);
+    // turnCount not incremented for kickoff (backend may or may not count it — display only)
+  } catch (e) {
+    hide(typingEl);
+    appendBubble("sophie", lang === "de"
+      ? "Hm, ich bin gerade kurz nicht erreichbar. Versuch es gleich nochmal."
+      : "Hmm, I'm not available right now. Try again in a moment.");
+  }
+}
+
+async function sendMessage() {
+  if (sending || sessionEnded) return;
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  sending = true;
+  inputEl.value = "";
+  inputEl.style.height = "auto";
+  sendBtn.disabled = true;
+
+  appendBubble("user", text);
+  history.push({ role: "user", content: text });
+
+  show(typingEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const data = await callChat({
+      action: "message",
+      session_id: sessionId,
+      message: text,
+      history: history.slice(-20), // last 20 messages for context
+    });
+
+    hide(typingEl);
+    const reply = data.reply;
+    history.push({ role: "assistant", content: reply });
+    appendBubble("sophie", reply);
+    turnCount++;
+
+    // Auth nudge after AUTH_NUDGE_AT turns if not logged in
+    if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
+      const token = await getToken();
+      if (!token) {
+        authNudgeShown = true;
+        show(authEl);
+      }
+    }
+
+    // Show upgrade teaser after free limit
+    if (data.limit_reached) {
+      sessionEnded = true;
+      reportEl.innerHTML = `<p>${t.reportTitle}</p><a href="/pricing/">${t.reportCTA}</a>`;
+      show(reportEl);
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
+    }
+
+  } catch (e) {
+    hide(typingEl);
+    appendBubble("sophie", lang === "de" ? "Kurze Pause — gleich wieder da." : "Brief pause — back in a moment.");
+  } finally {
+    sending = false;
+    if (!sessionEnded) sendBtn.disabled = false;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+}
+
+async function endSession() {
+  if (!sessionId || sessionEnded) return;
+  sessionEnded = true;
+  // Fire-and-forget — page is unloading
+  const token = await getToken().catch(() => null);
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  navigator.sendBeacon
+    ? navigator.sendBeacon("/api/chat", new Blob([JSON.stringify({
+        action: "end", session_id: sessionId, history
+      })], { type: "application/json" }))
+    : fetch("/api/chat", { method: "POST", headers, body: JSON.stringify({ action: "end", session_id: sessionId, history }), keepalive: true }).catch(() => {});
+}
+
+// Send on button / Enter (Shift+Enter = newline)
+sendBtn.addEventListener("click", sendMessage);
+inputEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// Auto-grow textarea
+inputEl.addEventListener("input", () => {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+});
+
+// Auth flow
+authBtn.addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  if (!email) return;
+  authBtn.disabled = true;
+  const redirectTo = window.location.origin + "/";
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+  if (!error) { hide(authEl); show(authSent); }
+  else { authBtn.disabled = false; }
+});
+
+// End session on page unload
+window.addEventListener("pagehide", endSession);
+
+// Boot
+initChat();
+</script>
 </body>
 </html>
