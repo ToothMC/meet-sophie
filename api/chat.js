@@ -23,6 +23,8 @@ function buildSophieTextPrompt({ profile, rel, recentSessions, mode, isFirstSess
 
   const languageBlock = preferredLanguage === "de"
     ? "LANGUAGE DEFAULT:\nSpeak German by default.\nSwitch only if the user explicitly requests another language."
+    : preferredLanguage === "fr"
+    ? "LANGUAGE DEFAULT:\nSpeak French by default.\nSwitch only if the user explicitly requests another language."
     : "LANGUAGE DEFAULT:\nSpeak English by default.\nSwitch only if the user explicitly requests another language.";
 
   const startModeBlock = isFirstSession ? `
@@ -247,8 +249,14 @@ async function handleStart(req, res) {
   const isBestFriend  = isPremium && effectivePlan === "plus";
   const mode          = isBestFriend ? "best_friend" : "companion";
 
-  let preferredLanguage = (profile.preferred_language || "en").toLowerCase().trim();
-  if (!["en", "de"].includes(preferredLanguage)) preferredLanguage = "en";
+  // Use language from request body (UI selection) if provided, fallback to profile setting
+  let body = req.body;
+  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+  body = body && typeof body === "object" ? body : {};
+  const requestedLang = (body.language || "").toLowerCase().trim();
+
+  let preferredLanguage = requestedLang || (profile.preferred_language || "en").toLowerCase().trim();
+  if (!["en", "de", "fr"].includes(preferredLanguage)) preferredLanguage = "en";
 
   const isFirstSession =
     (!profile.first_name || profile.first_name.trim() === "") &&

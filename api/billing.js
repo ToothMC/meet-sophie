@@ -160,7 +160,7 @@ async function handleCheckout(req, res) {
     }
 
     const successUrl = `${origin}/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl  = `${origin}/pricing/?canceled=1`;
+    const cancelUrl  = `${origin}/pricing?canceled=1`;
 
     const stripeBody = new URLSearchParams();
     stripeBody.append("mode", "subscription");
