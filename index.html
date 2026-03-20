@@ -781,16 +781,16 @@
       flex-shrink:0;
     }
     .chat-auth p{margin:0 0 8px;font-size:13px;color:var(--muted)}
-    .chat-auth-row{display:flex;gap:6px}
+    .chat-auth-row{display:flex;flex-direction:column;gap:8px}
     .chat-auth input[type="email"]{
-      flex:1;background:rgba(255,255,255,.07);
+      width:100%;min-width:0;background:rgba(255,255,255,.07);
       border:1px solid rgba(255,255,255,.13);
       border-radius:8px;padding:7px 10px;
       font-size:13px;color:var(--text);outline:none;font-family:inherit;
     }
     .chat-auth input[type="email"]:focus{border-color:rgba(142,178,255,.45)}
     .chat-auth button{
-      padding:7px 13px;border-radius:8px;
+      width:100%;padding:7px 13px;border-radius:8px;
       background:rgba(142,178,255,.16);
       border:1px solid rgba(142,178,255,.28);
       color:#c8d8ff;font-size:13px;font-weight:600;
