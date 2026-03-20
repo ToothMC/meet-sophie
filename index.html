@@ -1450,10 +1450,10 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const AUTH_NUDGE_AT = 3;
-    const lang = (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+    let currentLang = localStorage.getItem("preferredLanguage") || "en";
     // Get translations from window (set by inline script above)
     const T = window.translations || {};
-    const t = (T[lang] || T["en"]) || {};
+    let t = (T[currentLang] || T["en"]) || {};
     const messagesEl = document.getElementById("chatMessages");
     const typingEl   = document.getElementById("chatTyping");
     const authEl     = document.getElementById("chatAuth");
@@ -1463,45 +1463,7 @@
     const reportEl   = document.getElementById("chatReport");
     const inputEl    = document.getElementById("chatInput");
     const sendBtn    = document.getElementById("chatSendBtn");
-    function getCurrentLang() {
-      return localStorage.getItem("preferredLanguage") || "en";
-    }
-    // Chat lang switch — switches UI language AND resets session in new language
-    document.querySelectorAll("#chatLangSwitch button").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const newLang = btn.dataset.lang;
-        if (newLang === getCurrentLang()) return;
-
-        // Update UI translations + active button state
-        if (window.setLang) window.setLang(newLang);
-
-        // Hard-reset session state
-        sessionId      = null;
-        systemPrompt   = "";
-        history        = [];
-        turnCount      = 0;
-        sessionStarted = false;
-        sessionEnded   = false;
-        authNudgeShown = false;
-        demoCleared    = true;
-        sending        = false;
-        sendBtn.disabled  = false;
-        inputEl.disabled  = false;
-        hide(typingEl);
-        hide(authEl);
-        hide(reportEl);
-        messagesEl.innerHTML = "";
-
-        // Start fresh session in new language
-        try {
-          sessionStarted = true;
-          await startSession();
-        } catch (err) {
-          console.error(err);
-          sessionStarted = false;
-        }
-      });
-    });
+    function getCurrentLang() { return currentLang; }
     let sessionId      = null;
     let systemPrompt   = "";
     let history        = [];
@@ -1511,6 +1473,40 @@
     let sessionStarted = false;
     let demoCleared    = false;
     let sending        = false;
+
+    // Central language switch — both nav header and chat card call this
+    async function setLanguage(lang) {
+      if (!lang || lang === currentLang) return;
+      currentLang = lang;
+      t = (T[currentLang] || T["en"]) || {};           // refresh translation table
+      if (window.setLang) window.setLang(currentLang); // applyTranslations + closeLangMenu
+      sessionId      = null;
+      systemPrompt   = "";
+      history        = [];
+      turnCount      = 0;
+      sessionStarted = false;
+      sessionEnded   = false;
+      authNudgeShown = false;
+      demoCleared    = true;
+      sending        = false;
+      sendBtn.disabled = false;
+      inputEl.disabled = false;
+      hide(typingEl);
+      hide(authEl);
+      hide(reportEl);
+      if (messagesEl) messagesEl.innerHTML = "";
+      try {
+        sessionStarted = true;
+        await startSession();
+      } catch (err) {
+        console.error("Failed to restart chat after language switch:", err);
+        sessionStarted = false;
+      }
+    }
+    // One universal handler for every [data-lang] button on the page
+    document.querySelectorAll("[data-lang]").forEach(btn => {
+      btn.addEventListener("click", () => setLanguage(btn.dataset.lang));
+    });
     function show(el) { el.classList.remove("chat-hidden"); }
     function hide(el) { el.classList.add("chat-hidden"); }
     function appendBubble(role, text) {
