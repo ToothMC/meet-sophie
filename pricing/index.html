@@ -440,7 +440,7 @@ async function startCheckout(){
     const token = await getTokenOrLogin();
     if (!token) return;
 
-    const res = await fetch("/api/create-checkout-session", {
+    const res = await fetch("/api/billing?action=checkout", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -492,7 +492,7 @@ async function startTopup(pack){
     const token = await getTokenOrLogin();
     if (!token) return;
 
-    const res = await fetch("/api/create-topup-session", {
+    const res = await fetch("/api/billing?action=topup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
