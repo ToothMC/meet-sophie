@@ -1,7 +1,7 @@
 // api/session.js
-const { createClient } = require("@supabase/supabase-js");
+import { createClient } from "@supabase/supabase-js";
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
@@ -1207,4 +1207,4 @@ ${sessionClosingBlock}
     console.error("Server error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
-};
+}
