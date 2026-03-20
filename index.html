@@ -247,8 +247,9 @@
     }
     .trust-line{
       margin-top:14px;
-      color:rgba(246,247,251,.66);
-      font-size:14px;
+      color:rgba(246,247,251,.55);
+      font-size:12.5px;
+      letter-spacing:.2px;
     }
     .hero-visual{
       position:relative;
@@ -265,40 +266,6 @@
     }
     .hero-card::after{
       display:none;
-    }
-    .floating-panel{
-      position:absolute;
-      top:54px;
-      right:22px;
-      width:188px;
-      z-index:3;
-      border-radius:18px;
-      background:rgba(18,15,18,.28);
-      backdrop-filter:blur(10px);
-      border:1px solid rgba(255,255,255,.07);
-      padding:12px 13px 11px;
-      box-shadow:0 10px 24px rgba(0,0,0,.14);
-    }
-    .floating-label{
-      font-size:11px;
-      letter-spacing:0;
-      text-transform:none;
-      color:rgba(255,255,255,.92);
-      margin-bottom:6px;
-      font-weight:600;
-    }
-    .floating-text{
-      font-size:13px;
-      line-height:1.4;
-      color:rgba(246,247,251,.68);
-      opacity:1;
-      transform:translateY(0);
-      transition:opacity .4s ease, transform .4s ease;
-      min-height:auto;
-    }
-    .floating-text.is-changing{
-      opacity:0;
-      transform:translateY(6px);
     }
     .section{
       padding:44px 0;
@@ -645,13 +612,6 @@
       .hero-card{
         height:430px;
       }
-      .floating-panel{
-        top:12px;
-        right:10px;
-        width:190px;
-        padding:12px 13px;
-        border-radius:18px;
-      }
       .card,
       .example-box,
       .trust-box,
@@ -864,16 +824,11 @@
           <div class="hero-actions">
             <a class="btn btn-primary" href="/login/" id="hero-btn-primary">Talk to Sophie</a>
           </div>
-          <p class="trust-line" id="hero-trust-line">No signup · 2 min free</p>
+          <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
         </div>
 
         <div class="hero-visual">
           <div class="hero-card">
-            <div class="floating-panel">
-              <div class="floating-label" id="floating-label">A different kind of AI</div>
-              <div class="floating-text" id="floating-text">She helps you think before you act.</div>
-            </div>
-
             <!-- Chat card — integrated into hero visual -->
             <div class="chat-card" id="sophieChat">
               <div class="chat-card-header">
@@ -1104,7 +1059,7 @@
         hero_title: "THINK FIRST.<br>THEN ACT.",
         hero_copy: "Your AI thinking partner for the moments that matter.",
         hero_btn_primary: "Talk to Sophie",
-        hero_trust_line: "No signup · 2 min free",
+        hero_trust_line: "No signup · Start instantly",
         floating_label: "Stop typing. Start talking.",
         floating_lines: [
           "\u201cSophie says: Think one moment longer before you react.\u201d",
@@ -1201,7 +1156,7 @@
         hero_title: "ERST DENKEN.<br>DANN HANDELN.",
         hero_copy: "Deine KI f\u00fcr die Momente, die z\u00e4hlen.",
         hero_btn_primary: "Mit Sophie sprechen",
-        hero_trust_line: "Kein Account n\u00f6tig \u00b7 2 Min. kostenlos",
+        hero_trust_line: "Kein Account n\u00f6tig \u00b7 Sofort starten",
         floating_label: "H\u00f6r auf zu tippen. Fang an zu sprechen.",
         floating_lines: [
           "\u201eSophie says: Bevor du reagierst, denk einen Moment l\u00e4nger.\u201c",
