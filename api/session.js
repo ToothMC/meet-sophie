@@ -35,6 +35,18 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+
+    let handover = null;
+    try {
+      const rawHandover = req.headers["x-sophie-handover"];
+      if (rawHandover) {
+        handover = JSON.parse(Buffer.from(String(rawHandover), "base64").toString("utf8"));
+      }
+    } catch (e) {
+      console.warn("Invalid handover header:", e?.message || e);
+      handover = null;
+    }
+
     // ---------------------------
     // Session ending config
     // ---------------------------
@@ -330,20 +342,48 @@ module.exports = async function handler(req, res) {
     const effectivePronoun = profile.preferred_pronoun || notesFallback.preferred_pronoun || "";
 
     // ✅ HARD language whitelist (prevents fr/es/ja etc.)
-    let preferredLanguage = (profile.preferred_language || "en").toLowerCase().trim();
-    if (!["en", "de"].includes(preferredLanguage)) {
+    let preferredLanguage = String(
+      handover?.language || profile.preferred_language || "en"
+    ).toLowerCase().trim();
+    if (!["en", "de", "fr"].includes(preferredLanguage)) {
       preferredLanguage = "en";
     }
 
+    const handoverName = String(handover?.userName || "").trim();
+    const hasHandoverContext = !!(
+      handover && (
+        handoverName ||
+        (Array.isArray(handover?.recentMessages) && handover.recentMessages.length > 0) ||
+        (handover?.summary && String(handover.summary).trim() !== "")
+      )
+    );
+
     // ✅ First-session Heuristik
-    const isFirstSession =
+    const isFirstSession = !hasHandoverContext &&
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
     // ---------------------------
     // Prompt blocks
     // ---------------------------
-   const startModeBlock = isFirstSession
+   const startModeBlock = hasHandoverContext
+  ? `
+CHAT-TO-VOICE HANDOVER EXISTS
+
+Continue the existing conversation naturally.
+Do NOT restart.
+Do NOT introduce yourself as if this is the first meeting.
+Do NOT ask for the user's name again if it is already known.
+If a user name is available, use it naturally once at most.
+Keep the same topic, same emotional thread, and same language.
+
+Known handover name: ${handoverName || "(unknown)"}
+Handover summary: ${String(handover?.summary || "").trim() || "(none)"}
+Recent messages:
+${Array.isArray(handover?.recentMessages) ? handover.recentMessages.map(m => `- ${m.role}: ${m.content}`).join("
+") : "(none)"}
+`
+  : isFirstSession
   ? `
 FIRST SESSION: SIMPLE START MODE
 

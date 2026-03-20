@@ -2180,8 +2180,20 @@ async function startVoice(){
       return;
     }
 
+    const handoverHeader = (() => {
+      try {
+        if (!voiceHandover) return "";
+        return btoa(unescape(encodeURIComponent(JSON.stringify(voiceHandover))));
+      } catch (_) {
+        return "";
+      }
+    })();
+
     const tokenRes = await fetch("/api/session", {
-      headers: { Authorization: `Bearer ${session.access_token}` }
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {})
+      }
     });
 
     const data = await safeJson(tokenRes);
