@@ -180,8 +180,8 @@ function getToken(req) {
 function envCheck(res) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)
     return res.status(500).json({ error: "Missing Supabase env vars" });
-  if (!process.env.ANTHROPIC_API_KEY)
-    return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY" });
+  if (!process.env.OPENAI_API_KEY)
+    return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
   return null;
 }
 
@@ -330,44 +330,45 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Call Claude API
-  const claudeModel = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
-  const claudeMessages = messages
-    .filter(m => m.role === "user" || m.role === "assistant")
-    .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) }));
+  // Call OpenAI API
+  const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
+  const openaiMessages = [
+    { role: "system", content: system_prompt || "" },
+    ...messages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
+  ];
 
-  let claudeResp;
+  let openaiResp;
   try {
-    claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
+    openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: claudeModel,
+        model: openaiModel,
         max_tokens: 512,
-        system: system_prompt || "",
-        messages: claudeMessages,
+        messages: openaiMessages,
         temperature: 0.85,
       }),
     });
   } catch (e) {
-    console.error("Anthropic API fetch error:", e?.message);
-    return res.status(502).json({ error: "Claude API unavailable" });
+    console.error("OpenAI API fetch error:", e?.message);
+    return res.status(502).json({ error: "OpenAI API unavailable" });
   }
 
-  if (!claudeResp.ok) {
-    const errText = await claudeResp.text().catch(() => "");
-    console.error("Anthropic API error:", claudeResp.status, errText.slice(0, 200));
-    return res.status(claudeResp.status).json({ error: "Claude API error", detail: errText.slice(0, 200) });
+  if (!openaiResp.ok) {
+    const errText = await openaiResp.text().catch(() => "");
+    console.error("OpenAI API error:", openaiResp.status, errText.slice(0, 200));
+    return res.status(openaiResp.status).json({ error: "OpenAI API error", detail: errText.slice(0, 200) });
   }
 
-  const claudeData = await claudeResp.json();
-  const reply = claudeData?.content?.[0]?.text || "";
+  const openaiData = await openaiResp.json();
+  const reply = openaiData?.choices?.[0]?.message?.content || "";
 
-  if (!reply) return res.status(502).json({ error: "Empty response from Claude" });
+  if (!reply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
   // Increment turn count + link user if just authenticated
   const updatePatch = {
@@ -383,7 +384,7 @@ async function handleMessage(req, res) {
     ok: true,
     reply,
     turn_count: session.turn_count + 1,
-    model: claudeModel,
+    model: openaiModel,
   });
 }
 
