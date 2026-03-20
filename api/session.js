@@ -380,8 +380,7 @@ Keep the same topic, same emotional thread, and same language.
 Known handover name: ${handoverName || "(unknown)"}
 Handover summary: ${String(handover?.summary || "").trim() || "(none)"}
 Recent messages:
-${Array.isArray(handover?.recentMessages) ? handover.recentMessages.map(m => `- ${m.role}: ${m.content}`).join("
-") : "(none)"}
+${Array.isArray(handover?.recentMessages) ? handover.recentMessages.map(m => `- ${m.role}: ${m.content}`).join("\n") : "(none)"}
 `
   : isFirstSession
   ? `
