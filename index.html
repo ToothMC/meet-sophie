@@ -1466,7 +1466,7 @@
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const AUTH_NUDGE_AT = 3;
+    const AUTH_NUDGE_AT = 8;
     let currentLang = localStorage.getItem("preferredLanguage") || "en";
     // Get translations from window (set by inline script above)
     const T = window.translations || {};
@@ -1519,6 +1519,168 @@
       }
     }
 
+    const CHAT_STATE_KEY = "sophiePendingChat";
+    const HANDOVER_KEY = "SOPHIE_HANDOVER";
+
+    function saveChatState() {
+      try {
+        const state = {
+          sessionId,
+          systemPrompt,
+          history,
+          turnCount,
+          authNudgeShown,
+          sessionEnded,
+          sessionStarted,
+          demoCleared,
+          currentLang,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(CHAT_STATE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn("saveChatState failed:", err);
+      }
+    }
+
+    function loadChatState() {
+      try {
+        const raw = localStorage.getItem(CHAT_STATE_KEY);
+        if (!raw) return null;
+        const state = JSON.parse(raw);
+        if (!state || typeof state !== "object") return null;
+        return state;
+      } catch (err) {
+        console.warn("loadChatState failed:", err);
+        return null;
+      }
+    }
+
+    function clearChatState() {
+      try {
+        localStorage.removeItem(CHAT_STATE_KEY);
+      } catch (err) {
+        console.warn("clearChatState failed:", err);
+      }
+    }
+
+    function renderHistoryFromState() {
+      if (!messagesEl) return;
+      messagesEl.innerHTML = "";
+      for (const msg of history) {
+        if (!msg || !msg.role || !msg.content) continue;
+        if (msg.role === "assistant") appendBubble("sophie", msg.content);
+        else if (msg.role === "user") appendBubble("user", msg.content);
+      }
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function restoreChatState(state) {
+      sessionId      = state.sessionId || null;
+      systemPrompt   = state.systemPrompt || "";
+      history        = Array.isArray(state.history) ? state.history : [];
+      turnCount      = Number.isFinite(state.turnCount) ? state.turnCount : 0;
+      authNudgeShown = !!state.authNudgeShown;
+      sessionEnded   = !!state.sessionEnded;
+      sessionStarted = !!state.sessionStarted;
+      demoCleared    = !!state.demoCleared;
+
+      if (state.currentLang && state.currentLang !== currentLang) {
+        currentLang = state.currentLang;
+        t = (T[currentLang] || T["en"]) || {};
+        if (window.setLang) window.setLang(currentLang);
+      }
+
+      hide(typingEl);
+      if (authNudgeShown) show(authEl); else hide(authEl);
+      if (!sessionEnded) hide(reportEl);
+
+      renderHistoryFromState();
+
+      if (sessionEnded) {
+        inputEl.disabled = true;
+        sendBtn.disabled = true;
+      } else {
+        inputEl.disabled = false;
+        sendBtn.disabled = false;
+      }
+    }
+
+    function detectUserNameFromHistory(messages = []) {
+      const userTexts = messages
+        .filter(m => m?.role === "user" && typeof m.content === "string")
+        .map(m => m.content);
+
+      const patterns = [
+        /\bmy name is\s+([A-Za-zÀ-ÿ' -]{2,40})/i,
+        /\bi am\s+([A-Za-zÀ-ÿ' -]{2,40})\b/i,
+        /\bi'm\s+([A-Za-zÀ-ÿ' -]{2,40})\b/i,
+        /\bich bin\s+([A-Za-zÀ-ÿ' -]{2,40})\b/i,
+        /\bmein name ist\s+([A-Za-zÀ-ÿ' -]{2,40})/i,
+        /\bje m'appelle\s+([A-Za-zÀ-ÿ' -]{2,40})/i,
+        /\bmon nom est\s+([A-Za-zÀ-ÿ' -]{2,40})/i
+      ];
+
+      for (const text of userTexts) {
+        for (const re of patterns) {
+          const match = text.match(re);
+          if (match?.[1]) {
+            return match[1].trim().replace(/[.,!?;:]+$/, "");
+          }
+        }
+      }
+      return "";
+    }
+
+    function buildChatSummary(messages = []) {
+      const lastUserMessages = messages
+        .filter(m => m?.role === "user" && typeof m.content === "string" && m.content !== "[CHAT_START]")
+        .slice(-3)
+        .map(m => m.content.trim())
+        .filter(Boolean);
+
+      if (!lastUserMessages.length) return "";
+      return `Recent user context: ${lastUserMessages.join(" | ")}`;
+    }
+
+    function saveVoiceHandover() {
+      try {
+        const payload = {
+          source: "chat",
+          targetMode: "voice",
+          language: getCurrentLang(),
+          sessionId,
+          userName: detectUserNameFromHistory(history),
+          summary: buildChatSummary(history),
+          recentMessages: history
+            .filter(m => m?.content && m.content !== "[CHAT_START]")
+            .slice(-8),
+          createdAt: Date.now()
+        };
+
+        sessionStorage.setItem(HANDOVER_KEY, JSON.stringify(payload));
+      } catch (err) {
+        console.warn("saveVoiceHandover failed:", err);
+      }
+    }
+
+    function goToVoiceFromChat() {
+      saveVoiceHandover();
+      window.location.href = "/talk";
+    }
+
+    function hasDirectVoiceIntent(text = "") {
+      return [
+        /\bi want to hear you\b/i,
+        /\bcan we talk\b/i,
+        /\bi'd rather speak\b/i,
+        /\bich will mit dir sprechen\b/i,
+        /\bich würde dich gerne hören\b/i,
+        /\blass uns sprechen\b/i,
+        /\bje veux entendre ta voix\b/i,
+        /\bon peut parler\b/i
+      ].some(re => re.test(text));
+    }
+
     // Central language switch — both nav header and chat card call this
     async function setLanguage(lang) {
       if (!lang || lang === currentLang) return;
@@ -1536,6 +1698,7 @@
       authNudgeShown = false;
       demoCleared    = true;
       sending        = false;
+      clearChatState();
       sendBtn.disabled = false;
       inputEl.disabled = false;
       hide(typingEl);
@@ -1578,6 +1741,10 @@
       }, 800);
     }
     showDemoMessages();
+    const restoredState = loadChatState();
+    if (restoredState && restoredState.currentLang === currentLang) {
+      restoreChatState(restoredState);
+    }
     function clearDemoAndStartReal() {
       if (demoCleared) return;
       demoCleared = true;
@@ -1624,11 +1791,30 @@
       ];
       appendBubble("sophie", greeting);
       maybeActivateVoiceBtn(greeting);
+      saveChatState();
     }
     async function sendMessage() {
       if (sending || sessionEnded) return;
       const text = inputEl.value.trim();
       if (!text) return;
+      if (hasDirectVoiceIntent(text)) {
+        clearDemoAndStartReal();
+        appendBubble("user", text);
+        history.push({ role: "user", content: text });
+
+        const directReply =
+          getCurrentLang() === "de"
+            ? "Dann lass uns sprechen."
+            : getCurrentLang() === "fr"
+            ? "Alors parlons."
+            : "Then let’s talk.";
+
+        appendBubble("sophie", directReply);
+        history.push({ role: "assistant", content: directReply });
+        saveChatState();
+        goToVoiceFromChat();
+        return;
+      }
       sending = true;
       inputEl.value = "";
       inputEl.style.height = "auto";
@@ -1649,6 +1835,7 @@
       }
       appendBubble("user", text);
       history.push({ role: "user", content: text });
+      saveChatState();
       show(typingEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       try {
@@ -1664,9 +1851,10 @@
         appendBubble("sophie", reply);
         maybeActivateVoiceBtn(reply);
         turnCount++;
+        saveChatState();
         if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
           const token = await getToken();
-          if (!token) { authNudgeShown = true; show(authEl); }
+          if (!token) { authNudgeShown = true; show(authEl); saveChatState(); }
         }
         if (data.limit_reached) {
           sessionEnded = true;
@@ -1676,6 +1864,7 @@
           show(reportEl);
           inputEl.disabled  = true;
           sendBtn.disabled  = true;
+          saveChatState();
         }
       } catch (e) {
         hide(typingEl);
@@ -1713,12 +1902,24 @@
     authBtn.addEventListener("click", async () => {
       const email = authEmail.value.trim();
       if (!email) return;
+      saveChatState();
       authBtn.disabled = true;
       const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + "/" } });
       if (!error) { hide(authEl); show(authSent); }
       else { authBtn.disabled = false; }
     });
-    window.addEventListener("pagehide", endSession);
+    const chatToVoiceCta = document.getElementById("chatToVoiceCta");
+    if (chatToVoiceCta) {
+      chatToVoiceCta.addEventListener("click", (e) => {
+        e.preventDefault();
+        goToVoiceFromChat();
+      });
+    }
+
+    window.addEventListener("pagehide", () => {
+      saveChatState();
+      endSession();
+    });
     // Make translations available to module scope
     /* translations already attached to window in the inline script above */
   </script>

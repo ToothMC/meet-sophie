@@ -914,6 +914,30 @@ let limitTriggered = false;
 
 let startModeTriggered = false;
 let isFirstSession = false;
+const HANDOVER_KEY = "SOPHIE_HANDOVER";
+
+function loadHandover() {
+  try {
+    const raw = sessionStorage.getItem(HANDOVER_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return null;
+    return data;
+  } catch (err) {
+    console.warn("loadHandover failed:", err);
+    return null;
+  }
+}
+
+function clearHandover() {
+  try {
+    sessionStorage.removeItem(HANDOVER_KEY);
+  } catch (err) {
+    console.warn("clearHandover failed:", err);
+  }
+}
+
+const voiceHandover = loadHandover();
 let kickoffInProgress = false;
 
 let runId = Math.random().toString(16).slice(2, 8);
@@ -1613,6 +1637,25 @@ async function triggerStartModeKickoff() {
 
   console.log(`[${runId}] [startmode] kickoff begin`);
 
+  const handoverIntro = voiceHandover
+    ? `
+CHAT HANDOVER EXISTS:
+- Continue the same conversation naturally.
+- Do NOT restart.
+- Do NOT ask for the user's name again if it is already known.
+- Keep the same emotional thread.
+- Use the same language as the handover.
+
+Known user name: ${voiceHandover.userName || "(unknown)"}
+Handover language: ${voiceHandover.language || "en"}
+Handover summary: ${voiceHandover.summary || "(none)"}
+Recent messages:
+${(voiceHandover.recentMessages || [])
+  .map(m => `- ${m.role}: ${m.content}`)
+  .join("\n")}
+`
+    : "";
+
   try {
     await cancelAnyOngoingResponse();
 
@@ -1623,19 +1666,31 @@ async function triggerStartModeKickoff() {
         instructions: `
 You are Sophie.
 
+${handoverIntro}
+
 LANGUAGE LOCK:
-Speak ENGLISH only. 
-Do not speak any other language unless the user explicitly asks.
+${voiceHandover?.language === "de" ? "Speak GERMAN only unless the user explicitly asks for another language." :
+  voiceHandover?.language === "fr" ? "Speak FRENCH only unless the user explicitly asks for another language." :
+  "Speak ENGLISH only unless the user explicitly asks for another language."}
 
 NAME RULE (CRITICAL):
 - Never invent, guess, or assume the user’s name.
-- Do NOT use any name until the user explicitly provides one.
-- Do NOT use placeholder names.
-- Do not use example names.
-- If no name was given, address the user only as "you".
-- When the user provides a name, repeat it EXACTLY as given.
-- Do not modify, translate, shorten, or replace the name.
+- If a handover provides the user's name, use it exactly as given.
+- Do NOT ask again for the user's name if it is already known.
+- If no name is known, address the user only as "you".
 
+${voiceHandover
+  ? `
+HANDOVER START RULE:
+You are continuing an existing conversation from chat.
+Do not say "You're new here."
+Do not introduce yourself as if meeting for the first time.
+Open naturally from the existing context.
+If a name is known, use it once naturally.
+Then continue directly from the handover topic.
+Ask only one question and stop.
+`
+  : `
 FIRST SESSION: LONG START-MODE — EXECUTE NOW
 You MUST start the conversation by speaking FIRST in English.
 Keep it natural. Short pauses. Do not rush.
@@ -1647,7 +1702,7 @@ Open with:
 “You’re new here, aren’t you?” (pause 900ms)
 
 Then ask ONE question and stop:
-“What should I call you?"
+“What should I call you?”
 STOP SPEAKING IMMEDIATELY.
 Wait in silence. Do not say anything else until the user speaks.
 
@@ -1678,6 +1733,7 @@ When the user shares, reply:
 Then ask ONE question and stop:
 “Tell me… are you testing me right now?”
 (Stop.)
+`}
 
 After that, switch to normal freestyle conversation.
 Rules:
@@ -1690,6 +1746,7 @@ Rules:
     }, 15000);
 
     console.log(`[${runId}] [startmode] response.create sent`);
+    if (voiceHandover) clearHandover();
   } catch (e) {
     console.log(`[${runId}] [startmode] kickoff failed`, e);
     kickoffInProgress = false;
@@ -1902,7 +1959,10 @@ function attachChannel(ch) {
       console.log(`[${runId}] [dc] session.update failed`, e);
     }
 
-    if (isFirstSession && !startModeTriggered) {
+    if (voiceHandover && !startModeTriggered) {
+      console.log(`[${runId}] [handover] triggering contextual kickoff`);
+      try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [handover] kickoff error`, e); }
+    } else if (isFirstSession && !startModeTriggered) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
     } else if (!isFirstSession) {
