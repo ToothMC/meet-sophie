@@ -915,10 +915,11 @@ let limitTriggered = false;
 let startModeTriggered = false;
 let isFirstSession = false;
 const HANDOVER_KEY = "SOPHIE_HANDOVER";
+const HANDOVER_KEY_FALLBACK = "SOPHIE_HANDOVER_PERSIST";
 
 function loadHandover() {
   try {
-    const raw = sessionStorage.getItem(HANDOVER_KEY);
+    const raw = sessionStorage.getItem(HANDOVER_KEY) || localStorage.getItem(HANDOVER_KEY_FALLBACK);
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data || typeof data !== "object") return null;
@@ -932,6 +933,7 @@ function loadHandover() {
 function clearHandover() {
   try {
     sessionStorage.removeItem(HANDOVER_KEY);
+    localStorage.removeItem(HANDOVER_KEY_FALLBACK);
   } catch (err) {
     console.warn("clearHandover failed:", err);
   }

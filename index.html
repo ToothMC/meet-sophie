@@ -1521,6 +1521,7 @@
 
     const CHAT_STATE_KEY = "sophiePendingChat";
     const HANDOVER_KEY = "SOPHIE_HANDOVER";
+    const HANDOVER_KEY_FALLBACK = "SOPHIE_HANDOVER_PERSIST";
 
     function saveChatState() {
       try {
@@ -1658,6 +1659,7 @@
         };
 
         sessionStorage.setItem(HANDOVER_KEY, JSON.stringify(payload));
+        localStorage.setItem(HANDOVER_KEY_FALLBACK, JSON.stringify(payload));
       } catch (err) {
         console.warn("saveVoiceHandover failed:", err);
       }
@@ -1908,13 +1910,17 @@
       if (!error) { hide(authEl); show(authSent); }
       else { authBtn.disabled = false; }
     });
-    const chatToVoiceCta = document.getElementById("chatToVoiceCta");
-    if (chatToVoiceCta) {
-      chatToVoiceCta.addEventListener("click", (e) => {
+    const chatToVoiceCtas = [
+      document.getElementById("chatToVoiceCta"),
+      document.getElementById("hero-btn-primary")
+    ].filter(Boolean);
+
+    chatToVoiceCtas.forEach((cta) => {
+      cta.addEventListener("click", (e) => {
         e.preventDefault();
         goToVoiceFromChat();
       });
-    }
+    });
 
     window.addEventListener("pagehide", () => {
       saveChatState();
