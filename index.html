@@ -19,7 +19,6 @@
       --radius:24px;
       --max:1180px;
     }
-
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{
@@ -34,11 +33,9 @@
       -webkit-font-smoothing:antialiased;
       text-rendering:optimizeLegibility;
     }
-
     img{max-width:100%;display:block}
     a{color:inherit}
     .wrap{width:min(calc(100% - 32px), var(--max)); margin:0 auto}
-
     .site-header{
       position:sticky;
       top:0;
@@ -47,7 +44,6 @@
       background:rgba(6,7,11,.55);
       border-bottom:1px solid rgba(255,255,255,.06);
     }
-
     .nav{
       display:flex;
       align-items:center;
@@ -55,7 +51,6 @@
       gap:16px;
       min-height:72px;
     }
-
     .brand{
       font-size:15px;
       font-weight:700;
@@ -63,32 +58,26 @@
       text-decoration:none;
       opacity:.94;
     }
-
     .nav-right{
       display:flex;
       align-items:center;
       gap:18px;
     }
-
     .nav-links{
       display:flex;
       align-items:center;
       gap:22px;
     }
-
     .nav-links a{
       text-decoration:none;
       color:var(--muted);
       font-size:14px;
     }
-
     .nav-links a:hover{color:var(--text)}
-
     .lang-dropdown{
       position:relative;
       display:inline-block;
     }
-
     .lang-btn{
       text-decoration:none;
       font-size:14px;
@@ -103,13 +92,11 @@
       cursor:pointer;
       line-height:1;
     }
-
     .lang-btn:hover{
       transform:translateY(-1px);
       background:rgba(255,255,255,.08);
       border-color:rgba(255,255,255,.18);
     }
-
     .lang-menu{
       position:absolute;
       top:calc(100% + 10px);
@@ -124,9 +111,7 @@
       z-index:100;
       backdrop-filter:blur(18px);
     }
-
     .lang-menu.open{display:block}
-
     .lang-menu button{
       width:100%;
       appearance:none;
@@ -140,11 +125,9 @@
       font-size:14px;
       font-weight:500;
     }
-
     .lang-menu button:hover{
       background:rgba(255,255,255,.07);
     }
-
     .login-link{
       text-decoration:none;
       font-size:14px;
@@ -156,26 +139,22 @@
       background:rgba(255,255,255,.04);
       transition:transform .18s ease, background .18s ease, border-color .18s ease;
     }
-
     .login-link:hover{
       transform:translateY(-1px);
       background:rgba(255,255,255,.08);
       border-color:rgba(255,255,255,.18);
     }
-
     .hero{
       position:relative;
       overflow:hidden;
       padding:72px 0 42px;
     }
-
     .hero-grid{
       display:grid;
       grid-template-columns:1.05fr .95fr;
       gap:34px;
       align-items:center;
     }
-
     .eyebrow{
       display:inline-flex;
       align-items:center;
@@ -188,7 +167,6 @@
       font-size:13px;
       margin-bottom:18px;
     }
-
     .eyebrow::before{
       content:"";
       width:8px;
@@ -197,7 +175,6 @@
       background:#8eb2ff;
       box-shadow:0 0 18px rgba(142,178,255,.75);
     }
-
     h1{
       margin:0;
       font-size:clamp(46px, 7vw, 82px);
@@ -207,7 +184,6 @@
       max-width:700px;
       text-transform:uppercase;
     }
-
     .hero-copy{
       margin:22px 0 0;
       max-width:640px;
@@ -215,14 +191,12 @@
       line-height:1.45;
       color:var(--muted);
     }
-
     .hero-actions{
       display:flex;
       gap:14px;
       flex-wrap:wrap;
       margin-top:28px;
     }
-
     .btn{
       display:inline-flex;
       align-items:center;
@@ -236,31 +210,26 @@
       transition:transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
       box-shadow:var(--shadow);
     }
-
     .btn:hover{transform:translateY(-2px)}
     .btn-primary{
       background:var(--accent);
       color:#0b0e13;
     }
-
     .btn-secondary{
       background:rgba(255,255,255,.04);
       color:var(--text);
       border:1px solid var(--line);
       box-shadow:none;
     }
-
     .trust-line{
       margin-top:18px;
       color:rgba(246,247,251,.66);
       font-size:14px;
     }
-
     .hero-visual{
       position:relative;
       min-height:620px;
     }
-
     .hero-card{
       position:relative;
       border-radius:34px;
@@ -272,7 +241,6 @@
       box-shadow:0 35px 100px rgba(0,0,0,.45);
       border:1px solid rgba(255,255,255,.10);
     }
-
     .hero-card::after{
       content:"";
       position:absolute;
@@ -280,7 +248,6 @@
       background:linear-gradient(180deg, rgba(7,9,14,.08) 0%, rgba(7,9,14,.10) 38%, rgba(7,9,14,.66) 100%);
       pointer-events:none;
     }
-
     .floating-panel{
       position:absolute;
       left:20px;
@@ -294,7 +261,6 @@
       padding:18px;
       box-shadow:var(--shadow);
     }
-
     .floating-label{
       font-size:12px;
       letter-spacing:.08em;
@@ -302,7 +268,6 @@
       color:rgba(246,247,251,.58);
       margin-bottom:10px;
     }
-
     .floating-text{
       font-size:17px;
       line-height:1.5;
@@ -312,34 +277,28 @@
       transition:opacity .4s ease, transform .4s ease;
       min-height:3.1em;
     }
-
     .floating-text.is-changing{
       opacity:0;
       transform:translateY(6px);
     }
-
     .section{
       padding:44px 0;
     }
-
     .section-title{
       margin:0 0 12px;
       font-size:clamp(30px,4vw,48px);
       line-height:1.05;
       letter-spacing:-.03em;
     }
-
     .section-intro{
       margin:0;
       max-width:760px;
       font-size:18px;
       color:var(--muted);
     }
-
     .thinking-section{
       padding:84px 0 58px;
     }
-
     .thinking-shell{
       position:relative;
       max-width:980px;
@@ -354,7 +313,6 @@
       box-shadow:0 40px 120px rgba(0,0,0,.34);
       overflow:hidden;
     }
-
     .thinking-shell::before{
       content:"";
       position:absolute;
@@ -362,13 +320,11 @@
       pointer-events:none;
       background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
     }
-
     .thinking-inner{
       position:relative;
       z-index:1;
       text-align:center;
     }
-
     .thinking-eyebrow{
       display:inline-block;
       margin-bottom:18px;
@@ -377,7 +333,6 @@
       text-transform:uppercase;
       color:rgba(246,247,251,.58);
     }
-
     .thinking-title{
       margin:0 auto 22px;
       max-width:760px;
@@ -386,7 +341,6 @@
       letter-spacing:-.04em;
       font-weight:650;
     }
-
     .thinking-copy{
       margin:0 auto;
       max-width:720px;
@@ -394,15 +348,12 @@
       font-size:18px;
       line-height:1.72;
     }
-
     .thinking-copy p{
       margin:0 0 16px;
     }
-
     .thinking-copy p:last-child{
       margin-bottom:0;
     }
-
     .thinking-highlight{
       margin:48px auto 0;
       max-width:760px;
@@ -413,13 +364,11 @@
       color:var(--text);
       text-wrap:balance;
     }
-
     .thinking-sources{
       margin:34px auto 0;
       max-width:860px;
       text-align:center;
     }
-
     .thinking-sources-label{
       margin-bottom:14px;
       font-size:12px;
@@ -427,13 +376,11 @@
       text-transform:uppercase;
       color:rgba(246,247,251,.54);
     }
-
     .thinking-sources-grid{
       display:grid;
       grid-template-columns:repeat(3,1fr);
       gap:12px;
     }
-
     .thinking-source-card{
       display:block;
       padding:16px 16px 15px;
@@ -441,7 +388,6 @@
       background:rgba(255,255,255,.04);
       border:1px solid rgba(255,255,255,.08);
     }
-
     .thinking-source-title{
       display:block;
       margin-bottom:4px;
@@ -449,21 +395,18 @@
       font-weight:600;
       color:var(--text);
     }
-
     .thinking-source-text{
       display:block;
       font-size:14px;
       color:var(--muted);
       line-height:1.45;
     }
-
     .cards{
       display:grid;
       grid-template-columns:repeat(3,1fr);
       gap:18px;
       margin-top:26px;
     }
-
     .card{
       background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
       border:1px solid var(--line);
@@ -471,26 +414,22 @@
       padding:24px;
       box-shadow:var(--shadow);
     }
-
     .card h3{
       margin:0 0 10px;
       font-size:22px;
       letter-spacing:-.02em;
     }
-
     .card p{
       margin:0;
       color:var(--muted);
       font-size:16px;
     }
-
     .split{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:20px;
       align-items:start;
     }
-
     .example-box,
     .trust-box,
     .faq-box,
@@ -501,7 +440,6 @@
       padding:28px;
       box-shadow:var(--shadow);
     }
-
     .example-box h3,
     .trust-box h3,
     .faq-box h3,
@@ -510,7 +448,6 @@
       font-size:26px;
       letter-spacing:-.02em;
     }
-
     .example-copy,
     .trust-copy,
     .cta-copy,
@@ -519,13 +456,11 @@
       font-size:17px;
       margin:0 0 18px;
     }
-
     .dialogue{
       display:grid;
       gap:14px;
       margin-top:14px;
     }
-
     .bubble{
       border-radius:20px;
       padding:16px 18px;
@@ -533,15 +468,12 @@
       line-height:1.55;
       border:1px solid rgba(255,255,255,.08);
     }
-
     .bubble.you{
       background:rgba(255,255,255,.06);
     }
-
     .bubble.sophie{
       background:rgba(142,178,255,.12);
     }
-
     .trust-list,
     .bullet-list{
       display:grid;
@@ -550,18 +482,15 @@
       padding:0;
       list-style:none;
     }
-
     .trust-list li,
     .bullet-list li,
     .faq-item{
       padding:16px 0 0;
       border-top:1px solid rgba(255,255,255,.08);
     }
-
     .trust-list li:first-child,
     .bullet-list li:first-child,
     .faq-item:first-child{border-top:0;padding-top:0}
-
     .list-title,
     .faq-q{
       display:block;
@@ -570,20 +499,17 @@
       font-size:17px;
       color:var(--text);
     }
-
     .list-text,
     .faq-a{
       color:var(--muted);
       font-size:16px;
     }
-
     .two-col{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:18px;
       margin-top:24px;
     }
-
     .muted-label{
       display:inline-block;
       margin-bottom:10px;
@@ -592,30 +518,25 @@
       text-transform:uppercase;
       letter-spacing:.08em;
     }
-
     .bottom-cta{
       padding:12px 0 60px;
     }
-
     .cta-box{
       display:flex;
       justify-content:space-between;
       align-items:center;
       gap:20px;
     }
-
     .cta-actions{
       display:flex;
       flex-direction:column;
       align-items:flex-start;
     }
-
     .site-footer{
       border-top:1px solid rgba(255,255,255,.08);
       padding:26px 0 36px;
       background:rgba(0,0,0,.20);
     }
-
     .footer-row{
       display:flex;
       align-items:center;
@@ -623,22 +544,18 @@
       gap:20px;
       flex-wrap:wrap;
     }
-
     .footer-links{
       display:flex;
       gap:18px;
       flex-wrap:wrap;
     }
-
     .footer-links a,
     .footer-brand{
       text-decoration:none;
       color:rgba(246,247,251,.66);
       font-size:14px;
     }
-
     .footer-links a:hover{color:var(--text)}
-
     @media (max-width:980px){
       .hero-grid,
       .split,
@@ -647,14 +564,12 @@
         grid-template-columns:1fr;
         display:grid;
       }
-
       .cards{grid-template-columns:1fr}
       .thinking-sources-grid{grid-template-columns:1fr}
       .hero-visual{min-height:auto}
       .hero-card{min-height:540px}
       .nav-links{display:none}
     }
-
     @media (max-width:640px){
       .hero{padding:34px 0 26px}
       .section{padding:34px 0}
@@ -678,8 +593,7 @@
       .chat-card{width:100%;max-width:100%;position:relative;bottom:auto;margin-top:20px}
       .chat-msg-bubble{font-size:14px}
     }
-
-    /* ===== SOPHIE CHAT CARD (Phase 1) — floating overlay bottom-left ===== */
+    /* ===== SOPHIE CHAT CARD ===== */
     .chat-card{
       position:relative;
       width:360px;
@@ -694,14 +608,35 @@
       overflow:hidden;
       height:320px;
     }
+    /* Gold glow at card bottom */
+    .chat-card::after{
+      content:"";
+      position:absolute;
+      left:10%;right:10%;bottom:-1px;
+      height:1px;
+      background:linear-gradient(90deg, transparent, rgba(200,168,75,.8), transparent);
+      box-shadow:0 0 22px 5px rgba(200,168,75,.30);
+      pointer-events:none;
+      z-index:10;
+    }
     .chat-card-header{
       display:flex;align-items:center;gap:10px;
-      padding:13px 16px 11px;
+      padding:12px 14px 10px;
       border-bottom:1px solid rgba(255,255,255,.07);
       flex-shrink:0;
     }
+    /* Back ‹ button */
+    .chat-back-btn{
+      background:none;border:none;
+      color:rgba(246,247,251,.55);
+      cursor:pointer;padding:4px 6px;
+      border-radius:8px;font-size:18px;
+      line-height:1;flex-shrink:0;
+      transition:color .15s;
+    }
+    .chat-back-btn:hover{color:var(--text)}
     .chat-avatar-img{
-      width:36px;height:36px;border-radius:50%;flex-shrink:0;
+      width:34px;height:34px;border-radius:50%;flex-shrink:0;
       object-fit:cover;object-position:top center;
       border:1.5px solid rgba(255,255,255,.14);
     }
@@ -715,6 +650,17 @@
       content:"";width:6px;height:6px;border-radius:50%;
       background:#7ecf7e;flex-shrink:0;
     }
+    /* ··· menu button */
+    .chat-menu-btn{
+      background:none;border:none;
+      color:rgba(246,247,251,.55);
+      cursor:pointer;padding:4px 8px;
+      border-radius:8px;font-size:16px;
+      line-height:1;flex-shrink:0;
+      letter-spacing:.05em;
+      transition:color .15s;
+    }
+    .chat-menu-btn:hover{color:var(--text)}
     .chat-messages{
       flex:1;overflow-y:auto;
       padding:12px 14px 6px;
@@ -826,7 +772,6 @@
           <a href="#trust" id="nav-trust">Trust</a>
           <a href="#faq" id="nav-faq">FAQ</a>
         </nav>
-
         <div class="lang-dropdown">
           <button class="lang-btn" id="langToggle" aria-expanded="false" aria-haspopup="true">
             <span id="lang-label">Language</span>
@@ -837,81 +782,76 @@
             <button type="button" data-lang="fr">Français</button>
           </div>
         </div>
-
         <a class="login-link" href="/login/" id="login-link">Log in</a>
       </div>
     </div>
   </header>
-
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <div class=”eyebrow” id=”hero-eyebrow”>Clarity begins in conversation.</div>
-          <h1 id=”hero-title”>THINK FIRST.<br>THEN ACT.</h1>
-          <p class=”hero-copy” id=”hero-copy”>Your AI thinking partner for the moments that matter.</p>
-          <div class=”hero-actions”>
-            <a class=”btn btn-primary” href=”/login/” id=”hero-btn-primary”>Try for free</a>
+          <div class="eyebrow" id="hero-eyebrow">Clarity begins in conversation.</div>
+          <h1 id="hero-title">THINK FIRST.<br>THEN ACT.</h1>
+          <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/login/" id="hero-btn-primary">Talk to Sophie</a>
           </div>
-
+          <p class="trust-line" id="hero-trust-line">No signup · 2 min free</p>
           <!-- Chat card — always visible, session starts on first message -->
-          <div class=”chat-card” id=”sophieChat”>
-            <div class=”chat-card-header”>
-              <img class=”chat-avatar-img” src=”/sophie.jpg” alt=”Sophie”>
-              <div class=”chat-header-info”>
-                <div class=”chat-name”>Sophie</div>
-                <div class=”chat-online-status” id=”chatOnlineStatus”>online</div>
+          <div class="chat-card" id="sophieChat">
+            <div class="chat-card-header">
+              <button class="chat-back-btn" aria-label="Back">‹</button>
+              <img class="chat-avatar-img" src="/sophie.jpg" alt="Sophie">
+              <div class="chat-header-info">
+                <div class="chat-name">Sophie</div>
+                <div class="chat-online-status" id="chatOnlineStatus">online</div>
               </div>
+              <button class="chat-menu-btn" aria-label="Options">···</button>
             </div>
-            <div class=”chat-messages” id=”chatMessages”></div>
-            <div class=”chat-typing chat-hidden” id=”chatTyping”>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-typing chat-hidden" id="chatTyping">
               <span></span><span></span><span></span>
             </div>
-            <div class=”chat-auth chat-hidden” id=”chatAuth”>
-              <p id=”chatAuthText”>Save this conversation &amp; continue — free with your email.</p>
-              <div class=”chat-auth-row”>
-                <input type=”email” id=”chatAuthEmail” placeholder=”your@email.com” />
-                <button id=”chatAuthBtn” type=”button”>Send link</button>
+            <div class="chat-auth chat-hidden" id="chatAuth">
+              <p id="chatAuthText">Save this conversation &amp; continue — free with your email.</p>
+              <div class="chat-auth-row">
+                <input type="email" id="chatAuthEmail" placeholder="your@email.com" />
+                <button id="chatAuthBtn" type="button">Send link</button>
               </div>
-              <p class=”chat-auth-sent chat-hidden” id=”chatAuthSent”>Check your inbox ✓</p>
+              <p class="chat-auth-sent chat-hidden" id="chatAuthSent">Check your inbox ✓</p>
             </div>
-            <div class=”chat-report chat-hidden” id=”chatReport”></div>
-            <div class=”chat-footer”>
-              <textarea id=”chatInput” placeholder=”Type a message…” rows=”1”></textarea>
-              <button class=”chat-send” id=”chatSendBtn” type=”button” aria-label=”Send”>↑</button>
+            <div class="chat-report chat-hidden" id="chatReport"></div>
+            <div class="chat-footer">
+              <textarea id="chatInput" placeholder="Write a message..." rows="1"></textarea>
+              <button class="chat-send" id="chatSendBtn" type="button" aria-label="Send">↑</button>
             </div>
           </div>
         </div>
-
-        <div class=”hero-visual”>
-          <div class=”hero-card”>
-            <div class=”floating-panel”>
-              <div class=”floating-label” id=”floating-label”>A different kind of AI</div>
-              <div class=”floating-text” id=”floating-text”>”Sophie says: Think one moment longer before you react.”</div>
+        <div class="hero-visual">
+          <div class="hero-card">
+            <div class="floating-panel">
+              <div class="floating-label" id="floating-label">A different kind of AI</div>
+              <div class="floating-text" id="floating-text">"Sophie says: Think one moment longer before you react."</div>
             </div>
           </div>
         </div>
       </div>
     </section>
-
     <section class="thinking-section" id="thinking-through-conversation">
       <div class="wrap">
         <div class="thinking-shell">
           <div class="thinking-inner">
             <div class="thinking-eyebrow" id="thinking-eyebrow">Research-backed</div>
             <h2 class="thinking-title" id="thinking-title">Thinking through conversation</h2>
-
             <div class="thinking-copy">
               <p id="thinking-copy-1">Thinking becomes even more powerful when the conversation partner is designed to help you reason.</p>
               <p id="thinking-copy-2">Sophie listens carefully, asks thoughtful questions and helps you explore different perspectives.</p>
               <p id="thinking-copy-3">Instead of giving quick answers, she helps you organize your thinking — so your own conclusions become clearer.</p>
             </div>
-
             <div class="thinking-highlight" id="thinking-highlight">
               Conversation clarifies thinking.<br>
               Conversation with an intelligent AI can take it even further.
             </div>
-
             <div class="thinking-sources">
               <div class="thinking-sources-label" id="thinking-sources-label">Research references</div>
               <div class="thinking-sources-grid">
@@ -919,12 +859,10 @@
                   <span class="thinking-source-title" id="source-1-title">Ericsson &amp; Simon</span>
                   <span class="thinking-source-text" id="source-1-text">Protocol Analysis</span>
                 </div>
-
                 <div class="thinking-source-card">
                   <span class="thinking-source-title" id="source-2-title">Mercer</span>
                   <span class="thinking-source-text" id="source-2-text">Dialogic Learning</span>
                 </div>
-
                 <div class="thinking-source-card">
                   <span class="thinking-source-title" id="source-3-title">Socratic Method</span>
                   <span class="thinking-source-text" id="source-3-text">Stanford Encyclopedia of Philosophy</span>
@@ -935,40 +873,20 @@
         </div>
       </div>
     </section>
-
     <section class="section" id="use-cases">
       <div class="wrap">
         <h2 class="section-title" id="use-cases-title">How people use Sophie</h2>
         <p class="section-intro" id="use-cases-intro">Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.</p>
         <div class="cards">
-          <article class="card">
-            <h3 id="card1-title">Exploring ideas</h3>
-            <p id="card1-copy">Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.</p>
-          </article>
-          <article class="card">
-            <h3 id="card2-title">Thinking through decisions</h3>
-            <p id="card2-copy">Compare options, test assumptions, and clarify what really matters before you act.</p>
-          </article>
-          <article class="card">
-            <h3 id="card3-title">Reflecting on experiences</h3>
-            <p id="card3-copy">Process something that happened, make sense of your thoughts, and understand your own thinking better.</p>
-          </article>
-          <article class="card">
-            <h3 id="card4-title">Preparing for important conversations</h3>
-            <p id="card4-copy">Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.</p>
-          </article>
-          <article class="card">
-            <h3 id="card5-title">Founder and management sparring</h3>
-            <p id="card5-copy">Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.</p>
-          </article>
-          <article class="card">
-            <h3 id="card6-title">Returning to ongoing thoughts</h3>
-            <p id="card6-copy">Because Sophie can carry useful context across sessions, you do not have to start from zero each time.</p>
-          </article>
+          <article class="card"><h3 id="card1-title">Exploring ideas</h3><p id="card1-copy">Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.</p></article>
+          <article class="card"><h3 id="card2-title">Thinking through decisions</h3><p id="card2-copy">Compare options, test assumptions, and clarify what really matters before you act.</p></article>
+          <article class="card"><h3 id="card3-title">Reflecting on experiences</h3><p id="card3-copy">Process something that happened, make sense of your thoughts, and understand your own thinking better.</p></article>
+          <article class="card"><h3 id="card4-title">Preparing for important conversations</h3><p id="card4-copy">Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.</p></article>
+          <article class="card"><h3 id="card5-title">Founder and management sparring</h3><p id="card5-copy">Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.</p></article>
+          <article class="card"><h3 id="card6-title">Returning to ongoing thoughts</h3><p id="card6-copy">Because Sophie can carry useful context across sessions, you do not have to start from zero each time.</p></article>
         </div>
       </div>
     </section>
-
     <section class="section" id="difference">
       <div class="wrap split">
         <div class="example-box">
@@ -976,37 +894,23 @@
           <h3 id="difference-title-1">First think. Then act.</h3>
           <p class="example-copy" id="difference-copy-1">Sophie is not designed to rush to solutions. She helps you explore ideas, test decisions, and ask better questions before you act.</p>
           <ul class="bullet-list">
-            <li>
-              <span class="list-title" id="difference-list1-title">Voice-first by design</span>
-              <span class="list-text" id="difference-list1-text">Talking can feel faster, lighter, and more natural than typing into a chat window.</span>
-            </li>
-            <li>
-              <span class="list-title" id="difference-list2-title">Different thinking modes</span>
-              <span class="list-text" id="difference-list2-text">Sophie can explore ideas, think strategically, or help you reflect — depending on what you need.</span>
-            </li>
-            <li>
-              <span class="list-title" id="difference-list3-title">Built for continuity</span>
-              <span class="list-text" id="difference-list3-text">Useful context can carry forward, so your thinking can continue instead of resetting every time.</span>
-            </li>
-            <li>
-              <span class="list-title" id="difference-list4-title">Session report</span>
-              <span class="list-text" id="difference-list4-text">After each conversation, Sophie creates a short <strong>Thinking Report</strong> summarizing the key insights and ideas from your session.</span>
-            </li>
+            <li><span class="list-title" id="difference-list1-title">Voice-first by design</span><span class="list-text" id="difference-list1-text">Talking can feel faster, lighter, and more natural than typing into a chat window.</span></li>
+            <li><span class="list-title" id="difference-list2-title">Different thinking modes</span><span class="list-text" id="difference-list2-text">Sophie can explore ideas, think strategically, or help you reflect — depending on what you need.</span></li>
+            <li><span class="list-title" id="difference-list3-title">Built for continuity</span><span class="list-text" id="difference-list3-text">Useful context can carry forward, so your thinking can continue instead of resetting every time.</span></li>
+            <li><span class="list-title" id="difference-list4-title">Session report</span><span class="list-text" id="difference-list4-text">After each conversation, Sophie creates a short <strong>Thinking Report</strong> summarizing the key insights and ideas from your session.</span></li>
           </ul>
         </div>
-
         <div class="example-box">
           <span class="muted-label" id="difference-label-2">What it feels like</span>
           <h3 id="difference-title-2">A relevant response, not just a reply</h3>
           <p class="example-copy" id="difference-copy-2">The difference is not just that Sophie can talk. The difference is how she helps you think.</p>
           <div class="dialogue">
-            <div class="bubble you" id="dialogue-you"><strong>You:</strong> “I have an idea for a project but I’m not sure it’s good.”</div>
-            <div class="bubble sophie" id="dialogue-sophie"><strong>Sophie:</strong> “Interesting… is the exciting part the product itself — or the shift it could create?”</div>
+            <div class="bubble you" id="dialogue-you"><strong>You:</strong> "I have an idea for a project but I'm not sure it's good."</div>
+            <div class="bubble sophie" id="dialogue-sophie"><strong>Sophie:</strong> "Interesting… is the exciting part the product itself — or the shift it could create?"</div>
           </div>
         </div>
       </div>
     </section>
-
     <section class="section" id="pricing">
       <div class="wrap split">
         <div class="example-box">
@@ -1022,32 +926,18 @@
           </div>
           <div class="trust-line" id="pricing-trust-line">Start free. Continue anytime with Sophie Plus.</div>
         </div>
-
         <div class="trust-box">
           <span class="muted-label" id="pricing-label-right">Pricing</span>
           <h3 id="pricing-title-right">Simple access, no pressure</h3>
           <ul class="trust-list">
-            <li>
-              <span class="list-title" id="pricing-list1-title">Free</span>
-              <span class="list-text" id="pricing-list1-text">Start with a free first conversation and get a real feel for the experience.</span>
-            </li>
-            <li>
-              <span class="list-title" id="pricing-list2-title">Sophie Plus</span>
-              <span class="list-text" id="pricing-list2-text">Upgrade for longer conversations and continued access once you know it is for you.</span>
-            </li>
-            <li>
-              <span class="list-title" id="pricing-list3-title">Low-friction entry</span>
-              <span class="list-text" id="pricing-list3-text">No need to commit before you understand what Sophie actually feels like.</span>
-            </li>
-            <li>
-              <span class="list-title" id="pricing-list4-title">Built for trust</span>
-              <span class="list-text" id="pricing-list4-text">The goal is not pressure. The goal is a fair first experience.</span>
-            </li>
+            <li><span class="list-title" id="pricing-list1-title">Free</span><span class="list-text" id="pricing-list1-text">Start with a free first conversation and get a real feel for the experience.</span></li>
+            <li><span class="list-title" id="pricing-list2-title">Sophie Plus</span><span class="list-text" id="pricing-list2-text">Upgrade for longer conversations and continued access once you know it is for you.</span></li>
+            <li><span class="list-title" id="pricing-list3-title">Low-friction entry</span><span class="list-text" id="pricing-list3-text">No need to commit before you understand what Sophie actually feels like.</span></li>
+            <li><span class="list-title" id="pricing-list4-title">Built for trust</span><span class="list-text" id="pricing-list4-text">The goal is not pressure. The goal is a fair first experience.</span></li>
           </ul>
         </div>
       </div>
     </section>
-
     <section class="section" id="trust">
       <div class="wrap split">
         <div class="trust-box">
@@ -1055,25 +945,12 @@
           <h3 id="trust-title-left">Built to feel clear, calm, and useful</h3>
           <p class="trust-copy" id="trust-copy-left">With a product like Sophie, clarity matters more than hype. The experience should feel understandable, respectful, and easy to step into.</p>
           <ul class="trust-list">
-            <li>
-              <span class="list-title" id="trust-list1-title">Always clearly AI</span>
-              <span class="list-text" id="trust-list1-text">Sophie does not pretend to be human.</span>
-            </li>
-            <li>
-              <span class="list-title" id="trust-list2-title">Built for thinking, not dependency</span>
-              <span class="list-text" id="trust-list2-text">The goal is useful conversation, not emotional attachment.</span>
-            </li>
-            <li>
-              <span class="list-title" id="trust-list3-title">Memory should feel useful</span>
-              <span class="list-text" id="trust-list3-text">The goal is continuity of thought — not intrusion.</span>
-            </li>
-            <li>
-              <span class="list-title" id="trust-list4-title">Not therapy or crisis support</span>
-              <span class="list-text" id="trust-list4-text">Sophie is not a therapist and not a substitute for professional or emergency care.</span>
-            </li>
+            <li><span class="list-title" id="trust-list1-title">Always clearly AI</span><span class="list-text" id="trust-list1-text">Sophie does not pretend to be human.</span></li>
+            <li><span class="list-title" id="trust-list2-title">Built for thinking, not dependency</span><span class="list-text" id="trust-list2-text">The goal is useful conversation, not emotional attachment.</span></li>
+            <li><span class="list-title" id="trust-list3-title">Memory should feel useful</span><span class="list-text" id="trust-list3-text">The goal is continuity of thought — not intrusion.</span></li>
+            <li><span class="list-title" id="trust-list4-title">Not therapy or crisis support</span><span class="list-text" id="trust-list4-text">Sophie is not a therapist and not a substitute for professional or emergency care.</span></li>
           </ul>
         </div>
-
         <div class="trust-box">
           <span class="muted-label" id="trust-label-right-top">Who it is for</span>
           <h3 id="trust-title-right">Sophie might be for you if…</h3>
@@ -1095,7 +972,6 @@
         </div>
       </div>
     </section>
-
     <section class="section" id="faq">
       <div class="wrap faq-box">
         <span class="muted-label" id="faq-label">Frequently asked questions</span>
@@ -1103,45 +979,20 @@
         <p class="faq-copy" id="faq-copy">This category is new for many people. So the first questions matter.</p>
         <div class="two-col">
           <div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q1">Is Sophie a real person?</span>
-              <div class="faq-a" id="faq-a1">No. Sophie is an AI voice thinking partner.</div>
-            </div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q2">What is Sophie for?</span>
-              <div class="faq-a" id="faq-a2">Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.</div>
-            </div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q3">What makes Sophie different from a normal chatbot?</span>
-              <div class="faq-a" id="faq-a3">Sophie is voice-first and built to help you think better — with more continuity, better questions, and more natural conversation.</div>
-            </div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q4">Does Sophie remember things?</span>
-              <div class="faq-a" id="faq-a4">Sophie can retain relevant context to make future conversations feel more continuous and useful.</div>
-            </div>
+            <div class="faq-item"><span class="faq-q" id="faq-q1">Is Sophie a real person?</span><div class="faq-a" id="faq-a1">No. Sophie is an AI voice thinking partner.</div></div>
+            <div class="faq-item"><span class="faq-q" id="faq-q2">What is Sophie for?</span><div class="faq-a" id="faq-a2">Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.</div></div>
+            <div class="faq-item"><span class="faq-q" id="faq-q3">What makes Sophie different from a normal chatbot?</span><div class="faq-a" id="faq-a3">Sophie is voice-first and built to help you think better — with more continuity, better questions, and more natural conversation.</div></div>
+            <div class="faq-item"><span class="faq-q" id="faq-q4">Does Sophie remember things?</span><div class="faq-a" id="faq-a4">Sophie can retain relevant context to make future conversations feel more continuous and useful.</div></div>
           </div>
           <div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q5">Is Sophie therapy?</span>
-              <div class="faq-a" id="faq-a5">No. Sophie is not a therapist and is not intended for crisis or medical support.</div>
-            </div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q6">Is Sophie always clearly AI?</span>
-              <div class="faq-a" id="faq-a6">Yes. Sophie is always presented as AI.</div>
-            </div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q7">Why would someone use Sophie?</span>
-              <div class="faq-a" id="faq-a7">To think something through before acting — an idea, a decision, a difficult meeting, or something that is still on your mind.</div>
-            </div>
-            <div class="faq-item">
-              <span class="faq-q" id="faq-q8">How do I start?</span>
-              <div class="faq-a" id="faq-a8">Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.</div>
-            </div>
+            <div class="faq-item"><span class="faq-q" id="faq-q5">Is Sophie therapy?</span><div class="faq-a" id="faq-a5">No. Sophie is not a therapist and is not intended for crisis or medical support.</div></div>
+            <div class="faq-item"><span class="faq-q" id="faq-q6">Is Sophie always clearly AI?</span><div class="faq-a" id="faq-a6">Yes. Sophie is always presented as AI.</div></div>
+            <div class="faq-item"><span class="faq-q" id="faq-q7">Why would someone use Sophie?</span><div class="faq-a" id="faq-a7">To think something through before acting — an idea, a decision, a difficult meeting, or something that is still on your mind.</div></div>
+            <div class="faq-item"><span class="faq-q" id="faq-q8">How do I start?</span><div class="faq-a" id="faq-a8">Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.</div></div>
           </div>
         </div>
       </div>
     </section>
-
     <section class="bottom-cta">
       <div class="wrap cta-box">
         <div>
@@ -1156,7 +1007,6 @@
       </div>
     </section>
   </main>
-
   <footer class="site-footer">
     <div class="wrap footer-row">
       <a class="footer-brand" href="/">meet-sophie.com</a>
@@ -1168,499 +1018,232 @@
       </div>
     </div>
   </footer>
-
   <script>
     const translations = {
       en: {
         page_title: "Meet Sophie — Your AI Thinking Partner",
         meta_description: "Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.",
         lang_label: "Language",
-
         nav_use_cases: "Use cases",
         nav_how_it_works: "How it works",
         nav_pricing: "Pricing",
         nav_trust: "Trust",
         nav_faq: "FAQ",
         login_link: "Log in",
-
         hero_eyebrow: "Clarity begins in conversation.",
         hero_title: "THINK FIRST.<br>THEN ACT.",
         hero_copy: "Your AI thinking partner for the moments that matter.",
-        hero_btn_primary: "Try for free",
+        hero_btn_primary: "Talk to Sophie",
+        hero_trust_line: "No signup · 2 min free",
         floating_label: "Stop typing. Start talking.",
         floating_lines: [
-          "“Sophie says: Think one moment longer before you react.”",
-          "“Sophie says: Not every decision has to be made immediately.”",
-          "“Sophie says: Understand first. Judge later.”",
-          "“Sophie says: What would the wiser version of you do now?”",
-          "“Sophie says: Pause for a moment. What really matters here?”",
-          "“Sophie says: Don’t think only about today.”",
-          "“Sophie says: Your first reaction is rarely your best one.”",
-          "“Sophie says: What would you advise your best friend to do?”",
-          "“Sophie says: Which decision will still feel right tomorrow?”",
-          "“Sophie says: Think one step further.”"
+          "\u201cSophie says: Think one moment longer before you react.\u201d",
+          "\u201cSophie says: Not every decision has to be made immediately.\u201d",
+          "\u201cSophie says: Understand first. Judge later.\u201d",
+          "\u201cSophie says: What would the wiser version of you do now?\u201d",
+          "\u201cSophie says: Pause for a moment. What really matters here?\u201d",
+          "\u201cSophie says: Don\u2019t think only about today.\u201d",
+          "\u201cSophie says: Your first reaction is rarely your best one.\u201d",
+          "\u201cSophie says: What would you advise your best friend to do?\u201d",
+          "\u201cSophie says: Which decision will still feel right tomorrow?\u201d",
+          "\u201cSophie says: Think one step further.\u201d"
         ],
-
+        chat_greeting: "What\u2019s on your mind right now?",
+        chat_demo_user: "I\u2019m feeling stuck deciding whether to take the new job offer or stay at my current job.",
         thinking_eyebrow: "Research-backed",
         thinking_title: "Think better through conversation",
         thinking_copy_1: "Thinking becomes even more powerful when the conversation partner is designed to help you reason.",
         thinking_copy_2: "Sophie listens carefully, asks thoughtful questions and helps you explore different perspectives.",
-        thinking_copy_3: "Instead of giving quick answers, she helps you organize your thinking — so your own conclusions become clearer.",
+        thinking_copy_3: "Instead of giving quick answers, she helps you organize your thinking \u2014 so your own conclusions become clearer.",
         thinking_highlight: "Conversation clarifies thinking.<br>Conversation with an intelligent AI can take it even further.",
         thinking_sources_label: "Research references",
-        source_1_title: "Ericsson & Simon",
-        source_1_text: "Protocol Analysis",
-        source_2_title: "Mercer",
-        source_2_text: "Dialogic Learning",
-        source_3_title: "Socratic Method",
-        source_3_text: "Stanford Encyclopedia of Philosophy",
-
+        source_1_title: "Ericsson & Simon", source_1_text: "Protocol Analysis",
+        source_2_title: "Mercer", source_2_text: "Dialogic Learning",
+        source_3_title: "Socratic Method", source_3_text: "Stanford Encyclopedia of Philosophy",
         use_cases_title: "How people use Sophie",
-        use_cases_intro: "Sometimes you do not need instant answers. You need space to think something through — an idea, a decision, a meeting, or something that has been sitting with you.",
-
-        card1_title: "Exploring ideas",
-        card1_copy: "Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.",
-        card2_title: "Thinking through decisions",
-        card2_copy: "Compare options, test assumptions, and clarify what really matters before you act.",
-        card3_title: "Reflecting on experiences",
-        card3_copy: "Process something that happened, make sense of your thoughts, and understand your own thinking better.",
-        card4_title: "Preparing for important conversations",
-        card4_copy: "Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.",
-        card5_title: "Founder and management sparring",
-        card5_copy: "Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.",
-        card6_title: "Returning to ongoing thoughts",
-        card6_copy: "Because Sophie can carry useful context across sessions, you do not have to start from zero each time.",
-
-        difference_label_1: "How it works",
-        difference_title_1: "First think. Then act.",
+        use_cases_intro: "Sometimes you do not need instant answers. You need space to think something through \u2014 an idea, a decision, a meeting, or something that has been sitting with you.",
+        card1_title: "Exploring ideas", card1_copy: "Talk through a new project, concept, or possibility. Discover angles you did not see before and turn vague thoughts into clearer directions.",
+        card2_title: "Thinking through decisions", card2_copy: "Compare options, test assumptions, and clarify what really matters before you act.",
+        card3_title: "Reflecting on experiences", card3_copy: "Process something that happened, make sense of your thoughts, and understand your own thinking better.",
+        card4_title: "Preparing for important conversations", card4_copy: "Not every thought belongs in the meeting room. Talk with Sophie first and enter the conversation better prepared.",
+        card5_title: "Founder and management sparring", card5_copy: "Leadership can get lonely. Use Sophie to pressure-test ideas, sharpen arguments, and reduce wasted meeting time.",
+        card6_title: "Returning to ongoing thoughts", card6_copy: "Because Sophie can carry useful context across sessions, you do not have to start from zero each time.",
+        difference_label_1: "How it works", difference_title_1: "First think. Then act.",
         difference_copy_1: "Sophie is not designed to rush to solutions. She helps you explore ideas, test decisions, and ask better questions before you act.",
-        difference_list1_title: "Voice-first by design",
-        difference_list1_text: "Talking can feel faster, lighter, and more natural than typing into a chat window.",
-        difference_list2_title: "Different thinking modes",
-        difference_list2_text: "Sophie can explore ideas, think strategically, or help you reflect — depending on what you need.",
-        difference_list3_title: "Built for continuity",
-        difference_list3_text: "Useful context can carry forward, so your thinking can continue instead of resetting every time.",
-        difference_list4_title: "Session report",
-        difference_list4_text: "After each conversation, Sophie creates a short Thinking Report summarizing the key insights and ideas from your session.",
-
-        difference_label_2: "What it feels like",
-        difference_title_2: "A relevant response, not just a reply",
+        difference_list1_title: "Voice-first by design", difference_list1_text: "Talking can feel faster, lighter, and more natural than typing into a chat window.",
+        difference_list2_title: "Different thinking modes", difference_list2_text: "Sophie can explore ideas, think strategically, or help you reflect \u2014 depending on what you need.",
+        difference_list3_title: "Built for continuity", difference_list3_text: "Useful context can carry forward, so your thinking can continue instead of resetting every time.",
+        difference_list4_title: "Session report", difference_list4_text: "After each conversation, Sophie creates a short Thinking Report summarizing the key insights and ideas from your session.",
+        difference_label_2: "What it feels like", difference_title_2: "A relevant response, not just a reply",
         difference_copy_2: "The difference is not just that Sophie can talk. The difference is how she helps you think.",
-        dialogue_you: "<strong>You:</strong> “I have an idea for a project but I’m not sure it’s good.”",
-        dialogue_sophie: "<strong>Sophie:</strong> “Interesting… is the exciting part the product itself — or the shift it could create?”",
-
-        pricing_label_left: "Start free",
-        pricing_title_left: "Try Sophie first. Decide after.",
+        dialogue_you: "<strong>You:</strong> \u201cI have an idea for a project but I\u2019m not sure it\u2019s good.\u201d",
+        dialogue_sophie: "<strong>Sophie:</strong> \u201cInteresting\u2026 is the exciting part the product itself \u2014 or the shift it could create?\u201d",
+        pricing_label_left: "Start free", pricing_title_left: "Try Sophie first. Decide after.",
         pricing_copy_left: "The best way to understand Sophie is not to read about it. It is to have one real conversation first. Start free, see how it feels, and continue only if it feels useful.",
         pricing_bubble_free: "<strong>Free:</strong> A short first conversation to experience Sophie.",
         pricing_bubble_plus: "<strong>Sophie Plus:</strong> Longer conversations, ongoing access, and more continuity over time.",
-        pricing_btn: "Try Sophie",
-        pricing_trust_line: "Start free. Continue anytime with Sophie Plus.",
-
-        pricing_label_right: "Pricing",
-        pricing_title_right: "Simple access, no pressure",
-        pricing_list1_title: "Free",
-        pricing_list1_text: "Start with a free first conversation and get a real feel for the experience.",
-        pricing_list2_title: "Sophie Plus",
-        pricing_list2_text: "Upgrade for longer conversations and continued access once you know it is for you.",
-        pricing_list3_title: "Low-friction entry",
-        pricing_list3_text: "No need to commit before you understand what Sophie actually feels like.",
-        pricing_list4_title: "Built for trust",
-        pricing_list4_text: "The goal is not pressure. The goal is a fair first experience.",
-
-        trust_label_left: "Designed for trust",
-        trust_title_left: "Built to feel clear, calm, and useful",
+        pricing_btn: "Try Sophie", pricing_trust_line: "Start free. Continue anytime with Sophie Plus.",
+        pricing_label_right: "Pricing", pricing_title_right: "Simple access, no pressure",
+        pricing_list1_title: "Free", pricing_list1_text: "Start with a free first conversation and get a real feel for the experience.",
+        pricing_list2_title: "Sophie Plus", pricing_list2_text: "Upgrade for longer conversations and continued access once you know it is for you.",
+        pricing_list3_title: "Low-friction entry", pricing_list3_text: "No need to commit before you understand what Sophie actually feels like.",
+        pricing_list4_title: "Built for trust", pricing_list4_text: "The goal is not pressure. The goal is a fair first experience.",
+        trust_label_left: "Designed for trust", trust_title_left: "Built to feel clear, calm, and useful",
         trust_copy_left: "With a product like Sophie, clarity matters more than hype. The experience should feel understandable, respectful, and easy to step into.",
-        trust_list1_title: "Always clearly AI",
-        trust_list1_text: "Sophie does not pretend to be human.",
-        trust_list2_title: "Built for thinking, not dependency",
-        trust_list2_text: "The goal is useful conversation, not emotional attachment.",
-        trust_list3_title: "Memory should feel useful",
-        trust_list3_text: "The goal is continuity of thought — not intrusion.",
-        trust_list4_title: "Not therapy or crisis support",
-        trust_list4_text: "Sophie is not a therapist and not a substitute for professional or emergency care.",
-
-        trust_label_right_top: "Who it is for",
-        trust_title_right: "Sophie might be for you if…",
-        trust_for1: "you like thinking out loud",
-        trust_for2: "you want help exploring ideas before acting on them",
-        trust_for3: "you want a private voice space to reflect or prepare",
-        trust_for4: "you want conversations that do not reset every time",
+        trust_list1_title: "Always clearly AI", trust_list1_text: "Sophie does not pretend to be human.",
+        trust_list2_title: "Built for thinking, not dependency", trust_list2_text: "The goal is useful conversation, not emotional attachment.",
+        trust_list3_title: "Memory should feel useful", trust_list3_text: "The goal is continuity of thought \u2014 not intrusion.",
+        trust_list4_title: "Not therapy or crisis support", trust_list4_text: "Sophie is not a therapist and not a substitute for professional or emergency care.",
+        trust_label_right_top: "Who it is for", trust_title_right: "Sophie might be for you if\u2026",
+        trust_for1: "you like thinking out loud", trust_for2: "you want help exploring ideas before acting on them",
+        trust_for3: "you want a private voice space to reflect or prepare", trust_for4: "you want conversations that do not reset every time",
         trust_for5: "you are curious about AI that feels more useful than a normal chatbot",
-
-        trust_label_right_bottom: "Probably not for you if…",
-        trust_not1: "you only want quick factual answers",
-        trust_not2: "you expect human therapy or crisis support",
-        trust_not3: "you want a gimmick more than a real conversation",
-        trust_not4: "you are uncomfortable with AI as a thinking format",
-
-        faq_label: "Frequently asked questions",
-        faq_title: "Questions people usually have first",
+        trust_label_right_bottom: "Probably not for you if\u2026",
+        trust_not1: "you only want quick factual answers", trust_not2: "you expect human therapy or crisis support",
+        trust_not3: "you want a gimmick more than a real conversation", trust_not4: "you are uncomfortable with AI as a thinking format",
+        faq_label: "Frequently asked questions", faq_title: "Questions people usually have first",
         faq_copy: "This category is new for many people. So the first questions matter.",
-        faq_q1: "Is Sophie a real person?",
-        faq_a1: "No. Sophie is an AI voice thinking partner.",
-        faq_q2: "What is Sophie for?",
-        faq_a2: "Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.",
-        faq_q3: "What makes Sophie different from a normal chatbot?",
-        faq_a3: "Sophie is voice-first and built to help you think better — with more continuity, better questions, and more natural conversation.",
-        faq_q4: "Does Sophie remember things?",
-        faq_a4: "Sophie can retain relevant context to make future conversations feel more continuous and useful.",
-        faq_q5: "Is Sophie therapy?",
-        faq_a5: "No. Sophie is not a therapist and is not intended for crisis or medical support.",
-        faq_q6: "Is Sophie always clearly AI?",
-        faq_a6: "Yes. Sophie is always presented as AI.",
-        faq_q7: "Why would someone use Sophie?",
-        faq_a7: "To think something through before acting — an idea, a decision, a difficult meeting, or something that is still on your mind.",
-        faq_q8: "How do I start?",
-        faq_a8: "Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.",
-
-        bottom_cta_label: "Start simple",
-        bottom_cta_title: "Think with Sophie",
+        faq_q1: "Is Sophie a real person?", faq_a1: "No. Sophie is an AI voice thinking partner.",
+        faq_q2: "What is Sophie for?", faq_a2: "Sophie is designed for exploring ideas, thinking through decisions, reflecting on experiences, and preparing for important conversations.",
+        faq_q3: "What makes Sophie different from a normal chatbot?", faq_a3: "Sophie is voice-first and built to help you think better \u2014 with more continuity, better questions, and more natural conversation.",
+        faq_q4: "Does Sophie remember things?", faq_a4: "Sophie can retain relevant context to make future conversations feel more continuous and useful.",
+        faq_q5: "Is Sophie therapy?", faq_a5: "No. Sophie is not a therapist and is not intended for crisis or medical support.",
+        faq_q6: "Is Sophie always clearly AI?", faq_a6: "Yes. Sophie is always presented as AI.",
+        faq_q7: "Why would someone use Sophie?", faq_a7: "To think something through before acting \u2014 an idea, a decision, a difficult meeting, or something that is still on your mind.",
+        faq_q8: "How do I start?", faq_a8: "Try Sophie, start free, and continue anytime with Sophie Plus if the experience feels right for you.",
+        bottom_cta_label: "Start simple", bottom_cta_title: "Think with Sophie",
         bottom_cta_copy: "Start a conversation and see where it goes.",
-        bottom_cta_btn: "Start talking",
-        bottom_cta_trust_line: "Start free. Continue anytime with Sophie Plus.",
-
-        footer_imprint: "Impressum",
-        footer_privacy: "Datenschutz",
-        footer_terms: "AGB",
-        footer_withdrawal: "Widerruf"
+        bottom_cta_btn: "Start talking", bottom_cta_trust_line: "Start free. Continue anytime with Sophie Plus.",
+        footer_imprint: "Impressum", footer_privacy: "Datenschutz", footer_terms: "AGB", footer_withdrawal: "Widerruf",
+        chat_placeholder: "Write a message...", chat_auth_text: "Save this conversation & continue — free with your email.",
+        chat_auth_btn: "Send link", chat_auth_sent: "Check your inbox \u2713", chat_online: "online",
+        chat_report_title: "Talked with Sophie for more than 3 minutes?",
+        chat_report_cta: "Start now \u2014 \u20ac19.90 / month",
+        chat_err: "Brief pause \u2014 back in a moment."
       },
-
       de: {
-        page_title: "Meet Sophie — Deine KI-Denkpartnerin",
-        meta_description: "Sprachgespräche mit Sophie — deiner KI-Denkpartnerin zum Erkunden von Ideen, Prüfen von Entscheidungen und Reflektieren dessen, was wirklich zählt.",
+        page_title: "Meet Sophie \u2014 Deine KI-Denkpartnerin",
+        meta_description: "Sprachgespr\u00e4che mit Sophie \u2014 deiner KI-Denkpartnerin zum Erkunden von Ideen, Pr\u00fcfen von Entscheidungen und Reflektieren dessen, was wirklich z\u00e4hlt.",
         lang_label: "Sprache",
-
-        nav_use_cases: "Anwendungsfälle",
-        nav_how_it_works: "So funktioniert es",
-        nav_pricing: "Preise",
-        nav_trust: "Vertrauen",
-        nav_faq: "FAQ",
-        login_link: "Einloggen",
-
-        hero_eyebrow: "Klarheit beginnt im Gespräch.",
+        nav_use_cases: "Anwendungsf\u00e4lle", nav_how_it_works: "So funktioniert es",
+        nav_pricing: "Preise", nav_trust: "Vertrauen", nav_faq: "FAQ", login_link: "Einloggen",
+        hero_eyebrow: "Klarheit beginnt im Gespr\u00e4ch.",
         hero_title: "ERST DENKEN.<br>DANN HANDELN.",
-        hero_copy: "Deine KI für die Momente, die zählen.",
-        hero_btn_primary: "Kostenlos testen",
-        floating_label: "Hör auf zu tippen. Fang an zu sprechen.",
+        hero_copy: "Deine KI f\u00fcr die Momente, die z\u00e4hlen.",
+        hero_btn_primary: "Mit Sophie sprechen",
+        hero_trust_line: "Kein Account n\u00f6tig \u00b7 2 Min. kostenlos",
+        floating_label: "H\u00f6r auf zu tippen. Fang an zu sprechen.",
         floating_lines: [
-          "„Sophie says: Bevor du reagierst, denk einen Moment länger.“",
-          "„Sophie says: Nicht jede Entscheidung muss sofort fallen.“",
-          "„Sophie says: Versteh zuerst. Urteile später.“",
-          "„Sophie says: Was würde die klügere Version von dir jetzt tun?“",
-          "„Sophie says: Stopp kurz. Was ist hier wirklich wichtig?“",
-          "„Sophie says: Denk nicht nur an heute.“",
-          "„Sophie says: Die erste Reaktion ist selten die beste.“",
-          "„Sophie says: Was würdest du deinem besten Freund raten?“",
-          "„Sophie says: Welche Entscheidung fühlt sich morgen noch richtig an?“",
-          "„Sophie says: Denk einen Schritt weiter.“"
+          "\u201eSophie says: Bevor du reagierst, denk einen Moment l\u00e4nger.\u201c",
+          "\u201eSophie says: Nicht jede Entscheidung muss sofort fallen.\u201c",
+          "\u201eSophie says: Versteh zuerst. Urteile sp\u00e4ter.\u201c",
+          "\u201eSophie says: Was w\u00fcrde die kl\u00fcgere Version von dir jetzt tun?\u201c",
+          "\u201eSophie says: Stopp kurz. Was ist hier wirklich wichtig?\u201c",
+          "\u201eSophie says: Denk nicht nur an heute.\u201c",
+          "\u201eSophie says: Die erste Reaktion ist selten die beste.\u201c",
+          "\u201eSophie says: Was w\u00fcrdest du deinem besten Freund raten?\u201c",
+          "\u201eSophie says: Welche Entscheidung f\u00fchlt sich morgen noch richtig an?\u201c",
+          "\u201eSophie says: Denk einen Schritt weiter.\u201c"
         ],
-
+        chat_greeting: "Was besch\u00e4ftigt dich gerade?",
+        chat_demo_user: "Ich stecke fest \u2014 soll ich das neue Jobangebot annehmen oder bei meiner jetzigen Stelle bleiben?",
         thinking_eyebrow: "Fundiert durch Forschung",
-        thinking_title: "Besser denken im Gespräch",
-        thinking_copy_1: "Der Effekt wird noch stärker, wenn der Gesprächspartner darauf ausgelegt ist, beim Denken zu helfen.",
-        thinking_copy_2: "Sophie hört aufmerksam zu, stellt kluge Fragen und hilft dir, verschiedene Perspektiven zu betrachten.",
-        thinking_copy_3: "Statt schnelle Antworten zu geben, hilft sie dir, deine Gedanken zu ordnen — damit deine eigenen Schlussfolgerungen klarer werden.",
-        thinking_highlight: "Gespräche klären Gedanken.<br>Ein Gespräch mit intelligenter KI kann diesen Effekt noch verstärken.",
+        thinking_title: "Besser denken im Gespr\u00e4ch",
+        thinking_copy_1: "Der Effekt wird noch st\u00e4rker, wenn der Gespr\u00e4chspartner darauf ausgelegt ist, beim Denken zu helfen.",
+        thinking_copy_2: "Sophie h\u00f6rt aufmerksam zu, stellt kluge Fragen und hilft dir, verschiedene Perspektiven zu betrachten.",
+        thinking_copy_3: "Statt schnelle Antworten zu geben, hilft sie dir, deine Gedanken zu ordnen \u2014 damit deine eigenen Schlussfolgerungen klarer werden.",
+        thinking_highlight: "Gespr\u00e4che kl\u00e4ren Gedanken.<br>Ein Gespr\u00e4ch mit intelligenter KI kann diesen Effekt noch verst\u00e4rken.",
         thinking_sources_label: "Wissenschaftlicher Hintergrund",
-        source_1_title: "Ericsson & Simon",
-        source_1_text: "Protocol Analysis",
-        source_2_title: "Mercer",
-        source_2_text: "Dialogic Learning",
-        source_3_title: "Sokratische Methode",
-        source_3_text: "Stanford Encyclopedia of Philosophy",
-
+        source_1_title: "Ericsson & Simon", source_1_text: "Protocol Analysis",
+        source_2_title: "Mercer", source_2_text: "Dialogic Learning",
+        source_3_title: "Sokratische Methode", source_3_text: "Stanford Encyclopedia of Philosophy",
         use_cases_title: "Wie Menschen Sophie nutzen",
-        use_cases_intro: "Manchmal brauchst du keine sofortigen Antworten. Du brauchst Raum, um etwas wirklich zu durchdenken — eine Idee, eine Entscheidung, ein Meeting oder etwas, das dich schon länger beschäftigt.",
-
-        card1_title: "Ideen erkunden",
-        card1_copy: "Sprich über ein neues Projekt, Konzept oder eine Möglichkeit. Entdecke Blickwinkel, die du vorher nicht gesehen hast, und verwandle vage Gedanken in klarere Richtungen.",
-        card2_title: "Entscheidungen durchdenken",
-        card2_copy: "Vergleiche Optionen, prüfe Annahmen und kläre, was wirklich zählt, bevor du handelst.",
-        card3_title: "Erlebnisse reflektieren",
-        card3_copy: "Verarbeite etwas, das passiert ist, ordne deine Gedanken und verstehe dein eigenes Denken besser.",
-        card4_title: "Wichtige Gespräche vorbereiten",
-        card4_copy: "Nicht jeder Gedanke gehört direkt in den Meetingraum. Sprich zuerst mit Sophie und geh besser vorbereitet ins Gespräch.",
-        card5_title: "Sparring für Gründer und Management",
-        card5_copy: "Führung kann einsam sein. Nutze Sophie, um Ideen zu testen, Argumente zu schärfen und verschwendete Meetingzeit zu reduzieren.",
-        card6_title: "Zu laufenden Gedanken zurückkehren",
-        card6_copy: "Weil Sophie nützlichen Kontext über Sitzungen hinweg mitnehmen kann, musst du nicht jedes Mal bei null anfangen.",
-
-        difference_label_1: "So funktioniert es",
-        difference_title_1: "Erst denken. Dann handeln.",
-        difference_copy_1: "Sophie ist nicht dafür gemacht, vorschnell zu Lösungen zu springen. Sie hilft dir, Ideen zu erkunden, Entscheidungen zu prüfen und bessere Fragen zu stellen, bevor du handelst.",
-        difference_list1_title: "Voice-first by design",
-        difference_list1_text: "Sprechen kann sich schneller, leichter und natürlicher anfühlen, als in ein Chatfenster zu tippen.",
-        difference_list2_title: "Verschiedene Denkmodi",
-        difference_list2_text: "Sophie kann Ideen erkunden, strategisch mitdenken oder dir bei Reflexion helfen — je nachdem, was du brauchst.",
-        difference_list3_title: "Für Kontinuität gebaut",
-        difference_list3_text: "Nützlicher Kontext kann erhalten bleiben, sodass dein Denken weitergehen kann, statt jedes Mal neu zu starten.",
-        difference_list4_title: "Sitzungsbericht",
-        difference_list4_text: "Nach jedem Gespräch erstellt Sophie einen kurzen Thinking Report mit den wichtigsten Erkenntnissen und Gedanken aus deiner Session.",
-
-        difference_label_2: "So fühlt es sich an",
-        difference_title_2: "Eine relevante Reaktion, nicht nur eine Antwort",
+        use_cases_intro: "Manchmal brauchst du keine sofortigen Antworten. Du brauchst Raum, um etwas wirklich zu durchdenken \u2014 eine Idee, eine Entscheidung, ein Meeting oder etwas, das dich schon l\u00e4nger besch\u00e4ftigt.",
+        card1_title: "Ideen erkunden", card1_copy: "Sprich \u00fcber ein neues Projekt, Konzept oder eine M\u00f6glichkeit. Entdecke Blickwinkel, die du vorher nicht gesehen hast, und verwandle vage Gedanken in klarere Richtungen.",
+        card2_title: "Entscheidungen durchdenken", card2_copy: "Vergleiche Optionen, pr\u00fcfe Annahmen und kl\u00e4re, was wirklich z\u00e4hlt, bevor du handelst.",
+        card3_title: "Erlebnisse reflektieren", card3_copy: "Verarbeite etwas, das passiert ist, ordne deine Gedanken und verstehe dein eigenes Denken besser.",
+        card4_title: "Wichtige Gespr\u00e4che vorbereiten", card4_copy: "Nicht jeder Gedanke geh\u00f6rt direkt in den Meetingraum. Sprich zuerst mit Sophie und geh besser vorbereitet ins Gespr\u00e4ch.",
+        card5_title: "Sparring f\u00fcr Gr\u00fcnder und Management", card5_copy: "F\u00fchrung kann einsam sein. Nutze Sophie, um Ideen zu testen, Argumente zu sch\u00e4rfen und verschwendete Meetingzeit zu reduzieren.",
+        card6_title: "Zu laufenden Gedanken zur\u00fcckkehren", card6_copy: "Weil Sophie n\u00fctzlichen Kontext \u00fcber Sitzungen hinweg mitnehmen kann, musst du nicht jedes Mal bei null anfangen.",
+        difference_label_1: "So funktioniert es", difference_title_1: "Erst denken. Dann handeln.",
+        difference_copy_1: "Sophie ist nicht daf\u00fcr gemacht, vorschnell zu L\u00f6sungen zu springen. Sie hilft dir, Ideen zu erkunden, Entscheidungen zu pr\u00fcfen und bessere Fragen zu stellen, bevor du handelst.",
+        difference_list1_title: "Voice-first by design", difference_list1_text: "Sprechen kann sich schneller, leichter und nat\u00fcrlicher anf\u00fchlen, als in ein Chatfenster zu tippen.",
+        difference_list2_title: "Verschiedene Denkmodi", difference_list2_text: "Sophie kann Ideen erkunden, strategisch mitdenken oder dir bei Reflexion helfen \u2014 je nachdem, was du brauchst.",
+        difference_list3_title: "F\u00fcr Kontinuit\u00e4t gebaut", difference_list3_text: "N\u00fctzlicher Kontext kann erhalten bleiben, sodass dein Denken weitergehen kann, statt jedes Mal neu zu starten.",
+        difference_list4_title: "Sitzungsbericht", difference_list4_text: "Nach jedem Gespr\u00e4ch erstellt Sophie einen kurzen Thinking Report mit den wichtigsten Erkenntnissen und Gedanken aus deiner Session.",
+        difference_label_2: "So f\u00fchlt es sich an", difference_title_2: "Eine relevante Reaktion, nicht nur eine Antwort",
         difference_copy_2: "Der Unterschied ist nicht nur, dass Sophie sprechen kann. Der Unterschied ist, wie sie dir beim Denken hilft.",
-        dialogue_you: "<strong>Du:</strong> „Ich habe eine Idee für ein Projekt, bin mir aber nicht sicher, ob sie gut ist.“",
-        dialogue_sophie: "<strong>Sophie:</strong> „Interessant … liegt der spannende Teil im Produkt selbst — oder in der Veränderung, die es auslösen könnte?“",
-
-        pricing_label_left: "Kostenlos starten",
-        pricing_title_left: "Probier Sophie zuerst aus. Entscheide danach.",
-        pricing_copy_left: "Der beste Weg, Sophie zu verstehen, ist nicht, darüber zu lesen. Es ist, zuerst ein echtes Gespräch zu führen. Starte kostenlos, schau, wie es sich anfühlt, und mach nur weiter, wenn es dir wirklich etwas bringt.",
-        pricing_bubble_free: "<strong>Kostenlos:</strong> Ein kurzes erstes Gespräch, um Sophie zu erleben.",
-        pricing_bubble_plus: "<strong>Sophie Plus:</strong> Längere Gespräche, fortlaufender Zugang und mehr Kontinuität über die Zeit.",
-        pricing_btn: "Sophie ausprobieren",
-        pricing_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
-
-        pricing_label_right: "Preise",
-        pricing_title_right: "Einfacher Zugang, ohne Druck",
-        pricing_list1_title: "Kostenlos",
-        pricing_list1_text: "Starte mit einem kostenlosen ersten Gespräch und bekomme ein echtes Gefühl für die Erfahrung.",
-        pricing_list2_title: "Sophie Plus",
-        pricing_list2_text: "Upgrade auf längere Gespräche und fortlaufenden Zugang, sobald du weißt, dass es zu dir passt.",
-        pricing_list3_title: "Niedrige Einstiegshürde",
-        pricing_list3_text: "Kein Grund, dich festzulegen, bevor du verstanden hast, wie Sophie sich wirklich anfühlt.",
-        pricing_list4_title: "Auf Vertrauen gebaut",
-        pricing_list4_text: "Das Ziel ist nicht Druck. Das Ziel ist eine faire erste Erfahrung.",
-
-        trust_label_left: "Für Vertrauen gestaltet",
-        trust_title_left: "Gebaut, um klar, ruhig und nützlich zu wirken",
-        trust_copy_left: "Bei einem Produkt wie Sophie zählt Klarheit mehr als Hype. Die Erfahrung sollte verständlich, respektvoll und leicht zugänglich sein.",
-        trust_list1_title: "Immer klar als KI erkennbar",
-        trust_list1_text: "Sophie tut nicht so, als wäre sie ein Mensch.",
-        trust_list2_title: "Für Denken gebaut, nicht für Abhängigkeit",
-        trust_list2_text: "Das Ziel ist ein nützliches Gespräch, nicht emotionale Bindung.",
-        trust_list3_title: "Erinnerung soll nützlich wirken",
-        trust_list3_text: "Das Ziel ist Kontinuität im Denken — nicht Eindringen.",
-        trust_list4_title: "Keine Therapie oder Krisenhilfe",
-        trust_list4_text: "Sophie ist keine Therapeutin und kein Ersatz für professionelle oder notfallbezogene Hilfe.",
-
-        trust_label_right_top: "Für wen es ist",
-        trust_title_right: "Sophie könnte etwas für dich sein, wenn …",
-        trust_for1: "du gern laut denkst",
-        trust_for2: "du Hilfe möchtest, Ideen zu erkunden, bevor du danach handelst",
-        trust_for3: "du einen privaten Sprachraum zum Reflektieren oder Vorbereiten möchtest",
-        trust_for4: "du Gespräche willst, die nicht jedes Mal wieder bei null anfangen",
-        trust_for5: "du neugierig auf KI bist, die sich nützlicher anfühlt als ein normaler Chatbot",
-
-        trust_label_right_bottom: "Wahrscheinlich nichts für dich, wenn …",
-        trust_not1: "du nur schnelle sachliche Antworten willst",
-        trust_not2: "du menschliche Therapie oder Krisenhilfe erwartest",
-        trust_not3: "du eher einen Gimmick willst als ein echtes Gespräch",
-        trust_not4: "dir KI als Denkformat unangenehm ist",
-
-        faq_label: "Häufig gestellte Fragen",
-        faq_title: "Fragen, die Menschen meistens zuerst haben",
-        faq_copy: "Diese Kategorie ist für viele Menschen neu. Deshalb sind die ersten Fragen wichtig.",
-        faq_q1: "Ist Sophie eine echte Person?",
-        faq_a1: "Nein. Sophie ist eine KI-Sprachpartnerin zum Denken.",
-        faq_q2: "Wofür ist Sophie da?",
-        faq_a2: "Sophie ist dafür gemacht, Ideen zu erkunden, Entscheidungen durchzudenken, Erfahrungen zu reflektieren und wichtige Gespräche vorzubereiten.",
-        faq_q3: "Was macht Sophie anders als einen normalen Chatbot?",
-        faq_a3: "Sophie ist voice-first und dafür gebaut, dir beim besseren Denken zu helfen — mit mehr Kontinuität, besseren Fragen und natürlicherem Gespräch.",
-        faq_q4: "Erinnert sich Sophie an Dinge?",
-        faq_a4: "Sophie kann relevanten Kontext behalten, damit sich künftige Gespräche kontinuierlicher und nützlicher anfühlen.",
-        faq_q5: "Ist Sophie Therapie?",
-        faq_a5: "Nein. Sophie ist keine Therapeutin und nicht für Krisen- oder medizinische Unterstützung gedacht.",
-        faq_q6: "Ist Sophie immer klar als KI erkennbar?",
-        faq_a6: "Ja. Sophie wird immer als KI dargestellt.",
-        faq_q7: "Warum sollte jemand Sophie nutzen?",
-        faq_a7: "Um etwas zu durchdenken, bevor man handelt — eine Idee, eine Entscheidung, ein schwieriges Meeting oder etwas, das einem noch im Kopf herumgeht.",
-        faq_q8: "Wie fange ich an?",
-        faq_a8: "Probier Sophie aus, starte kostenlos und mach jederzeit mit Sophie Plus weiter, wenn sich die Erfahrung für dich richtig anfühlt.",
-
-        bottom_cta_label: "Einfach starten",
-        bottom_cta_title: "Mit Sophie denken",
-        bottom_cta_copy: "Starte ein Gespräch und schau, wohin es führt.",
-        bottom_cta_btn: "Gespräch starten",
-        bottom_cta_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
-
-        footer_imprint: "Impressum",
-        footer_privacy: "Datenschutz",
-        footer_terms: "AGB",
-        footer_withdrawal: "Widerruf"
-      },
-
-      fr: {
-        page_title: "Meet Sophie — Votre partenaire de réflexion IA",
-        meta_description: "Des conversations vocales avec Sophie — votre partenaire de réflexion IA pour explorer des idées, tester des décisions et réfléchir à ce qui compte vraiment.",
-        lang_label: "Langue",
-
-        nav_use_cases: "Cas d’usage",
-        nav_how_it_works: "Comment ça marche",
-        nav_pricing: "Tarifs",
-        nav_trust: "Confiance",
-        nav_faq: "FAQ",
-        login_link: "Connexion",
-
-        hero_eyebrow: "La clarté commence dans la conversation.",
-        hero_title: "D’ABORD RÉFLÉCHIR.<br>PUIS AGIR.",
-        hero_copy: "Votre partenaire de réflexion IA pour les moments qui comptent vraiment.",
-        hero_btn_primary: "Essayer gratuitement",
-        floating_label: "Arrêtez d’écrire. Parlez.",
-        floating_lines: [
-          "« Sophie dit : Réfléchis un instant de plus avant de réagir. »",
-          "« Sophie dit : Toutes les décisions n’ont pas besoin d’être prises immédiatement. »",
-          "« Sophie dit : Comprends d’abord. Juge ensuite. »",
-          "« Sophie dit : Que ferait la version plus sage de toi maintenant ? »",
-          "« Sophie dit : Fais une pause. Qu’est-ce qui compte vraiment ici ? »",
-          "« Sophie dit : Ne pense pas seulement à aujourd’hui. »",
-          "« Sophie dit : Ta première réaction est rarement la meilleure. »",
-          "« Sophie dit : Que conseillerais-tu à ton meilleur ami ? »",
-          "« Sophie dit : Quelle décision semblera encore juste demain ? »",
-          "« Sophie dit : Pense un pas plus loin. »"
-        ],
-
-        thinking_eyebrow: "Fondé sur la recherche",
-        thinking_title: "Mieux réfléchir grâce à la conversation",
-        thinking_copy_1: "L’effet devient encore plus fort lorsque l’interlocuteur est conçu pour vous aider à raisonner.",
-        thinking_copy_2: "Sophie écoute attentivement, pose des questions pertinentes et vous aide à explorer différentes perspectives.",
-        thinking_copy_3: "Au lieu de donner des réponses rapides, elle vous aide à organiser votre réflexion — pour que vos propres conclusions deviennent plus claires.",
-        thinking_highlight: "La conversation clarifie la pensée.<br>Une conversation avec une IA intelligente peut aller encore plus loin.",
-        thinking_sources_label: "Références de recherche",
-        source_1_title: "Ericsson & Simon",
-        source_1_text: "Protocol Analysis",
-        source_2_title: "Mercer",
-        source_2_text: "Dialogic Learning",
-        source_3_title: "Méthode socratique",
-        source_3_text: "Stanford Encyclopedia of Philosophy",
-
-        use_cases_title: "Comment les gens utilisent Sophie",
-        use_cases_intro: "Parfois, vous n’avez pas besoin de réponses immédiates. Vous avez besoin d’espace pour réfléchir à quelque chose — une idée, une décision, une réunion, ou quelque chose qui vous accompagne depuis un moment.",
-
-        card1_title: "Explorer des idées",
-        card1_copy: "Parlez d’un nouveau projet, concept ou d’une possibilité. Découvrez des angles que vous n’aviez pas vus et transformez des pensées vagues en directions plus claires.",
-        card2_title: "Réfléchir aux décisions",
-        card2_copy: "Comparez les options, testez les hypothèses et clarifiez ce qui compte vraiment avant d’agir.",
-        card3_title: "Réfléchir à ses expériences",
-        card3_copy: "Traitez quelque chose qui s’est passé, donnez du sens à vos pensées et comprenez mieux votre propre manière de penser.",
-        card4_title: "Préparer des conversations importantes",
-        card4_copy: "Toutes les pensées n’ont pas leur place directement dans la salle de réunion. Parlez d’abord avec Sophie et entrez dans la conversation mieux préparé.",
-        card5_title: "Sparring pour fondateurs et management",
-        card5_copy: "Le leadership peut être solitaire. Utilisez Sophie pour tester des idées, affiner des arguments et réduire le temps perdu en réunion.",
-        card6_title: "Revenir à des réflexions en cours",
-        card6_copy: "Comme Sophie peut conserver un contexte utile d’une session à l’autre, vous n’avez pas besoin de repartir de zéro à chaque fois.",
-
-        difference_label_1: "Comment ça marche",
-        difference_title_1: "D’abord réfléchir. Puis agir.",
-        difference_copy_1: "Sophie n’est pas conçue pour se précipiter vers des solutions. Elle vous aide à explorer des idées, tester des décisions et poser de meilleures questions avant d’agir.",
-        difference_list1_title: "Pensée d’abord pour la voix",
-        difference_list1_text: "Parler peut sembler plus rapide, plus léger et plus naturel que taper dans une fenêtre de chat.",
-        difference_list2_title: "Différents modes de réflexion",
-        difference_list2_text: "Sophie peut explorer des idées, réfléchir de manière stratégique ou vous aider à prendre du recul — selon ce dont vous avez besoin.",
-        difference_list3_title: "Conçue pour la continuité",
-        difference_list3_text: "Un contexte utile peut être conservé, afin que votre réflexion continue au lieu de repartir de zéro à chaque fois.",
-        difference_list4_title: "Rapport de session",
-        difference_list4_text: "Après chaque conversation, Sophie crée un court Thinking Report résumant les idées et les insights clés de votre session.",
-
-        difference_label_2: "Ce que l’on ressent",
-        difference_title_2: "Une réponse pertinente, pas juste une réplique",
-        difference_copy_2: "La différence, ce n’est pas seulement que Sophie peut parler. La différence, c’est la manière dont elle vous aide à réfléchir.",
-        dialogue_you: "<strong>Vous :</strong> « J’ai une idée de projet mais je ne suis pas sûr qu’elle soit bonne. »",
-        dialogue_sophie: "<strong>Sophie :</strong> « Intéressant… la partie la plus excitante, c’est le produit lui-même — ou le changement qu’il pourrait créer ? »",
-
-        pricing_label_left: "Commencez gratuitement",
-        pricing_title_left: "Essayez Sophie d’abord. Décidez ensuite.",
-        pricing_copy_left: "La meilleure façon de comprendre Sophie, ce n’est pas de lire à son sujet. C’est d’avoir d’abord une vraie conversation. Commencez gratuitement, voyez ce que cela fait, et continuez seulement si cela vous semble utile.",
-        pricing_bubble_free: "<strong>Gratuit :</strong> Une courte première conversation pour découvrir Sophie.",
-        pricing_bubble_plus: "<strong>Sophie Plus :</strong> Des conversations plus longues, un accès continu et davantage de continuité dans le temps.",
-        pricing_btn: "Essayer Sophie",
-        pricing_trust_line: "Commencez gratuitement. Continuez à tout moment avec Sophie Plus.",
-
-        pricing_label_right: "Tarifs",
-        pricing_title_right: "Un accès simple, sans pression",
-        pricing_list1_title: "Gratuit",
-        pricing_list1_text: "Commencez par une première conversation gratuite et ressentez réellement l’expérience.",
-        pricing_list2_title: "Sophie Plus",
-        pricing_list2_text: "Passez à des conversations plus longues et à un accès continu une fois que vous savez que cela vous convient.",
-        pricing_list3_title: "Entrée sans friction",
-        pricing_list3_text: "Pas besoin de vous engager avant d’avoir compris ce que Sophie procure réellement.",
-        pricing_list4_title: "Conçu pour la confiance",
-        pricing_list4_text: "Le but n’est pas de mettre la pression. Le but est une première expérience juste.",
-
-        trust_label_left: "Conçue pour la confiance",
-        trust_title_left: "Pensée pour être claire, calme et utile",
-        trust_copy_left: "Avec un produit comme Sophie, la clarté compte plus que le buzz. L’expérience doit sembler compréhensible, respectueuse et facile à adopter.",
-        trust_list1_title: "Toujours clairement une IA",
-        trust_list1_text: "Sophie ne prétend pas être humaine.",
-        trust_list2_title: "Conçue pour réfléchir, pas pour créer une dépendance",
-        trust_list2_text: "Le but est une conversation utile, pas un attachement émotionnel.",
-        trust_list3_title: "La mémoire doit sembler utile",
-        trust_list3_text: "Le but est la continuité de la réflexion — pas l’intrusion.",
-        trust_list4_title: "Pas une thérapie ni un soutien de crise",
-        trust_list4_text: "Sophie n’est pas une thérapeute et ne remplace pas une aide professionnelle ou d’urgence.",
-
-        trust_label_right_top: "Pour qui c’est",
-        trust_title_right: "Sophie pourrait être faite pour vous si…",
-        trust_for1: "vous aimez réfléchir à voix haute",
-        trust_for2: "vous voulez de l’aide pour explorer des idées avant d’agir",
-        trust_for3: "vous voulez un espace vocal privé pour réfléchir ou vous préparer",
-        trust_for4: "vous voulez des conversations qui ne repartent pas de zéro à chaque fois",
-        trust_for5: "vous êtes curieux d’une IA qui semble plus utile qu’un chatbot classique",
-
-        trust_label_right_bottom: "Probablement pas pour vous si…",
-        trust_not1: "vous voulez seulement des réponses factuelles rapides",
-        trust_not2: "vous attendez une thérapie humaine ou un soutien de crise",
-        trust_not3: "vous voulez plus un gadget qu’une vraie conversation",
-        trust_not4: "vous êtes mal à l’aise avec l’IA comme format de réflexion",
-
-        faq_label: "Questions fréquemment posées",
-        faq_title: "Les questions que les gens se posent généralement d’abord",
-        faq_copy: "Cette catégorie est nouvelle pour beaucoup de personnes. Donc les premières questions comptent.",
-        faq_q1: "Sophie est-elle une vraie personne ?",
-        faq_a1: "Non. Sophie est un partenaire vocal de réflexion basé sur l’IA.",
-        faq_q2: "À quoi sert Sophie ?",
-        faq_a2: "Sophie est conçue pour explorer des idées, réfléchir à des décisions, revenir sur des expériences et préparer des conversations importantes.",
-        faq_q3: "Qu’est-ce qui rend Sophie différente d’un chatbot normal ?",
-        faq_a3: "Sophie est pensée d’abord pour la voix et conçue pour vous aider à mieux réfléchir — avec plus de continuité, de meilleures questions et une conversation plus naturelle.",
-        faq_q4: "Est-ce que Sophie se souvient des choses ?",
-        faq_a4: "Sophie peut conserver un contexte pertinent pour rendre les futures conversations plus continues et plus utiles.",
-        faq_q5: "Sophie est-elle une thérapie ?",
-        faq_a5: "Non. Sophie n’est pas une thérapeute et n’est pas destinée à fournir un soutien de crise ou médical.",
-        faq_q6: "Sophie est-elle toujours clairement une IA ?",
-        faq_a6: "Oui. Sophie est toujours présentée comme une IA.",
-        faq_q7: "Pourquoi quelqu’un utiliserait Sophie ?",
-        faq_a7: "Pour réfléchir à quelque chose avant d’agir — une idée, une décision, une réunion difficile ou quelque chose qui est encore dans votre esprit.",
-        faq_q8: "Comment commencer ?",
-        faq_a8: "Essayez Sophie, commencez gratuitement, puis continuez à tout moment avec Sophie Plus si l’expérience vous semble juste.",
-
-        bottom_cta_label: "Commencez simplement",
-        bottom_cta_title: "Réfléchir avec Sophie",
-        bottom_cta_copy: "Commencez une conversation et voyez où elle vous mène.",
-        bottom_cta_btn: "Commencer à parler",
-        bottom_cta_trust_line: "Commencez gratuitement. Continuez à tout moment avec Sophie Plus.",
-
-        footer_imprint: "Mentions légales",
-        footer_privacy: "Confidentialité",
-        footer_terms: "CGV",
-        footer_withdrawal: "Rétractation"
+        dialogue_you: "<strong>Du:</strong> \u201eIch habe eine Idee f\u00fcr ein Projekt, bin mir aber nicht sicher, ob sie gut ist.\u201c",
+        dialogue_sophie: "<strong>Sophie:</strong> \u201eInteressant \u2026 liegt der spannende Teil im Produkt selbst \u2014 oder in der Ver\u00e4nderung, die es ausl\u00f6sen k\u00f6nnte?\u201c",
+        pricing_label_left: "Kostenlos starten", pricing_title_left: "Probier Sophie zuerst aus. Entscheide danach.",
+        pricing_copy_left: "Der beste Weg, Sophie zu verstehen, ist nicht, dar\u00fcber zu lesen. Es ist, zuerst ein echtes Gespr\u00e4ch zu f\u00fchren. Starte kostenlos, schau, wie es sich anf\u00fchlt, und mach nur weiter, wenn es dir wirklich etwas bringt.",
+        pricing_bubble_free: "<strong>Kostenlos:</strong> Ein kurzes erstes Gespr\u00e4ch, um Sophie zu erleben.",
+        pricing_bubble_plus: "<strong>Sophie Plus:</strong> L\u00e4ngere Gespr\u00e4che, fortlaufender Zugang und mehr Kontinuit\u00e4t \u00fcber die Zeit.",
+        pricing_btn: "Sophie ausprobieren", pricing_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
+        pricing_label_right: "Preise", pricing_title_right: "Einfacher Zugang, ohne Druck",
+        pricing_list1_title: "Kostenlos", pricing_list1_text: "Starte mit einem kostenlosen ersten Gespr\u00e4ch und bekomme ein echtes Gef\u00fchl f\u00fcr die Erfahrung.",
+        pricing_list2_title: "Sophie Plus", pricing_list2_text: "Upgrade auf l\u00e4ngere Gespr\u00e4che und fortlaufenden Zugang, sobald du wei\u00dft, dass es zu dir passt.",
+        pricing_list3_title: "Niedrige Einstiegsh\u00fcrde", pricing_list3_text: "Kein Grund, dich festzulegen, bevor du verstanden hast, wie Sophie sich wirklich anf\u00fchlt.",
+        pricing_list4_title: "Auf Vertrauen gebaut", pricing_list4_text: "Das Ziel ist nicht Druck. Das Ziel ist eine faire erste Erfahrung.",
+        trust_label_left: "F\u00fcr Vertrauen gestaltet", trust_title_left: "Gebaut, um klar, ruhig und n\u00fctzlich zu wirken",
+        trust_copy_left: "Bei einem Produkt wie Sophie z\u00e4hlt Klarheit mehr als Hype. Die Erfahrung sollte verst\u00e4ndlich, respektvoll und leicht zug\u00e4nglich sein.",
+        trust_list1_title: "Immer klar als KI erkennbar", trust_list1_text: "Sophie tut nicht so, als w\u00e4re sie ein Mensch.",
+        trust_list2_title: "F\u00fcr Denken gebaut, nicht f\u00fcr Abh\u00e4ngigkeit", trust_list2_text: "Das Ziel ist ein n\u00fctzliches Gespr\u00e4ch, nicht emotionale Bindung.",
+        trust_list3_title: "Erinnerung soll n\u00fctzlich wirken", trust_list3_text: "Das Ziel ist Kontinuit\u00e4t im Denken \u2014 nicht Eindringen.",
+        trust_list4_title: "Keine Therapie oder Krisenhilfe", trust_list4_text: "Sophie ist keine Therapeutin und kein Ersatz f\u00fcr professionelle oder notfallbezogene Hilfe.",
+        trust_label_right_top: "F\u00fcr wen es ist", trust_title_right: "Sophie k\u00f6nnte etwas f\u00fcr dich sein, wenn \u2026",
+        trust_for1: "du gern laut denkst", trust_for2: "du Hilfe m\u00f6chtest, Ideen zu erkunden, bevor du danach handelst",
+        trust_for3: "du einen privaten Sprachraum zum Reflektieren oder Vorbereiten m\u00f6chtest",
+        trust_for4: "du Gespr\u00e4che willst, die nicht jedes Mal wieder bei null anfangen",
+        trust_for5: "du neugierig auf KI bist, die sich n\u00fctzlicher anf\u00fchlt als ein normaler Chatbot",
+        trust_label_right_bottom: "Wahrscheinlich nichts f\u00fcr dich, wenn \u2026",
+        trust_not1: "du nur schnelle sachliche Antworten willst", trust_not2: "du menschliche Therapie oder Krisenhilfe erwartest",
+        trust_not3: "du eher einen Gimmick willst als ein echtes Gespr\u00e4ch", trust_not4: "dir KI als Denkformat unangenehm ist",
+        faq_label: "H\u00e4ufig gestellte Fragen", faq_title: "Fragen, die Menschen meistens zuerst haben",
+        faq_copy: "Diese Kategorie ist f\u00fcr viele Menschen neu. Deshalb sind die ersten Fragen wichtig.",
+        faq_q1: "Ist Sophie eine echte Person?", faq_a1: "Nein. Sophie ist eine KI-Sprachpartnerin zum Denken.",
+        faq_q2: "Wof\u00fcr ist Sophie da?", faq_a2: "Sophie ist daf\u00fcr gemacht, Ideen zu erkunden, Entscheidungen durchzudenken, Erfahrungen zu reflektieren und wichtige Gespr\u00e4che vorzubereiten.",
+        faq_q3: "Was macht Sophie anders als einen normalen Chatbot?", faq_a3: "Sophie ist voice-first und daf\u00fcr gebaut, dir beim besseren Denken zu helfen \u2014 mit mehr Kontinuit\u00e4t, besseren Fragen und nat\u00fcrlichem Gespr\u00e4ch.",
+        faq_q4: "Erinnert sich Sophie an Dinge?", faq_a4: "Sophie kann relevanten Kontext behalten, damit sich k\u00fcnftige Gespr\u00e4che kontinuierlicher und n\u00fctzlicher anf\u00fchlen.",
+        faq_q5: "Ist Sophie Therapie?", faq_a5: "Nein. Sophie ist keine Therapeutin und nicht f\u00fcr Krisen- oder medizinische Unterst\u00fctzung gedacht.",
+        faq_q6: "Ist Sophie immer klar als KI erkennbar?", faq_a6: "Ja. Sophie wird immer als KI dargestellt.",
+        faq_q7: "Warum sollte jemand Sophie nutzen?", faq_a7: "Um etwas zu durchdenken, bevor man handelt \u2014 eine Idee, eine Entscheidung, ein schwieriges Meeting oder etwas, das einem noch im Kopf herumgeht.",
+        faq_q8: "Wie fange ich an?", faq_a8: "Probier Sophie aus, starte kostenlos und mach jederzeit mit Sophie Plus weiter, wenn sich die Erfahrung f\u00fcr dich richtig anf\u00fchlt.",
+        bottom_cta_label: "Einfach starten", bottom_cta_title: "Mit Sophie denken",
+        bottom_cta_copy: "Starte ein Gespr\u00e4ch und schau, wohin es f\u00fchrt.",
+        bottom_cta_btn: "Gespr\u00e4ch starten", bottom_cta_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
+        footer_imprint: "Impressum", footer_privacy: "Datenschutz", footer_terms: "AGB", footer_withdrawal: "Widerruf",
+        chat_placeholder: "Schreib eine Nachricht...", chat_auth_text: "Gespr\u00e4ch speichern & weitermachen \u2014 kostenlos mit deiner E-Mail.",
+        chat_auth_btn: "Link senden", chat_auth_sent: "Schau in dein Postfach \u2713", chat_online: "online",
+        chat_report_title: "Mehr als 3 Minuten mit Sophie gesprochen?",
+        chat_report_cta: "Jetzt starten \u2014 19,90 \u20ac / Monat",
+        chat_err: "Kurze Pause \u2014 gleich wieder da."
       }
     };
-
+    // Add FR as copy of EN for now (extend later)
+    translations.fr = Object.assign({}, translations.en, {
+      page_title: "Meet Sophie — Votre partenaire de r\u00e9flexion IA",
+      lang_label: "Langue",
+      nav_use_cases: "Cas d'usage", nav_how_it_works: "Comment \u00e7a marche",
+      nav_pricing: "Tarifs", nav_trust: "Confiance", login_link: "Connexion",
+      hero_btn_primary: "Parler \u00e0 Sophie",
+      hero_trust_line: "Sans inscription \u00b7 2 min gratuites"
+    });
     let floatingInterval = null;
     let currentFloatingIndex = 0;
     let currentFloatingLang = "en";
-
     function startFloatingRotation(lang) {
       const textEl = document.getElementById("floating-text");
       const lines = (translations[lang] && translations[lang].floating_lines) || translations.en.floating_lines;
-
       if (!textEl || !lines || !lines.length) return;
-
-      if (floatingInterval) {
-        clearInterval(floatingInterval);
-        floatingInterval = null;
-      }
-
+      if (floatingInterval) { clearInterval(floatingInterval); floatingInterval = null; }
       currentFloatingLang = lang;
       currentFloatingIndex = 0;
       textEl.classList.remove("is-changing");
       textEl.textContent = lines[currentFloatingIndex];
-
       floatingInterval = setInterval(() => {
         const activeLines = (translations[currentFloatingLang] && translations[currentFloatingLang].floating_lines) || translations.en.floating_lines;
         textEl.classList.add("is-changing");
-
         setTimeout(() => {
           currentFloatingIndex = (currentFloatingIndex + 1) % activeLines.length;
           textEl.textContent = activeLines[currentFloatingIndex];
@@ -1668,445 +1251,293 @@
         }, 400);
       }, 4200);
     }
-
     function applyTranslations(lang) {
       const t = translations[lang] || translations.en;
-
       document.documentElement.lang = lang;
       document.title = t.page_title;
-
-      const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription) metaDescription.setAttribute("content", t.meta_description);
-
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute("content", t.meta_description);
       const textMap = {
         "lang-label": t.lang_label,
-
-        "nav-use-cases": t.nav_use_cases,
-        "nav-how-it-works": t.nav_how_it_works,
-        "nav-pricing": t.nav_pricing,
-        "nav-trust": t.nav_trust,
-        "nav-faq": t.nav_faq,
+        "nav-use-cases": t.nav_use_cases, "nav-how-it-works": t.nav_how_it_works,
+        "nav-pricing": t.nav_pricing, "nav-trust": t.nav_trust, "nav-faq": t.nav_faq,
         "login-link": t.login_link,
-
-        "hero-eyebrow": t.hero_eyebrow,
-        "hero-copy": t.hero_copy,
-        "hero-btn-primary": t.hero_btn_primary,
+        "hero-eyebrow": t.hero_eyebrow, "hero-copy": t.hero_copy,
+        "hero-btn-primary": t.hero_btn_primary, "hero-trust-line": t.hero_trust_line,
         "floating-label": t.floating_label,
-
-        "thinking-eyebrow": t.thinking_eyebrow,
-        "thinking-title": t.thinking_title,
-        "thinking-copy-1": t.thinking_copy_1,
-        "thinking-copy-2": t.thinking_copy_2,
-        "thinking-copy-3": t.thinking_copy_3,
-        "thinking-sources-label": t.thinking_sources_label,
-        "source-1-title": t.source_1_title,
-        "source-1-text": t.source_1_text,
-        "source-2-title": t.source_2_title,
-        "source-2-text": t.source_2_text,
-        "source-3-title": t.source_3_title,
-        "source-3-text": t.source_3_text,
-
-        "use-cases-title": t.use_cases_title,
-        "use-cases-intro": t.use_cases_intro,
-
-        "card1-title": t.card1_title,
-        "card1-copy": t.card1_copy,
-        "card2-title": t.card2_title,
-        "card2-copy": t.card2_copy,
-        "card3-title": t.card3_title,
-        "card3-copy": t.card3_copy,
-        "card4-title": t.card4_title,
-        "card4-copy": t.card4_copy,
-        "card5-title": t.card5_title,
-        "card5-copy": t.card5_copy,
-        "card6-title": t.card6_title,
-        "card6-copy": t.card6_copy,
-
-        "difference-label-1": t.difference_label_1,
-        "difference-title-1": t.difference_title_1,
+        "thinking-eyebrow": t.thinking_eyebrow, "thinking-title": t.thinking_title,
+        "thinking-copy-1": t.thinking_copy_1, "thinking-copy-2": t.thinking_copy_2,
+        "thinking-copy-3": t.thinking_copy_3, "thinking-sources-label": t.thinking_sources_label,
+        "source-1-title": t.source_1_title, "source-1-text": t.source_1_text,
+        "source-2-title": t.source_2_title, "source-2-text": t.source_2_text,
+        "source-3-title": t.source_3_title, "source-3-text": t.source_3_text,
+        "use-cases-title": t.use_cases_title, "use-cases-intro": t.use_cases_intro,
+        "card1-title": t.card1_title, "card1-copy": t.card1_copy,
+        "card2-title": t.card2_title, "card2-copy": t.card2_copy,
+        "card3-title": t.card3_title, "card3-copy": t.card3_copy,
+        "card4-title": t.card4_title, "card4-copy": t.card4_copy,
+        "card5-title": t.card5_title, "card5-copy": t.card5_copy,
+        "card6-title": t.card6_title, "card6-copy": t.card6_copy,
+        "difference-label-1": t.difference_label_1, "difference-title-1": t.difference_title_1,
         "difference-copy-1": t.difference_copy_1,
-        "difference-list1-title": t.difference_list1_title,
-        "difference-list1-text": t.difference_list1_text,
-        "difference-list2-title": t.difference_list2_title,
-        "difference-list2-text": t.difference_list2_text,
-        "difference-list3-title": t.difference_list3_title,
-        "difference-list3-text": t.difference_list3_text,
-        "difference-list4-title": t.difference_list4_title,
-        "difference-list4-text": t.difference_list4_text,
-
-        "difference-label-2": t.difference_label_2,
-        "difference-title-2": t.difference_title_2,
+        "difference-list1-title": t.difference_list1_title, "difference-list1-text": t.difference_list1_text,
+        "difference-list2-title": t.difference_list2_title, "difference-list2-text": t.difference_list2_text,
+        "difference-list3-title": t.difference_list3_title, "difference-list3-text": t.difference_list3_text,
+        "difference-list4-title": t.difference_list4_title, "difference-list4-text": t.difference_list4_text,
+        "difference-label-2": t.difference_label_2, "difference-title-2": t.difference_title_2,
         "difference-copy-2": t.difference_copy_2,
-
-        "pricing-label-left": t.pricing_label_left,
-        "pricing-title-left": t.pricing_title_left,
-        "pricing-copy-left": t.pricing_copy_left,
-        "pricing-btn": t.pricing_btn,
+        "pricing-label-left": t.pricing_label_left, "pricing-title-left": t.pricing_title_left,
+        "pricing-copy-left": t.pricing_copy_left, "pricing-btn": t.pricing_btn,
         "pricing-trust-line": t.pricing_trust_line,
-
-        "pricing-label-right": t.pricing_label_right,
-        "pricing-title-right": t.pricing_title_right,
-        "pricing-list1-title": t.pricing_list1_title,
-        "pricing-list1-text": t.pricing_list1_text,
-        "pricing-list2-title": t.pricing_list2_title,
-        "pricing-list2-text": t.pricing_list2_text,
-        "pricing-list3-title": t.pricing_list3_title,
-        "pricing-list3-text": t.pricing_list3_text,
-        "pricing-list4-title": t.pricing_list4_title,
-        "pricing-list4-text": t.pricing_list4_text,
-
-        "trust-label-left": t.trust_label_left,
-        "trust-title-left": t.trust_title_left,
+        "pricing-label-right": t.pricing_label_right, "pricing-title-right": t.pricing_title_right,
+        "pricing-list1-title": t.pricing_list1_title, "pricing-list1-text": t.pricing_list1_text,
+        "pricing-list2-title": t.pricing_list2_title, "pricing-list2-text": t.pricing_list2_text,
+        "pricing-list3-title": t.pricing_list3_title, "pricing-list3-text": t.pricing_list3_text,
+        "pricing-list4-title": t.pricing_list4_title, "pricing-list4-text": t.pricing_list4_text,
+        "trust-label-left": t.trust_label_left, "trust-title-left": t.trust_title_left,
         "trust-copy-left": t.trust_copy_left,
-        "trust-list1-title": t.trust_list1_title,
-        "trust-list1-text": t.trust_list1_text,
-        "trust-list2-title": t.trust_list2_title,
-        "trust-list2-text": t.trust_list2_text,
-        "trust-list3-title": t.trust_list3_title,
-        "trust-list3-text": t.trust_list3_text,
-        "trust-list4-title": t.trust_list4_title,
-        "trust-list4-text": t.trust_list4_text,
-
-        "trust-label-right-top": t.trust_label_right_top,
-        "trust-title-right": t.trust_title_right,
-        "trust-for1": t.trust_for1,
-        "trust-for2": t.trust_for2,
-        "trust-for3": t.trust_for3,
-        "trust-for4": t.trust_for4,
-        "trust-for5": t.trust_for5,
+        "trust-list1-title": t.trust_list1_title, "trust-list1-text": t.trust_list1_text,
+        "trust-list2-title": t.trust_list2_title, "trust-list2-text": t.trust_list2_text,
+        "trust-list3-title": t.trust_list3_title, "trust-list3-text": t.trust_list3_text,
+        "trust-list4-title": t.trust_list4_title, "trust-list4-text": t.trust_list4_text,
+        "trust-label-right-top": t.trust_label_right_top, "trust-title-right": t.trust_title_right,
+        "trust-for1": t.trust_for1, "trust-for2": t.trust_for2, "trust-for3": t.trust_for3,
+        "trust-for4": t.trust_for4, "trust-for5": t.trust_for5,
         "trust-label-right-bottom": t.trust_label_right_bottom,
-        "trust-not1": t.trust_not1,
-        "trust-not2": t.trust_not2,
-        "trust-not3": t.trust_not3,
-        "trust-not4": t.trust_not4,
-
-        "faq-label": t.faq_label,
-        "faq-title": t.faq_title,
-        "faq-copy": t.faq_copy,
-        "faq-q1": t.faq_q1,
-        "faq-a1": t.faq_a1,
-        "faq-q2": t.faq_q2,
-        "faq-a2": t.faq_a2,
-        "faq-q3": t.faq_q3,
-        "faq-a3": t.faq_a3,
-        "faq-q4": t.faq_q4,
-        "faq-a4": t.faq_a4,
-        "faq-q5": t.faq_q5,
-        "faq-a5": t.faq_a5,
-        "faq-q6": t.faq_q6,
-        "faq-a6": t.faq_a6,
-        "faq-q7": t.faq_q7,
-        "faq-a7": t.faq_a7,
-        "faq-q8": t.faq_q8,
-        "faq-a8": t.faq_a8,
-
-        "bottom-cta-label": t.bottom_cta_label,
-        "bottom-cta-title": t.bottom_cta_title,
-        "bottom-cta-copy": t.bottom_cta_copy,
-        "bottom-cta-btn": t.bottom_cta_btn,
+        "trust-not1": t.trust_not1, "trust-not2": t.trust_not2,
+        "trust-not3": t.trust_not3, "trust-not4": t.trust_not4,
+        "faq-label": t.faq_label, "faq-title": t.faq_title, "faq-copy": t.faq_copy,
+        "faq-q1": t.faq_q1, "faq-a1": t.faq_a1, "faq-q2": t.faq_q2, "faq-a2": t.faq_a2,
+        "faq-q3": t.faq_q3, "faq-a3": t.faq_a3, "faq-q4": t.faq_q4, "faq-a4": t.faq_a4,
+        "faq-q5": t.faq_q5, "faq-a5": t.faq_a5, "faq-q6": t.faq_q6, "faq-a6": t.faq_a6,
+        "faq-q7": t.faq_q7, "faq-a7": t.faq_a7, "faq-q8": t.faq_q8, "faq-a8": t.faq_a8,
+        "bottom-cta-label": t.bottom_cta_label, "bottom-cta-title": t.bottom_cta_title,
+        "bottom-cta-copy": t.bottom_cta_copy, "bottom-cta-btn": t.bottom_cta_btn,
         "bottom-cta-trust-line": t.bottom_cta_trust_line,
-
-        "footer-imprint": t.footer_imprint,
-        "footer-privacy": t.footer_privacy,
-        "footer-terms": t.footer_terms,
-        "footer-withdrawal": t.footer_withdrawal
+        "footer-imprint": t.footer_imprint, "footer-privacy": t.footer_privacy,
+        "footer-terms": t.footer_terms, "footer-withdrawal": t.footer_withdrawal
       };
-
       Object.entries(textMap).forEach(([id, value]) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
       });
-
       const htmlMap = {
-        "hero-title": t.hero_title,
-        "thinking-highlight": t.thinking_highlight,
-        "dialogue-you": t.dialogue_you,
-        "dialogue-sophie": t.dialogue_sophie,
-        "pricing-bubble-free": t.pricing_bubble_free,
-        "pricing-bubble-plus": t.pricing_bubble_plus
+        "hero-title": t.hero_title, "thinking-highlight": t.thinking_highlight,
+        "dialogue-you": t.dialogue_you, "dialogue-sophie": t.dialogue_sophie,
+        "pricing-bubble-free": t.pricing_bubble_free, "pricing-bubble-plus": t.pricing_bubble_plus
       };
-
       Object.entries(htmlMap).forEach(([id, value]) => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = value;
       });
-
+      // Update chat i18n
+      const inputEl = document.getElementById("chatInput");
+      const authTextEl = document.getElementById("chatAuthText");
+      const authBtnEl = document.getElementById("chatAuthBtn");
+      const onlineEl = document.getElementById("chatOnlineStatus");
+      if (inputEl) inputEl.placeholder = t.chat_placeholder;
+      if (authTextEl) authTextEl.textContent = t.chat_auth_text;
+      if (authBtnEl) authBtnEl.textContent = t.chat_auth_btn;
+      if (onlineEl) onlineEl.textContent = t.chat_online;
       startFloatingRotation(lang);
       localStorage.setItem("preferredLanguage", lang);
     }
-
     function detectLanguage() {
       const saved = localStorage.getItem("preferredLanguage");
       if (saved && translations[saved]) return saved;
-
       const browserLang = (navigator.language || "en").toLowerCase();
       if (browserLang.startsWith("de")) return "de";
       if (browserLang.startsWith("fr")) return "fr";
       return "en";
     }
-
-    function setLang(lang) {
-      applyTranslations(lang);
-      closeLangMenu();
-    }
-
+    function setLang(lang) { applyTranslations(lang); closeLangMenu(); }
     window.setLang = setLang;
-
     const langToggle = document.getElementById("langToggle");
     const langMenu = document.getElementById("langMenu");
-
-    function openLangMenu() {
-      if (!langMenu || !langToggle) return;
-      langMenu.classList.add("open");
-      langToggle.setAttribute("aria-expanded", "true");
-    }
-
-    function closeLangMenu() {
-      if (!langMenu || !langToggle) return;
-      langMenu.classList.remove("open");
-      langToggle.setAttribute("aria-expanded", "false");
-    }
-
+    function openLangMenu() { if (!langMenu || !langToggle) return; langMenu.classList.add("open"); langToggle.setAttribute("aria-expanded","true"); }
+    function closeLangMenu() { if (!langMenu || !langToggle) return; langMenu.classList.remove("open"); langToggle.setAttribute("aria-expanded","false"); }
     if (langToggle && langMenu) {
-      langToggle.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (langMenu.classList.contains("open")) {
-          closeLangMenu();
-        } else {
-          openLangMenu();
-        }
+      langToggle.addEventListener("click", e => { e.stopPropagation(); langMenu.classList.contains("open") ? closeLangMenu() : openLangMenu(); });
+      langMenu.querySelectorAll("[data-lang]").forEach(btn => {
+        btn.addEventListener("click", e => { e.stopPropagation(); const l = btn.getAttribute("data-lang"); if (l) setLang(l); });
       });
-
-      langMenu.querySelectorAll("[data-lang]").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const lang = btn.getAttribute("data-lang");
-          if (lang) setLang(lang);
-        });
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!e.target.closest(".lang-dropdown")) {
-          closeLangMenu();
-        }
-      });
+      document.addEventListener("click", e => { if (!e.target.closest(".lang-dropdown")) closeLangMenu(); });
     }
-
     applyTranslations(detectLanguage());
   </script>
-
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const AUTH_NUDGE_AT = 3; // show email prompt after this many turns
-const lang = (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
-
-const T = {
-  de: {
-    placeholder: "Schreib eine Nachricht…",
-    authText: "Gespräch speichern & weitermachen — kostenlos mit deiner E-Mail.",
-    authBtn: "Link senden",
-    authSent: "Schau in dein Postfach ✓",
-    reportTitle: "Mehr als 3 Minuten mit Sophie gesprochen?",
-    reportCTA: "Starte jetzt — 19,90 € / Monat",
-    online: "online",
-  },
-  en: {
-    placeholder: "Type a message…",
-    authText: "Save this conversation & continue — free with your email.",
-    authBtn: "Send link",
-    authSent: "Check your inbox ✓",
-    reportTitle: "Talked with Sophie for more than 3 minutes?",
-    reportCTA: "Start now — €19.90 / month",
-    online: "online",
-  }
-};
-const t = T[lang];
-
-// DOM refs
-const messagesEl  = document.getElementById("chatMessages");
-const typingEl    = document.getElementById("chatTyping");
-const authEl      = document.getElementById("chatAuth");
-const authText    = document.getElementById("chatAuthText");
-const authEmail   = document.getElementById("chatAuthEmail");
-const authBtn     = document.getElementById("chatAuthBtn");
-const authSent    = document.getElementById("chatAuthSent");
-const reportEl    = document.getElementById("chatReport");
-const inputEl     = document.getElementById("chatInput");
-const sendBtn     = document.getElementById("chatSendBtn");
-const onlineEl    = document.getElementById("chatOnlineStatus");
-
-// State
-let sessionId    = null;
-let history      = [];
-let turnCount    = 0;
-let authNudgeShown = false;
-let sessionEnded = false;
-let sessionStarted = false; // true once first message is sent (standby before that)
-let sending      = false;
-
-// Apply i18n
-authText.textContent = t.authText;
-authBtn.textContent  = t.authBtn;
-inputEl.placeholder  = t.placeholder;
-onlineEl.textContent = t.online;
-
-function show(el) { el.classList.remove("chat-hidden"); }
-function hide(el) { el.classList.add("chat-hidden"); }
-
-function appendBubble(role, text) {
-  const wrap   = document.createElement("div");
-  wrap.className = `chat-msg ${role}`;
-  const bubble = document.createElement("div");
-  bubble.className = "chat-msg-bubble";
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
-  messagesEl.appendChild(wrap);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return bubble;
-}
-
-async function getToken() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
-}
-
-async function callChat(body) {
-  const token   = await getToken();
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch("/api/chat", { method: "POST", headers, body: JSON.stringify(body) });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-// Called once — on first user message (standby until then, no API cost)
-async function startSession(firstMessage) {
-  const startData = await callChat({ action: "start" });
-  sessionId = startData.session_id;
-
-  // Sophie greets via hidden [CHAT_START] kickoff
-  show(typingEl);
-  const kickoff = await callChat({ action: "message", session_id: sessionId, message: "[CHAT_START]", history: [] });
-  hide(typingEl);
-
-  const greeting = kickoff.reply;
-  history.push({ role: "user", content: "[CHAT_START]" });
-  history.push({ role: "assistant", content: greeting });
-  appendBubble("sophie", greeting);
-
-  return sessionId;
-}
-
-async function sendMessage() {
-  if (sending || sessionEnded) return;
-  const text = inputEl.value.trim();
-  if (!text) return;
-
-  sending = true;
-  inputEl.value = "";
-  inputEl.style.height = "auto";
-  sendBtn.disabled = true;
-
-  // First message: start session (lazy init — no cost until here)
-  if (!sessionStarted) {
-    sessionStarted = true;
-    try {
-      await startSession(text);
-    } catch (e) {
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const AUTH_NUDGE_AT = 3;
+    const lang = (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+    // Get translations from window (set by inline script above)
+    const T = window.translations || {};
+    const t = (T[lang] || T["en"]) || {};
+    const messagesEl = document.getElementById("chatMessages");
+    const typingEl   = document.getElementById("chatTyping");
+    const authEl     = document.getElementById("chatAuth");
+    const authEmail  = document.getElementById("chatAuthEmail");
+    const authBtn    = document.getElementById("chatAuthBtn");
+    const authSent   = document.getElementById("chatAuthSent");
+    const reportEl   = document.getElementById("chatReport");
+    const inputEl    = document.getElementById("chatInput");
+    const sendBtn    = document.getElementById("chatSendBtn");
+    let sessionId      = null;
+    let history        = [];
+    let turnCount      = 0;
+    let authNudgeShown = false;
+    let sessionEnded   = false;
+    let sessionStarted = false;
+    let demoCleared    = false;
+    let sending        = false;
+    function show(el) { el.classList.remove("chat-hidden"); }
+    function hide(el) { el.classList.add("chat-hidden"); }
+    function appendBubble(role, text) {
+      const wrap   = document.createElement("div");
+      wrap.className = `chat-msg ${role}`;
+      const bubble = document.createElement("div");
+      bubble.className = "chat-msg-bubble";
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return bubble;
+    }
+    // Show demo conversation on page load (no API call)
+    function showDemoMessages() {
+      const greeting = t.chat_greeting || "What's on your mind right now?";
+      const demoUser = t.chat_demo_user || "I'm feeling stuck deciding whether to take the new job offer or stay at my current job.";
+      appendBubble("sophie", greeting);
+      setTimeout(() => {
+        appendBubble("user", demoUser);
+        setTimeout(() => { show(typingEl); }, 300);
+      }, 800);
+    }
+    showDemoMessages();
+    function clearDemoAndStartReal() {
+      if (demoCleared) return;
+      demoCleared = true;
       hide(typingEl);
-      appendBubble("sophie", lang === "de"
-        ? "Hm, ich bin gerade kurz nicht erreichbar. Versuch es gleich nochmal."
-        : "Hmm, I'm not available right now. Try again in a moment.");
-      sending = false;
-      sendBtn.disabled = false;
-      return;
+      messagesEl.innerHTML = "";
     }
-  }
-
-  appendBubble("user", text);
-  history.push({ role: "user", content: text });
-  show(typingEl);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-
-  try {
-    const data = await callChat({
-      action: "message",
-      session_id: sessionId,
-      message: text,
-      history: history.slice(-20),
-    });
-
-    hide(typingEl);
-    const reply = data.reply;
-    history.push({ role: "assistant", content: reply });
-    appendBubble("sophie", reply);
-    turnCount++;
-
-    // Auth nudge after AUTH_NUDGE_AT turns if not logged in
-    if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
-      const token = await getToken();
-      if (!token) { authNudgeShown = true; show(authEl); }
+    async function getToken() {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || null;
     }
-
-    // Upgrade teaser after free limit
-    if (data.limit_reached) {
-      sessionEnded = true;
-      reportEl.innerHTML = `<p>${t.reportTitle}</p><a href="/pricing/">${t.reportCTA}</a>`;
-      show(reportEl);
-      inputEl.disabled = true;
+    async function callChat(body) {
+      const token   = await getToken();
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/chat", { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+    async function startSession() {
+      const startData = await callChat({ action: "start" });
+      sessionId = startData.session_id;
+      show(typingEl);
+      const kickoff = await callChat({ action: "message", session_id: sessionId, message: "[CHAT_START]", history: [] });
+      hide(typingEl);
+      const greeting = kickoff.reply;
+      history.push({ role: "user", content: "[CHAT_START]" });
+      history.push({ role: "assistant", content: greeting });
+      appendBubble("sophie", greeting);
+    }
+    async function sendMessage() {
+      if (sending || sessionEnded) return;
+      const text = inputEl.value.trim();
+      if (!text) return;
+      sending = true;
+      inputEl.value = "";
+      inputEl.style.height = "auto";
       sendBtn.disabled = true;
+      // Clear demo on first real interaction
+      clearDemoAndStartReal();
+      if (!sessionStarted) {
+        sessionStarted = true;
+        try {
+          await startSession();
+        } catch (e) {
+          hide(typingEl);
+          appendBubble("sophie", t.chat_err || "Brief pause — back in a moment.");
+          sending = false;
+          sendBtn.disabled = false;
+          return;
+        }
+      }
+      appendBubble("user", text);
+      history.push({ role: "user", content: text });
+      show(typingEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      try {
+        const data = await callChat({
+          action: "message",
+          session_id: sessionId,
+          message: text,
+          history: history.slice(-20),
+        });
+        hide(typingEl);
+        const reply = data.reply;
+        history.push({ role: "assistant", content: reply });
+        appendBubble("sophie", reply);
+        turnCount++;
+        if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
+          const token = await getToken();
+          if (!token) { authNudgeShown = true; show(authEl); }
+        }
+        if (data.limit_reached) {
+          sessionEnded = true;
+          const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
+          const reportCTA   = t.chat_report_cta   || "Start now — €19.90 / month";
+          reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing/">${reportCTA}</a>`;
+          show(reportEl);
+          inputEl.disabled  = true;
+          sendBtn.disabled  = true;
+        }
+      } catch (e) {
+        hide(typingEl);
+        appendBubble("sophie", t.chat_err || "Brief pause — back in a moment.");
+      } finally {
+        sending = false;
+        if (!sessionEnded) sendBtn.disabled = false;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
     }
-
-  } catch (e) {
-    hide(typingEl);
-    appendBubble("sophie", lang === "de" ? "Kurze Pause — gleich wieder da." : "Brief pause — back in a moment.");
-  } finally {
-    sending = false;
-    if (!sessionEnded) sendBtn.disabled = false;
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-}
-
-async function endSession() {
-  if (!sessionId || sessionEnded) return;
-  sessionEnded = true;
-  const token   = await getToken().catch(() => null);
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const payload = JSON.stringify({ action: "end", session_id: sessionId, history });
-  navigator.sendBeacon
-    ? navigator.sendBeacon("/api/chat", new Blob([payload], { type: "application/json" }))
-    : fetch("/api/chat", { method: "POST", headers, body: payload, keepalive: true }).catch(() => {});
-}
-
-// Events
-sendBtn.addEventListener("click", sendMessage);
-inputEl.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-});
-inputEl.addEventListener("input", () => {
-  inputEl.style.height = "auto";
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + "px";
-});
-authBtn.addEventListener("click", async () => {
-  const email = authEmail.value.trim();
-  if (!email) return;
-  authBtn.disabled = true;
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + "/" } });
-  if (!error) { hide(authEl); show(authSent); }
-  else { authBtn.disabled = false; }
-});
-window.addEventListener("pagehide", endSession);
-
-// No boot call — stays in standby until user types
-</script>
+    async function endSession() {
+      if (!sessionId || sessionEnded) return;
+      sessionEnded = true;
+      const token   = await getToken().catch(() => null);
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const payload = JSON.stringify({ action: "end", session_id: sessionId, history });
+      navigator.sendBeacon
+        ? navigator.sendBeacon("/api/chat", new Blob([payload], { type: "application/json" }))
+        : fetch("/api/chat", { method: "POST", headers, body: payload, keepalive: true }).catch(() => {});
+    }
+    sendBtn.addEventListener("click", sendMessage);
+    inputEl.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    inputEl.addEventListener("input", () => {
+      inputEl.style.height = "auto";
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + "px";
+    });
+    authBtn.addEventListener("click", async () => {
+      const email = authEmail.value.trim();
+      if (!email) return;
+      authBtn.disabled = true;
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + "/" } });
+      if (!error) { hide(authEl); show(authSent); }
+      else { authBtn.disabled = false; }
+    });
+    window.addEventListener("pagehide", endSession);
+    // Make translations available to module scope
+    window.translations = window.translations || {};
+  </script>
 </body>
 </html>
