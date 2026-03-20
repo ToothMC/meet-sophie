@@ -245,6 +245,22 @@
       border:1px solid var(--line);
       box-shadow:none;
     }
+    @keyframes softPulse{
+      0%  { transform:translateY(-2px) scale(1);    opacity:.9; }
+      50% { transform:translateY(-2px) scale(1.03); opacity:1;  }
+      100%{ transform:translateY(-2px) scale(1);    opacity:.9; }
+    }
+    .voice-btn.attention{
+      animation:softPulse 2.8s ease-in-out infinite;
+    }
+    #chat-opening{
+      margin:14px 0 0;
+      font-size:13px;
+      color:rgba(246,247,251,.52);
+      letter-spacing:.01em;
+      font-style:italic;
+      line-height:1.4;
+    }
     .trust-line{
       margin-top:14px;
       color:rgba(246,247,251,.55);
@@ -868,9 +884,10 @@
           <h1 id="hero-title">THINK FIRST.<br>THEN ACT.</h1>
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="/login/" id="hero-btn-primary">Talk to Sophie</a>
+            <a class="btn btn-primary voice-btn" href="/login/" id="hero-btn-primary">Talk to Sophie</a>
           </div>
           <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
+          <p id="chat-opening"></p>
         </div>
 
         <div class="hero-visual">
@@ -1474,12 +1491,42 @@
     let demoCleared    = false;
     let sending        = false;
 
+    // Voice button pulse — activated by Sophie when conversation moves toward voice
+    const CHAT_OPENING = {
+      en: "You can type… but I'd rather hear you.",
+      de: "Du kannst schreiben… aber ich würde dich lieber hören.",
+      fr: "Tu peux écrire… mais je préférerais t'entendre.",
+    };
+    const chatOpeningEl = document.getElementById("chat-opening");
+    if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
+
+    const VOICE_TRIGGERS = [
+      "let me hear", "hear how you say", "say that to me", "not just in text",
+      "easier when we talk", "easier if we talk", "if we spoke",
+      "sag mir das", "wenn wir kurz sprechen", "si on en parle",
+    ];
+    function activateVoiceAttention() {
+      const btn = document.querySelector(".voice-btn");
+      if (btn) btn.classList.add("attention");
+    }
+    function deactivateVoiceAttention() {
+      const btn = document.querySelector(".voice-btn");
+      if (btn) btn.classList.remove("attention");
+    }
+    function maybeActivateVoiceBtn(text) {
+      if (VOICE_TRIGGERS.some(trigger => text.toLowerCase().includes(trigger))) {
+        activateVoiceAttention();
+      }
+    }
+
     // Central language switch — both nav header and chat card call this
     async function setLanguage(lang) {
       if (!lang || lang === currentLang) return;
       currentLang = lang;
       t = (T[currentLang] || T["en"]) || {};           // refresh translation table
       if (window.setLang) window.setLang(currentLang); // applyTranslations + closeLangMenu
+      if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
+      deactivateVoiceAttention();
       sessionId      = null;
       systemPrompt   = "";
       history        = [];
@@ -1576,6 +1623,7 @@
         { role: "assistant", content: greeting }
       ];
       appendBubble("sophie", greeting);
+      maybeActivateVoiceBtn(greeting);
     }
     async function sendMessage() {
       if (sending || sessionEnded) return;
@@ -1614,6 +1662,7 @@
         const reply = data.reply;
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
+        maybeActivateVoiceBtn(reply);
         turnCount++;
         if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
           const token = await getToken();
