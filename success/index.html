@@ -118,7 +118,7 @@
     }
 
     try {
-      const res = await fetch(`/api/confirm-checkout?session_id=${encodeURIComponent(sessionId)}`, {
+      const res = await fetch(`/api/billing?action=confirm&session_id=${encodeURIComponent(sessionId)}`, {
         method: "GET",
         credentials: "same-origin"
       });
