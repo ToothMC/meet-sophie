@@ -147,62 +147,61 @@
     .hero{
       position:relative;
       overflow:hidden;
-      padding:72px 0 42px;
+      padding:56px 0 42px;
     }
     .hero-grid{
       display:grid;
-      grid-template-columns:1.05fr .95fr;
-      gap:34px;
-      align-items:center;
+      grid-template-columns:520px 680px;
+      gap:64px;
+      align-items:start;
+      min-height:720px;
+    }
+    .hero-copy-col{
+      padding-top:54px;
     }
     .eyebrow{
       display:inline-flex;
       align-items:center;
-      gap:10px;
-      padding:10px 14px;
-      border:1px solid var(--line);
+      padding:0 18px;
+      height:42px;
+      border:1px solid rgba(255,255,255,.10);
       border-radius:999px;
-      background:rgba(255,255,255,.04);
-      color:var(--muted);
+      background:rgba(86,108,182,.16);
+      color:rgba(246,247,251,.88);
       font-size:13px;
-      margin-bottom:18px;
+      margin-bottom:22px;
     }
     .eyebrow::before{
-      content:"";
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      background:#8eb2ff;
-      box-shadow:0 0 18px rgba(142,178,255,.75);
+      display:none;
     }
     h1{
       margin:0;
-      font-size:clamp(46px, 7vw, 82px);
-      line-height:.96;
-      letter-spacing:-.045em;
+      max-width:520px;
+      font-size:84px;
+      line-height:.93;
+      letter-spacing:-.055em;
       font-weight:650;
-      max-width:700px;
       text-transform:uppercase;
     }
     .hero-copy{
-      margin:22px 0 0;
-      max-width:640px;
-      font-size:clamp(18px, 2.2vw, 22px);
-      line-height:1.45;
-      color:var(--muted);
+      margin:28px 0 0;
+      max-width:430px;
+      font-size:22px;
+      line-height:1.55;
+      color:rgba(246,247,251,.76);
     }
     .hero-actions{
       display:flex;
       gap:14px;
       flex-wrap:wrap;
-      margin-top:28px;
+      margin-top:30px;
     }
     .btn{
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      min-height:56px;
-      padding:0 24px;
+      min-height:58px;
+      padding:0 28px;
       border-radius:18px;
       text-decoration:none;
       font-weight:700;
@@ -212,8 +211,8 @@
     }
     .btn:hover{transform:translateY(-2px)}
     .btn-primary{
-      background:var(--accent);
-      color:#0b0e13;
+      background:linear-gradient(180deg, #3f8cff 0%, #2167db 100%);
+      color:#ffffff;
     }
     .btn-secondary{
       background:rgba(255,255,255,.04);
@@ -222,60 +221,63 @@
       box-shadow:none;
     }
     .trust-line{
-      margin-top:18px;
+      margin-top:14px;
       color:rgba(246,247,251,.66);
       font-size:14px;
     }
     .hero-visual{
       position:relative;
-      min-height:620px;
+      min-height:720px;
     }
     .hero-card{
       position:relative;
-      border-radius:34px;
+      height:720px;
+      border-radius:36px;
       overflow:hidden;
       background:
-        linear-gradient(rgba(9,11,17,.16), rgba(9,11,17,.52)),
+        linear-gradient(180deg, rgba(8,10,16,.08) 0%, rgba(8,10,16,.16) 38%, rgba(8,10,16,.54) 72%, rgba(8,10,16,.76) 100%),
         url("hero.jpg") center/cover no-repeat;
-      min-height:620px;
-      box-shadow:0 35px 100px rgba(0,0,0,.45);
+      box-shadow:0 36px 110px rgba(0,0,0,.46);
       border:1px solid rgba(255,255,255,.10);
     }
     .hero-card::after{
       content:"";
       position:absolute;
       inset:0;
-      background:linear-gradient(180deg, rgba(7,9,14,.08) 0%, rgba(7,9,14,.10) 38%, rgba(7,9,14,.66) 100%);
+      background:
+        radial-gradient(circle at 20% 76%, rgba(13,16,26,.28), transparent 30%),
+        linear-gradient(180deg, rgba(7,9,14,.02) 0%, rgba(7,9,14,.10) 40%, rgba(7,9,14,.52) 100%);
       pointer-events:none;
     }
     .floating-panel{
       position:absolute;
-      left:20px;
-      right:20px;
-      bottom:20px;
-      z-index:2;
-      border-radius:22px;
-      background:rgba(10,12,18,.74);
-      backdrop-filter:blur(18px);
+      top:60px;
+      right:34px;
+      width:232px;
+      z-index:3;
+      border-radius:20px;
+      background:rgba(18,15,18,.56);
+      backdrop-filter:blur(16px);
       border:1px solid rgba(255,255,255,.10);
-      padding:18px;
-      box-shadow:var(--shadow);
+      padding:18px 18px 16px;
+      box-shadow:0 18px 44px rgba(0,0,0,.28);
     }
     .floating-label{
       font-size:12px;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color:rgba(246,247,251,.58);
-      margin-bottom:10px;
+      letter-spacing:0;
+      text-transform:none;
+      color:#ffffff;
+      margin-bottom:8px;
+      font-weight:600;
     }
     .floating-text{
-      font-size:17px;
-      line-height:1.5;
-      color:rgba(246,247,251,.92);
+      font-size:15px;
+      line-height:1.45;
+      color:rgba(246,247,251,.88);
       opacity:1;
       transform:translateY(0);
       transition:opacity .4s ease, transform .4s ease;
-      min-height:3.1em;
+      min-height:auto;
     }
     .floating-text.is-changing{
       opacity:0;
@@ -556,8 +558,22 @@
       font-size:14px;
     }
     .footer-links a:hover{color:var(--text)}
-    @media (max-width:980px){
-      .hero-grid,
+    @media (max-width:1180px){
+      .hero-grid{
+        grid-template-columns:minmax(0,1fr);
+        gap:28px;
+        min-height:auto;
+      }
+      .hero-copy-col{
+        padding-top:0;
+      }
+      .hero-visual{
+        min-height:auto;
+      }
+      .hero-card{
+        height:620px;
+      }
+      .nav-links{display:none}
       .split,
       .two-col,
       .cta-box{
@@ -566,20 +582,39 @@
       }
       .cards{grid-template-columns:1fr}
       .thinking-sources-grid{grid-template-columns:1fr}
-      .hero-visual{min-height:auto}
-      .hero-card{min-height:540px}
-      .nav-links{display:none}
     }
     @media (max-width:640px){
-      .hero{padding:34px 0 26px}
+      .hero{padding:26px 0 20px}
       .section{padding:34px 0}
       .thinking-section{padding:56px 0 34px}
       .thinking-shell{padding:34px 22px;border-radius:28px}
       .thinking-copy{font-size:17px}
       .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
-      .hero-card{min-height:470px;border-radius:28px}
-      .floating-panel{left:14px;right:14px;bottom:14px;padding:16px}
+      .hero-grid{gap:20px}
+      .hero-copy-col{padding-top:0}
+      h1{
+        font-size:46px;
+        line-height:.92;
+        max-width:340px;
+      }
+      .hero-copy{
+        max-width:320px;
+        font-size:18px;
+        line-height:1.5;
+        margin-top:18px;
+      }
+      .hero-card{
+        height:420px;
+        border-radius:28px;
+      }
+      .floating-panel{
+        top:16px;
+        right:16px;
+        width:200px;
+        padding:14px;
+        border-radius:18px;
+      }
       .card,
       .example-box,
       .trust-box,
@@ -589,52 +624,53 @@
       .btn{width:100%}
       .login-link,
       .lang-btn{padding:9px 12px}
-      .floating-text{min-height:4.6em}
-      .chat-card{width:100%;max-width:100%;position:relative;bottom:auto;margin-top:20px}
       .chat-msg-bubble{font-size:14px}
     }
     /* ===== SOPHIE CHAT CARD ===== */
     .chat-card{
-      position:relative;
-      width:360px;
-      max-width:100%;
-      margin-top:28px;
-      display:flex;flex-direction:column;
-      background:rgba(10,12,19,.84);
-      backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.11);
-      box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04);
-      overflow:hidden;
-      height:320px;
-    }
-    /* Gold glow at card bottom */
-    .chat-card::after{
-      content:"";
       position:absolute;
-      left:10%;right:10%;bottom:-1px;
-      height:1px;
-      background:linear-gradient(90deg, transparent, rgba(200,168,75,.8), transparent);
-      box-shadow:0 0 22px 5px rgba(200,168,75,.30);
-      pointer-events:none;
-      z-index:10;
+      left:60px;
+      top:276px;
+      width:336px;
+      max-width:calc(100% - 120px);
+      display:flex;
+      flex-direction:column;
+      background:rgba(10,12,19,.82);
+      backdrop-filter:blur(22px);
+      -webkit-backdrop-filter:blur(22px);
+      border-radius:24px;
+      border:1px solid rgba(255,255,255,.11);
+      box-shadow:0 24px 70px rgba(0,0,0,.52), 0 0 0 1px rgba(255,255,255,.04);
+      overflow:hidden;
+      height:376px;
+      z-index:3;
+    }
+    .chat-card::after{
+      display:none;
+    }
+    @media (max-width:640px){
+      .chat-card{
+        left:18px;
+        right:18px;
+        top:auto;
+        bottom:-36px;
+        width:auto;
+        max-width:none;
+        height:250px;
+        border-radius:22px;
+      }
     }
     .chat-card-header{
-      display:flex;align-items:center;gap:10px;
-      padding:12px 14px 10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:14px 14px 12px;
       border-bottom:1px solid rgba(255,255,255,.07);
       flex-shrink:0;
     }
-    /* Back ‹ button */
     .chat-back-btn{
-      background:none;border:none;
-      color:rgba(246,247,251,.55);
-      cursor:pointer;padding:4px 6px;
-      border-radius:8px;font-size:18px;
-      line-height:1;flex-shrink:0;
-      transition:color .15s;
+      display:none;
     }
-    .chat-back-btn:hover{color:var(--text)}
     .chat-avatar-img{
       width:34px;height:34px;border-radius:50%;flex-shrink:0;
       object-fit:cover;object-position:top center;
@@ -677,13 +713,13 @@
       white-space:pre-wrap;word-break:break-word;
     }
     .chat-msg.sophie .chat-msg-bubble{
-      background:rgba(142,178,255,.13);
-      border:1px solid rgba(142,178,255,.17);
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
       border-bottom-left-radius:4px;
     }
     .chat-msg.user .chat-msg-bubble{
-      background:rgba(255,255,255,.09);
-      border:1px solid rgba(255,255,255,.11);
+      background:linear-gradient(180deg, #2f89ff 0%, #1e63d4 100%);
+      border:1px solid rgba(92,153,255,.32);
       border-bottom-right-radius:4px;
     }
     .chat-typing{
@@ -789,49 +825,51 @@
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
-        <div>
-          <div class="eyebrow" id="hero-eyebrow">Clarity begins in conversation.</div>
+        <div class="hero-copy-col">
+          <div class="eyebrow" id="hero-eyebrow">Clarity begins in conversation</div>
           <h1 id="hero-title">THINK FIRST.<br>THEN ACT.</h1>
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="/login/" id="hero-btn-primary">Talk to Sophie</a>
           </div>
           <p class="trust-line" id="hero-trust-line">No signup · 2 min free</p>
-          <!-- Chat card — always visible, session starts on first message -->
-          <div class="chat-card" id="sophieChat">
-            <div class="chat-card-header">
-              <button class="chat-back-btn" aria-label="Back">‹</button>
-              <img class="chat-avatar-img" src="/sophie.jpg" alt="Sophie">
-              <div class="chat-header-info">
-                <div class="chat-name">Sophie</div>
-                <div class="chat-online-status" id="chatOnlineStatus">online</div>
-              </div>
-              <button class="chat-menu-btn" aria-label="Options">···</button>
-            </div>
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-typing chat-hidden" id="chatTyping">
-              <span></span><span></span><span></span>
-            </div>
-            <div class="chat-auth chat-hidden" id="chatAuth">
-              <p id="chatAuthText">Save this conversation &amp; continue — free with your email.</p>
-              <div class="chat-auth-row">
-                <input type="email" id="chatAuthEmail" placeholder="your@email.com" />
-                <button id="chatAuthBtn" type="button">Send link</button>
-              </div>
-              <p class="chat-auth-sent chat-hidden" id="chatAuthSent">Check your inbox ✓</p>
-            </div>
-            <div class="chat-report chat-hidden" id="chatReport"></div>
-            <div class="chat-footer">
-              <textarea id="chatInput" placeholder="Write a message..." rows="1"></textarea>
-              <button class="chat-send" id="chatSendBtn" type="button" aria-label="Send">↑</button>
-            </div>
-          </div>
         </div>
+
         <div class="hero-visual">
           <div class="hero-card">
             <div class="floating-panel">
               <div class="floating-label" id="floating-label">A different kind of AI</div>
-              <div class="floating-text" id="floating-text">"Sophie says: Think one moment longer before you react."</div>
+              <div class="floating-text" id="floating-text">She helps you think before you act.</div>
+            </div>
+
+            <!-- Chat card — integrated into hero visual -->
+            <div class="chat-card" id="sophieChat">
+              <div class="chat-card-header">
+                <button class="chat-back-btn" aria-label="Back">‹</button>
+                <img class="chat-avatar-img" src="/sophie.jpg" alt="Sophie">
+                <div class="chat-header-info">
+                  <div class="chat-name">Sophie</div>
+                  <div class="chat-online-status" id="chatOnlineStatus">online</div>
+                </div>
+                <button class="chat-menu-btn" aria-label="Options">···</button>
+              </div>
+              <div class="chat-messages" id="chatMessages"></div>
+              <div class="chat-typing chat-hidden" id="chatTyping">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="chat-auth chat-hidden" id="chatAuth">
+                <p id="chatAuthText">Save this conversation &amp; continue — free with your email.</p>
+                <div class="chat-auth-row">
+                  <input type="email" id="chatAuthEmail" placeholder="your@email.com" />
+                  <button id="chatAuthBtn" type="button">Send link</button>
+                </div>
+                <p class="chat-auth-sent chat-hidden" id="chatAuthSent">Check your inbox ✓</p>
+              </div>
+              <div class="chat-report chat-hidden" id="chatReport"></div>
+              <div class="chat-footer">
+                <textarea id="chatInput" placeholder="Type your message..." rows="1"></textarea>
+                <button class="chat-send" id="chatSendBtn" type="button" aria-label="Send">➤</button>
+              </div>
             </div>
           </div>
         </div>
