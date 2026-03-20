@@ -147,11 +147,36 @@
     .hero{
       position:relative;
       overflow:hidden;
+      min-height:860px;
       padding:56px 0 42px;
     }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        linear-gradient(90deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.58) 28%, rgba(8,10,16,.22) 48%, rgba(8,10,16,.06) 62%, rgba(8,10,16,.18) 100%),
+        linear-gradient(180deg, rgba(7,9,14,.18) 0%, rgba(7,9,14,.06) 20%, rgba(7,9,14,.14) 60%, rgba(7,9,14,.44) 100%),
+        url("hero.jpg") 72% center / cover no-repeat;
+      pointer-events:none;
+      z-index:0;
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at 63% 42%, rgba(255,173,92,.20), transparent 18%),
+        radial-gradient(circle at 56% 52%, rgba(255,188,124,.10), transparent 26%),
+        radial-gradient(circle at 18% 18%, rgba(101,129,226,.10), transparent 24%);
+      pointer-events:none;
+      z-index:0;
+    }
     .hero-grid{
+      position:relative;
+      z-index:1;
       display:grid;
-      grid-template-columns:520px 680px;
+      grid-template-columns:520px 1fr;
       gap:64px;
       align-items:start;
       min-height:720px;
@@ -232,27 +257,19 @@
     .hero-card{
       position:relative;
       height:720px;
-      border-radius:36px;
-      overflow:hidden;
-      background:
-        linear-gradient(180deg, rgba(8,10,16,.08) 0%, rgba(8,10,16,.16) 38%, rgba(8,10,16,.54) 72%, rgba(8,10,16,.76) 100%),
-        url("hero.jpg") center/cover no-repeat;
-      box-shadow:0 36px 110px rgba(0,0,0,.46);
-      border:1px solid rgba(255,255,255,.10);
+      background:none;
+      border:0;
+      box-shadow:none;
+      border-radius:0;
+      overflow:visible;
     }
     .hero-card::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:
-        radial-gradient(circle at 20% 76%, rgba(13,16,26,.28), transparent 30%),
-        linear-gradient(180deg, rgba(7,9,14,.02) 0%, rgba(7,9,14,.10) 40%, rgba(7,9,14,.52) 100%);
-      pointer-events:none;
+      display:none;
     }
     .floating-panel{
       position:absolute;
       top:60px;
-      right:34px;
+      right:24px;
       width:232px;
       z-index:3;
       border-radius:20px;
@@ -559,6 +576,15 @@
     }
     .footer-links a:hover{color:var(--text)}
     @media (max-width:1180px){
+      .hero{
+        min-height:auto;
+        padding:42px 0 28px;
+      }
+      .hero::before{
+        background:
+          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.54) 30%, rgba(8,10,16,.28) 58%, rgba(8,10,16,.48) 100%),
+          url("hero.jpg") 68% center / cover no-repeat;
+      }
       .hero-grid{
         grid-template-columns:minmax(0,1fr);
         gap:28px;
@@ -566,9 +592,10 @@
       }
       .hero-copy-col{
         padding-top:0;
+        max-width:520px;
       }
       .hero-visual{
-        min-height:auto;
+        min-height:620px;
       }
       .hero-card{
         height:620px;
@@ -584,7 +611,15 @@
       .thinking-sources-grid{grid-template-columns:1fr}
     }
     @media (max-width:640px){
-      .hero{padding:26px 0 20px}
+      .hero{
+        min-height:auto;
+        padding:26px 0 34px;
+      }
+      .hero::before{
+        background:
+          linear-gradient(180deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.60) 24%, rgba(8,10,16,.38) 52%, rgba(8,10,16,.62) 100%),
+          url("hero.jpg") 70% center / cover no-repeat;
+      }
       .section{padding:34px 0}
       .thinking-section{padding:56px 0 34px}
       .thinking-shell{padding:34px 22px;border-radius:28px}
@@ -604,15 +639,17 @@
         line-height:1.5;
         margin-top:18px;
       }
+      .hero-visual{
+        min-height:430px;
+      }
       .hero-card{
-        height:420px;
-        border-radius:28px;
+        height:430px;
       }
       .floating-panel{
-        top:16px;
-        right:16px;
-        width:200px;
-        padding:14px;
+        top:12px;
+        right:10px;
+        width:190px;
+        padding:12px 13px;
         border-radius:18px;
       }
       .card,
@@ -629,8 +666,8 @@
     /* ===== SOPHIE CHAT CARD ===== */
     .chat-card{
       position:absolute;
-      left:60px;
-      top:276px;
+      left:34px;
+      top:312px;
       width:336px;
       max-width:calc(100% - 120px);
       display:flex;
@@ -648,13 +685,18 @@
     .chat-card::after{
       display:none;
     }
+    @media (max-width:1180px){
+      .chat-card{
+        left:20px;
+        top:250px;
+      }
+    }
     @media (max-width:640px){
       .chat-card{
-        left:18px;
-        right:18px;
-        top:auto;
-        bottom:-36px;
-        width:auto;
+        left:0;
+        right:auto;
+        top:172px;
+        width:min(322px, calc(100% - 18px));
         max-width:none;
         height:250px;
         border-radius:22px;
@@ -1057,7 +1099,7 @@
     </div>
   </footer>
   <script>
-    const translations = {
+    window.translations = {
       en: {
         page_title: "Meet Sophie — Your AI Thinking Partner",
         meta_description: "Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.",
@@ -1259,7 +1301,7 @@
       }
     };
     // Add FR as copy of EN for now (extend later)
-    translations.fr = Object.assign({}, translations.en, {
+    window.translations.fr = Object.assign({}, window.translations.en, {
       page_title: "Meet Sophie — Votre partenaire de r\u00e9flexion IA",
       lang_label: "Langue",
       nav_use_cases: "Cas d'usage", nav_how_it_works: "Comment \u00e7a marche",
@@ -1272,7 +1314,7 @@
     let currentFloatingLang = "en";
     function startFloatingRotation(lang) {
       const textEl = document.getElementById("floating-text");
-      const lines = (translations[lang] && translations[lang].floating_lines) || translations.en.floating_lines;
+      const lines = (window.translations[lang] && window.translations[lang].floating_lines) || window.translations.en.floating_lines;
       if (!textEl || !lines || !lines.length) return;
       if (floatingInterval) { clearInterval(floatingInterval); floatingInterval = null; }
       currentFloatingLang = lang;
@@ -1280,7 +1322,7 @@
       textEl.classList.remove("is-changing");
       textEl.textContent = lines[currentFloatingIndex];
       floatingInterval = setInterval(() => {
-        const activeLines = (translations[currentFloatingLang] && translations[currentFloatingLang].floating_lines) || translations.en.floating_lines;
+        const activeLines = (window.translations[currentFloatingLang] && window.translations[currentFloatingLang].floating_lines) || window.translations.en.floating_lines;
         textEl.classList.add("is-changing");
         setTimeout(() => {
           currentFloatingIndex = (currentFloatingIndex + 1) % activeLines.length;
@@ -1290,7 +1332,7 @@
       }, 4200);
     }
     function applyTranslations(lang) {
-      const t = translations[lang] || translations.en;
+      const t = window.translations[lang] || window.translations.en;
       document.documentElement.lang = lang;
       document.title = t.page_title;
       const metaDesc = document.querySelector('meta[name="description"]');
@@ -1382,7 +1424,7 @@
     }
     function detectLanguage() {
       const saved = localStorage.getItem("preferredLanguage");
-      if (saved && translations[saved]) return saved;
+      if (saved && window.translations[saved]) return saved;
       const browserLang = (navigator.language || "en").toLowerCase();
       if (browserLang.startsWith("de")) return "de";
       if (browserLang.startsWith("fr")) return "fr";
@@ -1575,7 +1617,7 @@
     });
     window.addEventListener("pagehide", endSession);
     // Make translations available to module scope
-    window.translations = window.translations || {};
+    /* translations already attached to window in the inline script above */
   </script>
 </body>
 </html>
