@@ -197,6 +197,16 @@ async function handleStart(req, res) {
   const err = envCheck(res);
   if (err) return;
 
+  // Read language from request body first — drives the entire session prompt
+  let body = req.body;
+  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+  body = body && typeof body === "object" ? body : {};
+  const lang = (body.language || "en").toLowerCase().trim();
+
+  let languageInstruction = "Speak English.";
+  if (lang === "de") languageInstruction = "Sprich Deutsch.";
+  else if (lang === "fr") languageInstruction = "Parle français.";
+
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase    = createClient(supabaseUrl, serviceKey);
@@ -249,13 +259,8 @@ async function handleStart(req, res) {
   const isBestFriend  = isPremium && effectivePlan === "plus";
   const mode          = isBestFriend ? "best_friend" : "companion";
 
-  // Use language from request body (UI selection) if provided, fallback to profile setting
-  let body = req.body;
-  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-  body = body && typeof body === "object" ? body : {};
-  const requestedLang = (body.language || "").toLowerCase().trim();
-
-  let preferredLanguage = requestedLang || (profile.preferred_language || "en").toLowerCase().trim();
+  // Prefer request lang; fall back to profile setting
+  let preferredLanguage = ["en", "de", "fr"].includes(lang) ? lang : (profile.preferred_language || "en").toLowerCase().trim();
   if (!["en", "de", "fr"].includes(preferredLanguage)) preferredLanguage = "en";
 
   const isFirstSession =
@@ -274,7 +279,7 @@ async function handleStart(req, res) {
     return res.status(500).json({ error: "Failed to create chat session" });
   }
 
-  const systemPrompt = buildSophieTextPrompt({ profile, rel, recentSessions, mode, isFirstSession, preferredLanguage });
+  const systemPrompt = `${languageInstruction}\n\n${buildSophieTextPrompt({ profile, rel, recentSessions, mode, isFirstSession, preferredLanguage })}`;
 
   return res.status(200).json({
     ok: true,
