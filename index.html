@@ -268,29 +268,29 @@
     }
     .floating-panel{
       position:absolute;
-      top:60px;
-      right:24px;
-      width:232px;
+      top:54px;
+      right:22px;
+      width:188px;
       z-index:3;
-      border-radius:20px;
-      background:rgba(18,15,18,.56);
-      backdrop-filter:blur(16px);
-      border:1px solid rgba(255,255,255,.10);
-      padding:18px 18px 16px;
-      box-shadow:0 18px 44px rgba(0,0,0,.28);
+      border-radius:18px;
+      background:rgba(18,15,18,.28);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,.07);
+      padding:12px 13px 11px;
+      box-shadow:0 10px 24px rgba(0,0,0,.14);
     }
     .floating-label{
-      font-size:12px;
+      font-size:11px;
       letter-spacing:0;
       text-transform:none;
-      color:#ffffff;
-      margin-bottom:8px;
+      color:rgba(255,255,255,.92);
+      margin-bottom:6px;
       font-weight:600;
     }
     .floating-text{
-      font-size:15px;
-      line-height:1.45;
-      color:rgba(246,247,251,.88);
+      font-size:13px;
+      line-height:1.4;
+      color:rgba(246,247,251,.68);
       opacity:1;
       transform:translateY(0);
       transition:opacity .4s ease, transform .4s ease;
@@ -666,20 +666,20 @@
     /* ===== SOPHIE CHAT CARD ===== */
     .chat-card{
       position:absolute;
-      left:-22px;
-      top:332px;
-      width:296px;
+      left:-18px;
+      top:330px;
+      width:292px;
       max-width:calc(100% - 120px);
       display:flex;
       flex-direction:column;
-      background:rgba(10,12,19,.44);
-      backdrop-filter:blur(14px);
-      -webkit-backdrop-filter:blur(14px);
+      background:rgba(10,12,19,.30);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
       border-radius:24px;
-      border:1px solid rgba(255,255,255,.08);
-      box-shadow:0 18px 42px rgba(0,0,0,.24), 0 0 0 1px rgba(255,255,255,.02);
+      border:1px solid rgba(255,255,255,.07);
+      box-shadow:0 14px 34px rgba(0,0,0,.16), 0 0 0 1px rgba(255,255,255,.015);
       overflow:hidden;
-      height:332px;
+      height:318px;
       z-index:3;
     }
     .chat-card::after{
@@ -687,10 +687,10 @@
     }
     @media (max-width:1180px){
       .chat-card{
-        left:8px;
-        top:286px;
-        width:304px;
-        height:338px;
+        left:2px;
+        top:292px;
+        width:296px;
+        height:324px;
       }
     }
     @media (max-width:640px){
@@ -754,14 +754,15 @@
       white-space:pre-wrap;word-break:break-word;
     }
     .chat-msg.sophie .chat-msg-bubble{
-      background:rgba(255,255,255,.07);
-      border:1px solid rgba(255,255,255,.06);
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.05);
       border-bottom-left-radius:4px;
     }
     .chat-msg.user .chat-msg-bubble{
-      background:linear-gradient(180deg, #2f89ff 0%, #1e63d4 100%);
-      border:1px solid rgba(92,153,255,.32);
-      border-bottom-right-radius:4px;
+      display:none;
+    }
+    .chat-msg.user{
+      display:none;
     }
     .chat-typing{
       display:none!important;
@@ -801,16 +802,16 @@
     .chat-report a{font-size:13px;color:#8eb2ff;text-decoration:none}
     .chat-footer{
       display:flex;align-items:flex-end;gap:8px;
-      padding:9px 10px 10px;
-      border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;
-      background:rgba(10,12,19,.34);
+      padding:8px 9px 9px;
+      border-top:1px solid rgba(255,255,255,.04);flex-shrink:0;
+      background:rgba(10,12,19,.12);
     }
     .chat-footer textarea{
-      flex:1;background:rgba(255,255,255,.05);
-      border:1px solid rgba(255,255,255,.07);
-      border-radius:13px;padding:10px 12px;
-      font-size:13px;color:var(--text);outline:none;resize:none;
-      font-family:inherit;line-height:1.44;min-height:40px;max-height:120px;overflow-y:auto;
+      flex:1;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.05);
+      border-radius:13px;padding:9px 11px;
+      font-size:13px;color:rgba(246,247,251,.86);outline:none;resize:none;
+      font-family:inherit;line-height:1.44;min-height:38px;max-height:110px;overflow-y:auto;
     }
     .chat-footer textarea::placeholder{color:rgba(246,247,251,.34)}
     .chat-footer textarea:focus{border-color:rgba(142,178,255,.38)}
