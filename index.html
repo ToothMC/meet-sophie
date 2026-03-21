@@ -245,32 +245,60 @@
       border:1px solid var(--line);
       box-shadow:none;
     }
-    @keyframes voicePulse{
-      0%   { transform:translateY(-2px) scale(1); }
-      50%  { transform:translateY(-2px) scale(1.08); }
-      100% { transform:translateY(-2px) scale(1); }
+    /* ── Pulse animations: 3-Stufen ─────────────────────── */
+    @keyframes pulseSoft{
+      0%   { box-shadow:0 0 0 0 rgba(255,255,255,0.15); }
+      70%  { box-shadow:0 0 0 8px rgba(255,255,255,0); }
+      100% { box-shadow:0 0 0 0 rgba(255,255,255,0); }
+    }
+    @keyframes pulseStrong{
+      0%   { box-shadow:0 0 0 0 rgba(0,200,255,0.5); transform:translateY(-2px) scale(1); }
+      50%  { box-shadow:0 0 0 14px rgba(0,200,255,0); transform:translateY(-2px) scale(1.04); }
+      100% { box-shadow:0 0 0 0 rgba(0,200,255,0); transform:translateY(-2px) scale(1); }
+    }
+    @keyframes pulseNudge{
+      0%   { box-shadow:0 0 0 0 rgba(255,90,90,0.7); transform:translateY(-2px) scale(1); }
+      40%  { box-shadow:0 0 0 18px rgba(255,90,90,0); transform:translateY(-2px) scale(1.06); }
+      100% { box-shadow:0 0 0 0 rgba(255,90,90,0); transform:translateY(-2px) scale(1); }
     }
     @keyframes voiceRipple{
       0%   { transform:scale(1);   opacity:0.7; }
       70%  { transform:scale(1.6); opacity:0;   }
       100% { opacity:0; }
     }
-    .voice-btn.attention{
+    /* Stufe 1: dezentes Pulsieren – Voice existiert */
+    .voice-btn.pulse-soft{
+      animation:pulseSoft 2.5s ease-in-out infinite;
+    }
+    /* Stufe 2: starkes Pulsieren – Sophie hat Voice angeboten */
+    .voice-btn.pulse-strong{
       position:relative;
       z-index:1;
-      animation:voicePulse 1.6s ease-in-out infinite;
-      box-shadow:
-        0 0 0 0 rgba(0,200,255,0.6),
-        0 0 20px rgba(0,200,255,0.8),
-        0 0 40px rgba(0,200,255,0.6);
+      animation:pulseStrong 1.6s ease-in-out infinite;
+      box-shadow:0 0 20px rgba(0,200,255,0.8),0 0 40px rgba(0,200,255,0.6);
     }
-    .voice-btn.attention::after{
+    .voice-btn.pulse-strong::after{
       content:"";
       position:absolute;
       inset:0;
       border-radius:inherit;
       border:2px solid rgba(0,200,255,0.6);
       animation:voiceRipple 1.6s infinite;
+    }
+    /* Stufe 3: Nudge – maximale Aufmerksamkeit */
+    .voice-btn.pulse-nudge{
+      position:relative;
+      z-index:1;
+      animation:pulseNudge 1.2s ease-in-out infinite;
+      box-shadow:0 0 20px rgba(255,90,90,0.8),0 0 40px rgba(255,90,90,0.6);
+    }
+    .voice-btn.pulse-nudge::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      border:2px solid rgba(255,90,90,0.6);
+      animation:voiceRipple 1.2s infinite;
     }
     #chat-opening{
       margin:14px 0 0;
@@ -1590,14 +1618,14 @@
       return "If you want, we can talk. This is often clearer than typing.";
     }
 
-    function activateVoiceAttention() {
+    function setPulse(level) {
       const btn = document.querySelector(".voice-btn");
-      if (btn) btn.classList.add("attention");
+      if (!btn) return;
+      btn.classList.remove("pulse-soft", "pulse-strong", "pulse-nudge");
+      if (level) btn.classList.add("pulse-" + level);
     }
-    function deactivateVoiceAttention() {
-      const btn = document.querySelector(".voice-btn");
-      if (btn) btn.classList.remove("attention");
-    }
+    function activateVoiceAttention() { setPulse("strong"); }
+    function deactivateVoiceAttention() { setPulse(null); }
     function maybeActivateVoiceBtn(voiceInvite) {
       // voiceInvite: boolean flag from API (Sophie appended [VOICE] marker)
       if (voiceInvite) {
@@ -2055,6 +2083,7 @@
       }
       appendBubble("user", text);
       history.push({ role: "user", content: text });
+      if (chatState === "chat_idle") setPulse("soft");
       if (chatState !== "voice_transitioning") chatState = "chat_active";
       saveChatState();
       show(typingEl);
@@ -2082,14 +2111,13 @@
         maybeActivateVoiceBtn(voiceInvite);
         saveChatState();
 
-        if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
-          const token = await getToken();
-          const shouldShowAuthNow =
-            !token &&
-            !uxFlags.hasRequestedMagicLink &&
-            (uxFlags.hasSeenVoicePitch || browserAlreadyKnowsVoice());
-          if (shouldShowAuthNow) { authNudgeShown = true; show(authEl); saveChatState(); }
-        }
+        // AUTH NUDGE DISABLED for voice conversion testing
+        // if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
+        //   const token = await getToken();
+        //   const shouldShowAuthNow = !token && !uxFlags.hasRequestedMagicLink &&
+        //     (uxFlags.hasSeenVoicePitch || browserAlreadyKnowsVoice());
+        //   if (shouldShowAuthNow) { authNudgeShown = true; show(authEl); saveChatState(); }
+        // }
         if (data.limit_reached) {
           sessionEnded = true;
           const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
@@ -2135,11 +2163,8 @@
             appendBubble("sophie", retryReply);
             maybeActivateVoiceBtn(retryVoiceInvite);
             saveChatState();
-            if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
-              const token = await getToken();
-              const shouldShowAuthNow = !token && !uxFlags.hasRequestedMagicLink && (uxFlags.hasSeenVoicePitch || browserAlreadyKnowsVoice());
-              if (shouldShowAuthNow) { authNudgeShown = true; show(authEl); saveChatState(); }
-            }
+            // AUTH NUDGE DISABLED for voice conversion testing
+            // if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) { ... }
             if (retryData.limit_reached) {
               sessionEnded = true;
               const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
