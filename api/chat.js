@@ -434,11 +434,24 @@ async function handleMessage(req, res) {
 
   // Call OpenAI API
   const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
+  const turnNumber = session.turn_count + 1;
+
+  // Turn-aware voice nudge — injected as last system message so it's fresh in context
+  // Only fires on turns 2–4 to ensure Sophie offers voice early enough
+  const voiceNudge = turnNumber === 2
+    ? "[INTERNAL] Turn 2. If this conversation has any real topic, end your response with [VOICE_OFFER]."
+    : turnNumber === 3
+    ? "[INTERNAL] Turn 3. End your response with [VOICE_OFFER] — unless the user is only asking a quick factual question."
+    : turnNumber === 4
+    ? "[INTERNAL] Turn 4. If you have not yet offered voice, you must do so now. End your response with [VOICE_OFFER]."
+    : null;
+
   const openaiMessages = [
     { role: "system", content: system_prompt || "" },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
+    ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
 
   let openaiResp;
