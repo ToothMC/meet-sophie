@@ -1918,6 +1918,10 @@
       }
       return res.json();
     }
+    function isFreeLimitError(error) {
+      const msg = String(error?.message || "").toLowerCase();
+      return msg.includes("free limit") || msg.includes("limit reached") || msg.includes("402");
+    }
     function isStaleSessionError(error) {
       const msg = String(error?.message || "").toLowerCase();
       return (
@@ -2056,7 +2060,17 @@
         }
       } catch (e) {
         console.error("[chat message failed]", { message: e?.message, sessionId, turnCount, historyLength: history.length });
-        if (isStaleSessionError(e)) {
+        if (isFreeLimitError(e)) {
+          hide(typingEl);
+          sessionEnded = true;
+          const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
+          const reportCTA   = t.chat_report_cta   || "Start now — €19.90 / month";
+          reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
+          show(reportEl);
+          inputEl.disabled = true;
+          sendBtn.disabled = true;
+          saveChatState();
+        } else if (isStaleSessionError(e)) {
           try {
             console.warn("[chat] stale session — rebuilding and retrying");
             sessionId      = null;
