@@ -1579,17 +1579,11 @@
       const btn = document.querySelector(".voice-btn");
       if (btn) btn.classList.remove("attention");
     }
-    function maybeActivateVoiceBtn(text) {
-      const normalized = String(text || "").toLowerCase();
-      const detected = VOICE_TRIGGERS.some(trigger => normalized.includes(trigger));
-      if (detected) {
+    function maybeActivateVoiceBtn(voiceInvite) {
+      // voiceInvite: boolean flag from API (Sophie appended [VOICE] marker)
+      if (voiceInvite) {
         activateVoiceAttention();
         if (!uxFlags.hasSeenVoicePitch) writeUxFlags({ hasSeenVoicePitch: true });
-        // Sophie invited to voice naturally (AI-generated) — set pending state
-        // so next user "ja"/"yes"/"ok" triggers the transition
-        if (chatState === "chat_active" || chatState === "chat_idle") {
-          chatState = "voice_offer_pending";
-        }
       }
     }
 
@@ -2043,26 +2037,19 @@
           language: getCurrentLang(),
         });
         hide(typingEl);
-        let reply = data.reply;
+        const reply = data.reply;
+        const voiceInvite = !!data.voice_invite;
         turnCount++;
 
-        const shouldHardPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowHardVoicePitch() && looksComplexForVoice(text);
-        const shouldSoftPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowSoftVoicePitch() && looksComplexForVoice(text);
-
-        if (shouldHardPitchNow) {
-          reply += "\n\n" + buildHardVoicePitch();
-          chatState = "voice_offer_pending";
-        } else if (shouldSoftPitchNow) {
-          reply += "\n\n" + buildSoftVoicePitch();
+        if (voiceInvite) {
           chatState = "voice_offer_pending";
         } else {
           chatState = "chat_active";
         }
-        awaitingVoiceConfirmation = shouldSoftPitchNow || shouldHardPitchNow; // legacy compat
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
-        maybeActivateVoiceBtn(reply);
+        maybeActivateVoiceBtn(voiceInvite);
         saveChatState();
 
         if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
@@ -2110,16 +2097,13 @@
               language:      getCurrentLang(),
             });
             hide(typingEl);
-            let retryReply = retryData.reply;
+            const retryReply = retryData.reply;
+            const retryVoiceInvite = !!retryData.voice_invite;
             turnCount++;
-            const shouldHardPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowHardVoicePitch() && looksComplexForVoice(text);
-            const shouldSoftPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowSoftVoicePitch() && looksComplexForVoice(text);
-            if (shouldHardPitchNow)       retryReply += "\n\n" + buildHardVoicePitch();
-            else if (shouldSoftPitchNow)  retryReply += "\n\n" + buildSoftVoicePitch();
-            awaitingVoiceConfirmation = shouldSoftPitchNow || shouldHardPitchNow;
+            chatState = retryVoiceInvite ? "voice_offer_pending" : "chat_active";
             history.push({ role: "assistant", content: retryReply });
             appendBubble("sophie", retryReply);
-            maybeActivateVoiceBtn(retryReply);
+            maybeActivateVoiceBtn(retryVoiceInvite);
             saveChatState();
             if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
               const token = await getToken();

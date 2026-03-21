@@ -208,6 +208,12 @@ STYLE:
 
 GOAL:
 The user should feel: "This would be better out loud."
+
+VOICE SIGNAL:
+When you naturally want to invite the user to speak — because the topic calls for it, or because they seem open — add the token [VOICE] at the very end of your message. Nowhere else. Not mid-sentence.
+Do not explain it. Do not mention it. Just append it silently after your last word.
+Example: "This feels like something we could untangle better out loud. [VOICE]"
+Only use it once per conversation, and only when it genuinely fits.
 `;
 
   return `${corePrompt}
@@ -445,9 +451,13 @@ async function handleMessage(req, res) {
   }
 
   const openaiData = await openaiResp.json();
-  const reply = openaiData?.choices?.[0]?.message?.content || "";
+  const rawReply = openaiData?.choices?.[0]?.message?.content || "";
 
-  if (!reply) return res.status(502).json({ error: "Empty response from OpenAI" });
+  if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
+
+  // Detect and strip [VOICE] marker
+  const voice_invite = rawReply.includes("[VOICE]");
+  const reply = rawReply.replace(/\s*\[VOICE\]\s*/g, "").trim();
 
   // Increment turn count + link user if just authenticated
   const updatePatch = {
@@ -462,6 +472,7 @@ async function handleMessage(req, res) {
   return res.status(200).json({
     ok: true,
     reply,
+    voice_invite,
     turn_count: session.turn_count + 1,
     model: openaiModel,
   });
