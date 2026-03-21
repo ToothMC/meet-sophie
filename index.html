@@ -1821,7 +1821,6 @@
                             "↓ Your email address";
         appendBubble("sophie", emailPrompt);
         chatState = "email_capture";
-        inputEl.type = "email";
         inputEl.placeholder = t.chat_email_placeholder || "here's my email...";
         inputEl.disabled = false;
         sendBtn.disabled = false;
@@ -2137,7 +2136,6 @@
       // history already contains the opener shown on page load — don't override
     }
     function restoreInput() {
-      inputEl.type = "text";
       inputEl.placeholder = t.chat_placeholder || "Write a message...";
       inputEl.value = "";
     }
