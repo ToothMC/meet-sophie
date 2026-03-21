@@ -1903,15 +1903,26 @@
       }, 800);
     }
     showDemoMessages();
-    const FORCE_NEW_CHAT = sessionStorage.getItem("FORCE_NEW_CHAT") === "1";
-    if (FORCE_NEW_CHAT) {
-      clearChatState();
-      sessionStorage.removeItem("FORCE_NEW_CHAT");
-    }
-    const restoredState = loadChatState();
-    if (!FORCE_NEW_CHAT && restoredState && restoredState.currentLang === currentLang) {
-      restoreChatState(restoredState);
-    }
+
+    // Chat-Start: memory-Chat immer verwerfen
+    clearChatState();
+    sessionStorage.removeItem("FORCE_NEW_CHAT");
+
+    authNudgeShown = false;
+    sessionEnded   = false;
+    sessionStarted = false;
+    demoCleared    = false;
+    sending        = false;
+    turnCount      = 0;
+    history        = [];
+    chatState      = "chat_idle";
+
+    hide(authEl);
+    hide(reportEl);
+    hide(authSent);
+    deactivateVoiceAttention();
+
+    if (authEmail) authEmail.value = "";
     function clearDemoAndStartReal() {
       if (demoCleared) return;
       demoCleared = true;
