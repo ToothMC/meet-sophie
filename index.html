@@ -1468,6 +1468,27 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const AUTH_NUDGE_AT = 8;
     let currentLang = localStorage.getItem("preferredLanguage") || "en";
+
+    const UX_FLAGS_KEY = "sophie_ux_flags_v1";
+    function readUxFlags() {
+      try {
+        const raw = localStorage.getItem(UX_FLAGS_KEY);
+        if (!raw) return { hasSeenVoicePitch: false, hasStartedVoice: false, hasRequestedMagicLink: false, lastLanguage: currentLang };
+        const parsed = JSON.parse(raw);
+        return {
+          hasSeenVoicePitch:      !!parsed.hasSeenVoicePitch,
+          hasStartedVoice:        !!parsed.hasStartedVoice,
+          hasRequestedMagicLink:  !!parsed.hasRequestedMagicLink,
+          lastLanguage:           parsed.lastLanguage || currentLang,
+        };
+      } catch { return { hasSeenVoicePitch: false, hasStartedVoice: false, hasRequestedMagicLink: false, lastLanguage: currentLang }; }
+    }
+    function writeUxFlags(patch = {}) {
+      const next = { ...uxFlags, ...patch };
+      uxFlags = next;
+      try { localStorage.setItem(UX_FLAGS_KEY, JSON.stringify(next)); } catch {}
+    }
+    let uxFlags = readUxFlags();
     // Get translations from window (set by inline script above)
     const T = window.translations || {};
     let t = (T[currentLang] || T["en"]) || {};
@@ -1514,8 +1535,12 @@
       if (btn) btn.classList.remove("attention");
     }
     function maybeActivateVoiceBtn(text) {
-      if (VOICE_TRIGGERS.some(trigger => text.toLowerCase().includes(trigger))) {
+      const normalized = String(text || "").toLowerCase();
+      if (VOICE_TRIGGERS.some(trigger => normalized.includes(trigger))) {
         activateVoiceAttention();
+        if (!uxFlags.hasSeenVoicePitch) {
+          writeUxFlags({ hasSeenVoicePitch: true });
+        }
       }
     }
 
@@ -1666,6 +1691,7 @@
     }
 
     function goToVoiceFromChat() {
+      writeUxFlags({ hasStartedVoice: true, lastLanguage: currentLang });
       saveVoiceHandover();
       sessionStorage.setItem("FORCE_NEW_CHAT", "1");
       window.location.href = "/talk";
@@ -1690,6 +1716,7 @@
       currentLang = lang;
       t = (T[currentLang] || T["en"]) || {};           // refresh translation table
       if (window.setLang) window.setLang(currentLang); // applyTranslations + closeLangMenu
+      writeUxFlags({ lastLanguage: currentLang });
       if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
       deactivateVoiceAttention();
       sessionId      = null;
@@ -1910,6 +1937,7 @@
     authBtn.addEventListener("click", async () => {
       const email = authEmail.value.trim();
       if (!email) return;
+      writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
       saveChatState();
       authBtn.disabled = true;
       const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + "/" } });
