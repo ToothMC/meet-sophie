@@ -1990,6 +1990,15 @@
         }
       } catch (e) {
         hide(typingEl);
+        const errMsg = String(e?.message || "");
+        if (errMsg.includes("Session not found") || errMsg.includes("Session is closed") || errMsg.includes("404")) {
+          // Stale restored session — reset so next send starts fresh
+          sessionId     = null;
+          systemPrompt  = "";
+          history       = [];
+          sessionStarted = false;
+          clearChatState();
+        }
         appendBubble("sophie", t.chat_err || "Brief pause — back in a moment.");
       } finally {
         sending = false;
