@@ -1512,6 +1512,7 @@
     let demoCleared    = false;
     let sending        = false;
     let awaitingVoiceConfirmation = false;
+    let chatState      = "chat_idle";
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
@@ -1595,6 +1596,7 @@
           sessionStarted,
           demoCleared,
           currentLang,
+          chatState,
           savedAt: Date.now(),
         };
         localStorage.setItem(CHAT_STATE_KEY, JSON.stringify(state));
@@ -1644,6 +1646,7 @@
       sessionEnded   = !!state.sessionEnded;
       sessionStarted = !!state.sessionStarted;
       demoCleared    = !!state.demoCleared;
+      chatState      = state.chatState || "chat_active";
 
       if (state.currentLang && state.currentLang !== currentLang) {
         currentLang = state.currentLang;
@@ -1758,6 +1761,66 @@
         "ja", "gern", "gerne", "machen wir", "lass uns", "bitte",
         "oui", "d'accord", "dac", "volontiers"
       ].includes(normalized);
+    }
+
+    function normalizeText(text = "") { return String(text || "").trim().toLowerCase(); }
+
+    function isLikelyYes(text = "") {
+      const n = normalizeText(text);
+      return ["yes","yeah","yep","sure","ok","okay","lets do it","let's do it",
+              "ja","jap","gerne","gern","machen wir","bitte",
+              "oui","d'accord","dac","volontiers"].includes(n);
+    }
+    function isVoiceLater(text = "") {
+      const n = normalizeText(text);
+      return ["later","maybe later","not now","später","vielleicht später","nicht jetzt","plus tard","pas maintenant"].includes(n);
+    }
+    function looksLikeEmail(text = "") { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(text || "").trim()); }
+    function isAuthNegative(text = "") {
+      const n = normalizeText(text);
+      return ["no","not now","no thanks","nein","nicht jetzt","lieber nicht","non","pas maintenant"].includes(n);
+    }
+    function detectDistress(text = "") {
+      const n = normalizeText(text);
+      return ["i'm lonely","i am lonely","i feel alone","overwhelmed","hopeless","empty",
+              "ich bin einsam","ich fühle mich allein","überfordert","hoffnungslos","leer",
+              "je suis seul","je me sens seul","dépassé","vide"].some(x => n.includes(x));
+    }
+
+    function classifyTransition({ state, userText, lastAssistantText }) {
+      try {
+        const text    = normalizeText(userText);
+        const distress = detectDistress(userText);
+        if (hasDirectVoiceIntent(userText)) return { intent: "voice_now", distress };
+        if (state === "voice_offer_pending") {
+          if (isLikelyYes(text))   return { intent: "voice_positive", distress };
+          if (isVoiceLater(text))  return { intent: "voice_later",   distress };
+          return { intent: "continue_chat", distress };
+        }
+        if (state === "auth_offer_pending") {
+          if (looksLikeEmail(userText) || isLikelyYes(text)) return { intent: "auth_positive", distress };
+          if (isAuthNegative(text)) return { intent: "auth_negative", distress };
+          return { intent: "continue_chat", distress };
+        }
+        if (isLikelyYes(text)) return { intent: "unclear", distress };
+        return { intent: "continue_chat", distress };
+      } catch (_) { return { intent: "unclear", distress: false }; }
+    }
+
+    function resolveTransition({ state, intent }) {
+      if (state === "voice_offer_pending") {
+        if (intent === "voice_now" || intent === "voice_positive") return { nextState: "voice_transitioning", action: "go_voice" };
+        return { nextState: "chat_active", action: "stay_chat" };
+      }
+      if (state === "auth_offer_pending") {
+        if (intent === "auth_positive") return { nextState: "chat_active", action: "auth_submit" };
+        return { nextState: "chat_active", action: "stay_chat" };
+      }
+      if (state === "chat_active" || state === "chat_idle") {
+        if (intent === "voice_now") return { nextState: "voice_transitioning", action: "go_voice" };
+        return { nextState: "chat_active", action: "stay_chat" };
+      }
+      return { nextState: "chat_active", action: "stay_chat" };
     }
 
     // Central language switch — both nav header and chat card call this
@@ -1882,6 +1945,7 @@
         { role: "user", content: "[CHAT_START]" },
         { role: "assistant", content: greeting }
       ];
+      chatState = "chat_active";
       appendBubble("sophie", greeting);
       maybeActivateVoiceBtn(greeting);
       saveChatState();
@@ -1891,43 +1955,32 @@
       const text = inputEl.value.trim();
       if (!text) return;
 
-      if (awaitingVoiceConfirmation && isVoiceConfirmation(text)) {
+      const lastAssistantText =
+        [...history].reverse().find(m => m?.role === "assistant" && m?.content)?.content || "";
+
+      const classified = classifyTransition({ state: chatState, userText: text, lastAssistantText });
+      console.log("[chat classifier]", { state: chatState, userText: text, result: classified });
+
+      const transition = resolveTransition({ state: chatState, intent: classified.intent });
+
+      if (transition.action === "go_voice") {
         clearDemoAndStartReal();
         appendBubble("user", text);
         history.push({ role: "user", content: text });
         const directReply =
           currentLang === "de" ? "Gut. Dann lass uns sprechen." :
           currentLang === "fr" ? "Bien. Alors parlons." :
-          "Good. Then let's talk.";
+          "Good. Then let’s talk.";
         appendBubble("sophie", directReply);
         history.push({ role: "assistant", content: directReply });
-        awaitingVoiceConfirmation = false;
+        chatState = "voice_transitioning";
         saveChatState();
         goToVoiceFromChat();
         return;
       }
 
-      if (awaitingVoiceConfirmation && !isVoiceConfirmation(text) && !hasDirectVoiceIntent(text)) {
-        awaitingVoiceConfirmation = false;
-      }
-
-      if (hasDirectVoiceIntent(text)) {
-        clearDemoAndStartReal();
-        appendBubble("user", text);
-        history.push({ role: "user", content: text });
-
-        const directReply =
-          getCurrentLang() === "de"
-            ? "Dann lass uns sprechen."
-            : getCurrentLang() === "fr"
-            ? "Alors parlons."
-            : "Then let’s talk.";
-
-        appendBubble("sophie", directReply);
-        history.push({ role: "assistant", content: directReply });
-        saveChatState();
-        goToVoiceFromChat();
-        return;
+      if (transition.action === "auth_submit") {
+        chatState = "chat_active";
       }
       sending = true;
       inputEl.value = "";
@@ -1949,6 +2002,7 @@
       }
       appendBubble("user", text);
       history.push({ role: "user", content: text });
+      if (chatState !== "voice_transitioning") chatState = "chat_active";
       saveChatState();
       show(typingEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -1968,10 +2022,14 @@
 
         if (shouldHardPitchNow) {
           reply += "\n\n" + buildHardVoicePitch();
+          chatState = "voice_offer_pending";
         } else if (shouldSoftPitchNow) {
           reply += "\n\n" + buildSoftVoicePitch();
+          chatState = "voice_offer_pending";
+        } else {
+          chatState = "chat_active";
         }
-        awaitingVoiceConfirmation = shouldSoftPitchNow || shouldHardPitchNow;
+        awaitingVoiceConfirmation = shouldSoftPitchNow || shouldHardPitchNow; // legacy compat
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
