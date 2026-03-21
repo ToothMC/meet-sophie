@@ -1930,13 +1930,7 @@
       hide(authEl);
       hide(reportEl);
       if (messagesEl) messagesEl.innerHTML = "";
-      try {
-        sessionStarted = true;
-        await startSession();
-      } catch (err) {
-        console.error("Failed to restart chat after language switch:", err);
-        sessionStarted = false;
-      }
+      showOpener(currentLang);
     }
     // One universal handler for every [data-lang] button on the page
     document.querySelectorAll("[data-lang]").forEach(btn => {
@@ -1955,30 +1949,54 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return bubble;
     }
-    // Show demo conversation on page load (no API call)
-    function showDemoMessages() {
-      const greeting = t.chat_greeting || "What's on your mind right now?";
-      const demoUser = t.chat_demo_user || "I'm feeling stuck deciding whether to take the new job offer or stay at my current job.";
-      appendBubble("sophie", greeting);
-      setTimeout(() => {
-        appendBubble("user", demoUser);
-        setTimeout(() => { show(typingEl); }, 300);
-      }, 800);
+    // Chat Opener Pool — same questions as server, picked client-side on load
+    const OPENERS = {
+      de: [
+        "Was beschäftigt dich gerade?",
+        "Was geht dir gerade durch den Kopf?",
+        "Wobei wünschst du dir gerade Klarheit?",
+        "Was fühlt sich im Moment ungelöst an?",
+        "Worüber möchtest du gerade nachdenken?",
+      ],
+      en: [
+        "What's on your mind right now?",
+        "What are you trying to figure out?",
+        "What feels unresolved for you right now?",
+        "What would you like to think through?",
+        "Where are you stuck?",
+      ],
+      fr: [
+        "Qu'est-ce qui t'occupe l'esprit en ce moment?",
+        "Sur quoi aimerais-tu avoir plus de clarté?",
+        "Qu'est-ce qui te semble non résolu en ce moment?",
+        "À quoi veux-tu réfléchir?",
+        "Qu'est-ce qui te préoccupe?",
+      ],
+    };
+    function pickOpener(lang) {
+      const pool = OPENERS[lang] || OPENERS.en;
+      return pool[Math.floor(Math.random() * pool.length)];
     }
-    showDemoMessages();
+    function showOpener(lang) {
+      const opener = pickOpener(lang);
+      appendBubble("sophie", opener);
+      history = [{ role: "assistant", content: opener }];
+    }
 
-    // Chat-Start: memory-Chat immer verwerfen
+    // Chat-Start: immer frisch
     clearChatState();
     sessionStorage.removeItem("FORCE_NEW_CHAT");
 
     authNudgeShown = false;
     sessionEnded   = false;
     sessionStarted = false;
-    demoCleared    = false;
+    demoCleared    = true;   // kein Demo — Opener ist echter Content
     sending        = false;
     turnCount      = 0;
     history        = [];
-    chatState      = "chat_idle";
+    chatState      = "chat_active";
+
+    showOpener(currentLang);
 
     hide(authEl);
     hide(reportEl);
@@ -2028,12 +2046,7 @@
       const startData = await callChat("start", { language: getCurrentLang() });
       sessionId    = startData.session_id;
       systemPrompt = startData.system_prompt || "";
-      // Opener comes directly from pool — no AI call needed
-      const opener = startData.opener || "";
-      history = [{ role: "assistant", content: opener }];
-      chatState = "chat_active";
-      appendBubble("sophie", opener);
-      saveChatState();
+      // history already contains the opener shown on page load — don't override
     }
     async function sendMessage() {
       if (sending || sessionEnded) return;
