@@ -71,15 +71,7 @@
 
   history.replaceState(null, "", window.location.pathname + window.location.search);
 
-  try {
-    if (window.opener && !window.opener.closed) {
-      window.opener.location.assign("/?welcomed=1");
-      window.close();
-      return;
-    }
-  } catch (_) {}
-
-  window.location.href = "/?welcomed=1";
+  window.location.href = "/talk";
 }
 
     supabase.auth.onAuthStateChange(async (event, session) => {

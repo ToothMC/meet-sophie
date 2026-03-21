@@ -2274,7 +2274,7 @@
       authBtn.disabled = true;
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin + "/talk" }
+        options: { emailRedirectTo: window.location.origin + "/auth/callback" }
       });
       if (!error) {
         hide(authEl);
