@@ -622,7 +622,7 @@ body{
     <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
   </div>
 
-  <button id="start" class="btn">Talk to Sophie</button>
+  <button id="start" class="btn" style="display:none">Talk to Sophie</button>
   <button id="end" class="btn" disabled style="display:none">Leave the Room</button>
 </div>
 
@@ -2667,17 +2667,8 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 
 initManageSubscriptionLink();
 
-// Auto-start if mic permission already granted (returning user — no click needed)
-(async () => {
-  try {
-    const result = await navigator.permissions.query({ name: "microphone" });
-    if (result.state === "granted") {
-      startVoice();
-    }
-  } catch (_) {
-    // permissions API not supported — show button normally
-  }
-})();
+// Start immediately — browser shows its own mic permission dialog if needed
+startVoice();
 </script>
 
 <script src="https://unpkg.com/lucide@latest"></script>
