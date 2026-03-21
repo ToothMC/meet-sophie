@@ -2151,6 +2151,7 @@
       if (chatState === "email_capture") {
         sendBtn.disabled = true;
         inputEl.disabled = true;
+        restoreInput(); // clear input immediately so field looks clean
 
         // Show email as visible receipt bubble
         const emailWrap = document.createElement("div");
@@ -2171,7 +2172,6 @@
           options: { emailRedirectTo: window.location.origin + "/auth/callback" }
         });
         if (!error) {
-          restoreInput();
           chatState = "chat_active";
           inputEl.disabled = false;
           sendBtn.disabled = false;
