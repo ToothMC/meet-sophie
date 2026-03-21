@@ -724,24 +724,33 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Auth init — supports both normal session and magic link (token in URL hash)
-let { data: { session } } = await supabase.auth.getSession();
+// Auth init — supports both normal session and magic link landing
+// Set up everything in parallel to avoid race conditions
+const session = await new Promise(resolve => {
+  let done = false;
+  const finish = (s) => { if (!done) { done = true; resolve(s); } };
+
+  // 1. Listen for auth events FIRST (catches magic link SIGNED_IN)
+  supabase.auth.onAuthStateChange((event, s) => {
+    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && s?.user) {
+      finish(s);
+    }
+  });
+
+  // 2. Immediate session check (catches already-logged-in users)
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session?.user) finish(data.session);
+  });
+
+  // 3. Delayed fallback — Supabase may need time to exchange URL token
+  setTimeout(async () => {
+    const { data } = await supabase.auth.getSession();
+    finish(data.session ?? null);
+  }, 3000);
+});
 
 if (!session?.user) {
-  // Magic link lands here with tokens in URL hash — wait for Supabase to exchange them
-  session = await new Promise(resolve => {
-    const timeout = setTimeout(() => resolve(null), 4000);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === "SIGNED_IN" && s?.user) {
-        clearTimeout(timeout);
-        subscription.unsubscribe();
-        resolve(s);
-      }
-    });
-  });
-  if (!session?.user) {
-    window.location.href = "/login";
-  }
+  window.location.href = "/login";
 }
 
 // Session Watch (Logout / Session verloren)
