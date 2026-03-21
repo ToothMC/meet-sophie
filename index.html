@@ -1529,12 +1529,17 @@
       "easier when we talk", "easier if we talk", "if we spoke",
       "let's talk", "lets talk", "out loud", "then let's talk", "then let us talk",
       "we can talk", "we could talk", "shall we talk", "want to talk",
-      // DE
-      "sag mir das", "wenn wir kurz sprechen", "lass uns sprechen", "lass uns das tun",
-      "dann lass uns", "wollen wir sprechen", "besser im gespräch", "kurz sprechen",
-      "das tun wir", "dann sprechen wir",
+      "when you're ready", "ready to listen", "here to listen",
+      // DE — exact phrases
+      "sag mir das", "lass uns sprechen", "lass uns das tun", "lass uns darüber",
+      "dann lass uns", "wollen wir sprechen", "besser im gespräch",
+      "kurz sprechen", "dann sprechen wir", "wenn wir kurz", "wenn du sprechen",
+      "bereit zuzuhören", "bereit, zuzuhören", "zuzuhören", "wann du bereit",
+      "wenn du bereit", "ich bin bereit", "ich höre zu", "dann hör",
+      "sprechen möchtest", "reden möchtest", "sprechen willst", "reden willst",
       // FR
       "si on en parle", "on peut parler", "parlons", "à l'oral", "parler de vive voix",
+      "quand tu es prêt", "je t'écoute",
     ];
 
     const SOFT_VOICE_PITCH_TURN = 2;
@@ -1745,20 +1750,31 @@
 
     function hasDirectVoiceIntent(text = "") {
       return [
+        // EN
         /\bi want to hear you\b/i,
         /\bcan we talk\b/i,
-        /\bi'd rather speak\b/i,
+        /\bi'?d rather speak\b/i,
         /\blet'?s talk\b/i,
         /\bi want to talk\b/i,
         /\bi want to speak\b/i,
-        /\bich will mit dir sprechen\b/i,
-        /\bich würde dich gerne hören\b/i,
+        /\bi'?d like to speak\b/i,
+        /\bwant to hear you\b/i,
+        // DE
+        /\bich will.{0,6}sprechen\b/i,
+        /\bich möchte.{0,6}sprechen\b/i,
+        /\bich würde.{0,10}hören\b/i,
         /\blass uns sprechen\b/i,
         /\bich will reden\b/i,
         /\bich möchte reden\b/i,
+        /\bkönnen wir sprechen\b/i,
+        /\bwir können sprechen\b/i,
+        /\bich bin bereit\b/i,
+        /\bjetzt sprechen\b/i,
+        // FR
         /\bje veux entendre ta voix\b/i,
         /\bon peut parler\b/i,
-        /\bje veux parler\b/i
+        /\bje veux parler\b/i,
+        /\bje voudrais parler\b/i,
       ].some(re => re.test(text));
     }
 
@@ -1776,8 +1792,9 @@
     function isLikelyYes(text = "") {
       const n = normalizeText(text);
       return ["yes","yeah","yep","sure","ok","okay","lets do it","let's do it",
-              "ja","jap","gerne","gern","machen wir","bitte",
-              "oui","d'accord","dac","volontiers"].includes(n);
+              "ja","jap","gerne","gern","machen wir","bitte","los","gut","alright",
+              "sprechen","reden","talk","let's go","lets go",
+              "oui","d'accord","dac","volontiers","allons-y"].includes(n);
     }
     function isVoiceLater(text = "") {
       const n = normalizeText(text);
