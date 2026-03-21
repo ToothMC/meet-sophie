@@ -2151,6 +2151,19 @@
       if (chatState === "email_capture") {
         sendBtn.disabled = true;
         inputEl.disabled = true;
+
+        // Show email as visible receipt bubble
+        const emailWrap = document.createElement("div");
+        emailWrap.className = "chat-msg sophie";
+        const emailBubble = document.createElement("div");
+        emailBubble.className = "chat-msg-bubble";
+        emailBubble.style.opacity = "0.6";
+        emailBubble.style.fontSize = "11px";
+        emailBubble.textContent = "→ " + text;
+        emailWrap.appendChild(emailBubble);
+        messagesEl.appendChild(emailWrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
         const { error } = await supabase.auth.signInWithOtp({
@@ -2162,9 +2175,14 @@
           chatState = "chat_active";
           inputEl.disabled = false;
           sendBtn.disabled = false;
-          const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
+          const sentMsg = currentLang === "de"
+            ? `Danke. Ich habe dir gerade eine Einladung an ${text} geschickt.\nSie sollte in wenigen Sekunden da sein.`
+            : currentLang === "fr"
+            ? `Merci. Je viens de t'envoyer une invitation à ${text}.\nElle devrait arriver dans quelques secondes.`
+            : `Got it. I just sent an invitation to ${text}.\nCheck your inbox — it should be there in a few seconds.`;
           appendBubble("sophie", sentMsg);
         } else {
+          emailWrap.remove();
           inputEl.disabled = false;
           sendBtn.disabled = false;
         }
