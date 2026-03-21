@@ -2678,8 +2678,8 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 
 initManageSubscriptionLink();
 
-// Start immediately — browser shows its own mic permission dialog if needed
-startVoice();
+// Start immediately — only if auth is valid (guards against redirect race condition)
+if (session?.user) startVoice();
 </script>
 
 <script src="https://unpkg.com/lucide@latest"></script>
