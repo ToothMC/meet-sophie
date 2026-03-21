@@ -2096,11 +2096,20 @@
           language: getCurrentLang(),
         });
         hide(typingEl);
-        const reply = data.reply;
-        const voiceInvite = !!data.voice_invite;
+        const reply          = data.reply;
+        const voiceOffer     = !!data.voice_offer;
+        const voiceConfirmed = !!data.voice_confirmed;
         turnCount++;
 
-        if (voiceInvite) {
+        if (voiceConfirmed) {
+          history.push({ role: "assistant", content: reply });
+          appendBubble("sophie", reply);
+          saveChatState();
+          goToVoiceFromChat();
+          return;
+        }
+
+        if (voiceOffer) {
           chatState = "voice_offer_pending";
         } else {
           chatState = "chat_active";
@@ -2108,7 +2117,7 @@
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
-        maybeActivateVoiceBtn(voiceInvite);
+        maybeActivateVoiceBtn(voiceOffer);
         saveChatState();
 
         // AUTH NUDGE DISABLED for voice conversion testing
@@ -2155,13 +2164,21 @@
               language:      getCurrentLang(),
             });
             hide(typingEl);
-            const retryReply = retryData.reply;
-            const retryVoiceInvite = !!retryData.voice_invite;
+            const retryReply          = retryData.reply;
+            const retryVoiceOffer     = !!retryData.voice_offer;
+            const retryVoiceConfirmed = !!retryData.voice_confirmed;
             turnCount++;
-            chatState = retryVoiceInvite ? "voice_offer_pending" : "chat_active";
+            if (retryVoiceConfirmed) {
+              history.push({ role: "assistant", content: retryReply });
+              appendBubble("sophie", retryReply);
+              saveChatState();
+              goToVoiceFromChat();
+              return;
+            }
+            chatState = retryVoiceOffer ? "voice_offer_pending" : "chat_active";
             history.push({ role: "assistant", content: retryReply });
             appendBubble("sophie", retryReply);
-            maybeActivateVoiceBtn(retryVoiceInvite);
+            maybeActivateVoiceBtn(retryVoiceOffer);
             saveChatState();
             // AUTH NUDGE DISABLED for voice conversion testing
             // if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) { ... }
