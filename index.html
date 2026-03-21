@@ -1855,6 +1855,14 @@
       }
       return res.json();
     }
+    function isStaleSessionError(error) {
+      const msg = String(error?.message || "").toLowerCase();
+      return (
+        msg.includes("session") || msg.includes("not found") ||
+        msg.includes("expired") || msg.includes("invalid") ||
+        msg.includes("404") || msg.includes("410") || msg.includes("409")
+      );
+    }
     async function startSession() {
       const startData = await callChat("start", { language: getCurrentLang() });
       sessionId = startData.session_id;
@@ -1989,17 +1997,54 @@
           saveChatState();
         }
       } catch (e) {
-        hide(typingEl);
-        const errMsg = String(e?.message || "");
-        if (errMsg.includes("Session not found") || errMsg.includes("Session is closed") || errMsg.includes("404")) {
-          // Stale restored session — reset so next send starts fresh
-          sessionId     = null;
-          systemPrompt  = "";
-          history       = [];
-          sessionStarted = false;
-          clearChatState();
+        console.error("[chat message failed]", { message: e?.message, sessionId, turnCount, historyLength: history.length });
+        if (isStaleSessionError(e)) {
+          try {
+            console.warn("[chat] stale session — rebuilding and retrying");
+            sessionId      = null;
+            systemPrompt   = "";
+            sessionStarted = false;
+            clearChatState();
+            await startSession();
+            const retryData = await callChat("message", {
+              session_id:    sessionId,
+              system_prompt: systemPrompt,
+              messages:      history.slice(-20),
+              language:      getCurrentLang(),
+            });
+            hide(typingEl);
+            let retryReply = retryData.reply;
+            turnCount++;
+            const shouldHardPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowHardVoicePitch() && looksComplexForVoice(text);
+            const shouldSoftPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowSoftVoicePitch() && looksComplexForVoice(text);
+            if (shouldHardPitchNow)       retryReply += "\n\n" + buildHardVoicePitch();
+            else if (shouldSoftPitchNow)  retryReply += "\n\n" + buildSoftVoicePitch();
+            awaitingVoiceConfirmation = shouldSoftPitchNow || shouldHardPitchNow;
+            history.push({ role: "assistant", content: retryReply });
+            appendBubble("sophie", retryReply);
+            maybeActivateVoiceBtn(retryReply);
+            saveChatState();
+            if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
+              const token = await getToken();
+              const shouldShowAuthNow = !token && !uxFlags.hasRequestedMagicLink && (uxFlags.hasSeenVoicePitch || browserAlreadyKnowsVoice());
+              if (shouldShowAuthNow) { authNudgeShown = true; show(authEl); saveChatState(); }
+            }
+            if (retryData.limit_reached) {
+              sessionEnded = true;
+              const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
+              const reportCTA   = t.chat_report_cta   || "Start now — €19.90 / month";
+              reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
+              show(reportEl); inputEl.disabled = true; sendBtn.disabled = true; saveChatState();
+            }
+          } catch (retryErr) {
+            console.error("[chat retry failed]", retryErr);
+            hide(typingEl);
+            appendBubble("sophie", t.chat_err || "Brief pause — back in a moment.");
+          }
+        } else {
+          hide(typingEl);
+          appendBubble("sophie", t.chat_err || "Brief pause — back in a moment.");
         }
-        appendBubble("sophie", t.chat_err || "Brief pause — back in a moment.");
       } finally {
         sending = false;
         if (!sessionEnded) sendBtn.disabled = false;
