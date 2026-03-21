@@ -2078,6 +2078,7 @@
       if (transition.action === "auth_submit") {
         chatState = "chat_active";
       }
+      if (chatState === "chat_idle") setPulse("soft");
       sending = true;
       inputEl.value = "";
       inputEl.style.height = "auto";
@@ -2098,7 +2099,6 @@
       }
       appendBubble("user", text);
       history.push({ role: "user", content: text });
-      if (chatState === "chat_idle") setPulse("soft");
       if (chatState !== "voice_transitioning") chatState = "chat_active";
       saveChatState();
       show(typingEl);
