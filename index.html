@@ -1667,6 +1667,7 @@
 
     function goToVoiceFromChat() {
       saveVoiceHandover();
+      sessionStorage.setItem("FORCE_NEW_CHAT", "1");
       window.location.href = "/talk";
     }
 
@@ -1743,8 +1744,13 @@
       }, 800);
     }
     showDemoMessages();
+    const FORCE_NEW_CHAT = sessionStorage.getItem("FORCE_NEW_CHAT") === "1";
+    if (FORCE_NEW_CHAT) {
+      clearChatState();
+      sessionStorage.removeItem("FORCE_NEW_CHAT");
+    }
     const restoredState = loadChatState();
-    if (restoredState && restoredState.currentLang === currentLang) {
+    if (!FORCE_NEW_CHAT && restoredState && restoredState.currentLang === currentLang) {
       restoreChatState(restoredState);
     }
     function clearDemoAndStartReal() {
