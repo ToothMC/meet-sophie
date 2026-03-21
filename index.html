@@ -2171,10 +2171,10 @@
           email: text,
           options: { emailRedirectTo: window.location.origin + "/auth/callback" }
         });
+        chatState = "chat_active";
+        inputEl.disabled = false;
+        sendBtn.disabled = false;
         if (!error) {
-          chatState = "chat_active";
-          inputEl.disabled = false;
-          sendBtn.disabled = false;
           const sentMsg = currentLang === "de"
             ? `Danke. Ich habe dir gerade eine Einladung an ${text} geschickt.\nSie sollte in wenigen Sekunden da sein.`
             : currentLang === "fr"
@@ -2182,9 +2182,12 @@
             : `Got it. I just sent an invitation to ${text}.\nCheck your inbox — it should be there in a few seconds.`;
           appendBubble("sophie", sentMsg);
         } else {
-          emailWrap.remove();
-          inputEl.disabled = false;
-          sendBtn.disabled = false;
+          const errMsg = currentLang === "de"
+            ? `Hmm, das hat nicht funktioniert. Versuch es gleich nochmal — oder prüf ob die Adresse stimmt.`
+            : currentLang === "fr"
+            ? `Hmm, ça n'a pas marché. Réessaie dans un moment.`
+            : `Hmm, that didn't work. Try again in a moment — or check if the address is correct.`;
+          appendBubble("sophie", errMsg);
         }
         return;
       }
