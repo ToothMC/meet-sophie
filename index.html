@@ -959,12 +959,10 @@
                 <span></span><span></span><span></span>
               </div>
               <div class="chat-auth chat-hidden" id="chatAuth">
-                <p id="chatAuthText">Save this conversation &amp; continue — free with your email.</p>
                 <div class="chat-auth-row">
-                  <input type="email" id="chatAuthEmail" placeholder="your@email.com" />
-                  <button id="chatAuthBtn" type="button">Send link</button>
+                  <input type="email" id="chatAuthEmail" placeholder="your email" />
+                  <button id="chatAuthBtn" type="button">Here's my email →</button>
                 </div>
-                <p class="chat-auth-sent chat-hidden" id="chatAuthSent">Check your inbox ✓</p>
               </div>
               <div class="chat-report chat-hidden" id="chatReport"></div>
               <div class="chat-footer">
@@ -1254,8 +1252,12 @@
         bottom_cta_copy: "Start a conversation and see where it goes.",
         bottom_cta_btn: "Start talking", bottom_cta_trust_line: "Start free. Continue anytime with Sophie Plus.",
         footer_imprint: "Impressum", footer_privacy: "Datenschutz", footer_terms: "AGB", footer_withdrawal: "Widerruf",
-        chat_placeholder: "Write a message...", chat_auth_text: "Save this conversation & continue — free with your email.",
-        chat_auth_btn: "Send link", chat_auth_sent: "Check your inbox \u2713", chat_online: "online",
+        chat_placeholder: "Write a message...",
+        chat_auth_btn: "Here's my email →",
+        chat_auth_invite: "I don't want to lose this moment.\nLet me send you a private invitation — so we can continue where we left off.\nJust tell me where to send it.",
+        chat_auth_sent_msg: "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.",
+        chat_welcome_back: "Welcome back.\nLet's continue.",
+        chat_online: "online",
         chat_report_title: "Talked with Sophie for more than 3 minutes?",
         chat_report_cta: "Start now \u2014 \u20ac19.90 / month",
         chat_err: "Brief pause \u2014 back in a moment."
@@ -1352,8 +1354,12 @@
         bottom_cta_copy: "Starte ein Gespr\u00e4ch und schau, wohin es f\u00fchrt.",
         bottom_cta_btn: "Gespr\u00e4ch starten", bottom_cta_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
         footer_imprint: "Impressum", footer_privacy: "Datenschutz", footer_terms: "AGB", footer_withdrawal: "Widerruf",
-        chat_placeholder: "Schreib eine Nachricht...", chat_auth_text: "Gespr\u00e4ch speichern & weitermachen \u2014 kostenlos mit deiner E-Mail.",
-        chat_auth_btn: "Link senden", chat_auth_sent: "Schau in dein Postfach \u2713", chat_online: "online",
+        chat_placeholder: "Schreib eine Nachricht...",
+        chat_auth_btn: "Das ist meine E-Mail →",
+        chat_auth_invite: "Ich möchte diesen Moment nicht verlieren.\nLass mich dir eine persönliche Einladung schicken — damit wir dort weitermachen, wo wir aufgehört haben.\nSag mir einfach, wohin ich sie schicken soll.",
+        chat_auth_sent_msg: "Danke. Verstanden.\nIch habe dir gerade eine Einladung geschickt.\nSie sollte in wenigen Sekunden da sein. Ich warte hier auf dich.",
+        chat_welcome_back: "Willkommen zurück.\nLass uns weitermachen.",
+        chat_online: "online",
         chat_report_title: "Mehr als 3 Minuten mit Sophie gesprochen?",
         chat_report_cta: "Jetzt starten \u2014 19,90 \u20ac / Monat",
         chat_err: "Kurze Pause \u2014 gleich wieder da."
@@ -1782,7 +1788,24 @@
       }
     }
 
-    function goToVoiceFromChat() {
+    function hidePrimaryCta() {
+      const btn = document.getElementById("hero-btn-primary");
+      if (btn) btn.style.display = "none";
+    }
+
+    async function goToVoiceFromChat() {
+      const token = await getToken();
+      if (!token) {
+        // Not authenticated — show Sophie's email capture invitation
+        const inviteText = (t.chat_auth_invite || "I don't want to lose this moment.\nLet me send you a private invitation — so we can continue where we left off.\nJust tell me where to send it.");
+        appendBubble("sophie", inviteText);
+        show(authEl);
+        inputEl.disabled = true;
+        sendBtn.disabled = true;
+        authNudgeShown = true;
+        saveChatState();
+        return;
+      }
       writeUxFlags({ hasStartedVoice: true, lastLanguage: currentLang });
       saveVoiceHandover();
       sessionStorage.setItem("FORCE_NEW_CHAT", "1");
@@ -2084,6 +2107,7 @@
       inputEl.value = "";
       inputEl.style.height = "auto";
       sendBtn.disabled = true;
+      hidePrimaryCta();
       // Clear demo on first real interaction
       clearDemoAndStartReal();
       if (!sessionStarted) {
@@ -2250,9 +2274,18 @@
       writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
       saveChatState();
       authBtn.disabled = true;
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + "/" } });
-      if (!error) { hide(authEl); show(authSent); }
-      else { authBtn.disabled = false; }
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+      });
+      if (!error) {
+        hide(authEl);
+        const sentMsg = t.chat_auth_sent_msg || "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.";
+        appendBubble("sophie", sentMsg);
+        saveChatState();
+      } else {
+        authBtn.disabled = false;
+      }
     });
     const chatToVoiceCtas = [
       document.getElementById("chatToVoiceCta"),
@@ -2265,6 +2298,19 @@
         goToVoiceFromChat();
       });
     });
+
+    // Return state — user clicked magic link and came back
+    if (new URLSearchParams(window.location.search).get("welcomed") === "1") {
+      history.replaceState(null, "", window.location.pathname); // clean URL
+      const uxFlagsNow = readUxFlags();
+      if (uxFlagsNow.hasRequestedMagicLink) {
+        const welcomeText = t.chat_welcome_back || "Welcome back.\nLet's continue.";
+        setTimeout(() => {
+          appendBubble("sophie", welcomeText);
+          setTimeout(() => goToVoiceFromChat(), 1500);
+        }, 400);
+      }
+    }
 
     // Logo / brand links → force fresh chat on reload
     document.querySelectorAll(".brand, .footer-brand").forEach(link => {

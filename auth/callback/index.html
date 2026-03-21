@@ -37,8 +37,8 @@
 </head>
 <body>
   <div class="box">
-    <h2>Signing you in…</h2>
-    <p id="status">Please wait a moment.</p>
+    <h2>Sophie is waiting.</h2>
+    <p id="status">One moment…</p>
   </div>
 
   <script type="module">
@@ -73,13 +73,13 @@
 
   try {
     if (window.opener && !window.opener.closed) {
-      window.opener.location.assign("/talk");
+      window.opener.location.assign("/?welcomed=1");
       window.close();
       return;
     }
   } catch (_) {}
 
-  window.location.href = "/talk";
+  window.location.href = "/?welcomed=1";
 }
 
     supabase.auth.onAuthStateChange(async (event, session) => {
