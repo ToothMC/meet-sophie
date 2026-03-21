@@ -718,6 +718,12 @@ body{
 </div>
 
 <script type="module">
+// Catch auth errors in URL hash (e.g. expired magic link) — redirect immediately
+const hashParams = new URLSearchParams(window.location.hash.slice(1));
+if (hashParams.get("error")) {
+  window.location.href = "/login";
+}
+
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
