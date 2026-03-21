@@ -1526,6 +1526,36 @@
       "easier when we talk", "easier if we talk", "if we spoke",
       "sag mir das", "wenn wir kurz sprechen", "si on en parle",
     ];
+
+    const SOFT_VOICE_PITCH_TURN = 2;
+    const HARD_VOICE_PITCH_TURN = 4;
+
+    function browserAlreadyKnowsVoice() { return !!uxFlags.hasStartedVoice; }
+    function shouldAllowSoftVoicePitch() { return !browserAlreadyKnowsVoice() && turnCount >= SOFT_VOICE_PITCH_TURN; }
+    function shouldAllowHardVoicePitch() { return !browserAlreadyKnowsVoice() && turnCount >= HARD_VOICE_PITCH_TURN; }
+
+    function looksComplexForVoice(text = "") {
+      const n = String(text || "").toLowerCase();
+      return [
+        "not sure", "stuck", "confused", "overthinking", "hard decision",
+        "important conversation", "job offer", "should i", "i don't know",
+        "ich bin unsicher", "ich weiss nicht", "ich weiß nicht", "ich stecke fest",
+        "schwierige entscheidung", "wichtige entscheidung", "wichtiges gespräch", "soll ich",
+        "je ne sais pas", "je suis bloqué", "décision difficile", "conversation importante"
+      ].some(p => n.includes(p));
+    }
+
+    function buildSoftVoicePitch() {
+      if (currentLang === "de") return "Das klingt nach etwas, das wir besser kurz im Gespräch sortieren könnten.";
+      if (currentLang === "fr") return "Ça me semble être le genre de chose qu'on clarifie mieux à l'oral.";
+      return "This feels like the kind of thing we could untangle better out loud.";
+    }
+    function buildHardVoicePitch() {
+      if (currentLang === "de") return "Wenn du willst, lass uns sprechen. Das geht oft klarer als Tippen.";
+      if (currentLang === "fr") return "Si tu veux, on peut en parler. C'est souvent plus clair que d'écrire.";
+      return "If you want, we can talk. This is often clearer than typing.";
+    }
+
     function activateVoiceAttention() {
       const btn = document.querySelector(".voice-btn");
       if (btn) btn.classList.add("attention");
@@ -1536,11 +1566,15 @@
     }
     function maybeActivateVoiceBtn(text) {
       const normalized = String(text || "").toLowerCase();
-      if (VOICE_TRIGGERS.some(trigger => normalized.includes(trigger))) {
+      const hasTriggerPhrase = VOICE_TRIGGERS.some(trigger => normalized.includes(trigger));
+      const hasVoicePitchText =
+        normalized.includes("let's talk") || normalized.includes("lets talk") ||
+        normalized.includes("out loud") || normalized.includes("besser im gespräch") ||
+        normalized.includes("lass uns sprechen") || normalized.includes("à l'oral") ||
+        normalized.includes("on peut parler");
+      if (hasTriggerPhrase || hasVoicePitchText) {
         activateVoiceAttention();
-        if (!uxFlags.hasSeenVoicePitch) {
-          writeUxFlags({ hasSeenVoicePitch: true });
-        }
+        if (!uxFlags.hasSeenVoicePitch) writeUxFlags({ hasSeenVoicePitch: true });
       }
     }
 
@@ -1702,11 +1736,17 @@
         /\bi want to hear you\b/i,
         /\bcan we talk\b/i,
         /\bi'd rather speak\b/i,
+        /\blet'?s talk\b/i,
+        /\bi want to talk\b/i,
+        /\bi want to speak\b/i,
         /\bich will mit dir sprechen\b/i,
         /\bich würde dich gerne hören\b/i,
         /\blass uns sprechen\b/i,
+        /\bich will reden\b/i,
+        /\bich möchte reden\b/i,
         /\bje veux entendre ta voix\b/i,
-        /\bon peut parler\b/i
+        /\bon peut parler\b/i,
+        /\bje veux parler\b/i
       ].some(re => re.test(text));
     }
 
@@ -1881,15 +1921,30 @@
           language: getCurrentLang(),
         });
         hide(typingEl);
-        const reply = data.reply;
+        let reply = data.reply;
+        turnCount++;
+
+        const shouldHardPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowHardVoicePitch() && looksComplexForVoice(text);
+        const shouldSoftPitchNow = !uxFlags.hasSeenVoicePitch && shouldAllowSoftVoicePitch() && looksComplexForVoice(text);
+
+        if (shouldHardPitchNow) {
+          reply += "\n\n" + buildHardVoicePitch();
+        } else if (shouldSoftPitchNow) {
+          reply += "\n\n" + buildSoftVoicePitch();
+        }
+
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
         maybeActivateVoiceBtn(reply);
-        turnCount++;
         saveChatState();
+
         if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) {
           const token = await getToken();
-          if (!token) { authNudgeShown = true; show(authEl); saveChatState(); }
+          const shouldShowAuthNow =
+            !token &&
+            !uxFlags.hasRequestedMagicLink &&
+            (uxFlags.hasSeenVoicePitch || browserAlreadyKnowsVoice());
+          if (shouldShowAuthNow) { authNudgeShown = true; show(authEl); saveChatState(); }
         }
         if (data.limit_reached) {
           sessionEnded = true;
