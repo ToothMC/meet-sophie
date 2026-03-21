@@ -1524,9 +1524,17 @@
     if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
 
     const VOICE_TRIGGERS = [
+      // EN
       "let me hear", "hear how you say", "say that to me", "not just in text",
       "easier when we talk", "easier if we talk", "if we spoke",
-      "sag mir das", "wenn wir kurz sprechen", "si on en parle",
+      "let's talk", "lets talk", "out loud", "then let's talk", "then let us talk",
+      "we can talk", "we could talk", "shall we talk", "want to talk",
+      // DE
+      "sag mir das", "wenn wir kurz sprechen", "lass uns sprechen", "lass uns das tun",
+      "dann lass uns", "wollen wir sprechen", "besser im gespräch", "kurz sprechen",
+      "das tun wir", "dann sprechen wir",
+      // FR
+      "si on en parle", "on peut parler", "parlons", "à l'oral", "parler de vive voix",
     ];
 
     const SOFT_VOICE_PITCH_TURN = 2;
@@ -1568,15 +1576,15 @@
     }
     function maybeActivateVoiceBtn(text) {
       const normalized = String(text || "").toLowerCase();
-      const hasTriggerPhrase = VOICE_TRIGGERS.some(trigger => normalized.includes(trigger));
-      const hasVoicePitchText =
-        normalized.includes("let's talk") || normalized.includes("lets talk") ||
-        normalized.includes("out loud") || normalized.includes("besser im gespräch") ||
-        normalized.includes("lass uns sprechen") || normalized.includes("à l'oral") ||
-        normalized.includes("on peut parler");
-      if (hasTriggerPhrase || hasVoicePitchText) {
+      const detected = VOICE_TRIGGERS.some(trigger => normalized.includes(trigger));
+      if (detected) {
         activateVoiceAttention();
         if (!uxFlags.hasSeenVoicePitch) writeUxFlags({ hasSeenVoicePitch: true });
+        // Sophie invited to voice naturally (AI-generated) — set pending state
+        // so next user "ja"/"yes"/"ok" triggers the transition
+        if (chatState === "chat_active" || chatState === "chat_idle") {
+          chatState = "voice_offer_pending";
+        }
       }
     }
 
