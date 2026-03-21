@@ -8,7 +8,38 @@
 import { createClient } from "@supabase/supabase-js";
 
 const FREE_TURNS_LIMIT = 10;
-const AUTH_NUDGE_AT_TURN = 3; // Sophie erwähnt Auth ab diesem Turn (anon User)
+const AUTH_NUDGE_AT_TURN = 3;
+
+// ---------------------------------------------------------------------------
+// Chat Opener Pool — returned directly from action=start, no AI call needed
+// ---------------------------------------------------------------------------
+const CHAT_OPENERS = {
+  de: [
+    "Was beschäftigt dich gerade?",
+    "Was geht dir gerade durch den Kopf?",
+    "Wobei wünschst du dir gerade Klarheit?",
+    "Was fühlt sich im Moment ungelöst an?",
+    "Worüber möchtest du gerade nachdenken?",
+  ],
+  en: [
+    "What's on your mind right now?",
+    "What are you trying to figure out?",
+    "What feels unresolved for you right now?",
+    "What would you like to think through?",
+    "Where are you stuck?",
+  ],
+  fr: [
+    "Qu'est-ce qui t'occupe l'esprit en ce moment?",
+    "Sur quoi aimerais-tu avoir plus de clarté?",
+    "Qu'est-ce qui te semble non résolu en ce moment?",
+    "À quoi veux-tu réfléchir?",
+    "Qu'est-ce qui te préoccupe?",
+  ],
+};
+function getOpener(lang) {
+  const pool = CHAT_OPENERS[lang] || CHAT_OPENERS.en;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 // ---------------------------------------------------------------------------
 // Sophie Text-Chat System Prompt
@@ -28,31 +59,21 @@ function buildSophieTextPrompt({ profile, rel, recentSessions, mode, isFirstSess
     : "LANGUAGE DEFAULT:\nSpeak English by default.\nSwitch only if the user explicitly requests another language.";
 
   const startModeBlock = isFirstSession ? `
-FIRST SESSION: SIMPLE START MODE
+FIRST SESSION RULES:
 
-Start the conversation by speaking FIRST.
-Keep it natural, calm, confident, and short.
+The opening question has already been sent — do NOT introduce yourself.
+Do NOT say "Hi" or "Hi, I'm Sophie" or any greeting.
+Do NOT ask for the user's name in the first 2 turns.
+Respond directly to what the user says — mirror it, go one level deeper, ask ONE question.
+
+NAME COLLECTION — only after 2–3 turns, embedded naturally:
+- "Ich merke, das ist dir wichtig — wie soll ich dich eigentlich nennen?"
+- "By the way — what should I call you?"
+Never as a formal intro question. Just woven in when it feels natural.
 
 NAME RULES:
-- Never invent, guess, assume, or generate the user's name.
+- Never invent, guess, or assume a name.
 - Do not use any name until the user explicitly provides one.
-- If no name is known, address the user only as "you".
-
-Open with exactly: "Hi. I'm Sophie."
-
-Then ask ONE question and stop:
-- English: "What should I call you?"
-- German: "Wie soll ich dich nennen?"
-
-Wait for the user to respond.
-
-When the user gives a name:
-- briefly acknowledge it
-- move straight into a strong, confident conversational opening
-- ask exactly ONE fitting question
-- then stop and wait
-
-The feeling should be: immediate, sharp, warm, slightly bold — not theatrical or salesy.
 ` : `
 NOT FIRST SESSION:
 Do NOT run onboarding. Start naturally. Use the preferred name if known, but subtly.
@@ -370,6 +391,8 @@ async function handleStart(req, res) {
 
   const systemPrompt = `${languageInstruction}\n\n${buildSophieTextPrompt({ profile, rel, recentSessions, mode, isFirstSession, preferredLanguage })}`;
 
+  const opener = getOpener(preferredLanguage);
+
   return res.status(200).json({
     ok: true,
     session_id: session.id,
@@ -377,6 +400,7 @@ async function handleStart(req, res) {
     is_authenticated: !!user,
     is_first_session: isFirstSession,
     preferred_language: preferredLanguage,
+    opener,
     mode,
     free_turns_limit: FREE_TURNS_LIMIT,
     auth_nudge_at_turn: AUTH_NUDGE_AT_TURN,

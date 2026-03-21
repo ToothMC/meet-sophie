@@ -1984,6 +1984,7 @@
     hide(reportEl);
     hide(authSent);
     deactivateVoiceAttention();
+    setPulse("soft");
 
     if (authEmail) authEmail.value = "";
     function clearDemoAndStartReal() {
@@ -2025,25 +2026,13 @@
     }
     async function startSession() {
       const startData = await callChat("start", { language: getCurrentLang() });
-      sessionId = startData.session_id;
+      sessionId    = startData.session_id;
       systemPrompt = startData.system_prompt || "";
-      show(typingEl);
-      const kickoff = await callChat("message", {
-        session_id: sessionId,
-        system_prompt: systemPrompt,
-        messages: [
-          { role: "user", content: "[CHAT_START]" }
-        ],
-        language: getCurrentLang(),
-      });
-      hide(typingEl);
-      const greeting = kickoff.reply;
-      history = [
-        { role: "user", content: "[CHAT_START]" },
-        { role: "assistant", content: greeting }
-      ];
+      // Opener comes directly from pool — no AI call needed
+      const opener = startData.opener || "";
+      history = [{ role: "assistant", content: opener }];
       chatState = "chat_active";
-      appendBubble("sophie", greeting);
+      appendBubble("sophie", opener);
       saveChatState();
     }
     async function sendMessage() {
@@ -2078,7 +2067,6 @@
       if (transition.action === "auth_submit") {
         chatState = "chat_active";
       }
-      if (chatState === "chat_idle") setPulse("soft");
       sending = true;
       inputEl.value = "";
       inputEl.style.height = "auto";
