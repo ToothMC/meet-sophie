@@ -604,7 +604,7 @@ body{
 <div class="overlay" id="overlay"></div>
 
 <div class="topbar">
-  <a href="/">← Landing</a>
+  <a href="/" id="backToLandingBtn">← Landing</a>
   <button id="logoutBtn" type="button">Logout</button>
 </div>
 
@@ -2627,6 +2627,12 @@ downloadReportBtn.addEventListener("click", downloadReport);
 
 startBtn.addEventListener("click", startVoice);
 endBtn.addEventListener("click", () => stopVoice(false));
+
+document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  sessionStorage.setItem("FORCE_NEW_CHAT", "1");
+  window.location.href = "/";
+});
 
 initManageSubscriptionLink();
 </script>

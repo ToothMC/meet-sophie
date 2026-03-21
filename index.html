@@ -2177,6 +2177,15 @@
       });
     });
 
+    // Logo / brand links → force fresh chat on reload
+    document.querySelectorAll(".brand, .footer-brand").forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        sessionStorage.setItem("FORCE_NEW_CHAT", "1");
+        window.location.href = "/";
+      });
+    });
+
     window.addEventListener("pagehide", () => {
       saveChatState();
       endSession();
