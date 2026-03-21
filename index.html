@@ -1267,6 +1267,7 @@
         bottom_cta_btn: "Start talking", bottom_cta_trust_line: "Start free. Continue anytime with Sophie Plus.",
         footer_imprint: "Impressum", footer_privacy: "Datenschutz", footer_terms: "AGB", footer_withdrawal: "Widerruf",
         chat_placeholder: "Write a message...",
+        chat_email_placeholder: "here's my email...",
         chat_auth_btn: "Here's my email →",
         chat_auth_invite: "I don't want to lose this moment.\nLet me send you a private invitation — so we can continue where we left off.\nJust tell me where to send it.",
         chat_auth_sent_msg: "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.",
@@ -1369,6 +1370,7 @@
         bottom_cta_btn: "Gespr\u00e4ch starten", bottom_cta_trust_line: "Kostenlos starten. Jederzeit mit Sophie Plus weitermachen.",
         footer_imprint: "Impressum", footer_privacy: "Datenschutz", footer_terms: "AGB", footer_withdrawal: "Widerruf",
         chat_placeholder: "Schreib eine Nachricht...",
+        chat_email_placeholder: "hier ist meine E-Mail...",
         chat_auth_btn: "Das ist meine E-Mail →",
         chat_auth_invite: "Ich möchte diesen Moment nicht verlieren.\nLass mich dir eine persönliche Einladung schicken — damit wir dort weitermachen, wo wir aufgehört haben.\nSag mir einfach, wohin ich sie schicken soll.",
         chat_auth_sent_msg: "Danke. Verstanden.\nIch habe dir gerade eine Einladung geschickt.\nSie sollte in wenigen Sekunden da sein. Ich warte hier auf dich.",
@@ -1814,9 +1816,13 @@
         // Not authenticated — show Sophie's email capture invitation
         const inviteText = (t.chat_auth_invite || "I don't want to lose this moment.\nLet me send you a private invitation — so we can continue where we left off.\nJust tell me where to send it.");
         appendBubble("sophie", inviteText);
-        appendAuthBubble();
-        inputEl.disabled = true;
-        sendBtn.disabled = true;
+        chatState = "email_capture";
+        inputEl.type = "email";
+        inputEl.placeholder = t.chat_email_placeholder || "here's my email...";
+        inputEl.disabled = false;
+        sendBtn.disabled = false;
+        inputEl.value = "";
+        setTimeout(() => inputEl.focus(), 80);
         authNudgeShown = true;
         saveChatState();
         return;
@@ -2126,10 +2132,40 @@
       systemPrompt = startData.system_prompt || "";
       // history already contains the opener shown on page load — don't override
     }
+    function restoreInput() {
+      inputEl.type = "text";
+      inputEl.placeholder = t.chat_placeholder || "Write a message...";
+      inputEl.value = "";
+    }
+
     async function sendMessage() {
       if (sending || sessionEnded) return;
       const text = inputEl.value.trim();
       if (!text) return;
+
+      // Email capture mode — input field is repurposed for email
+      if (chatState === "email_capture") {
+        sendBtn.disabled = true;
+        inputEl.disabled = true;
+        writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
+        saveChatState();
+        const { error } = await supabase.auth.signInWithOtp({
+          email: text,
+          options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+        });
+        if (!error) {
+          restoreInput();
+          chatState = "chat_active";
+          inputEl.disabled = false;
+          sendBtn.disabled = false;
+          const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
+          appendBubble("sophie", sentMsg);
+        } else {
+          inputEl.disabled = false;
+          sendBtn.disabled = false;
+        }
+        return;
+      }
 
       const lastAssistantText =
         [...history].reverse().find(m => m?.role === "assistant" && m?.content)?.content || "";
