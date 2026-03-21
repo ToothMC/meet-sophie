@@ -1466,7 +1466,7 @@
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const AUTH_NUDGE_AT = 8;
+    const AUTH_NUDGE_AT = 50; // TEST: raised to skip auth nudge during voice conversion testing
     let currentLang = localStorage.getItem("preferredLanguage") || "en";
 
     const UX_FLAGS_KEY = "sophie_ux_flags_v1";
