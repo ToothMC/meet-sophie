@@ -861,6 +861,20 @@
     }
     .chat-auth button:hover{background:rgba(142,178,255,.26)}
     .chat-auth-sent{font-size:12.5px;color:#7ecf7e;margin:7px 0 0}
+    .chat-auth-bubble input[type="email"]{
+      width:100%;box-sizing:border-box;margin-top:8px;
+      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+      border-radius:8px;padding:7px 10px;font-size:13px;
+      color:var(--text);outline:none;font-family:inherit;
+    }
+    .chat-auth-bubble input[type="email"]:focus{border-color:rgba(142,178,255,.45)}
+    .chat-auth-bubble button{
+      width:100%;margin-top:6px;padding:7px 13px;border-radius:8px;
+      background:rgba(142,178,255,.16);border:1px solid rgba(142,178,255,.28);
+      color:#c8d8ff;font-size:13px;font-weight:600;
+      cursor:pointer;font-family:inherit;
+    }
+    .chat-auth-bubble button:hover{background:rgba(142,178,255,.26)}
     .chat-report{
       margin:0 12px 8px;padding:11px 13px;border-radius:12px;
       background:rgba(142,178,255,.06);
@@ -1800,7 +1814,7 @@
         // Not authenticated — show Sophie's email capture invitation
         const inviteText = (t.chat_auth_invite || "I don't want to lose this moment.\nLet me send you a private invitation — so we can continue where we left off.\nJust tell me where to send it.");
         appendBubble("sophie", inviteText);
-        show(authEl);
+        appendAuthBubble();
         inputEl.disabled = true;
         sendBtn.disabled = true;
         authNudgeShown = true;
@@ -1972,6 +1986,47 @@
       messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return bubble;
+    }
+
+    function appendAuthBubble() {
+      const wrap   = document.createElement("div");
+      wrap.className = "chat-msg sophie";
+      const bubble = document.createElement("div");
+      bubble.className = "chat-msg-bubble chat-auth-bubble";
+      const input  = document.createElement("input");
+      input.type        = "email";
+      input.placeholder = "your email";
+      const btn    = document.createElement("button");
+      btn.textContent = t.chat_auth_btn || "Das ist meine E-Mail →";
+      bubble.appendChild(input);
+      bubble.appendChild(btn);
+      wrap.appendChild(bubble);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      setTimeout(() => input.focus(), 80);
+
+      const submit = async () => {
+        const email = input.value.trim();
+        if (!email) return;
+        writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
+        saveChatState();
+        btn.disabled = true;
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+        });
+        if (!error) {
+          wrap.remove();
+          const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
+          appendBubble("sophie", sentMsg);
+          inputEl.disabled = false;
+          sendBtn.disabled = false;
+        } else {
+          btn.disabled = false;
+        }
+      };
+      btn.addEventListener("click", submit);
+      input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
     }
     // Chat Opener Pool — same questions as server, picked client-side on load
     const OPENERS = {
