@@ -1511,6 +1511,7 @@
     let sessionStarted = false;
     let demoCleared    = false;
     let sending        = false;
+    let awaitingVoiceConfirmation = false;
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
@@ -1750,6 +1751,15 @@
       ].some(re => re.test(text));
     }
 
+    function isVoiceConfirmation(text = "") {
+      const normalized = String(text || "").trim().toLowerCase();
+      return [
+        "yes", "yeah", "yep", "sure", "okay", "ok", "let's do it", "lets do it",
+        "ja", "gern", "gerne", "machen wir", "lass uns", "bitte",
+        "oui", "d'accord", "dac", "volontiers"
+      ].includes(normalized);
+    }
+
     // Central language switch — both nav header and chat card call this
     async function setLanguage(lang) {
       if (!lang || lang === currentLang) return;
@@ -1872,6 +1882,27 @@
       if (sending || sessionEnded) return;
       const text = inputEl.value.trim();
       if (!text) return;
+
+      if (awaitingVoiceConfirmation && isVoiceConfirmation(text)) {
+        clearDemoAndStartReal();
+        appendBubble("user", text);
+        history.push({ role: "user", content: text });
+        const directReply =
+          currentLang === "de" ? "Gut. Dann lass uns sprechen." :
+          currentLang === "fr" ? "Bien. Alors parlons." :
+          "Good. Then let's talk.";
+        appendBubble("sophie", directReply);
+        history.push({ role: "assistant", content: directReply });
+        awaitingVoiceConfirmation = false;
+        saveChatState();
+        goToVoiceFromChat();
+        return;
+      }
+
+      if (awaitingVoiceConfirmation && !isVoiceConfirmation(text) && !hasDirectVoiceIntent(text)) {
+        awaitingVoiceConfirmation = false;
+      }
+
       if (hasDirectVoiceIntent(text)) {
         clearDemoAndStartReal();
         appendBubble("user", text);
@@ -1932,6 +1963,7 @@
         } else if (shouldSoftPitchNow) {
           reply += "\n\n" + buildSoftVoicePitch();
         }
+        awaitingVoiceConfirmation = shouldSoftPitchNow || shouldHardPitchNow;
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
