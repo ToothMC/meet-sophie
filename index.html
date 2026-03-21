@@ -1793,6 +1793,7 @@
     }
 
     async function goToVoiceFromChat() {
+      hidePrimaryCta();
       const token = await getToken();
       if (!token) {
         // Not authenticated — show Sophie's email capture invitation
@@ -2105,7 +2106,6 @@
       inputEl.value = "";
       inputEl.style.height = "auto";
       sendBtn.disabled = true;
-      hidePrimaryCta();
       // Clear demo on first real interaction
       clearDemoAndStartReal();
       if (!sessionStarted) {
@@ -2274,7 +2274,7 @@
       authBtn.disabled = true;
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+        options: { emailRedirectTo: window.location.origin + "/talk" }
       });
       if (!error) {
         hide(authEl);
@@ -2296,19 +2296,6 @@
         goToVoiceFromChat();
       });
     });
-
-    // Return state — user clicked magic link and came back
-    if (new URLSearchParams(window.location.search).get("welcomed") === "1") {
-      history.replaceState(null, "", window.location.pathname); // clean URL
-      const uxFlagsNow = readUxFlags();
-      if (uxFlagsNow.hasRequestedMagicLink) {
-        const welcomeText = t.chat_welcome_back || "Welcome back.\nLet's continue.";
-        setTimeout(() => {
-          appendBubble("sophie", welcomeText);
-          setTimeout(() => goToVoiceFromChat(), 1500);
-        }, 400);
-      }
-    }
 
     // Logo / brand links → force fresh chat on reload
     document.querySelectorAll(".brand, .footer-brand").forEach(link => {
