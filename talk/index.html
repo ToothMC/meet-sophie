@@ -622,7 +622,7 @@ body{
     <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
   </div>
 
-  <button id="start" class="btn" style="display:none">Talk to Sophie</button>
+  <button id="start" class="btn">Enter the Room</button>
   <button id="end" class="btn" disabled style="display:none">Leave the Room</button>
 </div>
 
@@ -2174,6 +2174,7 @@ async function startVoice(){
   await preloadLimitVideo();
 
   startBtn.disabled = true;
+  startBtn.textContent = "Connecting…";
   logoutBtn.disabled = true;
   headline.textContent = "Sophie is joining…";
   setStatus("connecting..");
@@ -2382,7 +2383,9 @@ async function startVoice(){
     await pc.setRemoteDescription(answer);
 
     endBtn.disabled = false;
-    endBtn.style.display = "";
+    startBtn.disabled = false;
+    startBtn.textContent = "Leave the Room";
+    startBtn.onclick = () => stopVoice(false);
     showReadyStatus();
     headline.textContent = "Sophie is listening.";
     showLiveBadge(true);
@@ -2525,6 +2528,8 @@ if (!hasRealConversation) {
 
   statusEl.style.visibility = "visible";
   startBtn.disabled = false;
+  startBtn.textContent = "Enter the Room";
+  startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie is waiting.";
   setStatus("Whenever you're ready.");
