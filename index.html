@@ -1816,6 +1816,10 @@
         // Not authenticated — show Sophie's email capture invitation
         const inviteText = (t.chat_auth_invite || "I don't want to lose this moment.\nLet me send you a private invitation — so we can continue where we left off.\nJust tell me where to send it.");
         appendBubble("sophie", inviteText);
+        const emailPrompt = currentLang === "de" ? "↓ Deine E-Mail-Adresse" :
+                            currentLang === "fr" ? "↓ Ton adresse e-mail" :
+                            "↓ Your email address";
+        appendBubble("sophie", emailPrompt);
         chatState = "email_capture";
         inputEl.type = "email";
         inputEl.placeholder = t.chat_email_placeholder || "here's my email...";
@@ -2185,6 +2189,7 @@
           "Good. Then let’s talk.";
         appendBubble("sophie", directReply);
         history.push({ role: "assistant", content: directReply });
+        inputEl.value = "";
         chatState = "voice_transitioning";
         saveChatState();
         goToVoiceFromChat();
