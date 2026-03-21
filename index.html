@@ -1794,6 +1794,7 @@
 
     async function goToVoiceFromChat() {
       hidePrimaryCta();
+      saveVoiceHandover(); // Save now — localStorage survives magic link navigation
       const token = await getToken();
       if (!token) {
         // Not authenticated — show Sophie's email capture invitation
