@@ -2322,7 +2322,7 @@ async function startVoice(){
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
       headline.textContent = "Sophie is waiting.";
-      startBtn.textContent = "Enter the Room";
+      startBtn.textContent = "Gespräch starten";
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -2425,7 +2425,7 @@ async function startVoice(){
     showLiveBadge(false);
 
     startBtn.disabled = false;
-    startBtn.textContent = "Enter the Room";
+    startBtn.textContent = "Gespräch starten";
     startBtn.onclick = startVoice;
     endBtn.disabled = true;
     logoutBtn.disabled = false;
@@ -2636,7 +2636,7 @@ if (!hasRealConversation) {
 
     statusEl.style.visibility = "visible";
     startBtn.disabled = false;
-    startBtn.textContent = "Enter the Room";
+    startBtn.textContent = "Gespräch starten";
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
     headline.textContent = "Sophie is waiting.";
