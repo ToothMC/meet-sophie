@@ -2227,7 +2227,10 @@ function attachChannel(ch) {
         return;
       }
 
-      if (msg?.type === "response.output_text.delta") return;
+      if (msg?.type === "response.output_text.delta") {
+        if (softEndSummaryTriggered && msg?.delta) closingResponseStarted = true;
+        return;
+      }
       if (msg?.type === "response.output_text.done") return;
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
