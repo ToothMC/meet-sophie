@@ -780,6 +780,10 @@ if (!session?.user) {
   window.location.href = "/login";
 }
 
+// Auth fertig — Loading ausblenden, Haupt-UI einblenden
+document.getElementById("authLoading").style.display = "none";
+document.querySelector(".wrap").style.display = "";
+
 // Session Watch (Logout / Session verloren)
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === "SIGNED_OUT" || !session?.user) {
