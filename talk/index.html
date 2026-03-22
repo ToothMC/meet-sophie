@@ -2580,15 +2580,15 @@ if (!hasRealConversation) {
         stream = null;
       }
 
-      if (pc) {
-        try { pc.close(); } catch(e){}
-        pc = null;
-      }
-
-      if (audioEl) {
-        try { audioEl.srcObject = null; } catch(e){}
-        audioEl = null;
-      }
+      // keep audio output alive so Sophie can finish her closing sentence
+      const _pc = pc;
+      const _audioEl = audioEl;
+      pc = null;
+      audioEl = null;
+      setTimeout(() => {
+        try { if (_pc) _pc.close(); } catch(e){}
+        try { if (_audioEl) _audioEl.srcObject = null; } catch(e){}
+      }, 3000);
     }
 
     if (durationSeconds > 0) {
