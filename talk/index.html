@@ -2824,9 +2824,9 @@ logoutBtn.onclick = async () => {
 
 showSummaryBtn.addEventListener("click", showSummaryView);
 showTranscriptBtn.addEventListener("click", showTranscriptView);
-copyReportBtn.addEventListener("click", copyReport);
-shareReportBtn.addEventListener("click", shareReport);
-downloadReportBtn.addEventListener("click", downloadReport);
+copyReportBtn?.addEventListener("click", copyReport);
+shareReportBtn?.addEventListener("click", shareReport);
+downloadReportBtn?.addEventListener("click", downloadReport);
 
 startBtn.addEventListener("click", startVoice);
 endBtn.addEventListener("click", () => stopVoice(false));
