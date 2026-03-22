@@ -3,55 +3,154 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sophie – Aktiv</title>
+  <title>Sophie – Danke</title>
   <style>
+    *{ box-sizing:border-box; }
+
+    html, body{
+      height:100%;
+      margin:0;
+    }
+
     body{
       font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      max-width: 760px;
-      margin: 44px auto;
-      padding: 0 18px;
-      color:#111;
+      color:white;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#0b0f14;
+      position:relative;
+      overflow:hidden;
     }
-    .card{
-      border:1px solid rgba(0,0,0,.12);
-      border-radius:16px;
-      padding:18px;
-      background:#fff;
-      box-shadow:0 10px 30px rgba(0,0,0,.06);
+
+    .bg{
+      position:fixed;
+      inset:0;
+      background:url("/sophie.jpg") center/cover no-repeat;
+      opacity:1;
+      z-index:0;
     }
-    h1{ margin:0 0 8px; font-size:26px; }
-    p{ margin:10px 0; line-height:1.55; }
-    a{ color:inherit; }
+
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.62);
+      z-index:1;
+    }
+
+    .wrap{
+      position:relative;
+      z-index:2;
+      width:90%;
+      max-width:400px;
+      text-align:center;
+    }
+
+    .avatar{
+      width:72px;
+      height:72px;
+      border-radius:50%;
+      object-fit:cover;
+      border:2px solid rgba(255,255,255,.25);
+      margin:0 auto 18px;
+      display:block;
+    }
+
+    .name{
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      opacity:.6;
+      margin:0 0 18px;
+    }
+
+    .message{
+      font-size:20px;
+      font-weight:500;
+      line-height:1.55;
+      margin:0 0 10px;
+      letter-spacing:-.01em;
+    }
+
+    .sub{
+      font-size:15px;
+      color:rgba(255,255,255,.6);
+      margin:0 0 32px;
+      line-height:1.5;
+    }
+
+    .status{
+      font-size:13px;
+      color:rgba(255,255,255,.5);
+      margin:0 0 20px;
+      min-height:18px;
+    }
+
     .btn{
       display:inline-block;
-      margin-top:10px;
-      padding:12px 14px;
-      border-radius:12px;
-      background:#111;
-      color:#fff;
+      padding:15px 32px;
+      border-radius:14px;
+      background:white;
+      color:#0b0f14;
       text-decoration:none;
       font-weight:700;
+      font-size:16px;
+      transition:opacity .2s;
     }
+
     .btn:hover{ opacity:.92; }
-    .muted{ opacity:.72; font-size:13px; }
-    .links{ margin-top:14px; font-size:13px; opacity:.85; }
-    .links a{ text-decoration:none; }
-    .links a:hover{ text-decoration:underline; }
-    .hr{ height:1px; background:rgba(0,0,0,.10); margin:16px 0; }
+
+    .footer{
+      position:fixed;
+      bottom:18px;
+      left:0; right:0;
+      text-align:center;
+      font-size:12px;
+      color:rgba(255,255,255,.35);
+      z-index:2;
+    }
+
+    .footer a{
+      color:rgba(255,255,255,.45);
+      text-decoration:none;
+    }
+
+    .footer a:hover{ color:rgba(255,255,255,.7); }
+
+    .lang{
+      margin-top:10px;
+      font-size:12px;
+    }
+
+    .lang a{
+      color:rgba(255,255,255,.4);
+      text-decoration:none;
+      cursor:pointer;
+    }
+
+    .lang a:hover{ color:rgba(255,255,255,.7); }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1 id="tTitle">Zahlung erfolgreich ✅</h1>
-    <p id="tBody">Dein Abonnement ist aktiv. Du kannst jetzt mit Sophie weitermachen.</p>
+  <div class="bg"></div>
+  <div class="overlay"></div>
 
-    <p id="wait" class="muted">Einen Moment… wird aktiviert.</p>
-    <p><a id="go" class="btn" href="/talk/" style="display:none;">Weiter zu Sophie</a></p>
+  <div class="wrap">
+    <img class="avatar" src="/sophie.jpg" alt="Sophie" />
+    <p class="name">Sophie</p>
 
-    <div class="hr"></div>
+    <p class="message" id="tMessage"></p>
+    <p class="sub" id="tSub"></p>
 
-    <div class="links">
+    <p class="status" id="tStatus"></p>
+    <a id="go" class="btn" href="/talk/" style="display:none;" id="tBtn"></a>
+  </div>
+
+  <div class="footer">
+    <div>
       <a href="/impressum.html" target="_blank" rel="noopener">Impressum</a>
       &nbsp;·&nbsp;
       <a href="/privacy.html" target="_blank" rel="noopener">Datenschutz</a>
@@ -60,31 +159,30 @@
       &nbsp;·&nbsp;
       <a href="/withdrawal.html" target="_blank" rel="noopener">Widerruf</a>
       &nbsp;·&nbsp;
-      <a href="/pricing" id="tManage">Abo verwalten</a>
+      <a href="/pricing" id="tManage"></a>
     </div>
-
-    <p class="muted" id="tLang" style="margin-top:14px;">
+    <div class="lang">
       <a href="#" id="de">DE</a> · <a href="#" id="en">EN</a>
-    </p>
+    </div>
   </div>
 
   <script>
   const TEXT = {
     de: {
-      title: "Zahlung erfolgreich ✅",
-      body: "Dein Zugang wird jetzt aktiviert.",
-      wait: "Einen Moment… wird geprüft.",
+      message: "Danke. Ich freue mich, dass du da bist.",
+      sub: "Dein Zugang wird gerade aktiviert — ich warte schon auf unser nächstes Gespräch.",
+      status: "Einen Moment … wird geprüft.",
       ready: "Bereit.",
       btn: "Weiter zu Sophie",
       manage: "Abo verwalten",
       error: "Die Aktivierung konnte nicht bestätigt werden. Bitte versuche es gleich noch einmal.",
     },
     en: {
-      title: "Payment successful ✅",
-      body: "Your access is being activated now.",
-      wait: "One moment… verifying.",
+      message: "Thank you. I'm glad you're here.",
+      sub: "Your access is being activated — I'm already looking forward to our next conversation.",
+      status: "One moment… verifying.",
       ready: "Ready.",
-      btn: "Enter the Room",
+      btn: "Continue with Sophie",
       manage: "Manage subscription",
       error: "Activation could not be confirmed yet. Please try again in a moment.",
     }
@@ -95,11 +193,11 @@
   function setLang(l){
     lang = l;
     document.documentElement.lang = l;
-    document.getElementById("tTitle").textContent = TEXT[l].title;
-    document.getElementById("tBody").textContent  = TEXT[l].body;
-    document.getElementById("wait").textContent   = TEXT[l].wait;
-    document.getElementById("go").textContent     = TEXT[l].btn;
-    document.getElementById("tManage").textContent= TEXT[l].manage;
+    document.getElementById("tMessage").textContent = TEXT[l].message;
+    document.getElementById("tSub").textContent     = TEXT[l].sub;
+    document.getElementById("tStatus").textContent  = TEXT[l].status;
+    document.getElementById("go").textContent       = TEXT[l].btn;
+    document.getElementById("tManage").textContent  = TEXT[l].manage;
   }
 
   document.getElementById("de").onclick = (e)=>{ e.preventDefault(); setLang("de"); };
@@ -112,7 +210,7 @@
     const sessionId = params.get("session_id");
 
     if (!sessionId) {
-      document.getElementById("wait").textContent = TEXT[lang].error;
+      document.getElementById("tStatus").textContent = TEXT[lang].error;
       document.getElementById("go").style.display = "inline-block";
       return;
     }
@@ -127,21 +225,21 @@
 
       if (!res.ok) {
         console.error("confirm-checkout failed:", json);
-        document.getElementById("wait").textContent = TEXT[lang].error;
+        document.getElementById("tStatus").textContent = TEXT[lang].error;
         document.getElementById("go").style.display = "inline-block";
         return;
       }
 
-      document.getElementById("wait").textContent = TEXT[lang].ready;
+      document.getElementById("tStatus").textContent = TEXT[lang].ready;
       window.location.href = "/talk/?paid=1";
     } catch (err) {
       console.error("confirm-checkout error:", err);
-      document.getElementById("wait").textContent = TEXT[lang].error;
+      document.getElementById("tStatus").textContent = TEXT[lang].error;
       document.getElementById("go").style.display = "inline-block";
     }
   }
 
   confirmCheckout();
-</script>
+  </script>
 </body>
 </html>
