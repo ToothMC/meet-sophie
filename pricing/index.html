@@ -412,6 +412,7 @@ function setLang(l){
   document.getElementById("tLegal1").innerHTML = t.legal1;
   document.getElementById("tLegal2").innerHTML = t.legal2;
   document.getElementById("tPrivacy").textContent = t.privacy;
+  document.getElementById("backBtn").textContent = l === "de" ? "← Zurück" : "← Back";
 
   updateEnabled();
 }
