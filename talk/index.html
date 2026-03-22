@@ -1315,16 +1315,31 @@ async function copyReport() {
 
 async function shareReport() {
   const withTranscript = isTranscriptTabActive();
-  const text = buildReportPlainText(withTranscript);
+  const html = buildReportHtml(withTranscript);
+  const plain = buildReportPlainText(withTranscript);
+
+  // Immer zuerst formatierten Report ins Clipboard (für Mail-Einfügen)
   try {
-    if (navigator.share) {
-      await navigator.share({ title: "Dein Thinking Report", text });
-      return;
-    }
-    await navigator.clipboard.writeText(text);
-    setSoftHint("Teilen nicht verfügbar — Report kopiert.");
-    setTimeout(() => setSoftHint(""), 2200);
-  } catch (_) {}
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" })
+      })
+    ]);
+  } catch {
+    try { await navigator.clipboard.writeText(plain); } catch {}
+  }
+
+  // Dann Share-Sheet öffnen (WhatsApp, iMessage, etc.)
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Dein Thinking Report", text: plain });
+    } catch (_) {}
+  } else {
+    // Kein Share-Sheet (Desktop) — Hinweis dass Report bereit zum Einfügen ist
+    setSoftHint("Report kopiert — bereit zum Einfügen.");
+    setTimeout(() => setSoftHint(""), 2500);
+  }
 }
 
 function downloadReport() {
