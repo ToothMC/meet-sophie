@@ -142,6 +142,33 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let authHandled = false;
 
+    const LANG = (navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en";
+    const T = {
+      de: {
+        back: "← Zurück",
+        heading: "Sophie wartet.",
+        sub: "Gib deine E-Mail ein, um einen Login-Link zu erhalten.",
+        btn: "Login-Link senden",
+        empty: "Bitte gib deine E-Mail ein.",
+        sending: "Login-Link wird gesendet…",
+        sent: "Prüfe deine E-Mails und klick auf den Login-Link.",
+      },
+      en: {
+        back: "← Back",
+        heading: "Sophie is waiting.",
+        sub: "Enter your email to get a login link.",
+        btn: "Send login link",
+        empty: "Please enter your email.",
+        sending: "Sending login link…",
+        sent: "Check your email and click the login link.",
+      }
+    };
+    const t = T[LANG];
+    document.getElementById("backLink").textContent = t.back;
+    document.getElementById("loginHeading").textContent = t.heading;
+    document.getElementById("loginSub").textContent = t.sub;
+    document.getElementById("magicLinkBtn").textContent = t.btn;
+
     const statusEl = document.getElementById("status");
     const btn = document.getElementById("magicLinkBtn");
 
