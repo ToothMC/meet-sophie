@@ -339,45 +339,59 @@ body{
 }
 
 .reportCard{
-  background:rgba(255,255,255,.025);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:24px;
-  padding:24px 22px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  background:none;
+  border:none;
+  border-radius:0;
+  padding:0;
+  box-shadow:none;
 }
 
 .report-section + .report-section{
   margin-top:28px;
   padding-top:26px;
-  border-top:1px solid rgba(255,255,255,.07);
+  border-top:1px solid #ede8e2;
 }
 
 .report-heading{
-  margin:0 0 12px;
-  font-size:18px;
+  margin:0 0 14px;
+  font-size:11px;
   line-height:1.2;
-  font-weight:750;
-  color:#f8f9fb;
-  letter-spacing:-0.02em;
+  font-weight:700;
+  color:#c4a882;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
 }
 
 .report-summary-text{
   margin:0;
   font-size:16px;
-  line-height:1.75;
-  color:rgba(255,255,255,.9);
+  line-height:1.8;
+  color:#3a3028;
 }
 
 .report-insight-list{
   margin:0;
-  padding-left:22px;
+  padding-left:0;
+  list-style:none;
 }
 
 .report-insight-list li{
   margin:0 0 14px;
   font-size:16px;
   line-height:1.7;
-  color:rgba(255,255,255,.88);
+  color:#3a3028;
+  padding-left:20px;
+  position:relative;
+}
+
+.report-insight-list li::before{
+  content:"·";
+  position:absolute;
+  left:0;
+  color:#c4a882;
+  font-size:22px;
+  line-height:1.2;
+  font-weight:700;
 }
 
 .report-insight-list li:last-child{
@@ -394,31 +408,31 @@ body{
 
 .report-action-title{
   display:block;
-  margin-bottom:8px;
+  margin-bottom:6px;
   font-size:16px;
   line-height:1.45;
   font-weight:700;
-  color:#f7f8fb;
+  color:#1a1210;
 }
 
 .report-action-detail{
   margin:0;
-  font-size:16px;
+  font-size:15px;
   line-height:1.75;
-  color:rgba(255,255,255,.84);
+  color:#6a5a50;
 }
 
 .report-transcript{
   white-space:pre-wrap;
   word-break:break-word;
   font-family:inherit;
-  font-size:15px;
-  line-height:1.7;
-  color:rgba(255,255,255,.88);
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:18px;
-  padding:18px;
+  font-size:14px;
+  line-height:1.75;
+  color:#5a4a40;
+  background:rgba(0,0,0,.025);
+  border:1px solid #ede8e2;
+  border-radius:16px;
+  padding:18px 20px;
   max-height:360px;
   overflow:auto;
   margin:0;
