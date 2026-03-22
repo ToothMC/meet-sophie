@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sophie</title>
+  <style>
+    body { margin:0; background:#0b0f14; }
+  </style>
+</head>
+<body>
+  <script>
+    // Instant transparent redirect to /talk — auth token in URL is preserved
+    // The talk page handles session establishment
+    window.location.replace("/talk" + window.location.search + window.location.hash);
+  </script>
+</body>
+</html>

@@ -24,7 +24,9 @@
       "Bash(vercel deploy:*)",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(jq -e '.hooks.PostToolUse[] | select\\(.matcher == \"\"Write|Edit\"\"\\) | .hooks[] | select\\(.type == \"\"command\"\"\\) | .command' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.claude/settings.local.json)"
+      "Bash(jq -e '.hooks.PostToolUse[] | select\\(.matcher == \"\"Write|Edit\"\"\\) | .hooks[] | select\\(.type == \"\"command\"\"\\) | .command' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.claude/settings.local.json)",
+      "Bash(git hash-object:*)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_project"
     ]
   },
   "hooks": {
