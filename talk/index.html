@@ -948,6 +948,23 @@ const postCallCta = document.getElementById("postCallCta");
 const postCallCtaTitle = document.getElementById("postCallCtaTitle");
 const postCallPrimaryBtn = document.getElementById("postCallPrimaryBtn");
 const postCallSecondaryBtn = document.getElementById("postCallSecondaryBtn");
+const reopenReportBtn = document.getElementById("reopenReportBtn");
+
+function closePostCallPanel() {
+  postCallPanel.style.transform = "translateY(100%)";
+  setTimeout(() => { postCallPanel.style.display = "none"; }, 350);
+  reopenReportBtn.style.display = "block";
+}
+
+reopenReportBtn.onclick = () => {
+  reopenReportBtn.style.display = "none";
+  postCallPanel.style.display = "block";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      postCallPanel.style.transform = "translateY(0)";
+    });
+  });
+};
 
 const limitOverlay = document.getElementById("limitOverlay");
 const limitVideo = document.getElementById("limitVideo");
