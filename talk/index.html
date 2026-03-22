@@ -2378,7 +2378,7 @@ async function startVoice(){
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    setStatus("Connecting Sophie...");
+    setStatus("Sophie wird verbunden …");
 
     const answerSdp = await fetchRealtimeAnswerSdp({
       offerSdp: offer.sdp,
