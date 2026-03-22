@@ -1832,7 +1832,7 @@ async function handleTimeLimitReached(){
   stopDynamicResets();
   clearClosingTimers();
   setSoftHint("");
-  setStatus("Wrapping up…");
+  setStatus("Einen Moment …");
 
   try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
 
