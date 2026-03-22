@@ -30,7 +30,8 @@
       "Bash(grep -r steht /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js --include=*.jsx --include=*.ts --include=*.tsx)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f \\\\\\(-name *.js -o -name *.ts -o -name *.jsx -o -name *.tsx \\\\\\) -path */src/* -o -path */lib/* -o -path */components/*)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.js -o -name *.ts)",
-      "Bash(grep -r \"i18n\\\\|locale\\\\|translation\\\\|lang=\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js)"
+      "Bash(grep -r \"i18n\\\\|locale\\\\|translation\\\\|lang=\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js)",
+      "Bash(echo \"exit: $?\")"
     ]
   },
   "hooks": {
