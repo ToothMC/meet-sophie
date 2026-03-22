@@ -1200,52 +1200,41 @@ function buildReportText() {
   const transcript = (postCallTranscript.textContent || "").trim();
 
   const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
-    .map(li => `• ${li.textContent.trim()}`)
+    .map(li => li.textContent.trim())
     .filter(Boolean);
 
   const actionBlocks = Array.from(postCallActions.querySelectorAll(".report-action-item"))
     .map((node) => {
       const title = node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "";
       const detail = node.querySelector(".report-action-detail")?.textContent.trim() || "";
-      if (title && detail) return `• ${title}:\n  ${detail}`;
-      if (detail) return `• ${detail}`;
-      if (title) return `• ${title}`;
-      return "";
+      if (title && detail) return `**${title}**\n${detail}`;
+      if (title) return `**${title}**`;
+      return detail;
     })
     .filter(Boolean);
 
-  const fullText =
-`Thinking Report
+  const summaryMd =
+`# Dein Thinking Report
 
-Summary
+## Zusammenfassung
 ${summary || "—"}
 
-Key Insights
-${insightLines.length ? insightLines.join("\n") : "—"}
+## Wichtige Erkenntnisse
+${insightLines.length ? insightLines.map(x => `- ${x}`).join("\n") : "—"}
 
-Action Plan
+## Nächste Schritte
 ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
+`;
 
-Full Transcript
+  const fullMd = summaryMd +
+`
+## Vollständiges Transkript
 ${transcript || "—"}
 `;
 
-  const summaryText =
-`Thinking Report
-
-Summary
-${summary || "—"}
-
-Key Insights
-${insightLines.length ? insightLines.join("\n") : "—"}
-
-Action Plan
-${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
-`;
-
-  lastReportExport.summary = summaryText;
+  lastReportExport.summary = summaryMd;
   lastReportExport.transcript = transcript || "—";
-  lastReportExport.full = fullText;
+  lastReportExport.full = fullMd;
 
   return lastReportExport;
 }
