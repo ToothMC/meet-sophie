@@ -6,7 +6,39 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(rm -rf /tmp/sophie-patch2)",
+      "Bash(mkdir /tmp/sophie-patch2)",
+      "Bash(unzip -o /Users/michaelhammer/Downloads/meet-sophie-feature-hero-layout-v2-patched.zip -d /tmp/sophie-patch2)",
+      "Bash(cp /tmp/sophie-patch2/fix2/index.html /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/index.html)",
+      "Bash(cp /tmp/sophie-patch2/fix2/talk/index.html /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/talk/index.html)",
+      "Bash(rm -rf /tmp/sophie-patch3)",
+      "Bash(mkdir /tmp/sophie-patch3)",
+      "Bash(unzip -o /Users/michaelhammer/Downloads/meet-sophie-feature-hero-layout-v2-patched.zip -d /tmp/sophie-patch3)",
+      "Bash(cp /tmp/sophie-patch3/fix2/api/session.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)",
+      "Bash(cp /tmp/sophie-patch3/fix2/talk/index.html /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/talk/index.html)",
+      "Bash(cp /tmp/sophie-patch3/fix2/index.html /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/index.html)",
+      "Bash(grep -n \"^import \\\\|^export default\\\\|^export \" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(grep -n 'join\\(\"\"$\\\\|join\\('\"''\"'$' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)",
+      "Bash(sprechen\" and \"ich will reden\" but not the natural short form:*)",
+      "Bash(vercel deploy:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(jq -e '.hooks.PostToolUse[] | select\\(.matcher == \"\"Write|Edit\"\"\\) | .hooks[] | select\\(.type == \"\"command\"\"\\) | .command' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.claude/settings.local.json)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "(PROJ=/Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code; cd \"$PROJ\"; BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$BRANCH\" != \"main\" ] && [ \"$BRANCH\" != \"master\" ] && [ -n \"$BRANCH\" ]; then git add -A; if ! git diff --cached --quiet; then git commit -m \"auto: save [$(date +%H:%M)]\" && git push origin \"$BRANCH\"; fi; fi) 2>&1 || true",
+            "statusMessage": "Committing & pushing to GitHub..."
+          }
+        ]
+      }
     ]
   }
 }
