@@ -1624,7 +1624,7 @@ async function fetchRealtimeAnswerSdp({ offerSdp, clientSecret, maxAttempts = 3 
 
       const waitMs = 600 * attempt;
       console.warn(`[realtime] handshake retry ${attempt}/${maxAttempts} after ${waitMs}ms`, err);
-      setStatus(`Connecting Sophie... retry ${attempt + 1}`);
+      setStatus(`Sophie verbinden … Versuch ${attempt + 1}`);
       await new Promise(r => setTimeout(r, waitMs));
     }
   }
