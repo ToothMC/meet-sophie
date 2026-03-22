@@ -253,9 +253,9 @@
 
     btn.onclick = async () => {
       const email = document.getElementById("email").value.trim();
-      if (!email) return setStatus("Please enter your email.", true);
+      if (!email) return setStatus(t.empty, true);
 
-      setStatus("Sending login link…");
+      setStatus(t.sending);
       btn.disabled = true;
 
       const { error } = await supabase.auth.signInWithOtp({
@@ -268,7 +268,7 @@
       btn.disabled = false;
 
       if (error) return setStatus(error.message, true);
-      setStatus("Check your email and click the login link.");
+      setStatus(t.sent);
     };
   </script>
 </body>
