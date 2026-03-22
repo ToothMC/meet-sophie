@@ -33,7 +33,9 @@
       "Bash(grep -r \"i18n\\\\|locale\\\\|translation\\\\|lang=\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js)",
       "Bash(echo \"exit: $?\")",
       "mcp__Claude_Preview__preview_start",
-      "Bash(gh run:*)"
+      "Bash(gh run:*)",
+      "Bash(grep -E \"\\\\.\\(ts|sql|d\\\\.ts\\)$\")",
+      "Bash(grep -r \"insert\\\\|select\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
     ]
   },
   "hooks": {
