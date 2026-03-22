@@ -1410,9 +1410,7 @@ function configurePostCallCta(triggeredByLimit = false) {
       };
 
       postCallSecondaryBtn.textContent = "Schließen";
-      postCallSecondaryBtn.onclick = () => {
-        postCallPanel.style.transform = "translateY(60%)";
-      };
+      postCallSecondaryBtn.onclick = closePostCallPanel;
     } else {
       postCallCtaTitle.textContent = "Weiter mit Sophie";
       postCallPrimaryBtn.textContent = "Pläne ansehen";
@@ -1421,9 +1419,7 @@ function configurePostCallCta(triggeredByLimit = false) {
       };
 
       postCallSecondaryBtn.textContent = "Schließen";
-      postCallSecondaryBtn.onclick = () => {
-        postCallPanel.style.transform = "translateY(60%)";
-      };
+      postCallSecondaryBtn.onclick = closePostCallPanel;
     }
   } else {
     postCallCtaTitle.textContent = "";
