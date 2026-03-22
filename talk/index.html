@@ -1381,20 +1381,20 @@ function configurePostCallCta(triggeredByLimit = false) {
         window.location.href = "/pricing";
       };
 
-      postCallSecondaryBtn.textContent = "Close";
+      postCallSecondaryBtn.textContent = "Schließen";
       postCallSecondaryBtn.onclick = () => {
         postCallPanel.style.transform = "translateY(60%)";
       };
     }
   } else {
     postCallCtaTitle.textContent = "";
-    postCallPrimaryBtn.textContent = "Start a new session";
+    postCallPrimaryBtn.textContent = "Neue Sitzung starten";
     postCallPrimaryBtn.onclick = () => {
       postCallPanel.style.display = "none";
       startVoice();
     };
 
-    postCallSecondaryBtn.textContent = "Close";
+    postCallSecondaryBtn.textContent = "Schließen";
     postCallSecondaryBtn.onclick = () => {
       postCallPanel.style.transform = "translateY(60%)";
     };
