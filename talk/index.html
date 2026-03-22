@@ -586,23 +586,28 @@ body{
 
 #reopenReportBtn{
   position:fixed;
-  bottom:20px;
+  bottom:22px;
   left:50%;
   transform:translateX(-50%);
   z-index:19;
-  padding:10px 20px;
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,.2);
-  background:rgba(20,22,35,.9);
-  color:rgba(255,255,255,.85);
+  padding:11px 22px;
+  border-radius:22px;
+  border:1px solid #d4ccc4;
+  background:rgba(250,249,246,.96);
+  color:#6a5a50;
   font-size:13px;
   font-weight:600;
   cursor:pointer;
-  backdrop-filter:blur(10px);
-  transition:opacity .2s;
+  backdrop-filter:blur(12px);
+  box-shadow:0 4px 20px rgba(0,0,0,.10);
+  transition:opacity .2s, box-shadow .2s;
 }
 
-#reopenReportBtn:hover{ opacity:.85; }
+#reopenReportBtn:hover{
+  opacity:1;
+  box-shadow:0 6px 28px rgba(0,0,0,.14);
+  border-color:#c4a882;
+}
 
 @media (max-width:640px){
   #postCallPanel{
