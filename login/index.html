@@ -6,61 +6,131 @@
   <title>Meet Sophie – Login</title>
 
   <style>
+    *{ box-sizing:border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      max-width: 520px;
-      margin: 60px auto;
-      padding: 0 16px;
-      background: #f9f9f9;
+      color: white;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0b0f14;
+      position: relative;
+      overflow: hidden;
     }
 
-    h2 { margin-bottom: 24px; }
-
-    .box {
-      background: white;
-      border: 1px solid #e5e5e5;
-      border-radius: 14px;
-      padding: 20px;
+    .bg {
+      position: fixed;
+      inset: 0;
+      background: url("/sophie.jpg") center/cover no-repeat;
+      opacity: 1;
+      z-index: 0;
     }
 
-    input, button {
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.60);
+      z-index: 1;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 2;
+      width: 90%;
+      max-width: 380px;
+    }
+
+    h2 {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 6px;
+      letter-spacing: -.01em;
+    }
+
+    .sub {
+      font-size: 15px;
+      color: rgba(255,255,255,.65);
+      margin: 0 0 28px;
+    }
+
+    input[type="email"] {
       width: 100%;
-      padding: 12px;
-      margin: 8px 0;
+      padding: 15px 16px;
       font-size: 16px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 12px;
+      background: rgba(255,255,255,.08);
+      color: white;
+      outline: none;
+      margin-bottom: 12px;
+      transition: border-color .2s;
     }
+
+    input[type="email"]::placeholder { color: rgba(255,255,255,.4); }
+    input[type="email"]:focus { border-color: rgba(255,255,255,.5); }
 
     button {
-      cursor: pointer;
+      width: 100%;
+      padding: 15px;
+      font-size: 17px;
+      font-weight: 700;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
+      background: white;
+      color: #0b0f14;
+      cursor: pointer;
+      transition: opacity .2s;
     }
 
-    .primary { background: #111; color: white; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
 
-    .ok { color: #0a7; }
-    .err { color: #c00; }
-
-    .muted {
+    #status {
+      margin-top: 14px;
       font-size: 14px;
-      opacity: .7;
-      margin-top: 10px;
+      min-height: 20px;
+      color: rgba(255,255,255,.75);
+    }
+
+    #status.err { color: #ff7070; }
+
+    .back {
+      position: fixed;
+      top: 18px;
+      left: 16px;
+      z-index: 3;
+      color: rgba(255,255,255,.8);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
     }
   </style>
 </head>
 
 <body>
-  <h2>Before you enter the room…</h2>
+  <div class="bg"></div>
+  <div class="overlay"></div>
 
-  <div class="box">
-    <label>Email</label>
+  <a class="back" href="/">← Back</a>
+
+  <div class="wrap">
+    <h2>Sophie is waiting.</h2>
+    <p class="sub">Enter your email to get a login link.</p>
+
     <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
-
-    <button id="magicLinkBtn" class="primary" type="button">
-      Send login link
-    </button>
-
-    <p id="status" class="muted"></p>
+    <button id="magicLinkBtn" type="button">Send login link</button>
+    <p id="status"></p>
   </div>
 
   <script type="module">
@@ -72,12 +142,12 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let authHandled = false;
 
-    const $ = (id) => document.getElementById(id);
-    const statusEl = $("status");
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("magicLinkBtn");
 
-    function setStatus(msg, ok = true) {
+    function setStatus(msg, isErr = false) {
       statusEl.textContent = msg;
-      statusEl.className = ok ? "ok muted" : "err muted";
+      statusEl.className = isErr ? "err" : "";
     }
 
     async function ensureUserMemoryRow(userId) {
@@ -142,7 +212,6 @@
       await ensureUserUsageRow(user.id);
       await ensureUserRelationshipRow(user.id);
 
-      setStatus("Login successful. Redirecting…", true);
       window.location.href = "/talk";
     }
 
@@ -150,21 +219,17 @@
     if (session?.user) {
       await handleSuccessfulAuth();
     }
-    
+
     supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        handleSuccessfulAuth();
-  }
-});
-    
-    $("magicLinkBtn").onclick = async () => {
-      const email = $("email").value.trim();
+      if (session?.user) handleSuccessfulAuth();
+    });
 
-      if (!email) {
-        return setStatus("Please enter your email.", false);
-      }
+    btn.onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      if (!email) return setStatus("Please enter your email.", true);
 
-      setStatus("Sending login link...");
+      setStatus("Sending login link…");
+      btn.disabled = true;
 
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -173,8 +238,9 @@
         }
       });
 
-      if (error) return setStatus(error.message, false);
+      btn.disabled = false;
 
+      if (error) return setStatus(error.message, true);
       setStatus("Check your email and click the login link.");
     };
   </script>
