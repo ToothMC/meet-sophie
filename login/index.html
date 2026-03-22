@@ -239,7 +239,11 @@
       await ensureUserUsageRow(user.id);
       await ensureUserRelationshipRow(user.id);
 
-      window.location.href = "/talk";
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      const safePaths = ["/pricing", "/talk"];
+      const target = redirect && safePaths.some(p => redirect.startsWith(p)) ? redirect : "/talk";
+      window.location.href = target;
     }
 
     const { data: { session } } = await supabase.auth.getSession();
