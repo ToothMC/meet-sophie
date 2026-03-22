@@ -9,9 +9,28 @@
   </style>
 </head>
 <body>
-  <script>
-    // Instant transparent redirect to /talk-dev — auth token in URL is preserved
-    window.location.replace("/talk-dev" + window.location.search + window.location.hash);
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let done = false;
+    function go(path) {
+      if (done) return;
+      done = true;
+      window.location.replace(path);
+    }
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) go("/talk-dev");
+    });
+
+    setTimeout(async () => {
+      const { data } = await supabase.auth.getSession();
+      go(data.session?.user ? "/talk-dev" : "/login-dev");
+    }, 3000);
   </script>
 </body>
 </html>
