@@ -420,6 +420,11 @@ function setLang(l){
 document.getElementById("langDE").onclick = () => setLang("de");
 document.getElementById("langEN").onclick = () => setLang("en");
 
+document.getElementById("backBtn").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (history.length > 1) { history.back(); } else { window.location.href = "/"; }
+});
+
 function updateEnabled(){
   const ok = (c1.checked && c2.checked);
   btnContinue.disabled = !ok;
