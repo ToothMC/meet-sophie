@@ -1363,20 +1363,20 @@ function configurePostCallCta(triggeredByLimit = false) {
 
   if (triggeredByLimit) {
     if (isPremium || plan) {
-      postCallCtaTitle.textContent = "Your session ended cleanly.";
-      postCallPrimaryBtn.textContent = "Start new session";
+      postCallCtaTitle.textContent = "Deine Sitzung ist beendet.";
+      postCallPrimaryBtn.textContent = "Neue Sitzung starten";
       postCallPrimaryBtn.onclick = () => {
         postCallPanel.style.display = "none";
         startVoice();
       };
 
-      postCallSecondaryBtn.textContent = "Close";
+      postCallSecondaryBtn.textContent = "Schließen";
       postCallSecondaryBtn.onclick = () => {
         postCallPanel.style.transform = "translateY(60%)";
       };
     } else {
-      postCallCtaTitle.textContent = "Continue with Sophie";
-      postCallPrimaryBtn.textContent = "See plans";
+      postCallCtaTitle.textContent = "Weiter mit Sophie";
+      postCallPrimaryBtn.textContent = "Pläne ansehen";
       postCallPrimaryBtn.onclick = () => {
         window.location.href = "/pricing";
       };
