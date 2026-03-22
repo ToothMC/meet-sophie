@@ -67,7 +67,7 @@ body{
   position:fixed;
   inset:0;
   background:url("/sophie.jpg") center/cover no-repeat;
-  opacity:0;
+  opacity:1;
   transition:opacity .5s ease;
   z-index:0;
 }
@@ -77,7 +77,7 @@ body{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.55);
-  opacity:0;
+  opacity:1;
   transition:opacity .5s ease;
   z-index:1;
 }
@@ -85,6 +85,23 @@ body{
 /* Aktiv-Zustand */
 .bg.active,
 .overlay.active{ opacity:1; }
+
+/* Auth-Loading */
+#authLoading{
+  position:fixed;
+  inset:0;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#authLoading p{
+  font-size:21px;
+  font-weight:500;
+  color:rgba(255,255,255,.92);
+  margin:0;
+  letter-spacing:.01em;
+}
 
 /* Vordergrund */
 .wrap{
