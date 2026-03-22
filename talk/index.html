@@ -1245,44 +1245,13 @@ function isTranscriptTabActive() {
 
 async function copyReport() {
   const report = buildReportText();
-  const withTranscript = isTranscriptTabActive();
-
-  const plainText = withTranscript ? report.full : report.summary;
-
-  const summary = (postCallSummary.textContent || "").trim();
-  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
-    .map(li => li.textContent.trim()).filter(Boolean);
-  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
-    .map((node) => ({
-      title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
-      detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
-    })).filter(item => item.title || item.detail);
-  const transcript = (postCallTranscript.textContent || "").trim();
-
-  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.7;color:#2c2420;max-width:640px;padding:24px;">
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 4px;">Dein Thinking Report</p>
-<h1 style="font-size:22px;font-weight:700;color:#1a1210;margin:0 0 28px;">Sophie – Gesprächszusammenfassung</h1>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Zusammenfassung</p>
-<p style="margin:0 0 28px;color:#3a3028;">${escapeHtml(summary || "—")}</p>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Wichtige Erkenntnisse</p>
-<ul style="margin:0 0 28px;padding-left:18px;color:#3a3028;">${insightLines.map(x => `<li style="margin-bottom:8px;">${escapeHtml(x)}</li>`).join("")}</ul>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Nächste Schritte</p>
-<div style="margin:0 0 28px;">${actionItems.map(item => `<p style="margin:0 0 12px;"><strong style="color:#1a1210;">${escapeHtml(item.title)}</strong>${item.detail ? `<br><span style="color:#6a5a50;">${escapeHtml(item.detail)}</span>` : ""}</p>`).join("")}</div>
-${withTranscript && transcript ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Vollständiges Transkript</p><p style="white-space:pre-wrap;color:#5a4a40;font-size:14px;line-height:1.75;margin:0;">${escapeHtml(transcript)}</p>` : ""}
-</div>`;
-
+  const text = isTranscriptTabActive() ? report.full : report.summary;
   try {
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        "text/plain": new Blob([plainText], { type: "text/plain" }),
-        "text/html": new Blob([html], { type: "text/html" })
-      })
-    ]);
+    await navigator.clipboard.writeText(text);
     setSoftHint("Report kopiert.");
     setTimeout(() => setSoftHint(""), 1800);
   } catch (err) {
-    await navigator.clipboard.writeText(plainText);
-    setSoftHint("Als Text kopiert.");
+    setSoftHint("Kopieren fehlgeschlagen.");
     setTimeout(() => setSoftHint(""), 1800);
   }
 }
