@@ -32,7 +32,8 @@
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.js -o -name *.ts)",
       "Bash(grep -r \"i18n\\\\|locale\\\\|translation\\\\|lang=\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js)",
       "Bash(echo \"exit: $?\")",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(gh run:*)"
     ]
   },
   "hooks": {

@@ -1221,69 +1221,37 @@ ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
   return lastReportExport;
 }
 
+function isTranscriptTabActive() {
+  return transcriptView && transcriptView.classList.contains("active");
+}
+
 async function copyReport() {
+  const report = buildReportText();
+  const withTranscript = isTranscriptTabActive();
+
+  const plainText = withTranscript ? report.full : report.summary;
+
   const summary = (postCallSummary.textContent || "").trim();
-
   const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
-    .map(li => li.textContent.trim())
-    .filter(Boolean);
-
+    .map(li => li.textContent.trim()).filter(Boolean);
   const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
-    .map((node) => {
-      const title = node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "";
-      const detail = node.querySelector(".report-action-detail")?.textContent.trim() || "";
-      return { title, detail };
-    })
-    .filter(item => item.title || item.detail);
+    .map((node) => ({
+      title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
+      detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
+    })).filter(item => item.title || item.detail);
+  const transcript = (postCallTranscript.textContent || "").trim();
 
-  const plainText =
-`Thinking Report
-
-Summary
-${summary || "—"}
-
-Key Insights
-${insightLines.length ? insightLines.map(x => `• ${x}`).join("\n") : "—"}
-
-Action Plan
-${actionItems.length ? actionItems.map(item => {
-  if (item.title && item.detail) return `• ${item.title}: ${item.detail}`;
-  if (item.detail) return `• ${item.detail}`;
-  return `• ${item.title}`;
-}).join("\n") : "—"}
-`;
-
- const html = `
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;color:#111;max-width:680px;">
-
-<div style="font-size:18px;font-weight:700;margin-bottom:14px;">
-Thinking Report
-</div>
-
-<div style="font-weight:700;margin-bottom:4px;">Summary</div>
-
-<div style="margin-bottom:16px;">
-${escapeHtml(summary || "—")}
-</div>
-
-<div style="font-weight:700;margin-bottom:6px;">Key Insights</div>
-
-<div style="margin-left:8px;margin-bottom:18px;">
-${insightLines.map(x => `<div style="margin-bottom:6px;">• ${escapeHtml(x)}</div>`).join("")}
-</div>
-
-<div style="font-weight:700;margin-bottom:6px;">Action Plan</div>
-
-<div style="margin-left:8px;">
-${actionItems.map(item => `
-<div style="margin-bottom:10px;">
-<strong>• ${escapeHtml(item.title)}:</strong> ${escapeHtml(item.detail)}
-</div>
-`).join("")}
-</div>
-
-</div>
-`;
+  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.7;color:#2c2420;max-width:640px;padding:24px;">
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 4px;">Dein Thinking Report</p>
+<h1 style="font-size:22px;font-weight:700;color:#1a1210;margin:0 0 28px;">Sophie – Gesprächszusammenfassung</h1>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Zusammenfassung</p>
+<p style="margin:0 0 28px;color:#3a3028;">${escapeHtml(summary || "—")}</p>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Wichtige Erkenntnisse</p>
+<ul style="margin:0 0 28px;padding-left:18px;color:#3a3028;">${insightLines.map(x => `<li style="margin-bottom:8px;">${escapeHtml(x)}</li>`).join("")}</ul>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Nächste Schritte</p>
+<div style="margin:0 0 28px;">${actionItems.map(item => `<p style="margin:0 0 12px;"><strong style="color:#1a1210;">${escapeHtml(item.title)}</strong>${item.detail ? `<br><span style="color:#6a5a50;">${escapeHtml(item.detail)}</span>` : ""}</p>`).join("")}</div>
+${withTranscript && transcript ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;">Vollständiges Transkript</p><p style="white-space:pre-wrap;color:#5a4a40;font-size:14px;line-height:1.75;margin:0;">${escapeHtml(transcript)}</p>` : ""}
+</div>`;
 
   try {
     await navigator.clipboard.write([
@@ -1292,36 +1260,108 @@ ${actionItems.map(item => `
         "text/html": new Blob([html], { type: "text/html" })
       })
     ]);
-    setSoftHint("Formatted report copied.");
+    setSoftHint("Report kopiert.");
     setTimeout(() => setSoftHint(""), 1800);
   } catch (err) {
     await navigator.clipboard.writeText(plainText);
-    setSoftHint("Copied as plain text.");
+    setSoftHint("Als Text kopiert.");
     setTimeout(() => setSoftHint(""), 1800);
   }
 }
 
 async function shareReport() {
   const report = buildReportText();
+  const withTranscript = isTranscriptTabActive();
+  const text = withTranscript ? report.full : report.summary;
   try {
     if (navigator.share) {
-      await navigator.share({
-        title: "Sophie Thinking Report",
-        text: report.summary
-      });
+      await navigator.share({ title: "Sophie Thinking Report", text });
       return;
     }
-    await navigator.clipboard.writeText(report.summary);
-    setSoftHint("Sharing not available. Report copied instead.");
+    await navigator.clipboard.writeText(text);
+    setSoftHint("Teilen nicht verfügbar — Report kopiert.");
     setTimeout(() => setSoftHint(""), 2200);
   } catch (_) {}
 }
 
 function downloadReport() {
   const report = buildReportText();
+  const withTranscript = isTranscriptTabActive();
   const datePrefix = getDatePrefix();
   const topicSlug = lastReportExport.topicSlug || "session";
-  downloadTextFile(`${datePrefix}_sophie-thinking-report_${topicSlug}.txt`, report.full);
+
+  const summary = (postCallSummary.textContent || "").trim();
+  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+    .map(li => li.textContent.trim()).filter(Boolean);
+  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+    .map((node) => ({
+      title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
+      detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
+    })).filter(item => item.title || item.detail);
+  const transcript = (postCallTranscript.textContent || "").trim();
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sophie – Thinking Report</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;}
+  h1{font-size:26px;font-weight:700;color:#1a1210;margin:0 0 8px;}
+  .subtitle{font-size:14px;color:#a09080;margin:0 0 40px;}
+  .section{margin:0 0 36px;padding-bottom:36px;border-bottom:1px solid #ede8e2;}
+  .section:last-child{border-bottom:none;}
+  p{margin:0;font-size:16px;line-height:1.8;color:#3a3028;}
+  ul{margin:0;padding-left:20px;}
+  li{margin:0 0 10px;font-size:16px;line-height:1.7;color:#3a3028;}
+  li::marker{color:#c4a882;}
+  .action-title{font-size:16px;font-weight:700;color:#1a1210;margin:0 0 4px;}
+  .action-detail{font-size:15px;color:#6a5a50;margin:0 0 18px;}
+  pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;line-height:1.75;color:#5a4a40;background:rgba(0,0,0,.025);border:1px solid #ede8e2;border-radius:12px;padding:20px;margin:0;}
+  .footer{margin-top:48px;font-size:12px;color:#b0a090;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="label">Dein Thinking Report</p>
+  <h1>Sophie – Gesprächszusammenfassung</h1>
+  <p class="subtitle">${new Date().toLocaleDateString("de-DE", {day:"numeric",month:"long",year:"numeric"})}</p>
+
+  <div class="section">
+    <p class="label">Zusammenfassung</p>
+    <p>${escapeHtml(summary || "—")}</p>
+  </div>
+
+  <div class="section">
+    <p class="label">Wichtige Erkenntnisse</p>
+    <ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+  </div>
+
+  <div class="section">
+    <p class="label">Nächste Schritte</p>
+    ${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}
+  </div>
+
+  ${withTranscript && transcript ? `<div class="section">
+    <p class="label">Vollständiges Transkript</p>
+    <pre>${escapeHtml(transcript)}</pre>
+  </div>` : ""}
+
+  <div class="footer">Erstellt mit Sophie · meet-sophie.com</div>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function downloadTextFile(filename, text) {
