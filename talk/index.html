@@ -1670,31 +1670,9 @@ function stopDynamicResets(){
 }
 
 function triggerDynamicReset(){
-  if (kickoffInProgress || softEndFinalizing || softEndSummaryTriggered) {
-    console.log(`[${runId}] [dynreset] skipped`);
-    return;
-  }
-
-  if (dc && dc.readyState === "open") {
-    try {
-      dcSend({
-        type: "response.create",
-        response: {
-          modalities: ["text"],
-          instructions: `
-Continue naturally.
-Refresh your inner energy and spontaneity a little.
-Do not change the topic.
-Do not restart or re-greet.
-Do not mention this instruction.
-Avoid becoming explanatory or generic.
-Stay present, warm, and human.
-`
-        }
-      });
-      console.log(`[${runId}] [dynreset] response.create sent`);
-    } catch (_) {}
-  }
+  // Dynamic resets disabled — injecting hidden text responses or overwriting the system prompt
+  // disrupts the conversation flow and history. Sophie's personality is handled by the system prompt.
+  console.log(`[${runId}] [dynreset] disabled`);
 }
 
 function startDynamicResets(){
@@ -1840,7 +1818,7 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
       session: {
         turn_detection: {
           type: "server_vad",
-          silence_duration_ms: 900,
+          silence_duration_ms: 400,
           threshold: 0.5,
           prefix_padding_ms: 300,
           create_response: !!createResponse,
@@ -2148,7 +2126,7 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
-            silence_duration_ms: 900,
+            silence_duration_ms: 400,
             threshold: 0.5,
             prefix_padding_ms: 300,
             create_response: false,
@@ -2678,6 +2656,10 @@ async function stopVoice(triggeredByLimit = false){
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
+        // Cancel any in-progress response before sending goodbye
+        try { dcSend({ type: "response.cancel" }); } catch(_) {}
+        await new Promise(r => setTimeout(r, 150));
+
         // Manual end — use a natural goodbye, NOT [SESSION_END] (which triggers "Zeitlimit erreicht")
         dcSend({
           type: "response.create",
@@ -2686,7 +2668,8 @@ async function stopVoice(triggeredByLimit = false){
             instructions: `
 The user has ended the session manually.
 Say a warm, brief goodbye in the same language used in this conversation.
-1–2 sentences maximum. No summary, no lists, no mention of time limits or subscriptions.
+1–2 sentences maximum. Do NOT ask any questions. Do NOT end with a question.
+No summary, no lists, no mention of time limits or subscriptions.
 Tone: calm, human, complete.
 `
           }

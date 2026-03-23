@@ -5,5 +5,6 @@
       "destination": "/pricing",
       "permanent": true
     }
-  ]
+  ],
+  "ignoreCommand": "git log -1 --pretty=%B | grep -qE '^auto: save'"
 }
