@@ -106,12 +106,16 @@ topics_avoid: ${Array.isArray(profile.topics_avoid) && profile.topics_avoid.leng
     : "(no sessions found)";
 
   const memoryBlock = `
-PRIVATE CONTEXT (do NOT mention):
+LONG-TERM MEMORY (passive background — do NOT mention):
 last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
 recent_session:
 ${sessionsText}
 
-- Reference relevant context naturally when useful.
+Rules:
+- This is long-term memory. Treat it as silent background knowledge only.
+- Never proactively ask about past topics or reference previous sessions.
+- Only engage with this context if the user explicitly brings up something from a past session.
+- Follow the user's lead. Do not pick up where you left off unless invited to.
 - Never sound like you are reading notes.
 - Do not mention storage, logs, memory, or databases.
 `;

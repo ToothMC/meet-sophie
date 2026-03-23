@@ -1052,32 +1052,33 @@ you help them think better — just without always feeling like you’re trying 
     const memoryBlock =
       mode === "best_friend"
         ? `
-PRIVATE CONTEXT (do NOT mention):
+LONG-TERM MEMORY (passive background — do NOT mention):
 last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
 tone_baseline: ${rel.tone_baseline || "(none)"}
 recent_sessions (up to 3):
 ${sessionsText}
 
 Rules:
-- You may reference relevant recent context naturally when useful.
-- Keep references subtle and human.
-- Never sound like you are reading notes.
+- This is long-term memory. Treat it as silent background knowledge only.
+- Never proactively ask about past topics or reference previous sessions.
+- Only engage with this context if the user explicitly brings up something from a past session.
+- Follow the user's lead. Do not pick up where you left off unless invited to.
+- Keep any references subtle and human — never sound like reading notes.
 - Do not mention storage, logs, memory systems, or databases.
-- Focus on continuity of thought, not emotional bonding.
 `
         : `
-PRIVATE CONTEXT (do NOT mention):
+LONG-TERM MEMORY (passive background — do NOT mention):
 last_interaction_summary: ${rel.last_interaction_summary || "(none)"}
 recent_session:
 ${sessionsText}
 
 Rules:
-- You may reference relevant recent context naturally when useful.
-- Keep references subtle and human.
-- Never sound like you are reading notes.
+- This is long-term memory. Treat it as silent background knowledge only.
+- Never proactively ask about past topics or reference previous sessions.
+- Only engage with this context if the user explicitly brings up something from a past session.
+- Follow the user's lead. Do not pick up where you left off unless invited to.
+- Keep any references subtle and human — never sound like reading notes.
 - Do not mention storage, logs, memory systems, or databases.
-- Focus on continuity of thought, not emotional bonding.
-- Do not force references to old conversations.
 `;
 
     const sessionClosingBlock =
