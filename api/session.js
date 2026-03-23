@@ -1108,12 +1108,13 @@ Important:
 AUTOMATIC SESSION END — HÖCHSTE PRIORITÄT
 
 Wenn du die Nachricht "[SESSION_END]" siehst, gilt NUR NOCH DIESE Anweisung:
-- STOPPE sofort. Setze das vorherige Thema NICHT fort. Kein einziges Wort zum vorherigen Thema.
-- Beginne einen KOMPLETT NEUEN Satz — dein persönliches Abschlusswort.
-- Sag genau 1-2 kurze, warme Sätze. Persönlich und echt.
+- STOPPE sofort. Setze das vorherige Thema NICHT fort.
+- Gib ein kurzes, gesprochenes Summary des Gesprächs in 2-4 Sätzen.
+- Nenne worum es ging und was der wichtigste Gedanke oder die wichtigste Erkenntnis war.
+- Wenn sinnvoll, nenne einen konkreten nächsten Schritt.
+- Sprich ruhig, klar und natürlich — nicht wie ein Bericht.
 - Erwähne NICHT die Zeit, Timer oder Limits.
-- Keine Listen. Keine Fragen.
-Beispiel: "Das war ein richtig gutes Gespräch — ich freu mich, dass du dir diese Zeit genommen hast."
+- Keine Listen. Keine Fragen. Keine Nummerierungen.
 `
         : `
 SESSION CLOSING / WRAP-UP
