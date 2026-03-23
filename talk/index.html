@@ -2656,6 +2656,10 @@ async function stopVoice(triggeredByLimit = false){
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
+        // Cancel any in-progress response before sending goodbye
+        try { dcSend({ type: "response.cancel" }); } catch(_) {}
+        await new Promise(r => setTimeout(r, 150));
+
         // Manual end — use a natural goodbye, NOT [SESSION_END] (which triggers "Zeitlimit erreicht")
         dcSend({
           type: "response.create",
@@ -2664,7 +2668,8 @@ async function stopVoice(triggeredByLimit = false){
             instructions: `
 The user has ended the session manually.
 Say a warm, brief goodbye in the same language used in this conversation.
-1–2 sentences maximum. No summary, no lists, no mention of time limits or subscriptions.
+1–2 sentences maximum. Do NOT ask any questions. Do NOT end with a question.
+No summary, no lists, no mention of time limits or subscriptions.
 Tone: calm, human, complete.
 `
           }
