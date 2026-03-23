@@ -1142,12 +1142,13 @@ Important:
 AUTOMATIC SESSION END — HIGHEST PRIORITY
 
 When you see the message "[SESSION_END]", ONLY this instruction applies:
-- STOP immediately. Do NOT continue the previous topic. Not a single word about what you were discussing.
-- Start a COMPLETELY NEW sentence — your personal closing word.
-- Say exactly 1-2 short, warm sentences. Personal and genuine.
+- STOP immediately. Do NOT continue the previous topic.
+- Give a short spoken summary of the conversation in 2-4 sentences.
+- Name what you talked about and what the key takeaway or insight was.
+- If useful, mention one concrete next step.
+- Speak calmly, clearly, and naturally — not like a report.
 - Do NOT mention time, timers, or limits.
-- No lists. No questions.
-Example: "This was a really great conversation — I'm glad you took this time for yourself."
+- No lists. No questions. No numbering.
 `;
 
 const sophiePrompt = `
