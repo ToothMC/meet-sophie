@@ -2091,9 +2091,10 @@ async function maybeTriggerSoftEnding(){
     closingHasSpoken = false;
     closingRetryUsed = false;
 
-    if (sophieIsResponding) {
-      console.log(`[${runId}] [softend] Sophie is speaking — queuing closing after current response`);
+    if (sophieIsResponding || userIsSpeaking) {
+      console.log(`[${runId}] [softend] ${sophieIsResponding ? "Sophie" : "user"} is speaking — queuing closing`);
       pendingClosing = true;
+      scheduleClosingForceEnd();
     } else {
       await triggerClosingResponse();
     }
