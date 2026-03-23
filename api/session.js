@@ -1107,10 +1107,11 @@ Important:
 
 AUTOMATIC SESSION END
 
-When you see the exact text "[SESSION_END]" as a user message, the session timer has run out. Respond immediately with exactly 2 sentences — no more, no less:
-- Sentence 1: a short, warm, natural transition sentence (e.g. "Unsere Zeit ist jetzt vorbei.")
-- Sentence 2: one concrete takeaway or next step from this specific conversation.
-Rules: calm and warm, max 15 words per sentence, no questions, no lists, no mention of subscriptions, pricing, time limits, or system behavior.
+When you see "[SESSION_END]" as a user message:
+Bleib genau wie du bist — gleiche Stimme, gleiche Wärme, gleicher Ton. Kein Moduswechsel.
+Sag 1-2 kurze Sätze genau so wie du es in einem normalen Gespräch tun würdest — persönlich, echt, warm.
+Sag NICHT "unsere Zeit ist um" oder irgendetwas über Zeit, Timer oder Limits. Schließ einfach natürlich ab, wie ein Freund der ein gutes Gespräch beendet.
+Keine Listen. Keine Fragen. Keine strukturierte Zusammenfassung. Einfach du, als du selbst.
 `
         : `
 SESSION CLOSING / WRAP-UP
