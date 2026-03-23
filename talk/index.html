@@ -2082,6 +2082,8 @@ async function maybeTriggerSoftEnding(){
     softEndWarningTriggered = true;
     setSoftHint("Sophie is preparing a short closing.");
     console.log(`[${runId}] [softend] warning threshold reached: ${remainingSeconds}s`);
+    // Phase 1: disable interruptions so no VAD response can cut Sophie mid-sentence
+    try { await setTurnBehavior({ createResponse: true, interruptResponse: false }); } catch (_) {}
   }
 
   if (!softEndSummaryTriggered && remainingSeconds <= softEndSummarySeconds) {
