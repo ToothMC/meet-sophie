@@ -240,9 +240,8 @@ async function handlePortal(req, res) {
       return res.status(404).json({ error: "No subscription customer" });
     }
 
-    const proto      = req.headers["x-forwarded-proto"] || "https";
-    const host       = req.headers.host;
-    const return_url = `${proto}://${host}/talk/`;
+    const baseUrl    = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
+    const return_url = `${baseUrl}/talk/`;
 
     const session = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,
