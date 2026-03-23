@@ -41,7 +41,10 @@
       "Bash(git pull:*)",
       "Bash(grep -n \"project_id\\\\|SUPABASE\\\\|supabase\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)",
       "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)",
-      "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/favicon* /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.png /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/site.webmanifest)"
+      "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/favicon* /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.png /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/site.webmanifest)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.ts -o -name *.tsx)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase -type f -name *.sql)",
+      "Bash(grep -n \"last_interaction_summary\\\\|short_summary\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
     ]
   },
   "hooks": {
