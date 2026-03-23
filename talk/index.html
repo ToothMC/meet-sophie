@@ -2759,7 +2759,7 @@ if (!hasRealConversation) {
       if (dc && dc.readyState === "open" && hasUserSpoken) {
         try {
           // Drain delay: let Sophie's previous audio buffer finish playing (prevents mid-sentence switch)
-          await new Promise(r => setTimeout(r, 2500));
+          await new Promise(r => setTimeout(r, 1000));
 
           dcSend({
             type: "conversation.item.create",
