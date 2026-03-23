@@ -2100,24 +2100,18 @@ async function maybeTriggerSoftEnding(){
     stopDynamicResets();
     stopCountdown();
     muteMic();
-    setSoftHint("Sophie is bringing it to a close.");
+    setSoftHint("");
     console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
 
-    closingStartedAt = Date.now();
-    closingHasSpoken = false;
-    closingRetryUsed = false;
-
-    if (sophieIsResponding) {
-      // Sophie is mid-sentence — let her finish naturally, then end cleanly (no closing summary)
-      console.log(`[${runId}] [softend] Sophie is speaking — will end cleanly after she finishes`);
-      endCleanlyAfterResponse = true;
-      scheduleClosingForceEnd();
-    } else if (userIsSpeaking) {
-      console.log(`[${runId}] [softend] user is speaking — waiting for them to finish`);
+    if (sophieIsResponding || userIsSpeaking) {
+      // Someone is speaking — wait for silence, then end session (summary plays during report phase)
+      console.log(`[${runId}] [softend] waiting for silence before ending`);
       pendingClosing = true;
       scheduleClosingForceEnd();
     } else {
-      await triggerClosingResponse();
+      // Nobody speaking — end session now (summary plays during report phase)
+      console.log(`[${runId}] [softend] silence — ending session now`);
+      void handleTimeLimitReached();
     }
   }
 }
