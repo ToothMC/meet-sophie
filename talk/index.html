@@ -2194,6 +2194,11 @@ function attachChannel(ch) {
       if (msg?.type === "response.created") {
         hideReadyStatus();
         sophieIsResponding = true;
+        if (waitingForClosingResponse) {
+          waitingForClosingResponse = false;
+          closingResponseActive = true;
+          console.log(`[${runId}] [softend] closing response is now active`);
+        }
         return;
       }
 
