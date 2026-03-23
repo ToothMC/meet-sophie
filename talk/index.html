@@ -1056,6 +1056,7 @@ let pendingClosing = false;
 let userIsSpeaking = false;
 let closingResponseExpected = false;
 let closingResponseActive = false; // true only while OUR closing response is playing
+let closingResponseId = null; // ID of our closing response — prevents cancelled responses from triggering session end
 let endCleanlyAfterResponse = false; // Sophie was mid-sentence at 22s — just end after she finishes
 
 let hasUserSpoken = false;
