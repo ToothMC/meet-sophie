@@ -2272,9 +2272,8 @@ function attachChannel(ch) {
           return;
         }
 
-        if (closingResponseActive && !softEndFinalizing && closingHasSpoken) {
-          console.log(`[${runId}] [softend] closing response.done -> finishing session`);
-          closingResponseActive = false;
+        if (softEndSummaryTriggered && !softEndFinalizing && closingHasSpoken) {
+          console.log(`[${runId}] [softend] response.done -> finishing session`);
           clearClosingTimers();
           closingFinishTimeout = setTimeout(() => {
             void handleTimeLimitReached();
