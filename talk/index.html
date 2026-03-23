@@ -2041,20 +2041,18 @@ async function triggerClosingResponse() {
   try {
     await lockClosingMode();
 
-    // Update session instructions for the closing (avoids prosody change from response.create instructions override)
+    // Inject [SESSION_END] trigger into conversation context — Sophie's session prompt handles this.
+    // Using conversation.item.create avoids any instruction override, so Sophie's voice stays the same.
     await sendWhenChannelOpen({
-      type: "session.update",
-      session: {
-        instructions: `You are Sophie. The session is ending right now.
-Speak in the same language that was used most recently in the conversation.
-Say EXACTLY 2 sentences. No more.
-Sentence 1: a short natural transition (e.g. "Unsere Zeit ist fast um." / "Our time is almost up.")
-Sentence 2: one key takeaway or next step from the conversation — stated simply, no list.
-Rules: calm, warm, 2 sentences only, max 15 words each, no questions, no lists, no mention of subscriptions or limits.`
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: "[SESSION_END]" }]
       }
     }, 3000);
 
-    // Mark that the next response.created is ours — set flag and send synchronously (no await gap)
+    // Set flag synchronously before dcSend so response.created guard knows this is ours
     closingResponseExpected = true;
     try {
       dcSend({
