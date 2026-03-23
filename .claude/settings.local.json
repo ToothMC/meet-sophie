@@ -40,7 +40,8 @@
       "Bash(grep -r \"voice\\\\|audio\\\\|microphone\\\\|VAD\\\\|vad\\\\|speech\\\\|interrupt\\\\|turn\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts --include=*.tsx --include=*.jsx -l)",
       "Bash(git pull:*)",
       "Bash(grep -n \"project_id\\\\|SUPABASE\\\\|supabase\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)",
-      "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)"
+      "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)",
+      "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/favicon* /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.png /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/site.webmanifest)"
     ]
   },
   "hooks": {
