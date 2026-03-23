@@ -2104,8 +2104,9 @@ async function maybeTriggerSoftEnding(){
     closingRetryUsed = false;
 
     if (sophieIsResponding) {
-      console.log(`[${runId}] [softend] Sophie is speaking — waiting for her to finish`);
-      pendingClosing = true;
+      // Sophie is mid-sentence — let her finish naturally, then end cleanly (no closing summary)
+      console.log(`[${runId}] [softend] Sophie is speaking — will end cleanly after she finishes`);
+      endCleanlyAfterResponse = true;
       scheduleClosingForceEnd();
     } else if (userIsSpeaking) {
       console.log(`[${runId}] [softend] user is speaking — waiting for them to finish`);
