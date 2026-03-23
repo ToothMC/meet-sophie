@@ -2092,6 +2092,7 @@ async function maybeTriggerSoftEnding(){
     softEndSummaryTriggered = true;
     stopDynamicResets();
     stopCountdown();
+    muteMic();
     setSoftHint("Sophie is bringing it to a close.");
     console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
 
@@ -2099,10 +2100,13 @@ async function maybeTriggerSoftEnding(){
     closingHasSpoken = false;
     closingRetryUsed = false;
 
-    if (sophieIsResponding || userIsSpeaking) {
-      console.log(`[${runId}] [softend] ${sophieIsResponding ? "Sophie" : "user"} is speaking — queuing closing`);
+    if (sophieIsResponding) {
+      console.log(`[${runId}] [softend] Sophie is speaking — waiting for her to finish`);
       pendingClosing = true;
-      await lockClosingMode();
+      scheduleClosingForceEnd();
+    } else if (userIsSpeaking) {
+      console.log(`[${runId}] [softend] user is speaking — waiting for them to finish`);
+      pendingClosing = true;
       scheduleClosingForceEnd();
     } else {
       await triggerClosingResponse();
