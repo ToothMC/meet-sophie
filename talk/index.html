@@ -2043,6 +2043,7 @@ async function triggerClosingResponse() {
   try {
     await lockClosingMode();
 
+    waitingForClosingResponse = true;
     await sendWhenChannelOpen({
       type: "response.create",
       response: {
