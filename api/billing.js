@@ -128,9 +128,7 @@ async function handleCheckout(req, res) {
       return res.status(400).json({ error: "Legal acceptance required: withdrawal waiver" });
     }
 
-    const proto  = (req.headers["x-forwarded-proto"] || "https").toString();
-    const host   = (req.headers["x-forwarded-host"] || req.headers.host || "meet-sophie.com").toString();
-    const origin = `${proto}://${host}`;
+    const origin = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
 
     const ip = (req.headers["x-forwarded-for"] || "").toString().split(",")[0].trim() || null;
     const userAgent = (req.headers["user-agent"] || "").toString().slice(0, 300) || null;
@@ -242,9 +240,8 @@ async function handlePortal(req, res) {
       return res.status(404).json({ error: "No subscription customer" });
     }
 
-    const proto      = req.headers["x-forwarded-proto"] || "https";
-    const host       = req.headers.host;
-    const return_url = `${proto}://${host}/talk/`;
+    const baseUrl    = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
+    const return_url = `${baseUrl}/talk/`;
 
     const session = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,
@@ -308,9 +305,9 @@ async function handleTopup(req, res) {
       return res.status(400).json({ error: "Invalid pack. Use { pack: 5 | 10 | 20 }" });
     }
 
-    const origin     = req.headers.origin || "https://meet-sophie.com";
-    const successUrl = `${origin}/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl  = `${origin}/pricing`;
+    const baseUrl    = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
+    const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl  = `${baseUrl}/pricing`;
 
     const body = new URLSearchParams();
     body.append("mode", "payment");

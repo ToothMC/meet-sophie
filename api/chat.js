@@ -555,22 +555,34 @@ async function handleEnd(req, res) {
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase    = createClient(supabaseUrl, serviceKey);
 
+  const token = getToken(req);
+  const user  = await getUser(token, supabaseUrl, serviceKey);
+
+  // Ownership check: if session has a user_id, caller must match
+  const { data: session } = await supabase
+    .from("chat_sessions")
+    .select("user_id")
+    .eq("id", session_id)
+    .maybeSingle();
+
+  if (!session) return res.status(404).json({ error: "Session not found" });
+
+  if (session.user_id && (!user || user.id !== session.user_id)) {
+    return res.status(403).json({ error: "Not your session" });
+  }
+
   // Close session
   await supabase
     .from("chat_sessions")
     .update({ status: "closed", updated_at: new Date().toISOString() })
     .eq("id", session_id);
 
-  const token = getToken(req);
-  const user  = await getUser(token, supabaseUrl, serviceKey);
-
   // Run memory-update if authenticated + transcript available
+  const baseUrl = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
+
   if (user && Array.isArray(transcript) && transcript.length >= 2) {
     try {
-      const proto = (req.headers["x-forwarded-proto"] || "https").toString();
-      const host  = (req.headers["x-forwarded-host"] || req.headers.host || "meet-sophie.com").toString();
-
-      await fetch(`${proto}://${host}/api/memory-update`, {
+      await fetch(`${baseUrl}/api/memory-update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -653,6 +665,15 @@ async function handleUsage(req, res) {
   const supabase = createClient(supabaseUrl, serviceKey);
   const { data: session } = await supabase.from("chat_sessions").select("turn_count,user_id,status").eq("id", session_id).maybeSingle();
   if (!session) return res.status(404).json({ error: "Session not found" });
+
+  // Ownership check: if session has a user_id, caller must match
+  if (session.user_id) {
+    const token = getToken(req);
+    const user  = await getUser(token, supabaseUrl, serviceKey);
+    if (!user || user.id !== session.user_id) {
+      return res.status(403).json({ error: "Not your session" });
+    }
+  }
 
   const turns_used      = session.turn_count;
   const turns_remaining = Math.max(0, FREE_TURNS_LIMIT - turns_used);
