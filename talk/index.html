@@ -2180,6 +2180,7 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+        sophieIsResponding = true;
         return;
       }
 
