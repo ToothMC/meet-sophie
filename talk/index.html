@@ -2272,8 +2272,14 @@ function attachChannel(ch) {
 
         if (pendingClosing && !softEndFinalizing && !limitTriggered) {
           pendingClosing = false;
-          console.log(`[${runId}] [softend] pending closing triggered after response.done`);
-          await triggerClosingResponse();
+          console.log(`[${runId}] [softend] pending closing — waiting for audio buffer to drain`);
+          clearClosingTimers();
+          setTimeout(async () => {
+            if (!softEndFinalizing && !limitTriggered) {
+              console.log(`[${runId}] [softend] audio drain complete — triggering closing`);
+              await triggerClosingResponse();
+            }
+          }, 1500);
           return;
         }
 
