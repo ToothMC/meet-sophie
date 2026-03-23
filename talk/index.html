@@ -2043,31 +2043,21 @@ async function triggerClosingResponse() {
   try {
     await lockClosingMode();
 
+    // Inject closing cue as a system message — Sophie responds in her natural voice/flow
+    await sendWhenChannelOpen({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "system",
+        content: [{ type: "input_text", text: "The session is ending now. Wrap up in 1-2 short natural sentences using the same language as the conversation. No lists, no new topics. Calm and warm." }]
+      }
+    }, 3000);
+
     waitingForClosingResponse = true;
     await sendWhenChannelOpen({
       type: "response.create",
       response: {
-        modalities: ["audio", "text"],
-        instructions: `
-OVERRIDE ALL OTHER CLOSING INSTRUCTIONS. This replaces any SESSION CLOSING / WRAP-UP block.
-
-Speak in the same language that was used most recently in the conversation.
-
-Say EXACTLY 2 sentences. No more.
-
-Sentence 1: a short natural transition (e.g. "Unsere Zeit ist fast um." / "Our time is almost up.")
-Sentence 2: one key takeaway or next step from the conversation — stated simply, no list.
-
-Absolute rules:
-- 2 sentences total, nothing more
-- maximum 15 words per sentence
-- no bullet points, no numbered lists, no "first / second / third"
-- no key insights list, no structured summary
-- do not ask a question
-- do not mention subscriptions, pricing, plans, timers, or limits
-
-Tone: calm, warm, complete.
-`
+        modalities: ["audio", "text"]
       }
     }, 5000);
 
