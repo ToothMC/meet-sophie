@@ -2157,6 +2157,18 @@ function attachChannel(ch) {
 
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
+        userIsSpeaking = true;
+        return;
+      }
+
+      if (msg?.type === "input_audio_buffer.speech_stopped") {
+        userIsSpeaking = false;
+        if (pendingClosing && !sophieIsResponding && !softEndFinalizing && !limitTriggered) {
+          pendingClosing = false;
+          console.log(`[${runId}] [softend] pending closing triggered after speech_stopped`);
+          await cancelAnyOngoingResponse();
+          await triggerClosingResponse();
+        }
         return;
       }
 
