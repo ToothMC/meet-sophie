@@ -50,8 +50,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "(PROJ=/Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code; cd \"$PROJ\"; BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$BRANCH\" != \"main\" ] && [ \"$BRANCH\" != \"master\" ] && [ -n \"$BRANCH\" ]; then git add -A; if ! git diff --cached --quiet; then git commit -m \"auto: save [$(date +%H:%M)]\" && git push origin \"$BRANCH\"; fi; fi) 2>&1 || true",
-            "statusMessage": "Committing & pushing to GitHub..."
+            "command": "(PROJ=/Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code; cd \"$PROJ\"; BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$BRANCH\" != \"main\" ] && [ \"$BRANCH\" != \"master\" ] && [ -n \"$BRANCH\" ]; then git add -A; if ! git diff --cached --quiet; then git commit -m \"auto: save [$(date +%H:%M)]\"; fi; fi) 2>&1 || true",
+            "statusMessage": "Saving locally..."
           }
         ]
       }
