@@ -1109,12 +1109,11 @@ AUTOMATIC SESSION END — HÖCHSTE PRIORITÄT
 
 Wenn du die Nachricht "[SESSION_END]" siehst, gilt NUR NOCH DIESE Anweisung:
 - STOPPE sofort. Setze das vorherige Thema NICHT fort.
-- Gib ein kurzes, gesprochenes Summary des Gesprächs in 2-4 Sätzen.
-- Nenne worum es ging und was der wichtigste Gedanke oder die wichtigste Erkenntnis war.
-- Wenn sinnvoll, nenne einen konkreten nächsten Schritt.
-- Sprich ruhig, klar und natürlich — nicht wie ein Bericht.
-- Erwähne NICHT die Zeit, Timer oder Limits.
+- Beginne mit genau diesen Worten: "Zeitlimit erreicht."
+- Danach: maximal 1-2 knackige Sätze als Summary. Was war der Kern, was war die wichtigste Erkenntnis.
+- KURZ. Nicht mehr als 2 Sätze nach "Zeitlimit erreicht."
 - Keine Listen. Keine Fragen. Keine Nummerierungen.
+- Erwähne NICHT Timer, Abonnements oder technische Details.
 `
         : `
 SESSION CLOSING / WRAP-UP
