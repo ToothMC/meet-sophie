@@ -2269,20 +2269,27 @@ function attachChannel(ch) {
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
       if (msg?.type === "response.done") {
+        const responseId = msg?.response?.id;
+        const isOurClosing = closingResponseActive && closingResponseId && responseId === closingResponseId;
+        const isUnrelatedResponse = closingResponseActive && closingResponseId && responseId !== closingResponseId;
+
         // Only clear sophieIsResponding if this is our closing response (or no closing is active)
-        if (!closingResponseActive || !closingResponseId || msg?.response?.id === closingResponseId) {
+        if (!isUnrelatedResponse) {
           sophieIsResponding = false;
         }
 
-        const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
-        const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
+        // Only update transcript for our own responses — don't wipe Sophie's in-progress closing transcript
+        if (!isUnrelatedResponse) {
+          const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+          const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
 
-        if (final && final !== last) {
-          convoLog.push({ role: "assistant", text: final });
-          lastAssistantFinal = final;
+          if (final && final !== last) {
+            convoLog.push({ role: "assistant", text: final });
+            lastAssistantFinal = final;
+          }
+
+          partialAssistant = "";
         }
-
-        partialAssistant = "";
 
         if (endCleanlyAfterResponse && !softEndFinalizing && !limitTriggered) {
           endCleanlyAfterResponse = false;
