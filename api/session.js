@@ -1142,12 +1142,11 @@ AUTOMATIC SESSION END — HIGHEST PRIORITY
 
 When you see the message "[SESSION_END]", ONLY this instruction applies:
 - STOP immediately. Do NOT continue the previous topic.
-- Give a short spoken summary of the conversation in 2-4 sentences.
-- Name what you talked about and what the key takeaway or insight was.
-- If useful, mention one concrete next step.
-- Speak calmly, clearly, and naturally — not like a report.
-- Do NOT mention time, timers, or limits.
+- Start with exactly these words: "Time limit reached."
+- Then: maximum 1-2 punchy sentences as summary. What was the core topic, what was the key insight.
+- SHORT. No more than 2 sentences after "Time limit reached."
 - No lists. No questions. No numbering.
+- Do NOT mention timers, subscriptions, or technical details.
 `;
 
 const sophiePrompt = `
