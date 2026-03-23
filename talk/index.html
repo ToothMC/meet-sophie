@@ -2251,6 +2251,7 @@ function attachChannel(ch) {
         if (pendingClosing && !softEndFinalizing && !limitTriggered) {
           pendingClosing = false;
           console.log(`[${runId}] [softend] pending closing triggered after response.done`);
+          await cancelAnyOngoingResponse();
           await triggerClosingResponse();
           return;
         }
