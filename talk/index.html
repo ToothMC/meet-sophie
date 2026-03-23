@@ -2695,12 +2695,10 @@ const durationSeconds = talkStartedAt
   ? Math.round((Date.now() - talkStartedAt) / 1000)
   : 0;
 
-const transcriptSnapshot = [...convoLog];
-
 const hasRealConversation =
   hasUserSpoken &&
   durationSeconds >= 10 &&
-  transcriptSnapshot.some(item => String(item?.text || "").trim());
+  convoLog.some(item => String(item?.text || "").trim());
 
 if (!hasRealConversation) {
   stopFakeReportLoader();
