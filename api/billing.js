@@ -305,9 +305,9 @@ async function handleTopup(req, res) {
       return res.status(400).json({ error: "Invalid pack. Use { pack: 5 | 10 | 20 }" });
     }
 
-    const origin     = req.headers.origin || "https://meet-sophie.com";
-    const successUrl = `${origin}/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl  = `${origin}/pricing`;
+    const baseUrl    = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
+    const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl  = `${baseUrl}/pricing`;
 
     const body = new URLSearchParams();
     body.append("mode", "payment");
