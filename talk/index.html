@@ -2277,14 +2277,9 @@ function attachChannel(ch) {
 
         if (pendingClosing && !softEndFinalizing && !limitTriggered) {
           pendingClosing = false;
-          console.log(`[${runId}] [softend] pending closing — brief pause then triggering`);
+          console.log(`[${runId}] [softend] pending closing — triggering`);
           clearClosingTimers();
-          setTimeout(async () => {
-            if (!softEndFinalizing && !limitTriggered) {
-              console.log(`[${runId}] [softend] triggering closing`);
-              await triggerClosingResponse();
-            }
-          }, 400);
+          void triggerClosingResponse();
           return;
         }
 
