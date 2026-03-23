@@ -2314,12 +2314,7 @@ function attachChannel(ch) {
           return;
         }
 
-        if (softEndSummaryTriggered && !softEndFinalizing && closingHasSpoken && closingResponseActive) {
-          // Only finish session for OUR closing response — not for cancelled unexpected responses
-          if (closingResponseId && msg?.response?.id !== closingResponseId) {
-            console.log(`[${runId}] [softend] response.done for non-closing response — ignoring`);
-            return;
-          }
+        if (softEndSummaryTriggered && !softEndFinalizing && closingHasSpoken && isOurClosing) {
           closingResponseActive = false;
           closingResponseId = null;
           console.log(`[${runId}] [softend] response.done -> finishing session`);
