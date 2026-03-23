@@ -2180,7 +2180,6 @@ function attachChannel(ch) {
         if (pendingClosing && !sophieIsResponding && !softEndFinalizing && !limitTriggered) {
           pendingClosing = false;
           console.log(`[${runId}] [softend] pending closing triggered after speech_stopped`);
-          await cancelAnyOngoingResponse();
           await triggerClosingResponse();
         }
         return;
