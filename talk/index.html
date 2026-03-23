@@ -2053,6 +2053,45 @@ function scheduleClosingForceEnd() {
   }, 15000);
 }
 
+async function triggerClosingResponse() {
+  try {
+    await lockClosingMode();
+
+    await sendWhenChannelOpen({
+      type: "response.create",
+      response: {
+        modalities: ["audio", "text"],
+        instructions: `
+OVERRIDE ALL OTHER CLOSING INSTRUCTIONS. This replaces any SESSION CLOSING / WRAP-UP block.
+
+Speak in the same language that was used most recently in the conversation.
+
+Say EXACTLY 2 sentences. No more.
+
+Sentence 1: a short natural transition (e.g. "Unsere Zeit ist fast um." / "Our time is almost up.")
+Sentence 2: one key takeaway or next step from the conversation — stated simply, no list.
+
+Absolute rules:
+- 2 sentences total, nothing more
+- maximum 15 words per sentence
+- no bullet points, no numbered lists, no "first / second / third"
+- no key insights list, no structured summary
+- do not ask a question
+- do not mention subscriptions, pricing, plans, timers, or limits
+
+Tone: calm, warm, complete.
+`
+      }
+    }, 5000);
+
+    scheduleClosingRetry();
+    scheduleClosingForceEnd();
+  } catch (e) {
+    console.log(`[${runId}] [softend] summary trigger failed`, e);
+    scheduleClosingForceEnd();
+  }
+}
+
 async function maybeTriggerSoftEnding(){
   if (!softEndEnabled || softEndFinalizing) return;
   if (!dc || dc.readyState !== "open") return;
@@ -2078,42 +2117,11 @@ async function maybeTriggerSoftEnding(){
     closingHasSpoken = false;
     closingRetryUsed = false;
 
-    try {
-      await cancelAnyOngoingResponse();
-      await lockClosingMode();
-
-      await sendWhenChannelOpen({
-        type: "response.create",
-        response: {
-          modalities: ["audio", "text"],
-          instructions: `
-OVERRIDE ALL OTHER CLOSING INSTRUCTIONS. This replaces any SESSION CLOSING / WRAP-UP block.
-
-Speak in the same language that was used most recently in the conversation.
-
-Say EXACTLY 2 sentences. No more.
-
-Sentence 1: a short natural transition (e.g. "Unsere Zeit ist fast um." / "Our time is almost up.")
-Sentence 2: one key takeaway or next step from the conversation — stated simply, no list.
-
-Absolute rules:
-- 2 sentences total, nothing more
-- maximum 15 words per sentence
-- no bullet points, no numbered lists, no "first / second / third"
-- no key insights list, no structured summary
-- do not ask a question
-- do not mention subscriptions, pricing, plans, timers, or limits
-
-Tone: calm, warm, complete.
-`
-        }
-      }, 5000);
-
-      scheduleClosingRetry();
-      scheduleClosingForceEnd();
-    } catch (e) {
-      console.log(`[${runId}] [softend] summary trigger failed`, e);
-      scheduleClosingForceEnd();
+    if (sophieIsResponding) {
+      console.log(`[${runId}] [softend] Sophie is speaking — queuing closing after current response`);
+      pendingClosing = true;
+    } else {
+      await triggerClosingResponse();
     }
   }
 }
