@@ -2015,7 +2015,7 @@ function scheduleClosingRetry() {
   if (closingRetryUsed) return;
 
   closingRetryTimeout = setTimeout(async () => {
-    if (closingHasSpoken || closingResponseStarted || waitingForClosingResponse || closingResponseActive || softEndFinalizing || limitTriggered) return;
+    if (closingHasSpoken || closingResponseStarted || softEndFinalizing || limitTriggered) return;
 
     closingRetryUsed = true;
     console.log(`[${runId}] [softend] retrying closing`);
