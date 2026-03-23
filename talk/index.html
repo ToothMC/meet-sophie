@@ -2017,7 +2017,8 @@ function scheduleClosingRetry() {
   if (closingRetryUsed) return;
 
   closingRetryTimeout = setTimeout(async () => {
-    if (closingHasSpoken || closingResponseStarted || softEndFinalizing || limitTriggered) return;
+    // Extra guard: also skip if Sophie is currently speaking (closingHasSpoken may lag behind audio)
+    if (closingHasSpoken || closingResponseStarted || sophieIsResponding || softEndFinalizing || limitTriggered) return;
 
     closingRetryUsed = true;
     console.log(`[${runId}] [softend] retrying closing`);
@@ -2027,7 +2028,7 @@ function scheduleClosingRetry() {
     } catch (e) {
       console.log(`[${runId}] [softend] retry failed`, e);
     }
-  }, 7000);
+  }, 12000);
 }
 
 function scheduleClosingForceEnd() {
