@@ -35,7 +35,9 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(gh run:*)",
       "Bash(grep -E \"\\\\.\\(ts|sql|d\\\\.ts\\)$\")",
-      "Bash(grep -r \"insert\\\\|select\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
+      "Bash(grep -r \"insert\\\\|select\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_projects",
+      "Bash(grep -r \"voice\\\\|audio\\\\|microphone\\\\|VAD\\\\|vad\\\\|speech\\\\|interrupt\\\\|turn\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts --include=*.tsx --include=*.jsx -l)"
     ]
   },
   "hooks": {
