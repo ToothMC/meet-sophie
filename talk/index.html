@@ -1527,6 +1527,8 @@ function resetClosingState() {
   closingRetryUsed = false;
   pendingClosing = false;
   userIsSpeaking = false;
+  waitingForClosingResponse = false;
+  closingResponseActive = false;
 }
 
 function configurePostCallCta(triggeredByLimit = false) {
