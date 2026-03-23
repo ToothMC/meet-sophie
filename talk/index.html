@@ -2748,17 +2748,58 @@ if (!hasRealConversation) {
 }
     
     if (triggeredByLimit) {
-      if (dc) {
-        try { dc.close(); } catch(e){}
-        dc = null;
-      }
-
+      // Close mic — no more user audio
       if (stream) {
         try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
         stream = null;
       }
 
-      // keep audio output alive so Sophie can finish her closing sentence
+      // Fire closing summary while dc is still open — Sophie speaks during report loading
+      let summaryDone = Promise.resolve();
+      if (dc && dc.readyState === "open" && hasUserSpoken) {
+        try {
+          dcSend({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{ type: "input_text", text: "[SESSION_END]" }]
+            }
+          });
+          dcSend({
+            type: "response.create",
+            response: { modalities: ["audio", "text"] }
+          });
+          console.log(`[${runId}] [softend] summary fired during report phase`);
+          summaryDone = new Promise((resolve) => {
+            window.__summaryDoneResolve = resolve;
+            setTimeout(() => {
+              console.log(`[${runId}] [softend] summary timeout — continuing`);
+              window.__summaryDoneResolve = null;
+              resolve();
+            }, 15000);
+          });
+        } catch (e) {
+          console.log(`[${runId}] [softend] summary fire failed`, e);
+        }
+      }
+
+      // Start report API calls in parallel with summary (these don't need transcript)
+      const usageDone = durationSeconds > 0 ? reportUsage(durationSeconds) : Promise.resolve();
+      const finalizeDone = finalizeSessionAfterSummary();
+
+      // Wait for Sophie to finish speaking
+      await summaryDone;
+      // Allow remaining audio buffer to drain
+      await new Promise(r => setTimeout(r, 2500));
+
+      // Close data channel (summary done)
+      if (dc) {
+        try { dc.close(); } catch(e){}
+        dc = null;
+      }
+
+      // Keep audio output alive briefly for last audio to play through
       const _pc = pc;
       const _audioEl = audioEl;
       pc = null;
@@ -2766,16 +2807,19 @@ if (!hasRealConversation) {
       setTimeout(() => {
         try { if (_pc) _pc.close(); } catch(e){}
         try { if (_audioEl) _audioEl.srcObject = null; } catch(e){}
-      }, 8000);
+      }, 4000);
+
+      // Wait for parallel API calls
+      await usageDone;
+      await finalizeDone;
+    } else {
+      if (durationSeconds > 0) {
+        await reportUsage(durationSeconds);
+      }
     }
 
-    if (durationSeconds > 0) {
-      await reportUsage(durationSeconds);
-    }
-
-    if (triggeredByLimit) {
-      await finalizeSessionAfterSummary();
-    }
+    // Take transcript AFTER summary (includes summary text in convoLog)
+    const transcriptSnapshot = [...convoLog];
 
     const memoryResult = await sendMemoryUpdate(durationSeconds);
     stopFakeReportLoader();
