@@ -261,7 +261,11 @@ ${transcriptText}
 export default async function handler(req, res) {
   try {
     // --- CORS / Preflight ---
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const allowedOrigins = ["https://www.meet-sophie.com", "https://meet-sophie.com"];
+    const reqOrigin = (req.headers.origin || "").toString();
+    const corsOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin
+      : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : allowedOrigins[0];
+    res.setHeader("Access-Control-Allow-Origin", corsOrigin);
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.status(204).end();
