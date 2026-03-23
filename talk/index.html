@@ -1818,6 +1818,13 @@ async function cancelAnyOngoingResponse() {
   try { await sendWhenChannelOpen({ type: "response.cancel" }, 1200); } catch (_) {}
 }
 
+function muteMic() {
+  try {
+    if (stream) stream.getTracks().forEach(t => { t.enabled = false; });
+    console.log(`[${runId}] [softend] mic muted`);
+  } catch (_) {}
+}
+
 async function setTurnBehavior({ createResponse, interruptResponse }) {
   try{
     await sendWhenChannelOpen({
