@@ -2277,6 +2277,14 @@ function attachChannel(ch) {
 
         partialAssistant = "";
 
+        if (endCleanlyAfterResponse && !softEndFinalizing && !limitTriggered) {
+          endCleanlyAfterResponse = false;
+          console.log(`[${runId}] [softend] Sophie finished — ending cleanly`);
+          clearClosingTimers();
+          closingFinishTimeout = setTimeout(() => { void handleTimeLimitReached(); }, 2200);
+          return;
+        }
+
         if (pendingClosing && !softEndFinalizing && !limitTriggered) {
           pendingClosing = false;
           console.log(`[${runId}] [softend] pending closing — triggering`);
