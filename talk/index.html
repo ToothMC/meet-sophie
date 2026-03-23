@@ -2928,8 +2928,21 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 
 initManageSubscriptionLink();
 
-// Start immediately — only if auth is valid (guards against redirect race condition)
-if (session?.user) startVoice();
+// On mobile, getUserMedia requires a user gesture (tap/click).
+// Auto-starting would silently fail → show the start button instead.
+const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+if (session?.user && !isMobileDevice) {
+  startVoice();
+} else if (session?.user) {
+  // Mobile: show ready state, wait for user tap
+  headline.textContent = "Sophie wartet.";
+  setStatus("Tippe auf den Button, um zu starten.");
+  startBtn.disabled = false;
+  startBtn.textContent = "Gespräch starten";
+  startBtn.onclick = startVoice;
+  showBackground(false);
+}
 </script>
 
 <script src="https://unpkg.com/lucide@latest"></script>
