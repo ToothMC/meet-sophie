@@ -1670,24 +1670,9 @@ function stopDynamicResets(){
 }
 
 function triggerDynamicReset(){
-  if (kickoffInProgress || softEndFinalizing || softEndSummaryTriggered) {
-    console.log(`[${runId}] [dynreset] skipped`);
-    return;
-  }
-
-  // Refresh Sophie's session instructions quietly via session.update — no new response created,
-  // no hidden text turn added to conversation history.
-  if (dc && dc.readyState === "open") {
-    try {
-      dcSend({
-        type: "session.update",
-        session: {
-          instructions: `Stay present, warm, spontaneous and human. Do not become generic or explanatory.`
-        }
-      });
-      console.log(`[${runId}] [dynreset] session.update sent`);
-    } catch (_) {}
-  }
+  // Dynamic resets disabled — injecting hidden text responses or overwriting the system prompt
+  // disrupts the conversation flow and history. Sophie's personality is handled by the system prompt.
+  console.log(`[${runId}] [dynreset] disabled`);
 }
 
 function startDynamicResets(){
