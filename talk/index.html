@@ -2793,8 +2793,8 @@ if (!hasRealConversation) {
 
       // Wait for Sophie to finish speaking
       await summaryDone;
-      // Allow remaining audio buffer to drain
-      await new Promise(r => setTimeout(r, 2500));
+      // Allow remaining audio buffer to drain (response.done fires before audio finishes playing)
+      await new Promise(r => setTimeout(r, 5000));
 
       // Close data channel (summary done)
       if (dc) {
@@ -2802,7 +2802,7 @@ if (!hasRealConversation) {
         dc = null;
       }
 
-      // Keep audio output alive briefly for last audio to play through
+      // Keep audio output alive so last audio plays through completely
       const _pc = pc;
       const _audioEl = audioEl;
       pc = null;
@@ -2810,7 +2810,7 @@ if (!hasRealConversation) {
       setTimeout(() => {
         try { if (_pc) _pc.close(); } catch(e){}
         try { if (_audioEl) _audioEl.srcObject = null; } catch(e){}
-      }, 4000);
+      }, 8000);
 
       // Wait for parallel API calls
       await usageDone;
