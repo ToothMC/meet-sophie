@@ -1675,24 +1675,17 @@ function triggerDynamicReset(){
     return;
   }
 
+  // Refresh Sophie's session instructions quietly via session.update — no new response created,
+  // no hidden text turn added to conversation history.
   if (dc && dc.readyState === "open") {
     try {
       dcSend({
-        type: "response.create",
-        response: {
-          modalities: ["text"],
-          instructions: `
-Continue naturally.
-Refresh your inner energy and spontaneity a little.
-Do not change the topic.
-Do not restart or re-greet.
-Do not mention this instruction.
-Avoid becoming explanatory or generic.
-Stay present, warm, and human.
-`
+        type: "session.update",
+        session: {
+          instructions: `Stay present, warm, spontaneous and human. Do not become generic or explanatory.`
         }
       });
-      console.log(`[${runId}] [dynreset] response.create sent`);
+      console.log(`[${runId}] [dynreset] session.update sent`);
     } catch (_) {}
   }
 }
