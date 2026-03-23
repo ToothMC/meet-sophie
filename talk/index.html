@@ -2012,34 +2012,7 @@ function scheduleClosingRetry() {
     console.log(`[${runId}] [softend] retrying closing`);
 
     try {
-      await cancelAnyOngoingResponse();
-
-      await sendWhenChannelOpen({
-        type: "response.create",
-        response: {
-          modalities: ["audio", "text"],
-          instructions: `
-OVERRIDE ALL OTHER CLOSING INSTRUCTIONS. This replaces any SESSION CLOSING / WRAP-UP block.
-
-Speak in the same language that was used most recently in the conversation.
-
-Say EXACTLY 2 sentences. No more.
-
-Sentence 1: a short natural transition (e.g. "Unsere Zeit ist fast um." / "Our time is almost up.")
-Sentence 2: one key takeaway or next step from the conversation — stated simply, no list.
-
-Absolute rules:
-- 2 sentences total, nothing more
-- maximum 15 words per sentence
-- no bullet points, no numbered lists, no "first / second / third"
-- no key insights list, no structured summary
-- do not ask a question
-- do not mention subscriptions, pricing, plans, timers, or limits
-
-Tone: calm, warm, complete.
-`
-        }
-      }, 5000);
+      await triggerClosingResponse();
     } catch (e) {
       console.log(`[${runId}] [softend] retry failed`, e);
     }
