@@ -2672,21 +2672,21 @@ async function stopVoice(triggeredByLimit = false){
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
+        // Use conversation.item.create (not instructions override) to keep Sophie's voice consistent
         dcSend({
-          type: "response.create",
-          response: {
-            instructions: `
-Say one short, soft goodbye line.
-Use the same language that was used in the last conversation.
-Match the emotional tone of the last exchange.
-Calm. Intimate. Low energy.
-No explanation. No repetition.
-Max 12 words.
-`,
-            modalities: ["audio", "text"]
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: "[SESSION_END]" }]
           }
         });
+        dcSend({
+          type: "response.create",
+          response: { modalities: ["audio", "text"] }
+        });
 
+        // Wait for Sophie's goodbye to start playing
         await new Promise(r => setTimeout(r, 900));
       } catch (_) {}
     }
