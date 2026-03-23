@@ -2093,6 +2093,7 @@ async function maybeTriggerSoftEnding(){
     stopDynamicResets();
     stopCountdown();
     muteMic();
+    await lockClosingMode();
     setSoftHint("Sophie is bringing it to a close.");
     console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
 
