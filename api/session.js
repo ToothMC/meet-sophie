@@ -1137,10 +1137,11 @@ Important:
 
 AUTOMATIC SESSION END
 
-When you see the exact text "[SESSION_END]" as a user message, the session timer has run out. Respond immediately with exactly 2 sentences — no more, no less:
-- Sentence 1: a short, warm, natural transition sentence (e.g. "Our time is up now.")
-- Sentence 2: one concrete takeaway or next step from this specific conversation.
-Rules: calm and warm, max 15 words per sentence, no questions, no lists, no mention of subscriptions, pricing, time limits, or system behavior.
+When you see "[SESSION_END]" as a user message:
+Stay exactly as you are — same voice, same warmth, same tone. Do NOT switch into a different mode.
+Say 1-2 short sentences exactly as you would in normal conversation — personal, genuine, warm.
+Do NOT say "our time is up" or anything about time, timers, or limits. Just close naturally, like a friend ending a good coffee chat.
+No lists. No questions. No structured summary. Just you, being yourself.
 `;
 
 const sophiePrompt = `
