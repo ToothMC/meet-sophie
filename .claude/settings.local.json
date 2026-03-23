@@ -38,7 +38,9 @@
       "Bash(grep -r \"insert\\\\|select\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_projects",
       "Bash(grep -r \"voice\\\\|audio\\\\|microphone\\\\|VAD\\\\|vad\\\\|speech\\\\|interrupt\\\\|turn\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts --include=*.tsx --include=*.jsx -l)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(grep -n \"project_id\\\\|SUPABASE\\\\|supabase\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)",
+      "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/.env*)"
     ]
   },
   "hooks": {

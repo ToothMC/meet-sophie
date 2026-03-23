@@ -2678,18 +2678,18 @@ async function stopVoice(triggeredByLimit = false){
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
-        // Use conversation.item.create (not instructions override) to keep Sophie's voice consistent
-        dcSend({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{ type: "input_text", text: "[SESSION_END]" }]
-          }
-        });
+        // Manual end — use a natural goodbye, NOT [SESSION_END] (which triggers "Zeitlimit erreicht")
         dcSend({
           type: "response.create",
-          response: { modalities: ["audio", "text"] }
+          response: {
+            modalities: ["audio", "text"],
+            instructions: `
+The user has ended the session manually.
+Say a warm, brief goodbye in the same language used in this conversation.
+1–2 sentences maximum. No summary, no lists, no mention of time limits or subscriptions.
+Tone: calm, human, complete.
+`
+          }
         });
 
         // Wait for Sophie's goodbye to start playing
