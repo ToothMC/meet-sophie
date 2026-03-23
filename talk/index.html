@@ -2056,7 +2056,7 @@ async function triggerClosingResponse() {
       item: {
         type: "message",
         role: "user",
-        content: [{ type: "input_text", text: `[SESSION_END] Your FIRST words MUST be: "${sessionLanguage === "de" ? "Zeitlimit erreicht." : "Time limit reached."}" — then 1-2 sentence summary. Nothing else.` }]
+        content: [{ type: "input_text", text: "[SESSION_END]" }]
       }
     }, 3000);
 
@@ -2680,7 +2680,7 @@ async function stopVoice(triggeredByLimit = false){
           item: {
             type: "message",
             role: "user",
-            content: [{ type: "input_text", text: `[SESSION_END] Your FIRST words MUST be: "${sessionLanguage === "de" ? "Zeitlimit erreicht." : "Time limit reached."}" — then 1-2 sentence summary. Nothing else.` }]
+            content: [{ type: "input_text", text: "[SESSION_END]" }]
           }
         });
         dcSend({
@@ -2768,7 +2768,7 @@ if (!hasRealConversation) {
             item: {
               type: "message",
               role: "user",
-              content: [{ type: "input_text", text: `[SESSION_END] Your FIRST words MUST be: "${sessionLanguage === "de" ? "Zeitlimit erreicht." : "Time limit reached."}" — then 1-2 sentence summary. Nothing else.` }]
+              content: [{ type: "input_text", text: "[SESSION_END]" }]
             }
           });
           dcSend({
