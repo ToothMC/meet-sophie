@@ -2240,7 +2240,7 @@ function attachChannel(ch) {
         const chunk = String(msg?.delta || "");
         if (chunk) {
           partialAssistant += chunk;
-          if (softEndSummaryTriggered) closingHasSpoken = true;
+          if (closingResponseActive) closingHasSpoken = true;
         }
         return;
       }
@@ -2249,7 +2249,7 @@ function attachChannel(ch) {
         const full = String(msg?.transcript || msg?.text || "").trim();
         if (full) {
           partialAssistant = full;
-          if (softEndSummaryTriggered) closingHasSpoken = true;
+          if (closingResponseActive) closingHasSpoken = true;
         }
         return;
       }
