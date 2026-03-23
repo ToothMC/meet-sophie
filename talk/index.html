@@ -2181,8 +2181,9 @@ function attachChannel(ch) {
         userIsSpeaking = false;
         if (pendingClosing && !sophieIsResponding && !softEndFinalizing && !limitTriggered) {
           pendingClosing = false;
-          console.log(`[${runId}] [softend] pending closing triggered after speech_stopped`);
-          await triggerClosingResponse();
+          clearClosingTimers();
+          console.log(`[${runId}] [softend] silence after speech — ending session`);
+          void handleTimeLimitReached();
         }
         return;
       }
