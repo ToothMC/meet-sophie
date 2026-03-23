@@ -2813,6 +2813,11 @@ if (!hasRealConversation) {
       if (durationSeconds > 0) {
         await reportUsage(durationSeconds);
       }
+      // Clear pc/stream NOW so startVoice() guard doesn't block a new session from the report panel
+      if (dc) { try { dc.close(); } catch(e){} dc = null; }
+      if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(e){} stream = null; }
+      if (pc) { try { pc.close(); } catch(e){} pc = null; }
+      if (audioEl) { try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
     }
 
     // Take transcript AFTER summary (includes summary text in convoLog)
