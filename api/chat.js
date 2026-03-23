@@ -666,6 +666,15 @@ async function handleUsage(req, res) {
   const { data: session } = await supabase.from("chat_sessions").select("turn_count,user_id,status").eq("id", session_id).maybeSingle();
   if (!session) return res.status(404).json({ error: "Session not found" });
 
+  // Ownership check: if session has a user_id, caller must match
+  if (session.user_id) {
+    const token = getToken(req);
+    const user  = await getUser(token, supabaseUrl, serviceKey);
+    if (!user || user.id !== session.user_id) {
+      return res.status(403).json({ error: "Not your session" });
+    }
+  }
+
   const turns_used      = session.turn_count;
   const turns_remaining = Math.max(0, FREE_TURNS_LIMIT - turns_used);
   const is_over_limit   = turns_used >= FREE_TURNS_LIMIT;
