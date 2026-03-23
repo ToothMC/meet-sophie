@@ -128,9 +128,7 @@ async function handleCheckout(req, res) {
       return res.status(400).json({ error: "Legal acceptance required: withdrawal waiver" });
     }
 
-    const proto  = (req.headers["x-forwarded-proto"] || "https").toString();
-    const host   = (req.headers["x-forwarded-host"] || req.headers.host || "meet-sophie.com").toString();
-    const origin = `${proto}://${host}`;
+    const origin = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
 
     const ip = (req.headers["x-forwarded-for"] || "").toString().split(",")[0].trim() || null;
     const userAgent = (req.headers["user-agent"] || "").toString().slice(0, 300) || null;
