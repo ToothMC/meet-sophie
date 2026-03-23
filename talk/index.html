@@ -2759,16 +2759,17 @@ if (!hasRealConversation) {
       if (dc && dc.readyState === "open" && hasUserSpoken) {
         try {
           dcSend({
-            type: "conversation.item.create",
-            item: {
-              type: "message",
-              role: "user",
-              content: [{ type: "input_text", text: "[SESSION_END]" }]
-            }
-          });
-          dcSend({
             type: "response.create",
-            response: { modalities: ["audio", "text"] }
+            response: {
+              modalities: ["audio", "text"],
+              input: [
+                {
+                  type: "message",
+                  role: "user",
+                  content: [{ type: "input_text", text: "[SESSION_END]" }]
+                }
+              ]
+            }
           });
           console.log(`[${runId}] [softend] summary fired during report phase`);
           summaryDone = new Promise((resolve) => {
