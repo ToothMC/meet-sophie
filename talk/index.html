@@ -2188,6 +2188,17 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+
+        // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
+        if (softEndSummaryTriggered && !closingResponseExpected && !softEndFinalizing && !limitTriggered) {
+          console.log(`[${runId}] [softend] unexpected response.created during closing — cancelling before audio`);
+          try { dcSend({ type: "response.cancel" }); } catch(_) {}
+          sophieIsResponding = false;
+          return;
+        }
+
+        if (closingResponseExpected) closingResponseExpected = false;
+
         sophieIsResponding = true;
         return;
       }
