@@ -1183,7 +1183,7 @@ ${sessionClosingBlock}
         voice: "shimmer",
         modalities: ["audio", "text"],
         temperature: 0.85,
-        speed: 1.05,
+        speed: 1.0,
         instructions: sophiePrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
         input_audio_format: "pcm16",
