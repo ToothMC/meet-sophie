@@ -2198,7 +2198,10 @@ function attachChannel(ch) {
           return;
         }
 
-        if (closingResponseExpected) closingResponseExpected = false;
+        if (closingResponseExpected) {
+          closingResponseExpected = false;
+          closingResponseActive = true; // this is our closing response
+        }
 
         sophieIsResponding = true;
         return;
