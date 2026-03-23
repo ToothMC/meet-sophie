@@ -2239,6 +2239,8 @@ function attachChannel(ch) {
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
       if (msg?.type === "response.done") {
+        sophieIsResponding = false;
+
         const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
         const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
 
@@ -2248,6 +2250,13 @@ function attachChannel(ch) {
         }
 
         partialAssistant = "";
+
+        if (pendingClosing && !softEndFinalizing && !limitTriggered) {
+          pendingClosing = false;
+          console.log(`[${runId}] [softend] pending closing triggered after response.done`);
+          await triggerClosingResponse();
+          return;
+        }
 
         if (kickoffInProgress) {
           console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
