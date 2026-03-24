@@ -74,10 +74,10 @@ const SPRINTS = [
   { id: 5, name: "Wachstum", weeks: "W13–W16", prio: "P2", color: "#3B82F6", progress: 0, packages: ["Social Hooks / Sophie Says", "Content / Shorts / Ads", "Funnel-Tracking", "Conversion-Messung", "Pricing-Experimente"], deps: "Sprint 4", done: "Traffic → User → Zahler Pipeline steht", doneReached: false, notes: "Noch nicht gestartet." },
 ];
 const ARCH_LAYERS = [
-  { name: "Identity Layer", desc: "Unveränderliche Kernpersona", color: "#8B5CF6", details: "Warm, intelligent, aufmerksam, natürlich. Ändert sich nie." },
-  { name: "Relationship Layer", desc: "Beziehungstiefe je Tier", color: "#A855F7", details: "Free → Assistant → Friend → Partner. Steuert Nähe, Initiative, Erinnerungstiefe." },
-  { name: "Behavior Layer", desc: "Dynamische Verhaltenswerte", color: "#C084FC", details: "warmth, structure, reflection, assertiveness, energy, playfulness — pro Turn." },
-  { name: "Memory & Permission", desc: "Kontext- & Datengrenzen", color: "#DDD6FE", details: "Was gespeichert wird, wie tief, wie lange. Beziehungsgefühl vs. Creepiness-Grenze." },
+  { name: "Identity Layer", desc: "Unveränderliche Kernpersona", color: "#8B5CF6", details: "Warm, intelligent, aufmerksam, natürlich. Ändert sich nie. ~200 Tokens." },
+  { name: "Relationship & Guidance Layer", desc: "Beziehungstiefe je Tier", color: "#A855F7", details: "Free → Assistant → Friend → Partner. Steuert Nähe, Initiative, Guidance-Tiefe. Nur ab Assistant-Tier geladen." },
+  { name: "Mode Layer", desc: "4 Auto-Modes + 3 Session-Modes", color: "#EC4899", details: "Auto: Explorer / Reflect / Decide / Relax — Sophie wählt automatisch, signalisiert via signal_mode Tool. Session: Brainstorm / Meeting / Sales Pitch — User wählt per UI. Session-Modes ersetzen Auto-Modes komplett → spart Tokens." },
+  { name: "Memory & Context", desc: "Tier-scoped Kontextgrenzen", color: "#C084FC", details: "Free: kein Memory. Assistant: 1 Session. Friend: 3 Sessions. Partner: 5 Sessions + Relationship-Daten. Gesamt: ~700–1.300 Tokens statt vorher ~4.000." },
 ];
 function fmt(n) { return n >= 1e6 ? `€${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `€${(n/1e3).toFixed(0)}k` : `€${n}`; }
 function BarChart({data,dataKey,color}){const max=Math.max(...data.map(d=>d[dataKey]));return(<div style={{display:"flex",alignItems:"flex-end",gap:8,height:160,padding:"0 4px"}}>{data.map((d,i)=>{const h=max>0?(d[dataKey]/max)*140:0;return(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:10,color:"#9CA3AF",fontWeight:600}}>{fmt(d[dataKey])}</span><div style={{width:"100%",height:h,background:`linear-gradient(180deg,${color},${color}88)`,borderRadius:"6px 6px 2px 2px",minHeight:2,transition:"height 0.5s ease"}}/><span style={{fontSize:11,color:"#6B7280",fontWeight:500}}>J{d.y}</span></div>);})}</div>);}
