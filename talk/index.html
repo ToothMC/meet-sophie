@@ -2357,13 +2357,15 @@ async function finalizeSessionAfterSummary() {
   }
 }
 
+let _startVoiceLock = false;
 async function startVoice(){
 
   // prevent double session
-  if (pc || stream) {
-    console.log("Session already running → ignore");
+  if (pc || stream || _startVoiceLock) {
+    console.log("Session already running or starting → ignore");
     return;
   }
+  _startVoiceLock = true;
   
   await preloadLimitVideo();
 
