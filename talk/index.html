@@ -3093,21 +3093,38 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 
 initManageSubscriptionLink();
 
-// On mobile, getUserMedia requires a user gesture (tap/click).
-// Auto-starting would silently fail → show the start button instead.
+// On mobile, getUserMedia requires a user gesture (tap/click) for first-time
+// permission. But if already granted, we can auto-start without a gesture.
 const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-if (session?.user && !isMobileDevice) {
-  startVoice();
-} else if (session?.user) {
-  // Mobile: show ready state, wait for user tap
+function showMobileStartFallback() {
   headline.textContent = t("sophie_waiting");
   setStatus(t("tap_to_start"));
   startBtn.disabled = false;
   startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   showBackground(false);
+}
+
+if (session?.user && !isMobileDevice) {
+  startVoice();
+} else if (session?.user) {
+  // Mobile: check if mic permission is already granted → auto-start
+  // Otherwise show the start button and wait for user tap
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: "microphone" })
+      .then(result => {
+        if (result.state === "granted") {
+          startVoice();
+        } else {
+          showMobileStartFallback();
+        }
+      })
+      .catch(() => showMobileStartFallback());
+  } else {
+    showMobileStartFallback();
+  }
 }
 </script>
 
