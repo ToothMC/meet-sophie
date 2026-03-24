@@ -2765,7 +2765,7 @@ if (!hasRealConversation) {
   startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
-  headline.textContent = "Sophie wartet.";
+  headline.textContent = t("sophie_waiting");
   setStatus("Wann immer du bereit bist.");
   setSoftHint("");
   softEndFinalizing = false;
@@ -2972,7 +2972,7 @@ if (session?.user && !isMobileDevice) {
   startVoice();
 } else if (session?.user) {
   // Mobile: show ready state, wait for user tap
-  headline.textContent = "Sophie wartet.";
+  headline.textContent = t("sophie_waiting");
   setStatus("Tippe auf den Button, um zu starten.");
   startBtn.disabled = false;
   startBtn.textContent = t("start");
