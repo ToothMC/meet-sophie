@@ -1781,19 +1781,27 @@
     const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
     const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting" };
 
+    function applyHeroMode(mode) {
+      if (heroCta) {
+        heroCta.classList.remove("mode-meeting", "mode-brainstorm");
+        if (mode) heroCta.classList.add("mode-" + mode);
+        heroCta.textContent = mode ? (heroModeLabels[mode] || heroCtaDefault) : heroCtaDefault;
+      }
+    }
+
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
           selectedChatMode = null;
           btn.classList.remove("active");
-          if (heroCta) heroCta.textContent = heroCtaDefault;
+          applyHeroMode(null);
           localStorage.removeItem("sophie_session_mode");
         } else {
           selectedChatMode = mode;
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
-          if (heroCta) heroCta.textContent = heroModeLabels[mode] || heroCtaDefault;
+          applyHeroMode(mode);
           localStorage.setItem("sophie_session_mode", mode);
         }
       });
@@ -1805,7 +1813,7 @@
       selectedChatMode = storedMode;
       const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
       if (pill) pill.classList.add("active");
-      if (heroCta) heroCta.textContent = heroModeLabels[storedMode];
+      applyHeroMode(storedMode);
     }
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
