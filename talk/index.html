@@ -2510,6 +2510,7 @@ async function startVoice(){
     }
 
     if (!tokenRes.ok) {
+      _startVoiceLock = false;
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
       headline.textContent = "Sophie is waiting.";
