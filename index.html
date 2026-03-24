@@ -665,11 +665,10 @@
       .eyebrow{display:none}
       .thinking-eyebrow{display:none}
       .hero{
-        min-height:100vh;
-        min-height:100dvh;
+        position:relative;
+        min-height:calc(100dvh - 50px);
         padding:0;
-        display:flex;
-        align-items:stretch;
+        overflow:visible !important;
       }
       .hero::before{
         background:
@@ -683,43 +682,25 @@
       .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
       .hero-grid{
-        display:flex;
-        flex-direction:column;
-        min-height:100dvh;
-        gap:0;
+        display:block;
+        min-height:0;
       }
       .hero-copy-col{
-        flex:1;
         padding-top:max(56px, env(safe-area-inset-top));
         width:100%;
         text-align:center;
-        display:flex;
-        flex-direction:column;
-        align-items:center;
       }
-      /* H1 + copy stay at top, then flex-grow pushes button to center */
       .hero-copy-col .hero-actions{
-        margin-top:auto;
+        margin-top:calc(50vh - 250px);
       }
       .hero-copy-col .trust-line{
         margin-top:8px;
-        margin-bottom:auto;
       }
       .hero-visual{
-        position:relative;
-        height:auto;
-        min-height:0;
-        flex-shrink:0;
+        display:none;
       }
-      .hero-card{
-        position:static;
-        height:auto;
-        min-height:0;
-        background:none;
-        border:none;
-        box-shadow:none;
-        overflow:visible;
-      }
+      .chat-card-mobile-anchor{display:none}
+
       h1{
         font-size:clamp(36px, 11vw, 48px);
         line-height:.92;
@@ -791,18 +772,17 @@
     }
     @media (max-width:640px){
       .chat-card{
-        position:fixed;
+        position:absolute;
         left:12px;
         right:12px;
-        bottom:max(12px, env(safe-area-inset-bottom));
+        bottom:max(8px, env(safe-area-inset-bottom));
         top:auto;
         transform:none;
         width:auto;
         max-width:none;
-        height:280px;
+        height:min(230px, 30vh);
         border-radius:20px;
         z-index:5;
-        transition:opacity .3s ease;
       }
     }
     .chat-card-header{
@@ -2585,17 +2565,14 @@
     // Make translations available to module scope
     /* translations already attached to window in the inline script above */
 
-    // Hide fixed chat card when scrolled past hero section
-    if (window.matchMedia("(max-width:640px)").matches) {
-      const _chatCard = document.getElementById("sophieChat");
-      const _hero = document.querySelector(".hero");
-      if (_chatCard && _hero) {
-        window.addEventListener("scroll", () => {
-          _chatCard.style.opacity = window.scrollY > _hero.offsetHeight * 0.5 ? "0" : "1";
-          _chatCard.style.pointerEvents = window.scrollY > _hero.offsetHeight * 0.5 ? "none" : "auto";
-        }, { passive: true });
-      }
-    }
   </script>
+<script>
+// Mobile: move chat-card out of hidden hero-visual into hero section
+if (window.matchMedia("(max-width:640px)").matches) {
+  var _cc = document.getElementById("sophieChat");
+  var _hr = document.querySelector(".hero");
+  if (_cc && _hr) _hr.appendChild(_cc);
+}
+</script>
 </body>
 </html>
