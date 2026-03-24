@@ -1127,6 +1127,20 @@ const _i18n = {
   time_prefix:        { en: "Time: ",                        de: "Zeit: ",                            fr: "Temps : " },
 };
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
+
+// Patch static HTML elements that were rendered with German defaults
+document.getElementById("status").textContent = t("ready");
+document.getElementById("start").textContent = t("start");
+document.getElementById("end").textContent = t("end");
+document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
+{
+  const h3 = document.querySelector(".postCallTitle");
+  if (h3) h3.textContent = t("report_title");
+  const sub = document.querySelector(".postCallSubtitle");
+  if (sub) sub.textContent = _uiLang === "de" ? "Eine kurze Zusammenfassung deines Gesprächs mit Sophie."
+    : _uiLang === "fr" ? "Un bref résumé de ta conversation avec Sophie."
+    : "A short summary of your conversation with Sophie.";
+}
 // ────────────────────────────────────────────────────────────
 
 let kickoffInProgress = false;
