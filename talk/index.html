@@ -1120,6 +1120,7 @@ const _i18n = {
   session_ended:      { en: "Your session has ended.",       de: "Deine Sitzung ist beendet.",        fr: "Ta session est terminée." },
   new_session:        { en: "New session",                   de: "Neue Sitzung starten",              fr: "Nouvelle session" },
   close:              { en: "Close",                         de: "Schließen",                         fr: "Fermer" },
+  back_home:          { en: "Back to start",                 de: "Zurück zum Start",                  fr: "Retour à l'accueil" },
   continue_sophie:    { en: "Continue with Sophie",          de: "Weiter mit Sophie",                 fr: "Continuer avec Sophie" },
   view_plans:         { en: "View plans",                    de: "Pläne ansehen",                     fr: "Voir les plans" },
   top_up:             { en: "Top up time",                   de: "Zeit aufladen",                     fr: "Recharger du temps" },
@@ -1503,11 +1504,11 @@ function downloadReport() {
   const transcript = (postCallTranscript.textContent || "").trim();
 
   const htmlContent = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${_uiLang || "en"}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sophie – Thinking Report</title>
+<title>Sophie – ${t("report_title")}</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
   .wrap{max-width:640px;margin:0 auto;}
@@ -1557,11 +1558,27 @@ function downloadReport() {
 </body>
 </html>`;
 
+  const filename = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
   const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+
+  // iOS Safari: blob downloads via a.click() often silently fail.
+  // Use Web Share API with file if available (iOS 15+), else fallback to a.click().
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isIOS && navigator.share && navigator.canShare) {
+    const file = new File([blob], filename, { type: "text/html" });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: t("report_title") })
+        .catch(() => {});
+      return;
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1673,6 +1690,8 @@ function resetClosingState() {
 function configurePostCallCta(triggeredByLimit = false) {
   postCallCta.style.display = "block";
 
+  function goHome() { window.location.href = "/"; }
+
   if (triggeredByLimit) {
     if (isPremium || plan) {
       postCallCtaTitle.textContent = t("session_ended");
@@ -1682,8 +1701,8 @@ function configurePostCallCta(triggeredByLimit = false) {
         startVoice();
       };
 
-      postCallSecondaryBtn.textContent = t("close");
-      postCallSecondaryBtn.onclick = closePostCallPanel;
+      postCallSecondaryBtn.textContent = t("back_home");
+      postCallSecondaryBtn.onclick = goHome;
     } else {
       postCallCtaTitle.textContent = t("continue_sophie");
       postCallPrimaryBtn.textContent = t("view_plans");
@@ -1691,8 +1710,8 @@ function configurePostCallCta(triggeredByLimit = false) {
         window.location.href = "/pricing";
       };
 
-      postCallSecondaryBtn.textContent = t("close");
-      postCallSecondaryBtn.onclick = closePostCallPanel;
+      postCallSecondaryBtn.textContent = t("back_home");
+      postCallSecondaryBtn.onclick = goHome;
     }
   } else {
     postCallCtaTitle.textContent = "";
@@ -1702,8 +1721,8 @@ function configurePostCallCta(triggeredByLimit = false) {
       startVoice();
     };
 
-    postCallSecondaryBtn.textContent = t("close");
-    postCallSecondaryBtn.onclick = closePostCallPanel;
+    postCallSecondaryBtn.textContent = t("back_home");
+    postCallSecondaryBtn.onclick = goHome;
   }
 }
 
