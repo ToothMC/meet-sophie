@@ -1320,7 +1320,7 @@ function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
 const modeIndicatorEl = document.getElementById("modeIndicator");
-const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", relax: "◆ Relax", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting" };
+const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", relax: "◆ Relax", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
 function updateModeIndicator(mode) {
   if (!modeIndicatorEl) return;
   if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
