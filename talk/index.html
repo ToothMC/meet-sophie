@@ -2368,7 +2368,7 @@ function attachChannel(ch) {
     console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}`);
 
     try {
-      dcSend({
+      const sessionUpdate = {
         type: "session.update",
         session: {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
@@ -2381,7 +2381,27 @@ function attachChannel(ch) {
             interrupt_response: true
           }
         }
-      });
+      };
+      // Add signal_mode tool only for normal conversations (not brainstorm/meeting)
+      if (!selectedVoiceMode) {
+        sessionUpdate.session.tools = [{
+          type: "function",
+          name: "signal_mode",
+          description: "Signal the current thinking mode to the UI. Call this silently at the start of every response.",
+          parameters: {
+            type: "object",
+            properties: {
+              mode: { type: "string", enum: ["explorer", "reflect", "decide", "relax"] }
+            },
+            required: ["mode"]
+          }
+        }];
+        sessionUpdate.session.tool_choice = "auto";
+      } else {
+        // Static mode indicator for brainstorm/meeting sessions
+        updateModeIndicator(selectedVoiceMode);
+      }
+      dcSend(sessionUpdate);
       console.log(`[${runId}] [dc] session.update sent`);
     } catch (e) {
       console.log(`[${runId}] [dc] session.update failed`, e);
