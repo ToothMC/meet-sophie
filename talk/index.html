@@ -1393,7 +1393,7 @@ async function copyReport() {
       await navigator.clipboard.writeText(plain);
       setSoftHint(_uiLang === "de" ? "Report kopiert." : _uiLang === "fr" ? "Rapport copié." : "Report copied.");
     } catch {
-      setSoftHint("Kopieren fehlgeschlagen.");
+      setSoftHint(_uiLang === "de" ? "Kopieren fehlgeschlagen." : _uiLang === "fr" ? "Échec de la copie." : "Copy failed.");
     }
   }
   setTimeout(() => setSoftHint(""), 1800);
