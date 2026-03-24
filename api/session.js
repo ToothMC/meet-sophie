@@ -1,5 +1,6 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
+import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 
 export default async function handler(req, res) {
   try {
