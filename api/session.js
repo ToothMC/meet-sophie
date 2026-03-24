@@ -48,6 +48,10 @@ export default async function handler(req, res) {
       handover = null;
     }
 
+    // Session mode selected by user via UI before session start
+    const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
+    const sessionMode = ["brainstorm", "meeting"].includes(rawSessionMode) ? rawSessionMode : null;
+
     // ---------------------------
     // Session ending config
     // ---------------------------
