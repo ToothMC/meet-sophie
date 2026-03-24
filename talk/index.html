@@ -2543,7 +2543,7 @@ async function startVoice(){
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
       headline.textContent = "Sophie is waiting.";
-      startBtn.textContent = "Gespräch starten";
+      startBtn.textContent = t("start");
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -2647,7 +2647,7 @@ async function startVoice(){
     showLiveBadge(false);
 
     startBtn.disabled = false;
-    startBtn.textContent = "Gespräch starten";
+    startBtn.textContent = t("start");
     startBtn.onclick = startVoice;
     endBtn.disabled = true;
     logoutBtn.disabled = false;
@@ -2762,7 +2762,7 @@ if (!hasRealConversation) {
 
   statusEl.style.visibility = "visible";
   startBtn.disabled = false;
-  startBtn.textContent = "Gespräch starten";
+  startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
   headline.textContent = "Sophie wartet.";
@@ -2913,7 +2913,7 @@ if (!hasRealConversation) {
 
     statusEl.style.visibility = "visible";
     startBtn.disabled = false;
-    startBtn.textContent = "Gespräch starten";
+    startBtn.textContent = t("start");
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
     headline.textContent = "Sophie is waiting.";
@@ -2975,7 +2975,7 @@ if (session?.user && !isMobileDevice) {
   headline.textContent = "Sophie wartet.";
   setStatus("Tippe auf den Button, um zu starten.");
   startBtn.disabled = false;
-  startBtn.textContent = "Gespräch starten";
+  startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   showBackground(false);
 }
