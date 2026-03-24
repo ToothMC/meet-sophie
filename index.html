@@ -2312,9 +2312,15 @@
       );
     }
     async function startSession() {
-      const startData = await callChat("start", { language: getCurrentLang() });
+      const startData = await callChat("start", {
+        language: getCurrentLang(),
+        ...(selectedChatMode ? { session_mode: selectedChatMode } : {})
+      });
       sessionId    = startData.session_id;
       systemPrompt = startData.system_prompt || "";
+      // Hide mode bar once session is locked in
+      const modeBar = document.getElementById("chatModeBar");
+      if (modeBar) modeBar.style.display = "none";
       // history already contains the opener shown on page load — don't override
     }
     function restoreInput() {
