@@ -104,10 +104,8 @@ export default async function handler(req, res) {
     // Companion = plan "start" (or no active plan)
     // Best Friend = plan "plus"
     // ---------------------------
-    const effectivePlan = String(plan || "").toLowerCase().trim();
-    const isBestFriend = isPremium && effectivePlan === "plus";
-    const mode = isBestFriend ? "best_friend" : "companion";
-    const sessionLimit = isBestFriend ? 3 : 1;
+    const tier = mapPlanToTier(plan, isPremium);
+    const sessionLimit = tier === "partner" ? 5 : tier === "friend" ? 3 : tier === "assistant" ? 1 : 0;
 
     // ---------------------------
     // Usage / Remaining seconds (für ALLE)
