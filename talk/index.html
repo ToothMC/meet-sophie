@@ -1027,6 +1027,21 @@ async function sendMemoryUpdate(secondsUsed) {
 
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
+
+// Mode pill toggle (voice page)
+document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const mode = btn.dataset.mode;
+    if (selectedVoiceMode === mode) {
+      selectedVoiceMode = null;
+      btn.classList.remove("active");
+    } else {
+      selectedVoiceMode = mode;
+      document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+  });
+});
 const statusEl = document.getElementById("status");
 const timerEl  = document.getElementById("timer");
 const headline = document.getElementById("headline");
