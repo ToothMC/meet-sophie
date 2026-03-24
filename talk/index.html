@@ -1423,7 +1423,7 @@ async function shareReport() {
     } catch (_) {}
   } else {
     // Kein Share-Sheet (Desktop) — Hinweis dass Report bereit zum Einfügen ist
-    setSoftHint("Report kopiert — bereit zum Einfügen.");
+    setSoftHint(_uiLang === "de" ? "Report kopiert — bereit zum Einfügen." : _uiLang === "fr" ? "Rapport copié — prêt à coller." : "Report copied — ready to paste.");
     setTimeout(() => setSoftHint(""), 2500);
   }
 }
