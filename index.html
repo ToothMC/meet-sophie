@@ -700,11 +700,10 @@
       /* H1 + copy stay at top, then flex-grow pushes button to center */
       .hero-copy-col .hero-actions{
         margin-top:auto;
-        margin-bottom:auto;
       }
       .hero-copy-col .trust-line{
-        margin-top:0;
-        margin-bottom:8px;
+        margin-top:8px;
+        margin-bottom:auto;
       }
       .hero-visual{
         position:relative;
@@ -713,7 +712,7 @@
         flex-shrink:0;
         display:flex;
         justify-content:center;
-        padding-bottom:max(12px, env(safe-area-inset-bottom));
+        padding:0 12px max(12px, env(safe-area-inset-bottom));
       }
       .hero-card{
         position:static;
@@ -800,8 +799,8 @@
         top:auto;
         transform:none;
         width:calc(100% - 24px);
-        max-width:360px;
-        height:240px;
+        max-width:none;
+        height:280px;
         border-radius:20px;
       }
     }
