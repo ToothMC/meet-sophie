@@ -129,7 +129,7 @@ export default function SophieBusinessPlan(){
     </div>
   </div>
   <div style={{display:"flex",gap:6}}>
-    {[{id:"must",label:"Must Have",n:10,c:"#EF4444"},{id:"should",label:"Should Have",n:10,c:"#F59E0B"},{id:"later",label:"Later",n:6,c:"#6B7280"},{id:"blocks",label:"Umsetzung",n:4,c:"#A855F7"}].map(s=>(<button key={s.id} onClick={()=>setWv(s.id)} style={{flex:1,padding:"10px 8px",borderRadius:8,border:wv===s.id?`2px solid ${s.c}`:"2px solid #2A2D37",background:wv===s.id?`${s.c}15`:"#1A1D27",cursor:"pointer",color:wv===s.id?s.c:"#9CA3AF",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{s.label} ({s.n})</button>))}
+    {[{id:"must",label:"Must Have",n:10,c:"#EF4444"},{id:"should",label:"Should Have",n:10,c:"#F59E0B"},{id:"later",label:"Later",n:5,c:"#6B7280"},{id:"blocks",label:"Umsetzung",n:4,c:"#A855F7"}].map(s=>(<button key={s.id} onClick={()=>setWv(s.id)} style={{flex:1,padding:"10px 8px",borderRadius:8,border:wv===s.id?`2px solid ${s.c}`:"2px solid #2A2D37",background:wv===s.id?`${s.c}15`:"#1A1D27",cursor:"pointer",color:wv===s.id?s.c:"#9CA3AF",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{s.label} ({s.n})</button>))}
   </div>
   {wv==="must"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
     <div style={{fontSize:11,color:"#EF4444",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"}}>Ohne diese Punkte baut Sophie auf wackligem Fundament</div>
