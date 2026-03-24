@@ -758,19 +758,19 @@
       .chat-card{
         left:50%;
         transform:translateX(-50%);
-        top:300px;
-        width:260px;
-        height:240px;
+        top:280px;
+        width:280px;
+        height:260px;
       }
     }
     @media (max-width:640px){
       .chat-card{
         left:50%;
         transform:translateX(-50%);
-        top:80px;
-        width:min(300px, calc(100% - 24px));
+        top:60px;
+        width:min(320px, calc(100% - 24px));
         max-width:none;
-        height:200px;
+        height:260px;
         border-radius:20px;
       }
     }
@@ -856,10 +856,12 @@
       border-bottom-left-radius:4px;
     }
     .chat-msg.user .chat-msg-bubble{
-      display:none;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.08);
+      border-bottom-right-radius:4px;
     }
     .chat-msg.user{
-      display:none;
+      align-self:flex-end;
     }
     .chat-typing{
       display:none!important;
