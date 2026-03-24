@@ -135,9 +135,12 @@ async function handleStart(req, res) {
     }
   }
 
-  const effectivePlan = String(plan || "").toLowerCase().trim();
-  const isBestFriend  = isPremium && effectivePlan === "plus";
-  const mode          = isBestFriend ? "best_friend" : "companion";
+  const tier = mapPlanToTier(plan, isPremium);
+  const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion"; // returned to frontend
+
+  // Session mode from request body (user-selected via UI)
+  const rawSessionMode = String(body.session_mode || "").toLowerCase().trim();
+  const sessionMode = ["brainstorm", "meeting"].includes(rawSessionMode) ? rawSessionMode : null;
 
   // Prefer request lang; fall back to profile setting
   let preferredLanguage = ["en", "de", "fr"].includes(lang) ? lang : (profile.preferred_language || "en").toLowerCase().trim();
@@ -159,7 +162,27 @@ async function handleStart(req, res) {
     return res.status(500).json({ error: "Failed to create chat session" });
   }
 
-  const systemPrompt = `${languageInstruction}\n\n${buildSophieTextPrompt({ profile, rel, recentSessions, mode, isFirstSession, preferredLanguage })}`;
+  const systemPrompt = buildSophiePrompt({
+    tier,
+    sessionMode,
+    isFirstSession,
+    hasHandover: false,
+    language: preferredLanguage,
+    user: {
+      name: (profile.preferred_name || profile.first_name || "").trim(),
+      addressing: profile.preferred_addressing,
+      pronoun: profile.preferred_pronoun,
+      occupation: profile.occupation,
+      conversationStyle: profile.conversation_style,
+      topicsLike: profile.topics_like,
+      topicsAvoid: profile.topics_avoid,
+    },
+    memory: {
+      sessions: recentSessions,
+      relationship: rel,
+    },
+    channel: "chat",
+  });
 
   const opener = getOpener(preferredLanguage);
 
