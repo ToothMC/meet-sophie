@@ -796,29 +796,6 @@
         height:var(--chat-h) !important;
         border-radius:20px;
         z-index:5;
-        transition:all .3s ease;
-      }
-      /* Chat focus mode */
-      .chat-focus-overlay{
-        display:none;
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,.6);
-        z-index:90;
-        backdrop-filter:blur(2px);
-        -webkit-backdrop-filter:blur(2px);
-      }
-      .chat-focus-overlay.active{display:block}
-      .chat-card.chat-focused{
-        position:fixed !important;
-        top:50% !important;
-        left:12px !important;
-        right:12px !important;
-        bottom:auto !important;
-        transform:translateY(-50%) !important;
-        height:min(360px, 60vh) !important;
-        z-index:91 !important;
-        box-shadow:0 20px 60px rgba(0,0,0,.4);
       }
     }
     .chat-card-header{
@@ -989,7 +966,6 @@
   </style>
 </head>
 <body>
-  <div class="chat-focus-overlay" id="chatFocusOverlay"></div>
   <header class="site-header">
     <div class="wrap nav">
       <a class="brand" href="/">meet-sophie.com</a>
@@ -2603,39 +2579,5 @@
     /* translations already attached to window in the inline script above */
 
   </script>
-<script>
-// Chat focus mode — mobile only
-(function() {
-  if (!window.matchMedia("(max-width:640px)").matches) return;
-  var overlay = document.getElementById("chatFocusOverlay");
-  var chat = document.getElementById("sophieChat");
-  var input = document.getElementById("chatInput");
-  if (!overlay || !chat || !input) return;
-
-  var focused = false;
-
-  function enterFocus() {
-    if (focused) return;
-    focused = true;
-    overlay.classList.add("active");
-    chat.classList.add("chat-focused");
-    window.scrollTo(0, 0);
-  }
-  function exitFocus() {
-    if (!focused) return;
-    focused = false;
-    overlay.classList.remove("active");
-    chat.classList.remove("chat-focused");
-    input.blur();
-  }
-
-  input.addEventListener("focus", enterFocus);
-
-  // Tap anywhere outside chat → exit focus
-  document.addEventListener("click", function(e) {
-    if (focused && !chat.contains(e.target)) exitFocus();
-  });
-})();
-</script>
 </body>
 </html>
