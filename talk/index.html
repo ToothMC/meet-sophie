@@ -1387,11 +1387,11 @@ async function copyReport() {
         "text/plain": new Blob([plain], { type: "text/plain" })
       })
     ]);
-    setSoftHint("Report kopiert.");
+    setSoftHint(_uiLang === "de" ? "Report kopiert." : _uiLang === "fr" ? "Rapport copié." : "Report copied.");
   } catch {
     try {
       await navigator.clipboard.writeText(plain);
-      setSoftHint("Report kopiert.");
+      setSoftHint(_uiLang === "de" ? "Report kopiert." : _uiLang === "fr" ? "Rapport copié." : "Report copied.");
     } catch {
       setSoftHint("Kopieren fehlgeschlagen.");
     }
