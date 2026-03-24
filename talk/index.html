@@ -1317,6 +1317,17 @@ function dcSend(obj) {
 function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
+const modeIndicatorEl = document.getElementById("modeIndicator");
+const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", relax: "◆ Relax", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting" };
+function updateModeIndicator(mode) {
+  if (!modeIndicatorEl) return;
+  if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
+  modeIndicatorEl.textContent = modeIndicatorLabels[mode] || ("◆ " + mode);
+  modeIndicatorEl.dataset.mode = mode;
+  modeIndicatorEl.classList.add("visible");
+}
+function clearModeIndicator() { updateModeIndicator(null); }
+
 function showReadyStatus() {
   statusEl.textContent = t("ready");
   statusEl.style.visibility = "visible";
