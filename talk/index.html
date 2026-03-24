@@ -2684,7 +2684,7 @@ async function stopVoice(triggeredByLimit = false){
   clearClosingTimers();
   showLiveBadge(false);
 
-  headline.textContent = "Dein Thinking Report wird erstellt …";
+  headline.textContent = t("creating_report");
   setStatus("Sophie is wrapping up.");
   setSoftHint("");
   timerEl.style.display = "none";
