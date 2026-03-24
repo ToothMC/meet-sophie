@@ -704,7 +704,7 @@ body{
 </div>
 
 <div id="authLoading">
-  <p>Ich bin gleich bei dir …</p>
+  <p id="authLoadingText">Loading …</p>
 </div>
 
 <div class="wrap" style="display:none">
@@ -1130,10 +1130,22 @@ const _i18n = {
   download:           { en: "Download",                      de: "Herunterladen",                     fr: "Télécharger" },
   export_label:       { en: "Export",                        de: "Export",                            fr: "Exporter" },
   view_report:        { en: "View Report",                   de: "Report ansehen",                    fr: "Voir le rapport" },
+  auth_loading:       { en: "I'll be right with you …",      de: "Ich bin gleich bei dir …",           fr: "J'arrive tout de suite …" },
+  wrapping_up:        { en: "Sophie is wrapping up.",         de: "Sophie schließt ab.",                fr: "Sophie termine." },
+  preparing_closing:  { en: "Sophie is preparing a short closing.", de: "Sophie bereitet einen kurzen Abschluss vor.", fr: "Sophie prépare une brève conclusion." },
+  err_timeout:        { en: "Connection timed out. Please try again.", de: "Zeitüberschreitung. Bitte versuche es erneut.", fr: "Délai dépassé. Réessaie." },
+  err_connection:     { en: "Connection failed. Please try again.",   de: "Verbindung fehlgeschlagen. Bitte versuche es erneut.", fr: "Connexion échouée. Réessaie." },
+  err_generic:        { en: "Could not start the call. Please try again.", de: "Anruf konnte nicht gestartet werden. Bitte versuche es erneut.", fr: "Impossible de démarrer l'appel. Réessaie." },
+  err_mic_denied:     { en: "Microphone access denied. Please allow microphone access and try again.", de: "Mikrofonzugriff verweigert. Bitte erlaube den Zugriff und versuche es erneut.", fr: "Accès au micro refusé. Autorise l'accès et réessaie." },
+  report_failed:      { en: "Report generation failed.",     de: "Report-Erstellung fehlgeschlagen.",  fr: "Échec de la génération du rapport." },
+  no_summary:         { en: "No summary available.",         de: "Keine Zusammenfassung verfügbar.",   fr: "Aucun résumé disponible." },
+  no_transcript:      { en: "No transcript available.",      de: "Kein Transkript verfügbar.",         fr: "Aucune transcription disponible." },
 };
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
 
-// Patch static HTML elements that were rendered with German defaults
+// Patch static HTML elements that were rendered with defaults
+const _authLoadTxt = document.getElementById("authLoadingText");
+if (_authLoadTxt) _authLoadTxt.textContent = t("auth_loading");
 document.getElementById("status").textContent = t("ready");
 document.getElementById("start").textContent = t("start");
 document.getElementById("end").textContent = t("end");
@@ -1246,7 +1258,7 @@ function escapeHtml(value = "") {
 function buildTranscriptText(log = []) {
   return (Array.isArray(log) ? log : [])
     .map((t) => {
-      const role = t?.role === "assistant" ? "Sophie" : "You";
+      const role = t?.role === "assistant" ? "Sophie" : (_uiLang === "de" ? "Du" : _uiLang === "fr" ? "Toi" : "You");
       const text = String(t?.text || "").trim();
       return text ? `${role}: ${text}` : "";
     })
@@ -1715,7 +1727,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   const summary =
     apiResult?.output?.short_summary ||
     apiResult?.session?.short_summary ||
-    "No summary available.";
+    t("no_summary");
 
   const insights = normalizeInsights(apiResult?.output?.key_insights);
   const actions = normalizeActions(apiResult?.output?.action_plan);
@@ -1731,7 +1743,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   postCallSummary.textContent = summary;
   postCallInsights.innerHTML = renderInsightsHtml(insights);
   postCallActions.innerHTML = renderActionsHtml(actions);
-  postCallTranscript.textContent = transcriptText || "No transcript available.";
+  postCallTranscript.textContent = transcriptText || t("no_transcript");
 
   configurePostCallCta(triggeredByLimit);
   showSummaryView();
@@ -2189,7 +2201,7 @@ async function maybeTriggerSoftEnding(){
 
   if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
     softEndWarningTriggered = true;
-    setSoftHint("Sophie is preparing a short closing.");
+    setSoftHint(t("preparing_closing"));
     console.log(`[${runId}] [softend] warning threshold reached: ${remainingSeconds}s`);
     // Phase 1: disable all VAD responses — no new response can be created or interrupt Sophie
     try { await setTurnBehavior({ createResponse: false, interruptResponse: false }); } catch (_) {}
@@ -2491,7 +2503,7 @@ async function startVoice(){
   startBtn.textContent = t("connecting");
   logoutBtn.disabled = true;
   headline.textContent = t("sophie_coming");
-  setStatus("connecting..");
+  setStatus(t("connecting"));
   setSoftHint("");
   showLiveBadge(false);
   showBackground(true);
@@ -2556,6 +2568,8 @@ async function startVoice(){
 
       showBackground(false);
       startBtn.disabled = false;
+      startBtn.textContent = t("start");
+      startBtn.onclick = startVoice;
       logoutBtn.disabled = false;
       headline.textContent = premiumActive
         ? (_uiLang === "de" ? "Deine inkludierte Zeit ist aufgebraucht." : _uiLang === "fr" ? "Ton temps inclus est épuisé." : "Your included time is used up.")
@@ -2766,15 +2780,19 @@ async function startVoice(){
     logoutBtn.disabled = false;
     timerEl.style.display = "none";
 
-    headline.textContent = "Sophie is waiting.";
+    headline.textContent = t("sophie_waiting");
 
-    const status = Number(err?.httpStatus || 0);
-    if (status === 504 || status === 503) {
-      setStatus("Connection timed out. Please try again.");
-    } else if (status >= 500) {
-      setStatus("Connection failed. Please try again.");
+    if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+      setStatus(t("err_mic_denied"));
     } else {
-      setStatus("Could not start the call. Please try again.");
+      const status = Number(err?.httpStatus || 0);
+      if (status === 504 || status === 503) {
+        setStatus(t("err_timeout"));
+      } else if (status >= 500) {
+        setStatus(t("err_connection"));
+      } else {
+        setStatus(t("err_generic"));
+      }
     }
 
     setSoftHint("");
@@ -2798,7 +2816,7 @@ async function stopVoice(triggeredByLimit = false){
   showLiveBadge(false);
 
   headline.textContent = t("creating_report");
-  setStatus("Sophie is wrapping up.");
+  setStatus(t("wrapping_up"));
   setSoftHint("");
   timerEl.style.display = "none";
 
@@ -2977,9 +2995,7 @@ if (!hasRealConversation) {
     } else if (transcriptSnapshot.length) {
       showPostCallResults({
         output: {
-          short_summary: triggeredByLimit
-            ? "The conversation ended cleanly, but no generated summary was returned."
-            : "No generated summary was returned for this conversation.",
+          short_summary: t("no_summary"),
           key_insights: [],
           action_plan: []
         }
@@ -3038,7 +3054,7 @@ if (!hasRealConversation) {
   } catch (e) {
     stopFakeReportLoader();
     console.error(e);
-    setSoftHint("Report generation failed.");
+    setSoftHint(t("report_failed"));
     startBtn.disabled = false;
     logoutBtn.disabled = false;
   }
@@ -3079,7 +3095,8 @@ initManageSubscriptionLink();
 
 // On mobile, getUserMedia requires a user gesture (tap/click).
 // Auto-starting would silently fail → show the start button instead.
-const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 if (session?.user && !isMobileDevice) {
   startVoice();
