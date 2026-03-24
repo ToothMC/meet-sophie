@@ -1573,34 +1573,34 @@ function configurePostCallCta(triggeredByLimit = false) {
 
   if (triggeredByLimit) {
     if (isPremium || plan) {
-      postCallCtaTitle.textContent = "Deine Sitzung ist beendet.";
-      postCallPrimaryBtn.textContent = "Neue Sitzung starten";
+      postCallCtaTitle.textContent = t("session_ended");
+      postCallPrimaryBtn.textContent = t("new_session");
       postCallPrimaryBtn.onclick = () => {
         postCallPanel.style.display = "none";
         startVoice();
       };
 
-      postCallSecondaryBtn.textContent = "Schließen";
+      postCallSecondaryBtn.textContent = t("close");
       postCallSecondaryBtn.onclick = closePostCallPanel;
     } else {
-      postCallCtaTitle.textContent = "Weiter mit Sophie";
-      postCallPrimaryBtn.textContent = "Pläne ansehen";
+      postCallCtaTitle.textContent = t("continue_sophie");
+      postCallPrimaryBtn.textContent = t("view_plans");
       postCallPrimaryBtn.onclick = () => {
         window.location.href = "/pricing";
       };
 
-      postCallSecondaryBtn.textContent = "Schließen";
+      postCallSecondaryBtn.textContent = t("close");
       postCallSecondaryBtn.onclick = closePostCallPanel;
     }
   } else {
     postCallCtaTitle.textContent = "";
-    postCallPrimaryBtn.textContent = "Neue Sitzung starten";
+    postCallPrimaryBtn.textContent = t("new_session");
     postCallPrimaryBtn.onclick = () => {
       postCallPanel.style.display = "none";
       startVoice();
     };
 
-    postCallSecondaryBtn.textContent = "Schließen";
+    postCallSecondaryBtn.textContent = t("close");
     postCallSecondaryBtn.onclick = closePostCallPanel;
   }
 }
