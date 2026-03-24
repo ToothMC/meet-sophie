@@ -106,6 +106,7 @@ export default async function handler(req, res) {
     // ---------------------------
     const tier = mapPlanToTier(plan, isPremium);
     const sessionLimit = tier === "partner" ? 5 : tier === "friend" ? 3 : tier === "assistant" ? 1 : 0;
+    const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion"; // returned to frontend
 
     // ---------------------------
     // Usage / Remaining seconds (für ALLE)
