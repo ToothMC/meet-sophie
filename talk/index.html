@@ -2468,12 +2468,12 @@ async function startVoice(){
       startBtn.disabled = false;
       logoutBtn.disabled = false;
       headline.textContent = premiumActive
-        ? "Deine inkludierte Zeit ist aufgebraucht."
-        : "Weiter mit Sophie";
+        ? (_uiLang === "de" ? "Deine inkludierte Zeit ist aufgebraucht." : _uiLang === "fr" ? "Ton temps inclus est épuisé." : "Your included time is used up.")
+        : t("continue_sophie");
       setStatus(
         premiumActive
-          ? "Lade Zeit auf oder verwalte dein Abo."
-          : "Wähle einen Plan oder lade Zeit auf."
+          ? (_uiLang === "de" ? "Lade Zeit auf oder verwalte dein Abo." : _uiLang === "fr" ? "Recharge du temps ou gère ton abonnement." : "Top up time or manage your subscription.")
+          : (_uiLang === "de" ? "Wähle einen Plan oder lade Zeit auf." : _uiLang === "fr" ? "Choisis un plan ou recharge du temps." : "Choose a plan or top up time.")
       );
       setSoftHint("");
 
