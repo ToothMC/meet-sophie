@@ -699,8 +699,8 @@ body{
 <div class="overlay" id="overlay"></div>
 
 <div class="topbar">
-  <a href="/" id="backToLandingBtn">← Zurück</a>
-  <button id="logoutBtn" type="button">Abmelden</button>
+  <a href="/" id="backToLandingBtn">← Back</a>
+  <button id="logoutBtn" type="button">Log out</button>
 </div>
 
 <div id="authLoading">
@@ -741,24 +741,24 @@ body{
     </div>
 
     <div class="reportModeBar">
-      <button id="showSummaryBtn" type="button" class="reportModeBtn active">Zusammenfassung</button>
-      <button id="showTranscriptBtn" type="button" class="reportModeBtn">Vollständiges Transkript</button>
+      <button id="showSummaryBtn" type="button" class="reportModeBtn active">Summary</button>
+      <button id="showTranscriptBtn" type="button" class="reportModeBtn">Full Transcript</button>
     </div>
 
     <div id="summaryView" class="reportView active">
       <div id="reportContent" class="reportCard">
         <section class="report-section">
-          <h4 class="report-heading">Zusammenfassung</h4>
+          <h4 class="report-heading" id="reportHeadingSummary">Summary</h4>
           <p id="postCallSummary" class="report-summary-text">—</p>
         </section>
 
         <section class="report-section">
-          <h4 class="report-heading">Wichtige Erkenntnisse</h4>
+          <h4 class="report-heading" id="reportHeadingInsights">Key Insights</h4>
           <div id="postCallInsights">—</div>
         </section>
 
         <section class="report-section">
-          <h4 class="report-heading">Nächste Schritte</h4>
+          <h4 class="report-heading" id="reportHeadingActions">Next Steps</h4>
           <div id="postCallActions">—</div>
         </section>
       </div>
@@ -767,7 +767,7 @@ body{
     <div id="transcriptView" class="reportView">
       <div class="reportCard">
         <section class="report-section" style="margin-top:0; padding-top:0; border-top:none;">
-          <h4 class="report-heading">Vollständiges Transkript</h4>
+          <h4 class="report-heading" id="reportHeadingTranscript">Full Transcript</h4>
           <pre id="postCallTranscript" class="report-transcript"></pre>
         </section>
       </div>
@@ -1144,6 +1144,25 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   if (pcPrimary) pcPrimary.textContent = t("continue_sophie");
   const pcSecondary = document.getElementById("postCallSecondaryBtn");
   if (pcSecondary) pcSecondary.textContent = t("close");
+  // Nav buttons
+  const backBtn = document.getElementById("backToLandingBtn");
+  if (backBtn) backBtn.textContent = _uiLang === "de" ? "← Zurück" : _uiLang === "fr" ? "← Retour" : "← Back";
+  const logoutBtn_ = document.getElementById("logoutBtn");
+  if (logoutBtn_) logoutBtn_.textContent = _uiLang === "de" ? "Abmelden" : _uiLang === "fr" ? "Déconnexion" : "Log out";
+  // Report section headings
+  const _rs = {
+    summary:    { en: "Summary",          de: "Zusammenfassung",         fr: "Résumé" },
+    insights:   { en: "Key Insights",     de: "Wichtige Erkenntnisse",   fr: "Points clés" },
+    actions:    { en: "Next Steps",       de: "Nächste Schritte",        fr: "Prochaines étapes" },
+    transcript: { en: "Full Transcript",  de: "Vollständiges Transkript", fr: "Transcription complète" },
+  };
+  document.getElementById("reportHeadingSummary").textContent = _rs.summary[_uiLang] || _rs.summary.en;
+  document.getElementById("reportHeadingInsights").textContent = _rs.insights[_uiLang] || _rs.insights.en;
+  document.getElementById("reportHeadingActions").textContent = _rs.actions[_uiLang] || _rs.actions.en;
+  document.getElementById("reportHeadingTranscript").textContent = _rs.transcript[_uiLang] || _rs.transcript.en;
+  // Tab buttons
+  document.getElementById("showSummaryBtn").textContent = _rs.summary[_uiLang] || _rs.summary.en;
+  document.getElementById("showTranscriptBtn").textContent = _rs.transcript[_uiLang] || _rs.transcript.en;
 }
 // ────────────────────────────────────────────────────────────
 
@@ -1854,7 +1873,7 @@ async function fetchRealtimeAnswerSdp({ offerSdp, clientSecret, maxAttempts = 3 
 
       const waitMs = 600 * attempt;
       console.warn(`[realtime] handshake retry ${attempt}/${maxAttempts} after ${waitMs}ms`, err);
-      setStatus(`Sophie verbinden … Versuch ${attempt + 1}`);
+      setStatus(_uiLang === "de" ? `Sophie verbinden … Versuch ${attempt + 1}` : _uiLang === "fr" ? `Connexion à Sophie … tentative ${attempt + 1}` : `Connecting to Sophie … attempt ${attempt + 1}`);
       await new Promise(r => setTimeout(r, waitMs));
     }
   }
@@ -2072,7 +2091,7 @@ async function handleTimeLimitReached(){
   stopDynamicResets();
   clearClosingTimers();
   setSoftHint("");
-  setStatus("Einen Moment …");
+  setStatus(_uiLang === "de" ? "Einen Moment …" : _uiLang === "fr" ? "Un instant …" : "One moment …");
 
   try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
 
@@ -2647,7 +2666,7 @@ async function startVoice(){
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    setStatus("Sophie wird verbunden …");
+    setStatus(_uiLang === "de" ? "Sophie wird verbunden …" : _uiLang === "fr" ? "Connexion à Sophie …" : "Connecting to Sophie …");
 
     const answerSdp = await fetchRealtimeAnswerSdp({
       offerSdp: offer.sdp,
