@@ -682,28 +682,30 @@
       .thinking-copy{font-size:17px}
       .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
-      .hero-grid{gap:10px}
-      .hero-copy-col{padding-top:0}
+      .hero-grid{gap:0;min-height:100dvh;align-items:center;justify-items:center}
+      .hero-copy-col{padding-top:0;width:100%}
+      .hero-visual{
+        position:fixed;
+        bottom:0;
+        left:0;
+        right:0;
+        height:auto;
+        min-height:0;
+        pointer-events:none;
+        z-index:2;
+      }
+      .hero-visual>*{pointer-events:auto}
+      .hero-card{display:none}
       h1{
-        font-size:46px;
+        font-size:clamp(36px, 11vw, 48px);
         line-height:.92;
-        max-width:340px;
-        margin-left:auto;
-        margin-right:auto;
+        max-width:none;
       }
       .hero-copy{
-        max-width:320px;
-        font-size:18px;
+        max-width:none;
+        font-size:17px;
         line-height:1.5;
-        margin-top:18px;
-        margin-left:auto;
-        margin-right:auto;
-      }
-      .hero-visual{
-        min-height:340px;
-      }
-      .hero-card{
-        height:340px;
+        margin-top:14px;
       }
       .card,
       .example-box,
@@ -765,13 +767,17 @@
     }
     @media (max-width:640px){
       .chat-card{
-        left:50%;
-        transform:translateX(-50%);
-        top:60px;
-        width:min(320px, calc(100% - 24px));
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:max(12px, env(safe-area-inset-bottom));
+        top:auto;
+        transform:none;
+        width:auto;
         max-width:none;
         height:260px;
         border-radius:20px;
+        z-index:5;
       }
     }
     .chat-card-header{
