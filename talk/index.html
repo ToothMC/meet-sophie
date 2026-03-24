@@ -1269,22 +1269,31 @@ function buildReportText() {
     })
     .filter(Boolean);
 
-  const summaryMd =
-`# Dein Thinking Report
+  const _rp = {
+    title:      { en: "Your Thinking Report",   de: "Dein Thinking Report",   fr: "Ton Thinking Report" },
+    summary:    { en: "Summary",                 de: "Zusammenfassung",        fr: "Résumé" },
+    insights:   { en: "Key Insights",            de: "Wichtige Erkenntnisse",  fr: "Points clés" },
+    actions:    { en: "Next Steps",              de: "Nächste Schritte",       fr: "Prochaines étapes" },
+    transcript: { en: "Full Transcript",         de: "Vollständiges Transkript", fr: "Transcription complète" },
+  };
+  const _rt = (k) => _rp[k]?.[_uiLang] || _rp[k]?.en || k;
 
-## Zusammenfassung
+  const summaryMd =
+`# ${_rt("title")}
+
+## ${_rt("summary")}
 ${summary || "—"}
 
-## Wichtige Erkenntnisse
+## ${_rt("insights")}
 ${insightLines.length ? insightLines.map(x => `- ${x}`).join("\n") : "—"}
 
-## Nächste Schritte
+## ${_rt("actions")}
 ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
 `;
 
   const fullMd = summaryMd +
 `
-## Vollständiges Transkript
+## ${_rt("transcript")}
 ${transcript || "—"}
 `;
 
