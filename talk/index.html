@@ -1470,31 +1470,31 @@ function downloadReport() {
 </head>
 <body>
 <div class="wrap">
-  <p class="label">Dein Thinking Report</p>
-  <h1>Sophie – Gesprächszusammenfassung</h1>
-  <p class="subtitle">${new Date().toLocaleDateString("de-DE", {day:"numeric",month:"long",year:"numeric"})}</p>
+  <p class="label">${t("report_title")}</p>
+  <h1>${_uiLang === "de" ? "Sophie – Gesprächszusammenfassung" : _uiLang === "fr" ? "Sophie – Résumé de conversation" : "Sophie – Conversation Summary"}</h1>
+  <p class="subtitle">${new Date().toLocaleDateString(_uiLang === "de" ? "de-DE" : _uiLang === "fr" ? "fr-FR" : "en-US", {day:"numeric",month:"long",year:"numeric"})}</p>
 
   <div class="section">
-    <p class="label">Zusammenfassung</p>
+    <p class="label">${_uiLang === "de" ? "Zusammenfassung" : _uiLang === "fr" ? "Résumé" : "Summary"}</p>
     <p>${escapeHtml(summary || "—")}</p>
   </div>
 
   <div class="section">
-    <p class="label">Wichtige Erkenntnisse</p>
+    <p class="label">${_uiLang === "de" ? "Wichtige Erkenntnisse" : _uiLang === "fr" ? "Points clés" : "Key Insights"}</p>
     <ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
   </div>
 
   <div class="section">
-    <p class="label">Nächste Schritte</p>
+    <p class="label">${_uiLang === "de" ? "Nächste Schritte" : _uiLang === "fr" ? "Prochaines étapes" : "Next Steps"}</p>
     ${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}
   </div>
 
   ${withTranscript && transcript ? `<div class="section">
-    <p class="label">Vollständiges Transkript</p>
+    <p class="label">${_uiLang === "de" ? "Vollständiges Transkript" : _uiLang === "fr" ? "Transcription complète" : "Full Transcript"}</p>
     <pre>${escapeHtml(transcript)}</pre>
   </div>` : ""}
 
-  <div class="footer">Erstellt mit Sophie · meet-sophie.com</div>
+  <div class="footer">${_uiLang === "de" ? "Erstellt mit Sophie" : _uiLang === "fr" ? "Créé avec Sophie" : "Created with Sophie"} · meet-sophie.com</div>
 </div>
 </body>
 </html>`;
