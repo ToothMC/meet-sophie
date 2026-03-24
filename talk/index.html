@@ -2398,9 +2398,9 @@ async function startVoice(){
   await preloadLimitVideo();
 
   startBtn.disabled = true;
-  startBtn.textContent = "Verbinde …";
+  startBtn.textContent = t("connecting");
   logoutBtn.disabled = true;
-  headline.textContent = "Sophie kommt …";
+  headline.textContent = t("sophie_coming");
   setStatus("connecting..");
   setSoftHint("");
   showLiveBadge(false);
