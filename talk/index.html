@@ -2615,7 +2615,7 @@ async function startVoice(){
     startBtn.textContent = t("end");
     startBtn.onclick = () => stopVoice(false);
     showReadyStatus();
-    headline.textContent = "Sophie hört zu.";
+    headline.textContent = t("sophie_listening");
     showLiveBadge(true);
 
     setTimeout(() => {
