@@ -58,7 +58,7 @@ const WEBAPP = { must: [
   { title: "Native App", reason: "Erst wenn Retention da, Funnel stabil, Core klar." },
   { title: "Push-Strategie", reason: "Companion-Push kann schnell nerven oder creepy wirken." },
   { title: "Fortgeschrittene Personalisierung", reason: "Adaptive Opener, feinere Rückbezüge. Erst wenn Basis stabil." },
-  { title: "Mehr Modi (Sales Coach, Think Tank…)", reason: "Erst muss der Grundkern gewinnen." },
+  { title: "Native App", reason: "Erst wenn Retention da, Funnel stabil, Core klar. (Duplikat-Eintrag entfernt)" },
   { title: "Community / Sharing / viral", reason: "Aktuell nicht der Engpass." },
   { title: "Aufwendige visuelle Spielereien", reason: "Nur wenn Performance und Fokus nicht leiden." },
 ], blocks: [
