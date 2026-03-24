@@ -6,6 +6,7 @@
 // ?action=usage   — Free-Limit prüfen (Turns)
 
 import { createClient } from "@supabase/supabase-js";
+import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 
 const FREE_TURNS_LIMIT = 10;
 const AUTH_NUDGE_AT_TURN = 3;
