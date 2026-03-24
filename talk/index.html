@@ -2426,6 +2426,7 @@ async function startVoice(){
     const data = await safeJson(tokenRes);
 
     if (tokenRes.status === 402) {
+      _startVoiceLock = false;
       const reason = data?.reason || "";
       const premiumActive = !!data?.is_premium;
 
