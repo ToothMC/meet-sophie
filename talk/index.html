@@ -2969,6 +2969,7 @@ async function startVoice(){
 }
 
 async function stopVoice(triggeredByLimit = false){
+  clearModeIndicator();
   endBtn.disabled = true;
   startBtn.disabled = true;
   logoutBtn.disabled = true;
