@@ -2748,6 +2748,8 @@ async function startVoice(){
 
     startCountdown();
 
+    _startVoiceLock = false;
+
   } catch(err){
     _startVoiceLock = false;
     console.error(err);
@@ -3027,8 +3029,8 @@ if (!hasRealConversation) {
     startBtn.textContent = t("start");
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
-    headline.textContent = "Sophie is waiting.";
-    setStatus(triggeredByLimit ? "Session complete." : "Ended.");
+    headline.textContent = t("sophie_waiting");
+    setStatus(t("ready"));
     setSoftHint("");
     softEndFinalizing = false;
     resetClosingState();
