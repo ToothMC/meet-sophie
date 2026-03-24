@@ -2490,6 +2490,19 @@ function attachChannel(ch) {
         // user text is logged via transcription.completed; assistant text via response.audio_transcript.done
       }
 
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_mode") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          if (args.mode) updateModeIndicator(args.mode);
+          // Return function result so Sophie can continue
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (_) {}
+        return;
+      }
+
       if (msg?.type === "response.audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) {
