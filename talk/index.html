@@ -1140,6 +1140,10 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   if (sub) sub.textContent = _uiLang === "de" ? "Eine kurze Zusammenfassung deines Gesprächs mit Sophie."
     : _uiLang === "fr" ? "Un bref résumé de ta conversation avec Sophie."
     : "A short summary of your conversation with Sophie.";
+  const pcPrimary = document.getElementById("postCallPrimaryBtn");
+  if (pcPrimary) pcPrimary.textContent = t("continue_sophie");
+  const pcSecondary = document.getElementById("postCallSecondaryBtn");
+  if (pcSecondary) pcSecondary.textContent = t("close");
 }
 // ────────────────────────────────────────────────────────────
 
