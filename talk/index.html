@@ -1687,7 +1687,7 @@ function formatMMSS(sec){
 }
 
 function renderTimer(){
-  timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
+  timerEl.textContent = `${t("time_prefix")}${formatMMSS(remainingSeconds)}`;
 }
 renderTimer();
 
