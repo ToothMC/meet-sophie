@@ -1789,14 +1789,21 @@
 
     // Hero mode pill toggle — changes button text + stores in localStorage for talk page
     const heroCta = document.getElementById("hero-btn-primary");
+    const heroPitchHook = document.getElementById("heroPitchHook");
     const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
-    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting" };
+    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" };
+    const SESSION_MODES = ["brainstorm", "meeting", "salespitch"];
 
     function applyHeroMode(mode) {
       if (heroCta) {
-        heroCta.classList.remove("mode-meeting", "mode-brainstorm");
+        heroCta.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
         if (mode) heroCta.classList.add("mode-" + mode);
         heroCta.textContent = mode ? (heroModeLabels[mode] || heroCtaDefault) : heroCtaDefault;
+      }
+      if (heroPitchHook) {
+        heroPitchHook.textContent = mode === "salespitch"
+          ? "\"If you can convince Sophie, you can convince anyone.\""
+          : "";
       }
     }
 
@@ -1820,7 +1827,7 @@
 
     // Restore previous selection from localStorage on page load
     const storedMode = localStorage.getItem("sophie_session_mode");
-    if (storedMode && ["brainstorm", "meeting"].includes(storedMode)) {
+    if (storedMode && SESSION_MODES.includes(storedMode)) {
       selectedChatMode = storedMode;
       const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
       if (pill) pill.classList.add("active");
