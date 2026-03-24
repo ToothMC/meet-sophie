@@ -1101,6 +1101,34 @@ function clearHandover() {
 }
 
 const voiceHandover = loadHandover();
+
+// ── i18n: UI translations ──────────────────────────────────
+const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
+document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
+
+const _i18n = {
+  ready:              { en: "Whenever you're ready.",        de: "Wann immer du bereit bist.",        fr: "Quand tu es prête." },
+  start:              { en: "Start conversation",            de: "Gespräch starten",                  fr: "Démarrer la conversation" },
+  end:                { en: "End conversation",              de: "Gespräch beenden",                  fr: "Terminer la conversation" },
+  connecting:         { en: "Connecting …",                  de: "Verbinde …",                        fr: "Connexion …" },
+  sophie_coming:      { en: "Sophie is coming …",            de: "Sophie kommt …",                    fr: "Sophie arrive …" },
+  sophie_listening:   { en: "Sophie is listening.",           de: "Sophie hört zu.",                   fr: "Sophie écoute." },
+  sophie_waiting:     { en: "Sophie is waiting.",             de: "Sophie wartet.",                    fr: "Sophie attend." },
+  tap_to_start:       { en: "Tap the button to start.",      de: "Tippe auf den Button, um zu starten.", fr: "Appuie sur le bouton pour commencer." },
+  report_title:       { en: "Your Thinking Report",          de: "Dein Thinking Report",              fr: "Ton Thinking Report" },
+  creating_report:    { en: "Creating your Thinking Report …", de: "Dein Thinking Report wird erstellt …", fr: "Création de ton Thinking Report …" },
+  session_ended:      { en: "Your session has ended.",       de: "Deine Sitzung ist beendet.",        fr: "Ta session est terminée." },
+  new_session:        { en: "New session",                   de: "Neue Sitzung starten",              fr: "Nouvelle session" },
+  close:              { en: "Close",                         de: "Schließen",                         fr: "Fermer" },
+  continue_sophie:    { en: "Continue with Sophie",          de: "Weiter mit Sophie",                 fr: "Continuer avec Sophie" },
+  view_plans:         { en: "View plans",                    de: "Pläne ansehen",                     fr: "Voir les plans" },
+  top_up:             { en: "Top up time",                   de: "Zeit aufladen",                     fr: "Recharger du temps" },
+  manage_sub:         { en: "Manage subscription",           de: "Abo verwalten",                     fr: "Gérer l'abonnement" },
+  time_prefix:        { en: "Time: ",                        de: "Zeit: ",                            fr: "Temps : " },
+};
+function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
+// ────────────────────────────────────────────────────────────
+
 let kickoffInProgress = false;
 
 let runId = Math.random().toString(16).slice(2, 8);
