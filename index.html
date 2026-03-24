@@ -1766,21 +1766,37 @@
     let chatState      = "chat_idle";
     let selectedChatMode = null;
 
-    // Mode pill toggle
-    document.querySelectorAll("#chatModeBar .mode-pill").forEach(btn => {
+    // Hero mode pill toggle — changes button text + stores in localStorage for talk page
+    const heroCta = document.getElementById("hero-btn-primary");
+    const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
+    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting" };
+
+    document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
-        if (sessionStarted) return; // lock after session begins
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
           selectedChatMode = null;
           btn.classList.remove("active");
+          if (heroCta) heroCta.textContent = heroCtaDefault;
+          localStorage.removeItem("sophie_session_mode");
         } else {
           selectedChatMode = mode;
-          document.querySelectorAll("#chatModeBar .mode-pill").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
+          if (heroCta) heroCta.textContent = heroModeLabels[mode] || heroCtaDefault;
+          localStorage.setItem("sophie_session_mode", mode);
         }
       });
     });
+
+    // Restore previous selection from localStorage on page load
+    const storedMode = localStorage.getItem("sophie_session_mode");
+    if (storedMode && ["brainstorm", "meeting"].includes(storedMode)) {
+      selectedChatMode = storedMode;
+      const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
+      if (pill) pill.classList.add("active");
+      if (heroCta) heroCta.textContent = heroModeLabels[storedMode];
+    }
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
