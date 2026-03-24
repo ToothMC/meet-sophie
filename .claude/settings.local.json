@@ -64,6 +64,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$CLAUDE_FILE_PATH\"; case \"$FILE\" in *.jsx|*.md) echo 'SKIP: non-app file, no preview needed' ;; esac",
+            "statusMessage": "Checking if preview needed..."
+          }
+        ]
+      }
     ]
   }
 }
