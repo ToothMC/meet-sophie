@@ -774,15 +774,16 @@
     }
     @media (max-width:640px){
       .chat-card{
+        --chat-h:clamp(200px, 30vh, 230px);
         position:absolute !important;
-        top:calc(100% - min(230px, 30vh) - 8px) !important;
+        top:calc(100% - var(--chat-h) - 8px) !important;
         left:12px !important;
         right:12px !important;
         bottom:auto !important;
         transform:none !important;
         width:auto !important;
         max-width:none !important;
-        height:clamp(200px, 30vh, 230px) !important;
+        height:var(--chat-h) !important;
         border-radius:20px;
         z-index:5;
       }
