@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -708,7 +708,7 @@ body{
 </div>
 
 <div class="wrap" style="display:none">
-  <h2 id="headline">Sophie ist da.</h2>
+  <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Wann immer du bereit bist.</div>
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
@@ -1101,6 +1101,52 @@ function clearHandover() {
 }
 
 const voiceHandover = loadHandover();
+
+// ── i18n: UI translations ──────────────────────────────────
+const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
+document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
+
+const _i18n = {
+  ready:              { en: "Whenever you're ready.",        de: "Wann immer du bereit bist.",        fr: "Quand tu es prête." },
+  start:              { en: "Start conversation",            de: "Gespräch starten",                  fr: "Démarrer la conversation" },
+  end:                { en: "End conversation",              de: "Gespräch beenden",                  fr: "Terminer la conversation" },
+  connecting:         { en: "Connecting …",                  de: "Verbinde …",                        fr: "Connexion …" },
+  sophie_coming:      { en: "Sophie is coming …",            de: "Sophie kommt …",                    fr: "Sophie arrive …" },
+  sophie_listening:   { en: "Sophie is listening.",           de: "Sophie hört zu.",                   fr: "Sophie écoute." },
+  sophie_waiting:     { en: "Sophie is waiting.",             de: "Sophie wartet.",                    fr: "Sophie attend." },
+  tap_to_start:       { en: "Tap the button to start.",      de: "Tippe auf den Button, um zu starten.", fr: "Appuie sur le bouton pour commencer." },
+  report_title:       { en: "Your Thinking Report",          de: "Dein Thinking Report",              fr: "Ton Thinking Report" },
+  creating_report:    { en: "Creating your Thinking Report …", de: "Dein Thinking Report wird erstellt …", fr: "Création de ton Thinking Report …" },
+  session_ended:      { en: "Your session has ended.",       de: "Deine Sitzung ist beendet.",        fr: "Ta session est terminée." },
+  new_session:        { en: "New session",                   de: "Neue Sitzung starten",              fr: "Nouvelle session" },
+  close:              { en: "Close",                         de: "Schließen",                         fr: "Fermer" },
+  continue_sophie:    { en: "Continue with Sophie",          de: "Weiter mit Sophie",                 fr: "Continuer avec Sophie" },
+  view_plans:         { en: "View plans",                    de: "Pläne ansehen",                     fr: "Voir les plans" },
+  top_up:             { en: "Top up time",                   de: "Zeit aufladen",                     fr: "Recharger du temps" },
+  manage_sub:         { en: "Manage subscription",           de: "Abo verwalten",                     fr: "Gérer l'abonnement" },
+  time_prefix:        { en: "Time: ",                        de: "Zeit: ",                            fr: "Temps : " },
+};
+function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
+
+// Patch static HTML elements that were rendered with German defaults
+document.getElementById("status").textContent = t("ready");
+document.getElementById("start").textContent = t("start");
+document.getElementById("end").textContent = t("end");
+document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
+{
+  const h3 = document.querySelector(".postCallTitle");
+  if (h3) h3.textContent = t("report_title");
+  const sub = document.querySelector(".postCallSubtitle");
+  if (sub) sub.textContent = _uiLang === "de" ? "Eine kurze Zusammenfassung deines Gesprächs mit Sophie."
+    : _uiLang === "fr" ? "Un bref résumé de ta conversation avec Sophie."
+    : "A short summary of your conversation with Sophie.";
+  const pcPrimary = document.getElementById("postCallPrimaryBtn");
+  if (pcPrimary) pcPrimary.textContent = t("continue_sophie");
+  const pcSecondary = document.getElementById("postCallSecondaryBtn");
+  if (pcSecondary) pcSecondary.textContent = t("close");
+}
+// ────────────────────────────────────────────────────────────
+
 let kickoffInProgress = false;
 
 let runId = Math.random().toString(16).slice(2, 8);
@@ -1124,7 +1170,7 @@ function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
 function showReadyStatus() {
-  statusEl.textContent = "Wann immer du bereit bist.";
+  statusEl.textContent = t("ready");
   statusEl.style.visibility = "visible";
 }
 
@@ -1227,22 +1273,31 @@ function buildReportText() {
     })
     .filter(Boolean);
 
-  const summaryMd =
-`# Dein Thinking Report
+  const _rp = {
+    title:      { en: "Your Thinking Report",   de: "Dein Thinking Report",   fr: "Ton Thinking Report" },
+    summary:    { en: "Summary",                 de: "Zusammenfassung",        fr: "Résumé" },
+    insights:   { en: "Key Insights",            de: "Wichtige Erkenntnisse",  fr: "Points clés" },
+    actions:    { en: "Next Steps",              de: "Nächste Schritte",       fr: "Prochaines étapes" },
+    transcript: { en: "Full Transcript",         de: "Vollständiges Transkript", fr: "Transcription complète" },
+  };
+  const _rt = (k) => _rp[k]?.[_uiLang] || _rp[k]?.en || k;
 
-## Zusammenfassung
+  const summaryMd =
+`# ${_rt("title")}
+
+## ${_rt("summary")}
 ${summary || "—"}
 
-## Wichtige Erkenntnisse
+## ${_rt("insights")}
 ${insightLines.length ? insightLines.map(x => `- ${x}`).join("\n") : "—"}
 
-## Nächste Schritte
+## ${_rt("actions")}
 ${actionBlocks.length ? actionBlocks.join("\n\n") : "—"}
 `;
 
   const fullMd = summaryMd +
 `
-## Vollständiges Transkript
+## ${_rt("transcript")}
 ${transcript || "—"}
 `;
 
@@ -1268,17 +1323,28 @@ function buildReportHtml(withTranscript) {
     })).filter(item => item.title || item.detail);
   const transcript = (postCallTranscript.textContent || "").trim();
 
+  const _rp = {
+    title:      { en: "Your Thinking Report",   de: "Dein Thinking Report",   fr: "Ton Thinking Report" },
+    subtitle:   { en: "Sophie – Conversation Summary", de: "Sophie – Gesprächszusammenfassung", fr: "Sophie – Résumé de conversation" },
+    summary:    { en: "Summary",                 de: "Zusammenfassung",        fr: "Résumé" },
+    insights:   { en: "Key Insights",            de: "Wichtige Erkenntnisse",  fr: "Points clés" },
+    actions:    { en: "Next Steps",              de: "Nächste Schritte",       fr: "Prochaines étapes" },
+    transcript: { en: "Full Transcript",         de: "Vollständiges Transkript", fr: "Transcription complète" },
+    footer:     { en: "Created with Sophie",     de: "Erstellt mit Sophie",    fr: "Créé avec Sophie" },
+  };
+  const _rh = (k) => _rp[k]?.[_uiLang] || _rp[k]?.en || k;
+
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.75;color:#2c2420;max-width:600px;">
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 6px;">Dein Thinking Report</p>
-<h2 style="font-size:20px;font-weight:700;color:#1a1210;margin:0 0 24px;padding-bottom:16px;border-bottom:1px solid #ede8e2;">Sophie – Gesprächszusammenfassung</h2>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">Zusammenfassung</p>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 6px;">${_rh("title")}</p>
+<h2 style="font-size:20px;font-weight:700;color:#1a1210;margin:0 0 24px;padding-bottom:16px;border-bottom:1px solid #ede8e2;">${_rh("subtitle")}</h2>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("summary")}</p>
 <p style="margin:0 0 24px;color:#3a3028;">${escapeHtml(summary || "—")}</p>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">Wichtige Erkenntnisse</p>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("insights")}</p>
 <ul style="margin:0 0 24px;padding-left:20px;color:#3a3028;">${insightLines.map(x => `<li style="margin-bottom:6px;">${escapeHtml(x)}</li>`).join("") || "<li>—</li>"}</ul>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">Nächste Schritte</p>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("actions")}</p>
 <div style="margin:0 0 24px;">${actionItems.map(item => `<p style="margin:0 0 14px;"><strong style="color:#1a1210;">${escapeHtml(item.title)}</strong>${item.detail ? `<br><span style="color:#6a5a50;font-size:14px;">${escapeHtml(item.detail)}</span>` : ""}</p>`).join("") || "<p style='color:#3a3028;margin:0'>—</p>"}</div>
-${withTranscript && transcript ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">Vollständiges Transkript</p><p style="white-space:pre-wrap;font-size:13px;color:#5a4a40;line-height:1.7;background:#f5f2ee;padding:16px;border-radius:8px;margin:0;">${escapeHtml(transcript)}</p>` : ""}
-<p style="margin:32px 0 0;font-size:12px;color:#b0a090;">Erstellt mit Sophie</p>
+${withTranscript && transcript ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("transcript")}</p><p style="white-space:pre-wrap;font-size:13px;color:#5a4a40;line-height:1.7;background:#f5f2ee;padding:16px;border-radius:8px;margin:0;">${escapeHtml(transcript)}</p>` : ""}
+<p style="margin:32px 0 0;font-size:12px;color:#b0a090;">${_rh("footer")}</p>
 </div>`;
 }
 
@@ -1293,14 +1359,24 @@ function buildReportPlainText(withTranscript) {
     })).filter(item => item.title || item.detail);
   const transcript = (postCallTranscript.textContent || "").trim();
 
-  let text = `Dein Thinking Report\n${"─".repeat(30)}\n\n`;
-  text += `ZUSAMMENFASSUNG\n${summary || "—"}\n\n`;
-  text += `WICHTIGE ERKENNTNISSE\n${insightLines.length ? insightLines.map(x => `· ${x}`).join("\n") : "—"}\n\n`;
-  text += `NÄCHSTE SCHRITTE\n${actionItems.length ? actionItems.map(item => item.title + (item.detail ? `\n${item.detail}` : "")).join("\n\n") : "—"}`;
+  const _tp = {
+    title:      { en: "Your Thinking Report",    de: "Dein Thinking Report",     fr: "Ton Thinking Report" },
+    summary:    { en: "SUMMARY",                  de: "ZUSAMMENFASSUNG",          fr: "RÉSUMÉ" },
+    insights:   { en: "KEY INSIGHTS",             de: "WICHTIGE ERKENNTNISSE",    fr: "POINTS CLÉS" },
+    actions:    { en: "NEXT STEPS",               de: "NÄCHSTE SCHRITTE",         fr: "PROCHAINES ÉTAPES" },
+    transcript: { en: "FULL TRANSCRIPT",          de: "VOLLSTÄNDIGES TRANSKRIPT", fr: "TRANSCRIPTION COMPLÈTE" },
+    footer:     { en: "Created with Sophie",      de: "Erstellt mit Sophie",      fr: "Créé avec Sophie" },
+  };
+  const _tt = (k) => _tp[k]?.[_uiLang] || _tp[k]?.en || k;
+
+  let text = `${_tt("title")}\n${"─".repeat(30)}\n\n`;
+  text += `${_tt("summary")}\n${summary || "—"}\n\n`;
+  text += `${_tt("insights")}\n${insightLines.length ? insightLines.map(x => `· ${x}`).join("\n") : "—"}\n\n`;
+  text += `${_tt("actions")}\n${actionItems.length ? actionItems.map(item => item.title + (item.detail ? `\n${item.detail}` : "")).join("\n\n") : "—"}`;
   if (withTranscript && transcript) {
-    text += `\n\nVOLLSTÄNDIGES TRANSKRIPT\n${transcript}`;
+    text += `\n\n${_tt("transcript")}\n${transcript}`;
   }
-  text += `\n\n─ Erstellt mit Sophie`;
+  text += `\n\n─ ${_tt("footer")}`;
   return text;
 }
 
@@ -1315,13 +1391,13 @@ async function copyReport() {
         "text/plain": new Blob([plain], { type: "text/plain" })
       })
     ]);
-    setSoftHint("Report kopiert.");
+    setSoftHint(_uiLang === "de" ? "Report kopiert." : _uiLang === "fr" ? "Rapport copié." : "Report copied.");
   } catch {
     try {
       await navigator.clipboard.writeText(plain);
-      setSoftHint("Report kopiert.");
+      setSoftHint(_uiLang === "de" ? "Report kopiert." : _uiLang === "fr" ? "Rapport copié." : "Report copied.");
     } catch {
-      setSoftHint("Kopieren fehlgeschlagen.");
+      setSoftHint(_uiLang === "de" ? "Kopieren fehlgeschlagen." : _uiLang === "fr" ? "Échec de la copie." : "Copy failed.");
     }
   }
   setTimeout(() => setSoftHint(""), 1800);
@@ -1347,11 +1423,11 @@ async function shareReport() {
   // Dann Share-Sheet öffnen (WhatsApp, iMessage, etc.)
   if (navigator.share) {
     try {
-      await navigator.share({ title: "Dein Thinking Report", text: plain });
+      await navigator.share({ title: t("report_title"), text: plain });
     } catch (_) {}
   } else {
     // Kein Share-Sheet (Desktop) — Hinweis dass Report bereit zum Einfügen ist
-    setSoftHint("Report kopiert — bereit zum Einfügen.");
+    setSoftHint(_uiLang === "de" ? "Report kopiert — bereit zum Einfügen." : _uiLang === "fr" ? "Rapport copié — prêt à coller." : "Report copied — ready to paste.");
     setTimeout(() => setSoftHint(""), 2500);
   }
 }
@@ -1373,7 +1449,7 @@ function downloadReport() {
   const transcript = (postCallTranscript.textContent || "").trim();
 
   const htmlContent = `<!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1398,31 +1474,31 @@ function downloadReport() {
 </head>
 <body>
 <div class="wrap">
-  <p class="label">Dein Thinking Report</p>
-  <h1>Sophie – Gesprächszusammenfassung</h1>
-  <p class="subtitle">${new Date().toLocaleDateString("de-DE", {day:"numeric",month:"long",year:"numeric"})}</p>
+  <p class="label">${t("report_title")}</p>
+  <h1>${_uiLang === "de" ? "Sophie – Gesprächszusammenfassung" : _uiLang === "fr" ? "Sophie – Résumé de conversation" : "Sophie – Conversation Summary"}</h1>
+  <p class="subtitle">${new Date().toLocaleDateString(_uiLang === "de" ? "de-DE" : _uiLang === "fr" ? "fr-FR" : "en-US", {day:"numeric",month:"long",year:"numeric"})}</p>
 
   <div class="section">
-    <p class="label">Zusammenfassung</p>
+    <p class="label">${_uiLang === "de" ? "Zusammenfassung" : _uiLang === "fr" ? "Résumé" : "Summary"}</p>
     <p>${escapeHtml(summary || "—")}</p>
   </div>
 
   <div class="section">
-    <p class="label">Wichtige Erkenntnisse</p>
+    <p class="label">${_uiLang === "de" ? "Wichtige Erkenntnisse" : _uiLang === "fr" ? "Points clés" : "Key Insights"}</p>
     <ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
   </div>
 
   <div class="section">
-    <p class="label">Nächste Schritte</p>
+    <p class="label">${_uiLang === "de" ? "Nächste Schritte" : _uiLang === "fr" ? "Prochaines étapes" : "Next Steps"}</p>
     ${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}
   </div>
 
   ${withTranscript && transcript ? `<div class="section">
-    <p class="label">Vollständiges Transkript</p>
+    <p class="label">${_uiLang === "de" ? "Vollständiges Transkript" : _uiLang === "fr" ? "Transcription complète" : "Full Transcript"}</p>
     <pre>${escapeHtml(transcript)}</pre>
   </div>` : ""}
 
-  <div class="footer">Erstellt mit Sophie · meet-sophie.com</div>
+  <div class="footer">${_uiLang === "de" ? "Erstellt mit Sophie" : _uiLang === "fr" ? "Créé avec Sophie" : "Created with Sophie"} · meet-sophie.com</div>
 </div>
 </body>
 </html>`;
@@ -1545,34 +1621,34 @@ function configurePostCallCta(triggeredByLimit = false) {
 
   if (triggeredByLimit) {
     if (isPremium || plan) {
-      postCallCtaTitle.textContent = "Deine Sitzung ist beendet.";
-      postCallPrimaryBtn.textContent = "Neue Sitzung starten";
+      postCallCtaTitle.textContent = t("session_ended");
+      postCallPrimaryBtn.textContent = t("new_session");
       postCallPrimaryBtn.onclick = () => {
         postCallPanel.style.display = "none";
         startVoice();
       };
 
-      postCallSecondaryBtn.textContent = "Schließen";
+      postCallSecondaryBtn.textContent = t("close");
       postCallSecondaryBtn.onclick = closePostCallPanel;
     } else {
-      postCallCtaTitle.textContent = "Weiter mit Sophie";
-      postCallPrimaryBtn.textContent = "Pläne ansehen";
+      postCallCtaTitle.textContent = t("continue_sophie");
+      postCallPrimaryBtn.textContent = t("view_plans");
       postCallPrimaryBtn.onclick = () => {
         window.location.href = "/pricing";
       };
 
-      postCallSecondaryBtn.textContent = "Schließen";
+      postCallSecondaryBtn.textContent = t("close");
       postCallSecondaryBtn.onclick = closePostCallPanel;
     }
   } else {
     postCallCtaTitle.textContent = "";
-    postCallPrimaryBtn.textContent = "Neue Sitzung starten";
+    postCallPrimaryBtn.textContent = t("new_session");
     postCallPrimaryBtn.onclick = () => {
       postCallPanel.style.display = "none";
       startVoice();
     };
 
-    postCallSecondaryBtn.textContent = "Schließen";
+    postCallSecondaryBtn.textContent = t("close");
     postCallSecondaryBtn.onclick = closePostCallPanel;
   }
 }
@@ -1659,7 +1735,7 @@ function formatMMSS(sec){
 }
 
 function renderTimer(){
-  timerEl.textContent = `Zeit: ${formatMMSS(remainingSeconds)}`;
+  timerEl.textContent = `${t("time_prefix")}${formatMMSS(remainingSeconds)}`;
 }
 renderTimer();
 
@@ -2357,20 +2433,22 @@ async function finalizeSessionAfterSummary() {
   }
 }
 
+let _startVoiceLock = false;
 async function startVoice(){
 
   // prevent double session
-  if (pc || stream) {
-    console.log("Session already running → ignore");
+  if (pc || stream || _startVoiceLock) {
+    console.log("Session already running or starting → ignore");
     return;
   }
+  _startVoiceLock = true;
   
   await preloadLimitVideo();
 
   startBtn.disabled = true;
-  startBtn.textContent = "Verbinde …";
+  startBtn.textContent = t("connecting");
   logoutBtn.disabled = true;
-  headline.textContent = "Sophie kommt …";
+  headline.textContent = t("sophie_coming");
   setStatus("connecting..");
   setSoftHint("");
   showLiveBadge(false);
@@ -2424,6 +2502,7 @@ async function startVoice(){
     const data = await safeJson(tokenRes);
 
     if (tokenRes.status === 402) {
+      _startVoiceLock = false;
       const reason = data?.reason || "";
       const premiumActive = !!data?.is_premium;
 
@@ -2437,25 +2516,25 @@ async function startVoice(){
       startBtn.disabled = false;
       logoutBtn.disabled = false;
       headline.textContent = premiumActive
-        ? "Deine inkludierte Zeit ist aufgebraucht."
-        : "Weiter mit Sophie";
+        ? (_uiLang === "de" ? "Deine inkludierte Zeit ist aufgebraucht." : _uiLang === "fr" ? "Ton temps inclus est épuisé." : "Your included time is used up.")
+        : t("continue_sophie");
       setStatus(
         premiumActive
-          ? "Lade Zeit auf oder verwalte dein Abo."
-          : "Wähle einen Plan oder lade Zeit auf."
+          ? (_uiLang === "de" ? "Lade Zeit auf oder verwalte dein Abo." : _uiLang === "fr" ? "Recharge du temps ou gère ton abonnement." : "Top up time or manage your subscription.")
+          : (_uiLang === "de" ? "Wähle einen Plan oder lade Zeit auf." : _uiLang === "fr" ? "Choisis un plan ou recharge du temps." : "Choose a plan or top up time.")
       );
       setSoftHint("");
 
       postCallCta.style.display = "block";
 
       if (premiumActive || reason === "subscription_quota_exhausted") {
-        postCallCtaTitle.textContent = "Weiter mit Sophie";
-        postCallPrimaryBtn.textContent = "Zeit aufladen";
+        postCallCtaTitle.textContent = t("continue_sophie");
+        postCallPrimaryBtn.textContent = t("top_up");
         postCallPrimaryBtn.onclick = () => {
           window.location.href = "/pricing?mode=topup";
         };
 
-        postCallSecondaryBtn.textContent = "Abo verwalten";
+        postCallSecondaryBtn.textContent = t("manage_sub");
         postCallSecondaryBtn.onclick = async () => {
           try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -2484,13 +2563,13 @@ async function startVoice(){
           }
         };
       } else {
-        postCallCtaTitle.textContent = "Weiter mit Sophie";
-        postCallPrimaryBtn.textContent = "Pläne ansehen";
+        postCallCtaTitle.textContent = t("continue_sophie");
+        postCallPrimaryBtn.textContent = t("view_plans");
         postCallPrimaryBtn.onclick = () => {
           window.location.href = "/pricing";
         };
 
-        postCallSecondaryBtn.textContent = "Zeit aufladen";
+        postCallSecondaryBtn.textContent = t("top_up");
         postCallSecondaryBtn.onclick = () => {
           window.location.href = "/pricing?mode=topup";
         };
@@ -2508,10 +2587,11 @@ async function startVoice(){
     }
 
     if (!tokenRes.ok) {
+      _startVoiceLock = false;
       const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
       setStatus(msg);
       headline.textContent = "Sophie is waiting.";
-      startBtn.textContent = "Gespräch starten";
+      startBtn.textContent = t("start");
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -2580,10 +2660,10 @@ async function startVoice(){
 
     endBtn.disabled = false;
     startBtn.disabled = false;
-    startBtn.textContent = "Gespräch beenden";
+    startBtn.textContent = t("end");
     startBtn.onclick = () => stopVoice(false);
     showReadyStatus();
-    headline.textContent = "Sophie hört zu.";
+    headline.textContent = t("sophie_listening");
     showLiveBadge(true);
 
     setTimeout(() => {
@@ -2606,6 +2686,7 @@ async function startVoice(){
     startCountdown();
 
   } catch(err){
+    _startVoiceLock = false;
     console.error(err);
 
     cleanupLiveSession();
@@ -2614,7 +2695,7 @@ async function startVoice(){
     showLiveBadge(false);
 
     startBtn.disabled = false;
-    startBtn.textContent = "Gespräch starten";
+    startBtn.textContent = t("start");
     startBtn.onclick = startVoice;
     endBtn.disabled = true;
     logoutBtn.disabled = false;
@@ -2651,7 +2732,7 @@ async function stopVoice(triggeredByLimit = false){
   clearClosingTimers();
   showLiveBadge(false);
 
-  headline.textContent = "Dein Thinking Report wird erstellt …";
+  headline.textContent = t("creating_report");
   setStatus("Sophie is wrapping up.");
   setSoftHint("");
   timerEl.style.display = "none";
@@ -2729,11 +2810,11 @@ if (!hasRealConversation) {
 
   statusEl.style.visibility = "visible";
   startBtn.disabled = false;
-  startBtn.textContent = "Gespräch starten";
+  startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
-  headline.textContent = "Sophie wartet.";
-  setStatus("Wann immer du bereit bist.");
+  headline.textContent = t("sophie_waiting");
+  setStatus(t("ready"));
   setSoftHint("");
   softEndFinalizing = false;
   resetClosingState();
@@ -2813,6 +2894,11 @@ if (!hasRealConversation) {
       if (durationSeconds > 0) {
         await reportUsage(durationSeconds);
       }
+      // Clear pc/stream NOW so startVoice() guard doesn't block a new session from the report panel
+      if (dc) { try { dc.close(); } catch(e){} dc = null; }
+      if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(e){} stream = null; }
+      if (pc) { try { pc.close(); } catch(e){} pc = null; }
+      if (audioEl) { try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
     }
 
     // Take transcript AFTER summary (includes summary text in convoLog)
@@ -2875,7 +2961,7 @@ if (!hasRealConversation) {
 
     statusEl.style.visibility = "visible";
     startBtn.disabled = false;
-    startBtn.textContent = "Gespräch starten";
+    startBtn.textContent = t("start");
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
     headline.textContent = "Sophie is waiting.";
@@ -2911,7 +2997,11 @@ copyReportBtn?.addEventListener("click", copyReport);
 shareReportBtn?.addEventListener("click", shareReport);
 downloadReportBtn?.addEventListener("click", downloadReport);
 
-startBtn.addEventListener("click", startVoice);
+// NOTE: do NOT add startBtn.addEventListener("click", startVoice) here.
+// The mobile path sets startBtn.onclick = startVoice (line below),
+// and desktop auto-calls startVoice() directly.
+// Using BOTH addEventListener + onclick causes two simultaneous /api/session
+// calls on mobile, where the second one hits the realtime lock → 429 "busy".
 endBtn.addEventListener("click", () => stopVoice(false));
 
 document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
@@ -2930,10 +3020,10 @@ if (session?.user && !isMobileDevice) {
   startVoice();
 } else if (session?.user) {
   // Mobile: show ready state, wait for user tap
-  headline.textContent = "Sophie wartet.";
-  setStatus("Tippe auf den Button, um zu starten.");
+  headline.textContent = t("sophie_waiting");
+  setStatus(t("tap_to_start"));
   startBtn.disabled = false;
-  startBtn.textContent = "Gespräch starten";
+  startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   showBackground(false);
 }
