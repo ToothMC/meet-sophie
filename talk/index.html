@@ -2395,7 +2395,7 @@ function attachChannel(ch) {
           }
         }
       };
-      // Add signal_mode tool only for normal conversations (not brainstorm/meeting)
+      // Add signal_mode tool only for normal conversations (not brainstorm/meeting/salespitch)
       if (!selectedVoiceMode) {
         sessionUpdate.session.tools = [{
           type: "function",
