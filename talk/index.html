@@ -2612,7 +2612,7 @@ async function startVoice(){
 
     endBtn.disabled = false;
     startBtn.disabled = false;
-    startBtn.textContent = "Gespräch beenden";
+    startBtn.textContent = t("end");
     startBtn.onclick = () => stopVoice(false);
     showReadyStatus();
     headline.textContent = "Sophie hört zu.";
