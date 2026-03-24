@@ -1067,6 +1067,7 @@ let endCleanlyAfterResponse = false; // Sophie was mid-sentence at 22s — just 
 let hasUserSpoken = false;
 
 let talkStartedAt = null;
+let remainingAtSessionStart = 0;
 let sessionId = null;
 
 let dynamicResetInterval = null;
@@ -1871,6 +1872,7 @@ function cleanupLiveSession() {
   hasUserSpoken = false;
 
   talkStartedAt = null;
+  remainingAtSessionStart = 0;
   sessionId = null;
 
   softEndFinalizing = false;
@@ -2769,6 +2771,7 @@ async function startVoice(){
     startDynamicResets();
 
     talkStartedAt = Date.now();
+    remainingAtSessionStart = remainingSeconds;
     track("talk_started", {
       is_premium: isPremium,
       plan: plan || null,
@@ -2868,9 +2871,16 @@ Tone: calm, human, complete.
       } catch (_) {}
     }
 
-const durationSeconds = talkStartedAt
+const wallclockSeconds = talkStartedAt
   ? Math.round((Date.now() - talkStartedAt) / 1000)
   : 0;
+
+// When time limit was reached, charge the FULL remaining balance (not just wallclock).
+// The soft-end flow stops the countdown ~15s early, so wallclock < remaining.
+// Without this, a few seconds "leak" and allow another micro-session.
+const durationSeconds = triggeredByLimit
+  ? Math.max(wallclockSeconds, remainingAtSessionStart)
+  : wallclockSeconds;
 
 const hasRealConversation =
   hasUserSpoken &&
@@ -2881,6 +2891,7 @@ if (!hasRealConversation) {
   stopFakeReportLoader();
 
   talkStartedAt = null;
+  remainingAtSessionStart = 0;
 
   if (dc) {
     try { dc.close(); } catch(e){}
@@ -3030,6 +3041,7 @@ if (!hasRealConversation) {
     });
 
     talkStartedAt = null;
+  remainingAtSessionStart = 0;
 
     if (dc) {
       try { dc.close(); } catch(e){}
