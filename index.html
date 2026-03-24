@@ -683,24 +683,34 @@
       .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
       .hero-grid{
-        gap:0;
+        display:flex;
+        flex-direction:column;
         min-height:100dvh;
-        grid-template-rows:auto 1fr;
-        justify-items:center;
+        gap:0;
       }
       .hero-copy-col{
-        padding-top:max(60px, env(safe-area-inset-top));
+        flex:1;
+        padding-top:max(56px, env(safe-area-inset-top));
         width:100%;
         text-align:center;
         display:flex;
         flex-direction:column;
         align-items:center;
-        justify-content:center;
+      }
+      /* H1 + copy stay at top, then flex-grow pushes button to center */
+      .hero-copy-col .hero-actions{
+        margin-top:auto;
+        margin-bottom:auto;
+      }
+      .hero-copy-col .trust-line{
+        margin-top:0;
+        margin-bottom:8px;
       }
       .hero-visual{
         position:relative;
         height:auto;
         min-height:0;
+        flex-shrink:0;
         display:flex;
         justify-content:center;
         padding-bottom:max(12px, env(safe-area-inset-bottom));
