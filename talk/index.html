@@ -2973,7 +2973,7 @@ if (session?.user && !isMobileDevice) {
 } else if (session?.user) {
   // Mobile: show ready state, wait for user tap
   headline.textContent = t("sophie_waiting");
-  setStatus("Tippe auf den Button, um zu starten.");
+  setStatus(t("tap_to_start"));
   startBtn.disabled = false;
   startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
