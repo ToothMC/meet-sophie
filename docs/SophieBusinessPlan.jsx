@@ -24,14 +24,14 @@ const SPRINT_STATUS = { overall: 85, packages: [
   { name: "Auth / Magic Link sauber", progress: 95, status: "Fertig", statusColor: "#10B981", details: "PKCE Callback, Bearer-Token in allen Endpoints, Login + Callback Pages komplett." },
   { name: "Realtime-Session-Fehler beseitigen", progress: 85, status: "Fast fertig", statusColor: "#22C55E", details: "acquire_realtime_lock() mit TTL, 429/402 Error-Codes, Daily Free Cap, Retry-Logik. Offen: Session-Timeout UX mobile." },
   { name: "Session-Ende + Insights", progress: 95, status: "Fertig", statusColor: "#10B981", details: "Backend: structured JSON via Claude API → conversation_outputs. Frontend: Panel mit Summary/Insights/Next Steps + Transcript." },
-  { name: "Memory Chat↔Voice konsistent", progress: 75, status: "In Arbeit", statusColor: "#F59E0B", details: "Text-Chat existiert, Voice-Offer Mechanismus, x-sophie-handover, shared user_profile/user_relationship. sophie-core.js noch Stub." },
+  { name: "Memory Chat↔Voice konsistent", progress: 90, status: "Fast fertig", statusColor: "#22C55E", details: "sophie-core.js implementiert (4-Layer modular, 7 Modi, ~700–1.300 Tokens statt ~4.000). x-sophie-handover, shared user_profile/user_relationship fertig. Offen: Tier-spezifische Memory-Tiefe fine-tuning." },
 ], nextSteps: [
   { prio: "Kritisch", task: "Fremden Tester durchschicken", desc: "Done-Kriterium Sprint 1. Reconnect, Audio-Permissions, Browser-Kompatibilität.", status: "Offen" },
   { prio: "Kritisch", task: "Mobile Safari + langsame Verbindungen", desc: "WebSocket-Reconnect, Audio-Permissions, Timeout-UX mobile.", status: "Offen" },
-  { prio: "Hoch", task: "sophie-core.js implementieren", desc: "Prompt-Building extrahieren. Aktuell inline + TODO.", status: "Offen" },
   { prio: "Hoch", task: "Stripe 4-Tier vorbereiten", desc: "starter/plus → free/assistant/friend/partner → Sprint 2.", status: "Sprint 2" },
+  { prio: "Hoch", task: "Session-Mode UI testen", desc: "Brainstorm / Meeting / Sales Pitch Buttons live. Signal_mode Funktion + Mode-Indicator verifizieren.", status: "Offen" },
   { prio: "Mittel", task: "Insights-Panel Polish", desc: "Panel existiert. Feinschliff Layout und Animationen.", status: "Offen" },
-], codebaseStats: { apiEndpoints: 9, dbTables: "8+", currentBranch: "fix/memory-short-long-term", stripeModel: "2-Tier → 4-Tier geplant Sprint 2" } };
+], codebaseStats: { apiEndpoints: 9, dbTables: "8+", currentBranch: "feat/sophie-core-4layer", stripeModel: "2-Tier → 4-Tier geplant Sprint 2" } };
 const WEBAPP = { must: [
   { id: 1, title: "Chat + Voice = eine Sophie", desc: "Kein Bruch. Gleiche Persona, gleicher Kontext, gleiche Memory. Wenn der User im Chat seinen Namen sagt, darf Voice nicht erneut fragen.", icon: "🧠", status: "in_progress" },
   { id: 2, title: "Mobile UX kompromisslos", desc: "iPhone als Hauptreferenz. Große Touch-Zonen, Safe Areas, kein springendes Layout. Voice-Button dominiert. Keyboard darf nichts kaputtmachen.", icon: "📱", status: "in_progress" },
