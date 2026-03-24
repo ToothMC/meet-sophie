@@ -1419,7 +1419,7 @@ async function shareReport() {
   // Dann Share-Sheet öffnen (WhatsApp, iMessage, etc.)
   if (navigator.share) {
     try {
-      await navigator.share({ title: "Dein Thinking Report", text: plain });
+      await navigator.share({ title: t("report_title"), text: plain });
     } catch (_) {}
   } else {
     // Kein Share-Sheet (Desktop) — Hinweis dass Report bereit zum Einfügen ist
