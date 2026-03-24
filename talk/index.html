@@ -1125,6 +1125,11 @@ const _i18n = {
   top_up:             { en: "Top up time",                   de: "Zeit aufladen",                     fr: "Recharger du temps" },
   manage_sub:         { en: "Manage subscription",           de: "Abo verwalten",                     fr: "Gérer l'abonnement" },
   time_prefix:        { en: "Time: ",                        de: "Zeit: ",                            fr: "Temps : " },
+  copy:               { en: "Copy",                          de: "Kopieren",                          fr: "Copier" },
+  share:              { en: "Share",                         de: "Teilen",                            fr: "Partager" },
+  download:           { en: "Download",                      de: "Herunterladen",                     fr: "Télécharger" },
+  export_label:       { en: "Export",                        de: "Export",                            fr: "Exporter" },
+  view_report:        { en: "View Report",                   de: "Report ansehen",                    fr: "Voir le rapport" },
 };
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
 
@@ -1163,6 +1168,24 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   // Tab buttons
   document.getElementById("showSummaryBtn").textContent = _rs.summary[_uiLang] || _rs.summary.en;
   document.getElementById("showTranscriptBtn").textContent = _rs.transcript[_uiLang] || _rs.transcript.en;
+  // Export buttons
+  const _copySpan = document.querySelector("#copyReportBtn span");
+  if (_copySpan) _copySpan.textContent = t("copy");
+  const _shareSpan = document.querySelector("#shareReportBtn span");
+  if (_shareSpan) _shareSpan.textContent = t("share");
+  const _dlSpan = document.querySelector("#downloadReportBtn span");
+  if (_dlSpan) _dlSpan.textContent = t("download");
+  const _exportTitle = document.querySelector(".report-export-title");
+  if (_exportTitle) _exportTitle.textContent = t("export_label");
+  // CTA title
+  const _ctaTitle = document.getElementById("postCallCtaTitle");
+  if (_ctaTitle) _ctaTitle.textContent = t("continue_sophie");
+  // Reopen report button
+  const _reopenBtn = document.getElementById("reopenReportBtn");
+  if (_reopenBtn) _reopenBtn.textContent = "📋 " + t("view_report");
+  // Manage subscription link
+  const _manageSub = document.getElementById("manageSubLink");
+  if (_manageSub) _manageSub.textContent = t("manage_sub");
 }
 // ────────────────────────────────────────────────────────────
 
@@ -2605,11 +2628,32 @@ async function startVoice(){
       return;
     }
 
+    if (tokenRes.status === 429) {
+      _startVoiceLock = false;
+      const busyMsg = _uiLang === "de"
+        ? "Sophie ist gerade beschäftigt. Bitte versuche es gleich nochmal."
+        : _uiLang === "fr"
+        ? "Sophie est occupée. Réessaie dans un instant."
+        : "Sophie is busy right now. Please try again in a moment.";
+      setStatus(busyMsg);
+      headline.textContent = t("sophie_waiting");
+      startBtn.textContent = t("start");
+      startBtn.onclick = startVoice;
+      showBackground(false);
+      showLiveBadge(false);
+      startBtn.disabled = false;
+      logoutBtn.disabled = false;
+      track("talk_start_failed", { http_status: 429, message: data?.error || "busy" });
+      return;
+    }
+
     if (!tokenRes.ok) {
       _startVoiceLock = false;
-      const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
+      const msg = data?.message || (_uiLang === "de" ? `Kein Zugriff (HTTP ${tokenRes.status}).`
+        : _uiLang === "fr" ? `Accès refusé (HTTP ${tokenRes.status}).`
+        : `Access denied (HTTP ${tokenRes.status}).`);
       setStatus(msg);
-      headline.textContent = "Sophie is waiting.";
+      headline.textContent = t("sophie_waiting");
       startBtn.textContent = t("start");
       startBtn.onclick = startVoice;
       showBackground(false);
