@@ -2610,6 +2610,7 @@ async function startVoice(){
     startCountdown();
 
   } catch(err){
+    _startVoiceLock = false;
     console.error(err);
 
     cleanupLiveSession();
