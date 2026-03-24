@@ -49,7 +49,10 @@
       "Bash(grep -r \"STRIPE_PRICE_ID\\\\|pricing\\\\|starter\\\\|plus\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html)",
       "Bash(grep -r \"soft_end\\\\|summary\\\\|insights\\\\|outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
       "Bash(grep -r \"chat\\\\|text.*chat\\\\|Chat\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js)",
-      "Bash(grep -E \"STRIPE_PRICE_ID|starter|plus|includedSecondsForPlan\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
+      "Bash(grep -E \"STRIPE_PRICE_ID|starter|plus|includedSecondsForPlan\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(grep -r \"language\\\\|locale\\\\|lang\\\\|i18n\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.jsx --include=*.ts --include=*.tsx --include=*.html)",
+      "Bash(grep -r \"de-DE\\\\|de_DE\\\\|German\\\\|Deutsch\\\\|localStorage\\\\|sessionStorage\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.jsx --include=*.ts --include=*.tsx --include=*.html)",
+      "Bash(grep -E \"\\\\.sql$\")"
     ]
   },
   "hooks": {

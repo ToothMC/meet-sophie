@@ -2916,7 +2916,11 @@ copyReportBtn?.addEventListener("click", copyReport);
 shareReportBtn?.addEventListener("click", shareReport);
 downloadReportBtn?.addEventListener("click", downloadReport);
 
-startBtn.addEventListener("click", startVoice);
+// NOTE: do NOT add startBtn.addEventListener("click", startVoice) here.
+// The mobile path sets startBtn.onclick = startVoice (line below),
+// and desktop auto-calls startVoice() directly.
+// Using BOTH addEventListener + onclick causes two simultaneous /api/session
+// calls on mobile, where the second one hits the realtime lock → 429 "busy".
 endBtn.addEventListener("click", () => stopVoice(false));
 
 document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
