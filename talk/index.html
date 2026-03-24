@@ -2515,13 +2515,13 @@ async function startVoice(){
           }
         };
       } else {
-        postCallCtaTitle.textContent = "Weiter mit Sophie";
-        postCallPrimaryBtn.textContent = "Pläne ansehen";
+        postCallCtaTitle.textContent = t("continue_sophie");
+        postCallPrimaryBtn.textContent = t("view_plans");
         postCallPrimaryBtn.onclick = () => {
           window.location.href = "/pricing";
         };
 
-        postCallSecondaryBtn.textContent = "Zeit aufladen";
+        postCallSecondaryBtn.textContent = t("top_up");
         postCallSecondaryBtn.onclick = () => {
           window.location.href = "/pricing?mode=topup";
         };
