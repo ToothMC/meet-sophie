@@ -667,9 +667,9 @@
       .hero{
         min-height:100vh;
         min-height:100dvh;
-        padding:14px 0 20px;
+        padding:0;
         display:flex;
-        align-items:center;
+        align-items:stretch;
       }
       .hero::before{
         background:
@@ -682,8 +682,18 @@
       .thinking-copy{font-size:17px}
       .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
-      .hero-grid{gap:0;min-height:100dvh;align-items:center;justify-items:center}
-      .hero-copy-col{padding-top:0;width:100%}
+      .hero-grid{
+        gap:0;
+        min-height:100dvh;
+        grid-template-rows:1fr auto;
+        align-items:start;
+        justify-items:center;
+      }
+      .hero-copy-col{
+        padding-top:max(80px, 14vh);
+        width:100%;
+        text-align:center;
+      }
       .hero-visual{
         position:fixed;
         bottom:0;
