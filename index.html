@@ -695,7 +695,15 @@
         z-index:2;
       }
       .hero-visual>*{pointer-events:auto}
-      .hero-card{display:none}
+      .hero-card{
+        position:static;
+        height:auto;
+        min-height:0;
+        background:none;
+        border:none;
+        box-shadow:none;
+        overflow:visible;
+      }
       h1{
         font-size:clamp(36px, 11vw, 48px);
         line-height:.92;
