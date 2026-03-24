@@ -100,7 +100,7 @@ export default function SophieBusinessPlan(){
       <div style={{maxWidth:960,margin:"0 auto 32px",textAlign:"center"}}>
         <div style={{fontSize:11,fontWeight:500,color:"#A855F7",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Business Plan 2026–2031</div>
         <h1 style={{fontSize:32,fontWeight:700,color:"#F9FAFB",lineHeight:1.2,marginBottom:8}}>Meet Sophie</h1>
-        <p style={{fontSize:14,color:"#9CA3AF",maxWidth:520,margin:"0 auto"}}>Premium Voice-AI Relationship Subscription — Geschäftsmodell, Pricing, Architektur & Roadmap</p>
+        <p style={{fontSize:14,color:"#9CA3AF",maxWidth:520,margin:"0 auto"}}>Voice-AI Thinking & Training Partner — Geschäftsmodell, Pricing, Architektur & Roadmap</p>
       </div>
       <div style={{maxWidth:960,margin:"0 auto 24px",display:"flex",gap:3,flexWrap:"wrap",background:"#1A1D27",borderRadius:12,padding:4}}>
         {tabs.map(t=>(<button key={t.id} onClick={()=>setActiveTab(t.id)} style={{flex:1,minWidth:72,padding:"10px 6px",borderRadius:8,border:"none",cursor:"pointer",background:activeTab===t.id?(t.id==="webapp"?"#F97316":"#A855F7"):"transparent",color:activeTab===t.id?"#FFF":"#9CA3AF",fontSize:11,fontWeight:600,fontFamily:"inherit",transition:"all 0.2s"}}>{t.label}</button>))}
