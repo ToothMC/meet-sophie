@@ -51,7 +51,8 @@
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -maxdepth 2 -type f \\\\\\(-name package.json -o -name .env* -o -name vercel.json \\\\\\))",
       "Bash(grep -r \"voice.*prompt\\\\|instructions.*voice\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
       "Bash(npx vercel:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(python3 -c \":*)"
     ]
   },
   "hooks": {
