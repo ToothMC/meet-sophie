@@ -44,7 +44,12 @@
       "Bash(ls /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/favicon* /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.png /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/site.webmanifest)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.ts -o -name *.tsx)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase -type f -name *.sql)",
-      "Bash(grep -n \"last_interaction_summary\\\\|short_summary\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
+      "Bash(grep -n \"last_interaction_summary\\\\|short_summary\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(grep -r \"LiveKit\\\\|livekit\\\\|realtime\\\\|RealtimeClient\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"STRIPE_PRICE_ID\\\\|pricing\\\\|starter\\\\|plus\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html)",
+      "Bash(grep -r \"soft_end\\\\|summary\\\\|insights\\\\|outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
+      "Bash(grep -r \"chat\\\\|text.*chat\\\\|Chat\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js)",
+      "Bash(grep -E \"STRIPE_PRICE_ID|starter|plus|includedSecondsForPlan\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
     ]
   },
   "hooks": {
