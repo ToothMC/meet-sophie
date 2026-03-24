@@ -704,25 +704,25 @@ body{
 </div>
 
 <div id="authLoading">
-  <p>Ich bin gleich bei dir …</p>
+  <p id="authLoadingText">Loading …</p>
 </div>
 
 <div class="wrap" style="display:none">
   <h2 id="headline">Sophie is here.</h2>
-  <div class="status" id="status">Wann immer du bereit bist.</div>
+  <div class="status" id="status">Whenever you're ready.</div>
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
     <span class="live-text">LIVE</span>
   </div>
-  <div class="timer" id="timer">Zeit: --:--</div>
+  <div class="timer" id="timer">Time: --:--</div>
   <div class="softHint" id="softHint"></div>
 
   <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
     <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
   </div>
 
-  <button id="start" class="btn">Gespräch starten</button>
-  <button id="end" class="btn" disabled style="display:none">Gespräch beenden</button>
+  <button id="start" class="btn">Start conversation</button>
+  <button id="end" class="btn" disabled style="display:none">End conversation</button>
 </div>
 
 <div id="postCallPanel">
@@ -736,8 +736,8 @@ body{
 
   <div class="postCallInner">
     <div class="postCallHero">
-      <h3 class="postCallTitle">Dein Thinking Report</h3>
-      <p class="postCallSubtitle">Eine kurze Zusammenfassung deines Gesprächs mit Sophie.</p>
+      <h3 class="postCallTitle">Your Thinking Report</h3>
+      <p class="postCallSubtitle">A short summary of your conversation with Sophie.</p>
     </div>
 
     <div class="reportModeBar">
@@ -781,32 +781,32 @@ body{
       <div class="export">
         <button id="copyReportBtn" class="export-btn" type="button">
           <i data-lucide="copy"></i>
-          <span>Kopieren</span>
+          <span>Copy</span>
         </button>
 
         <button id="shareReportBtn" class="export-btn" type="button">
           <i data-lucide="share"></i>
-          <span>Teilen</span>
+          <span>Share</span>
         </button>
 
         <button id="downloadReportBtn" class="export-btn primary" type="button">
           <i data-lucide="download"></i>
-          <span>Herunterladen</span>
+          <span>Download</span>
         </button>
       </div>
     </div>
 
     <div id="postCallCta" class="postCallCta">
-      <div class="postCallCtaTitle" id="postCallCtaTitle">Weiter</div>
+      <div class="postCallCtaTitle" id="postCallCtaTitle">Continue with Sophie</div>
       <div class="postCallCtaButtons">
-        <button id="postCallPrimaryBtn" type="button" class="smallBtn primary">Weiter mit Sophie</button>
-        <button id="postCallSecondaryBtn" type="button" class="smallBtn secondary">Schließen</button>
+        <button id="postCallPrimaryBtn" type="button" class="smallBtn primary">Continue with Sophie</button>
+        <button id="postCallSecondaryBtn" type="button" class="smallBtn secondary">Close</button>
       </div>
     </div>
   </div>
 </div>
 
-<button id="reopenReportBtn" type="button" style="display:none;">📋 Report ansehen</button>
+<button id="reopenReportBtn" type="button" style="display:none;">📋 View Report</button>
 
 <div id="limitOverlay">
   <video id="limitVideo" playsinline preload="auto">
@@ -815,7 +815,7 @@ body{
 </div>
 
 <div id="billingFooter" aria-label="billing-footer">
-  <a href="#" id="manageSubLink" style="display:none;">Abo verwalten</a>
+  <a href="#" id="manageSubLink" style="display:none;">Manage subscription</a>
 </div>
 
 <script type="module">
@@ -1120,15 +1120,33 @@ const _i18n = {
   session_ended:      { en: "Your session has ended.",       de: "Deine Sitzung ist beendet.",        fr: "Ta session est terminée." },
   new_session:        { en: "New session",                   de: "Neue Sitzung starten",              fr: "Nouvelle session" },
   close:              { en: "Close",                         de: "Schließen",                         fr: "Fermer" },
+  back_home:          { en: "Back to start",                 de: "Zurück zum Start",                  fr: "Retour à l'accueil" },
   continue_sophie:    { en: "Continue with Sophie",          de: "Weiter mit Sophie",                 fr: "Continuer avec Sophie" },
   view_plans:         { en: "View plans",                    de: "Pläne ansehen",                     fr: "Voir les plans" },
   top_up:             { en: "Top up time",                   de: "Zeit aufladen",                     fr: "Recharger du temps" },
   manage_sub:         { en: "Manage subscription",           de: "Abo verwalten",                     fr: "Gérer l'abonnement" },
   time_prefix:        { en: "Time: ",                        de: "Zeit: ",                            fr: "Temps : " },
+  copy:               { en: "Copy",                          de: "Kopieren",                          fr: "Copier" },
+  share:              { en: "Share",                         de: "Teilen",                            fr: "Partager" },
+  download:           { en: "Download",                      de: "Herunterladen",                     fr: "Télécharger" },
+  export_label:       { en: "Export",                        de: "Export",                            fr: "Exporter" },
+  view_report:        { en: "View Report",                   de: "Report ansehen",                    fr: "Voir le rapport" },
+  auth_loading:       { en: "I'll be right with you …",      de: "Ich bin gleich bei dir …",           fr: "J'arrive tout de suite …" },
+  wrapping_up:        { en: "Sophie is wrapping up.",         de: "Sophie schließt ab.",                fr: "Sophie termine." },
+  preparing_closing:  { en: "Sophie is preparing a short closing.", de: "Sophie bereitet einen kurzen Abschluss vor.", fr: "Sophie prépare une brève conclusion." },
+  err_timeout:        { en: "Connection timed out. Please try again.", de: "Zeitüberschreitung. Bitte versuche es erneut.", fr: "Délai dépassé. Réessaie." },
+  err_connection:     { en: "Connection failed. Please try again.",   de: "Verbindung fehlgeschlagen. Bitte versuche es erneut.", fr: "Connexion échouée. Réessaie." },
+  err_generic:        { en: "Could not start the call. Please try again.", de: "Anruf konnte nicht gestartet werden. Bitte versuche es erneut.", fr: "Impossible de démarrer l'appel. Réessaie." },
+  err_mic_denied:     { en: "Microphone access denied. Please allow microphone access and try again.", de: "Mikrofonzugriff verweigert. Bitte erlaube den Zugriff und versuche es erneut.", fr: "Accès au micro refusé. Autorise l'accès et réessaie." },
+  report_failed:      { en: "Report generation failed.",     de: "Report-Erstellung fehlgeschlagen.",  fr: "Échec de la génération du rapport." },
+  no_summary:         { en: "No summary available.",         de: "Keine Zusammenfassung verfügbar.",   fr: "Aucun résumé disponible." },
+  no_transcript:      { en: "No transcript available.",      de: "Kein Transkript verfügbar.",         fr: "Aucune transcription disponible." },
 };
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
 
-// Patch static HTML elements that were rendered with German defaults
+// Patch static HTML elements that were rendered with defaults
+const _authLoadTxt = document.getElementById("authLoadingText");
+if (_authLoadTxt) _authLoadTxt.textContent = t("auth_loading");
 document.getElementById("status").textContent = t("ready");
 document.getElementById("start").textContent = t("start");
 document.getElementById("end").textContent = t("end");
@@ -1163,6 +1181,24 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   // Tab buttons
   document.getElementById("showSummaryBtn").textContent = _rs.summary[_uiLang] || _rs.summary.en;
   document.getElementById("showTranscriptBtn").textContent = _rs.transcript[_uiLang] || _rs.transcript.en;
+  // Export buttons
+  const _copySpan = document.querySelector("#copyReportBtn span");
+  if (_copySpan) _copySpan.textContent = t("copy");
+  const _shareSpan = document.querySelector("#shareReportBtn span");
+  if (_shareSpan) _shareSpan.textContent = t("share");
+  const _dlSpan = document.querySelector("#downloadReportBtn span");
+  if (_dlSpan) _dlSpan.textContent = t("download");
+  const _exportTitle = document.querySelector(".report-export-title");
+  if (_exportTitle) _exportTitle.textContent = t("export_label");
+  // CTA title
+  const _ctaTitle = document.getElementById("postCallCtaTitle");
+  if (_ctaTitle) _ctaTitle.textContent = t("continue_sophie");
+  // Reopen report button
+  const _reopenBtn = document.getElementById("reopenReportBtn");
+  if (_reopenBtn) _reopenBtn.textContent = "📋 " + t("view_report");
+  // Manage subscription link
+  const _manageSub = document.getElementById("manageSubLink");
+  if (_manageSub) _manageSub.textContent = t("manage_sub");
 }
 // ────────────────────────────────────────────────────────────
 
@@ -1223,7 +1259,7 @@ function escapeHtml(value = "") {
 function buildTranscriptText(log = []) {
   return (Array.isArray(log) ? log : [])
     .map((t) => {
-      const role = t?.role === "assistant" ? "Sophie" : "You";
+      const role = t?.role === "assistant" ? "Sophie" : (_uiLang === "de" ? "Du" : _uiLang === "fr" ? "Toi" : "You");
       const text = String(t?.text || "").trim();
       return text ? `${role}: ${text}` : "";
     })
@@ -1468,11 +1504,11 @@ function downloadReport() {
   const transcript = (postCallTranscript.textContent || "").trim();
 
   const htmlContent = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${_uiLang || "en"}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sophie – Thinking Report</title>
+<title>Sophie – ${t("report_title")}</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
   .wrap{max-width:640px;margin:0 auto;}
@@ -1522,11 +1558,27 @@ function downloadReport() {
 </body>
 </html>`;
 
+  const filename = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
   const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+
+  // iOS Safari: blob downloads via a.click() often silently fail.
+  // Use Web Share API with file if available (iOS 15+), else fallback to a.click().
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isIOS && navigator.share && navigator.canShare) {
+    const file = new File([blob], filename, { type: "text/html" });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: t("report_title") })
+        .catch(() => {});
+      return;
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1638,6 +1690,8 @@ function resetClosingState() {
 function configurePostCallCta(triggeredByLimit = false) {
   postCallCta.style.display = "block";
 
+  function goHome() { window.location.href = "/"; }
+
   if (triggeredByLimit) {
     if (isPremium || plan) {
       postCallCtaTitle.textContent = t("session_ended");
@@ -1647,8 +1701,8 @@ function configurePostCallCta(triggeredByLimit = false) {
         startVoice();
       };
 
-      postCallSecondaryBtn.textContent = t("close");
-      postCallSecondaryBtn.onclick = closePostCallPanel;
+      postCallSecondaryBtn.textContent = t("back_home");
+      postCallSecondaryBtn.onclick = goHome;
     } else {
       postCallCtaTitle.textContent = t("continue_sophie");
       postCallPrimaryBtn.textContent = t("view_plans");
@@ -1656,8 +1710,8 @@ function configurePostCallCta(triggeredByLimit = false) {
         window.location.href = "/pricing";
       };
 
-      postCallSecondaryBtn.textContent = t("close");
-      postCallSecondaryBtn.onclick = closePostCallPanel;
+      postCallSecondaryBtn.textContent = t("back_home");
+      postCallSecondaryBtn.onclick = goHome;
     }
   } else {
     postCallCtaTitle.textContent = "";
@@ -1667,8 +1721,8 @@ function configurePostCallCta(triggeredByLimit = false) {
       startVoice();
     };
 
-    postCallSecondaryBtn.textContent = t("close");
-    postCallSecondaryBtn.onclick = closePostCallPanel;
+    postCallSecondaryBtn.textContent = t("back_home");
+    postCallSecondaryBtn.onclick = goHome;
   }
 }
 
@@ -1692,7 +1746,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   const summary =
     apiResult?.output?.short_summary ||
     apiResult?.session?.short_summary ||
-    "No summary available.";
+    t("no_summary");
 
   const insights = normalizeInsights(apiResult?.output?.key_insights);
   const actions = normalizeActions(apiResult?.output?.action_plan);
@@ -1708,7 +1762,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   postCallSummary.textContent = summary;
   postCallInsights.innerHTML = renderInsightsHtml(insights);
   postCallActions.innerHTML = renderActionsHtml(actions);
-  postCallTranscript.textContent = transcriptText || "No transcript available.";
+  postCallTranscript.textContent = transcriptText || t("no_transcript");
 
   configurePostCallCta(triggeredByLimit);
   showSummaryView();
@@ -2166,7 +2220,7 @@ async function maybeTriggerSoftEnding(){
 
   if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
     softEndWarningTriggered = true;
-    setSoftHint("Sophie is preparing a short closing.");
+    setSoftHint(t("preparing_closing"));
     console.log(`[${runId}] [softend] warning threshold reached: ${remainingSeconds}s`);
     // Phase 1: disable all VAD responses — no new response can be created or interrupt Sophie
     try { await setTurnBehavior({ createResponse: false, interruptResponse: false }); } catch (_) {}
@@ -2468,7 +2522,7 @@ async function startVoice(){
   startBtn.textContent = t("connecting");
   logoutBtn.disabled = true;
   headline.textContent = t("sophie_coming");
-  setStatus("connecting..");
+  setStatus(t("connecting"));
   setSoftHint("");
   showLiveBadge(false);
   showBackground(true);
@@ -2533,6 +2587,8 @@ async function startVoice(){
 
       showBackground(false);
       startBtn.disabled = false;
+      startBtn.textContent = t("start");
+      startBtn.onclick = startVoice;
       logoutBtn.disabled = false;
       headline.textContent = premiumActive
         ? (_uiLang === "de" ? "Deine inkludierte Zeit ist aufgebraucht." : _uiLang === "fr" ? "Ton temps inclus est épuisé." : "Your included time is used up.")
@@ -2605,11 +2661,32 @@ async function startVoice(){
       return;
     }
 
+    if (tokenRes.status === 429) {
+      _startVoiceLock = false;
+      const busyMsg = _uiLang === "de"
+        ? "Sophie ist gerade beschäftigt. Bitte versuche es gleich nochmal."
+        : _uiLang === "fr"
+        ? "Sophie est occupée. Réessaie dans un instant."
+        : "Sophie is busy right now. Please try again in a moment.";
+      setStatus(busyMsg);
+      headline.textContent = t("sophie_waiting");
+      startBtn.textContent = t("start");
+      startBtn.onclick = startVoice;
+      showBackground(false);
+      showLiveBadge(false);
+      startBtn.disabled = false;
+      logoutBtn.disabled = false;
+      track("talk_start_failed", { http_status: 429, message: data?.error || "busy" });
+      return;
+    }
+
     if (!tokenRes.ok) {
       _startVoiceLock = false;
-      const msg = data?.error || `Kein Zugriff (HTTP ${tokenRes.status}).`;
+      const msg = data?.message || (_uiLang === "de" ? `Kein Zugriff (HTTP ${tokenRes.status}).`
+        : _uiLang === "fr" ? `Accès refusé (HTTP ${tokenRes.status}).`
+        : `Access denied (HTTP ${tokenRes.status}).`);
       setStatus(msg);
-      headline.textContent = "Sophie is waiting.";
+      headline.textContent = t("sophie_waiting");
       startBtn.textContent = t("start");
       startBtn.onclick = startVoice;
       showBackground(false);
@@ -2704,6 +2781,8 @@ async function startVoice(){
 
     startCountdown();
 
+    _startVoiceLock = false;
+
   } catch(err){
     _startVoiceLock = false;
     console.error(err);
@@ -2720,15 +2799,19 @@ async function startVoice(){
     logoutBtn.disabled = false;
     timerEl.style.display = "none";
 
-    headline.textContent = "Sophie is waiting.";
+    headline.textContent = t("sophie_waiting");
 
-    const status = Number(err?.httpStatus || 0);
-    if (status === 504 || status === 503) {
-      setStatus("Connection timed out. Please try again.");
-    } else if (status >= 500) {
-      setStatus("Connection failed. Please try again.");
+    if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+      setStatus(t("err_mic_denied"));
     } else {
-      setStatus("Could not start the call. Please try again.");
+      const status = Number(err?.httpStatus || 0);
+      if (status === 504 || status === 503) {
+        setStatus(t("err_timeout"));
+      } else if (status >= 500) {
+        setStatus(t("err_connection"));
+      } else {
+        setStatus(t("err_generic"));
+      }
     }
 
     setSoftHint("");
@@ -2752,7 +2835,7 @@ async function stopVoice(triggeredByLimit = false){
   showLiveBadge(false);
 
   headline.textContent = t("creating_report");
-  setStatus("Sophie is wrapping up.");
+  setStatus(t("wrapping_up"));
   setSoftHint("");
   timerEl.style.display = "none";
 
@@ -2931,9 +3014,7 @@ if (!hasRealConversation) {
     } else if (transcriptSnapshot.length) {
       showPostCallResults({
         output: {
-          short_summary: triggeredByLimit
-            ? "The conversation ended cleanly, but no generated summary was returned."
-            : "No generated summary was returned for this conversation.",
+          short_summary: t("no_summary"),
           key_insights: [],
           action_plan: []
         }
@@ -2983,8 +3064,8 @@ if (!hasRealConversation) {
     startBtn.textContent = t("start");
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
-    headline.textContent = "Sophie is waiting.";
-    setStatus(triggeredByLimit ? "Session complete." : "Ended.");
+    headline.textContent = t("sophie_waiting");
+    setStatus(t("ready"));
     setSoftHint("");
     softEndFinalizing = false;
     resetClosingState();
@@ -2992,7 +3073,7 @@ if (!hasRealConversation) {
   } catch (e) {
     stopFakeReportLoader();
     console.error(e);
-    setSoftHint("Report generation failed.");
+    setSoftHint(t("report_failed"));
     startBtn.disabled = false;
     logoutBtn.disabled = false;
   }
@@ -3031,20 +3112,38 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 
 initManageSubscriptionLink();
 
-// On mobile, getUserMedia requires a user gesture (tap/click).
-// Auto-starting would silently fail → show the start button instead.
-const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+// On mobile, getUserMedia requires a user gesture (tap/click) for first-time
+// permission. But if already granted, we can auto-start without a gesture.
+const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-if (session?.user && !isMobileDevice) {
-  startVoice();
-} else if (session?.user) {
-  // Mobile: show ready state, wait for user tap
+function showMobileStartFallback() {
   headline.textContent = t("sophie_waiting");
   setStatus(t("tap_to_start"));
   startBtn.disabled = false;
   startBtn.textContent = t("start");
   startBtn.onclick = startVoice;
   showBackground(false);
+}
+
+if (session?.user && !isMobileDevice) {
+  startVoice();
+} else if (session?.user) {
+  // Mobile: check if mic permission is already granted → auto-start
+  // Otherwise show the start button and wait for user tap
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: "microphone" })
+      .then(result => {
+        if (result.state === "granted") {
+          startVoice();
+        } else {
+          showMobileStartFallback();
+        }
+      })
+      .catch(() => showMobileStartFallback());
+  } else {
+    showMobileStartFallback();
+  }
 }
 </script>
 
