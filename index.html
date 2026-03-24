@@ -1747,6 +1747,23 @@
     let sending        = false;
     let awaitingVoiceConfirmation = false;
     let chatState      = "chat_idle";
+    let selectedChatMode = null;
+
+    // Mode pill toggle
+    document.querySelectorAll("#chatModeBar .mode-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (sessionStarted) return; // lock after session begins
+        const mode = btn.dataset.mode;
+        if (selectedChatMode === mode) {
+          selectedChatMode = null;
+          btn.classList.remove("active");
+        } else {
+          selectedChatMode = mode;
+          document.querySelectorAll("#chatModeBar .mode-pill").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+        }
+      });
+    });
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
