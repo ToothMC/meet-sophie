@@ -1355,14 +1355,24 @@ function buildReportPlainText(withTranscript) {
     })).filter(item => item.title || item.detail);
   const transcript = (postCallTranscript.textContent || "").trim();
 
-  let text = `Dein Thinking Report\n${"─".repeat(30)}\n\n`;
-  text += `ZUSAMMENFASSUNG\n${summary || "—"}\n\n`;
-  text += `WICHTIGE ERKENNTNISSE\n${insightLines.length ? insightLines.map(x => `· ${x}`).join("\n") : "—"}\n\n`;
-  text += `NÄCHSTE SCHRITTE\n${actionItems.length ? actionItems.map(item => item.title + (item.detail ? `\n${item.detail}` : "")).join("\n\n") : "—"}`;
+  const _tp = {
+    title:      { en: "Your Thinking Report",    de: "Dein Thinking Report",     fr: "Ton Thinking Report" },
+    summary:    { en: "SUMMARY",                  de: "ZUSAMMENFASSUNG",          fr: "RÉSUMÉ" },
+    insights:   { en: "KEY INSIGHTS",             de: "WICHTIGE ERKENNTNISSE",    fr: "POINTS CLÉS" },
+    actions:    { en: "NEXT STEPS",               de: "NÄCHSTE SCHRITTE",         fr: "PROCHAINES ÉTAPES" },
+    transcript: { en: "FULL TRANSCRIPT",          de: "VOLLSTÄNDIGES TRANSKRIPT", fr: "TRANSCRIPTION COMPLÈTE" },
+    footer:     { en: "Created with Sophie",      de: "Erstellt mit Sophie",      fr: "Créé avec Sophie" },
+  };
+  const _tt = (k) => _tp[k]?.[_uiLang] || _tp[k]?.en || k;
+
+  let text = `${_tt("title")}\n${"─".repeat(30)}\n\n`;
+  text += `${_tt("summary")}\n${summary || "—"}\n\n`;
+  text += `${_tt("insights")}\n${insightLines.length ? insightLines.map(x => `· ${x}`).join("\n") : "—"}\n\n`;
+  text += `${_tt("actions")}\n${actionItems.length ? actionItems.map(item => item.title + (item.detail ? `\n${item.detail}` : "")).join("\n\n") : "—"}`;
   if (withTranscript && transcript) {
-    text += `\n\nVOLLSTÄNDIGES TRANSKRIPT\n${transcript}`;
+    text += `\n\n${_tt("transcript")}\n${transcript}`;
   }
-  text += `\n\n─ Erstellt mit Sophie`;
+  text += `\n\n─ ${_tt("footer")}`;
   return text;
 }
 
