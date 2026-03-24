@@ -1035,13 +1035,25 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     if (selectedVoiceMode === mode) {
       selectedVoiceMode = null;
       btn.classList.remove("active");
+      localStorage.removeItem("sophie_session_mode");
     } else {
       selectedVoiceMode = mode;
       document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
+      localStorage.setItem("sophie_session_mode", mode);
     }
   });
 });
+
+// Pre-select mode from landing page selection (localStorage)
+(function() {
+  const stored = localStorage.getItem("sophie_session_mode");
+  if (stored && ["brainstorm", "meeting"].includes(stored)) {
+    selectedVoiceMode = stored;
+    const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
+    if (pill) pill.classList.add("active");
+  }
+})();
 const statusEl = document.getElementById("status");
 const timerEl  = document.getElementById("timer");
 const headline = document.getElementById("headline");
