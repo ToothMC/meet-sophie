@@ -2480,13 +2480,13 @@ async function startVoice(){
       postCallCta.style.display = "block";
 
       if (premiumActive || reason === "subscription_quota_exhausted") {
-        postCallCtaTitle.textContent = "Weiter mit Sophie";
-        postCallPrimaryBtn.textContent = "Zeit aufladen";
+        postCallCtaTitle.textContent = t("continue_sophie");
+        postCallPrimaryBtn.textContent = t("top_up");
         postCallPrimaryBtn.onclick = () => {
           window.location.href = "/pricing?mode=topup";
         };
 
-        postCallSecondaryBtn.textContent = "Abo verwalten";
+        postCallSecondaryBtn.textContent = t("manage_sub");
         postCallSecondaryBtn.onclick = async () => {
           try {
             const { data: { session } } = await supabase.auth.getSession();
