@@ -1062,7 +1062,7 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
 // Pre-select mode from landing page selection (localStorage)
 (function() {
   const stored = localStorage.getItem("sophie_session_mode");
-  if (stored && ["brainstorm", "meeting"].includes(stored)) {
+  if (stored && ["brainstorm", "meeting", "salespitch"].includes(stored)) {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
