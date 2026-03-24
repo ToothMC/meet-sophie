@@ -683,9 +683,12 @@
       .wrap{width:min(calc(100% - 24px), var(--max))}
       .hero-grid{
         display:block;
+        position:static;
         min-height:0;
       }
       .hero-copy-col{
+        position:relative;
+        z-index:1;
         padding-top:max(56px, env(safe-area-inset-top));
         width:100%;
         text-align:center;
@@ -696,11 +699,10 @@
       .hero-copy-col .trust-line{
         margin-top:8px;
       }
-      .hero-visual{
-        display:none;
+      .hero-visual,
+      .hero-card{
+        display:contents;
       }
-      .chat-card-mobile-anchor{display:none}
-
       h1{
         font-size:clamp(36px, 11vw, 48px);
         line-height:.92;
@@ -772,15 +774,15 @@
     }
     @media (max-width:640px){
       .chat-card{
-        position:absolute;
-        left:12px;
-        right:12px;
-        bottom:max(8px, env(safe-area-inset-bottom));
-        top:auto;
-        transform:none;
-        width:auto;
-        max-width:none;
-        height:min(230px, 30vh);
+        position:absolute !important;
+        top:calc(100% - min(230px, 30vh) - 8px) !important;
+        left:12px !important;
+        right:12px !important;
+        bottom:auto !important;
+        transform:none !important;
+        width:auto !important;
+        max-width:none !important;
+        height:min(230px, 30vh) !important;
         border-radius:20px;
         z-index:5;
       }
@@ -2566,13 +2568,5 @@
     /* translations already attached to window in the inline script above */
 
   </script>
-<script>
-// Mobile: move chat-card out of hidden hero-visual into hero section
-if (window.matchMedia("(max-width:640px)").matches) {
-  var _cc = document.getElementById("sophieChat");
-  var _hr = document.querySelector(".hero");
-  if (_cc && _hr) _hr.appendChild(_cc);
-}
-</script>
 </body>
 </html>
