@@ -7,7 +7,12 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="icon" href="/favicon.ico">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://ohzfojsbmzinpxhcynpt.supabase.co">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#06070b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Meet Sophie — Your AI Thinking Partner</title>
   <meta name="description" content="Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.">
   <style>
@@ -24,10 +29,11 @@
       --radius:24px;
       --max:1180px;
     }
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html{scroll-behavior:smooth}
     body{
       margin:0;
+      padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;
       background:
         radial-gradient(circle at top right, rgba(132,148,255,.14), transparent 28%),
@@ -238,6 +244,9 @@
       font-size:16px;
       transition:transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
       box-shadow:var(--shadow);
+      touch-action:manipulation;
+      user-select:none;
+      -webkit-user-select:none;
     }
     .btn:hover{transform:translateY(-2px)}
     .btn-primary{
@@ -629,6 +638,7 @@
       .hero-copy-col{
         padding-top:0;
         max-width:520px;
+        text-align:center;
       }
       .hero-visual{
         min-height:620px;
@@ -650,11 +660,15 @@
       .nav{min-height:50px}
       .brand{font-size:13px}
       .hero-actions{display:flex;flex-wrap:wrap;gap:12px}
-      .btn{width:auto;min-width:0;min-height:46px;font-size:14px;padding:0 22px}
-      .eyebrow{height:30px;font-size:11px;padding:0 12px;margin-bottom:12px}
+      .btn{min-width:0;min-height:48px;font-size:15px;padding:0 22px}
+      .hero-actions .btn-primary{width:100%;min-height:54px;font-size:17px;border-radius:16px}
+      .eyebrow{display:none}
+      .thinking-eyebrow{display:none}
       .hero{
-        min-height:auto;
-        padding:14px 0 20px;
+        position:relative;
+        min-height:calc(100dvh - 50px);
+        padding:0;
+        overflow:visible !important;
       }
       .hero::before{
         background:
@@ -667,24 +681,38 @@
       .thinking-copy{font-size:17px}
       .thinking-highlight{margin-top:34px}
       .wrap{width:min(calc(100% - 24px), var(--max))}
-      .hero-grid{gap:10px}
-      .hero-copy-col{padding-top:0}
+      .hero-grid{
+        display:block;
+        position:static;
+        min-height:0;
+      }
+      .hero-copy-col{
+        position:relative;
+        z-index:1;
+        padding-top:max(56px, env(safe-area-inset-top));
+        width:100%;
+        text-align:center;
+      }
+      .hero-copy-col .hero-actions{
+        margin-top:calc(50vh - 250px);
+      }
+      .hero-copy-col .trust-line{
+        margin-top:8px;
+      }
+      .hero-visual,
+      .hero-card{
+        display:contents;
+      }
       h1{
-        font-size:46px;
+        font-size:clamp(36px, 11vw, 48px);
         line-height:.92;
-        max-width:340px;
+        max-width:none;
       }
       .hero-copy{
-        max-width:320px;
-        font-size:18px;
+        max-width:none;
+        font-size:17px;
         line-height:1.5;
-        margin-top:18px;
-      }
-      .hero-visual{
-        min-height:340px;
-      }
-      .hero-card{
-        height:340px;
+        margin-top:14px;
       }
       .card,
       .example-box,
@@ -739,20 +767,24 @@
       .chat-card{
         left:50%;
         transform:translateX(-50%);
-        top:300px;
-        width:260px;
-        height:240px;
+        top:280px;
+        width:280px;
+        height:260px;
       }
     }
     @media (max-width:640px){
       .chat-card{
-        left:50%;
-        transform:translateX(-50%);
-        top:80px;
-        width:min(300px, calc(100% - 24px));
-        max-width:none;
-        height:200px;
+        position:absolute !important;
+        top:calc(100% - min(230px, 30vh) - 8px) !important;
+        left:12px !important;
+        right:12px !important;
+        bottom:auto !important;
+        transform:none !important;
+        width:auto !important;
+        max-width:none !important;
+        height:min(230px, 30vh) !important;
         border-radius:20px;
+        z-index:5;
       }
     }
     .chat-card-header{
@@ -837,10 +869,12 @@
       border-bottom-left-radius:4px;
     }
     .chat-msg.user .chat-msg-bubble{
-      display:none;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.08);
+      border-bottom-right-radius:4px;
     }
     .chat-msg.user{
-      display:none;
+      align-self:flex-end;
     }
     .chat-typing{
       display:none!important;
@@ -2532,6 +2566,7 @@
     });
     // Make translations available to module scope
     /* translations already attached to window in the inline script above */
+
   </script>
 </body>
 </html>
