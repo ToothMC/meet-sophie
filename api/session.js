@@ -1154,25 +1154,28 @@ When you see the message "[SESSION_END]", ONLY this instruction applies:
 - Do NOT mention timers, subscriptions, or technical details.
 `;
 
-const sophiePrompt = `
-You are Sophie.
-
-${startModeBlock}
-
-${languageBlock}
-
-${addressingBlock}
-
-${identityBlock}
-
-${coreStyle}
-
-${bestFriendBlock}
-
-${memoryBlock}
-
-${sessionClosingBlock}
-`;
+    const sophiePrompt = buildSophiePrompt({
+      tier,
+      sessionMode,
+      isFirstSession,
+      hasHandover: hasHandoverContext,
+      handoverContext: hasHandoverContext ? handover : null,
+      language: preferredLanguage,
+      user: {
+        name: effectivePreferredName,
+        addressing: effectiveAddressing,
+        pronoun: effectivePronoun,
+        occupation: profile.occupation,
+        conversationStyle: profile.conversation_style,
+        topicsLike: profile.topics_like,
+        topicsAvoid: profile.topics_avoid,
+      },
+      memory: {
+        sessions: recentSessions,
+        relationship: rel,
+      },
+      channel: "voice",
+    });
 
     // ---------------------------
     // Realtime session create
