@@ -49,7 +49,9 @@
       "Bash(grep -r \"Gespräch\\\\|Zusammenfassung\\\\|Erkenntnisse\\\\|Herunterladen\\\\|Teilen\\\\|Kopieren\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts --include=*.tsx --include=*.jsx --include=*.html --exclude-dir=.git)",
       "Bash(git reset:*)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -maxdepth 2 -type f \\\\\\(-name package.json -o -name .env* -o -name vercel.json \\\\\\))",
-      "Bash(grep -r \"voice.*prompt\\\\|instructions.*voice\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)"
+      "Bash(grep -r \"voice.*prompt\\\\|instructions.*voice\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
+      "Bash(npx vercel:*)",
+      "Bash(gh pr:*)"
     ]
   },
   "hooks": {
