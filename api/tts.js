@@ -1,5 +1,6 @@
 // api/tts.js — Text-to-Speech via OpenAI
-// POST { text, voice? } → audio/mpeg stream
+// Uses the SAME Sophie voice (shimmer) and speaking style as Talk mode
+// POST { text } → audio/mpeg stream
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -15,8 +16,6 @@ export default async function handler(req, res) {
   if (!text) return res.status(400).json({ error: "Missing text" });
   if (text.length > 2000) return res.status(400).json({ error: "Text too long (max 2000 chars)" });
 
-  const voice = body?.voice || "shimmer";
-
   try {
     const resp = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
@@ -26,9 +25,11 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini-tts",
-        voice,
+        voice: "shimmer", // Same voice as Talk mode (api/session.js)
         input: text,
+        instructions: "You are Sophie. Speak warmly, naturally, and conversationally — like a trusted colleague in a meeting. Not robotic or overly formal. Calm, clear, slightly playful. Same personality as in a voice call.",
         response_format: "mp3",
+        speed: 1.0,
       }),
     });
 
