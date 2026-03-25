@@ -2901,11 +2901,19 @@
         // Fallback: client-side intent detection if server didn't detect
         if (!funnelVoiceOffered) {
           funnelTurn++;
+          // Detect from user text AND Sophie's response
           if (!funnelMode || funnelMode === "talk") {
-            const detected = detectFunnelIntent(text);
-            setFunnelMode(detected);
+            const detectedFromUser = detectFunnelIntent(text);
+            const detectedFromSophie = detectFunnelIntent(reply);
+            const best = (detectedFromUser !== "talk") ? detectedFromUser
+                       : (detectedFromSophie !== "talk") ? detectedFromSophie
+                       : "talk";
+            setFunnelMode(best);
           }
-          if (funnelTurn >= 2 && funnelMode) {
+          // If mode pre-selected via pill: show CTA after turn 1
+          // Otherwise: show after turn 2
+          const minTurn = (selectedChatMode && selectedChatMode !== "talk") ? 1 : 2;
+          if (funnelTurn >= minTurn && funnelMode && funnelMode !== "talk") {
             funnelVoiceOffered = true;
             showInlineVoiceCTA(funnelMode);
           }
