@@ -1915,7 +1915,7 @@ function renderSalesPitchReportHtml(report) {
   // Weaknesses section
   if (report.main_weaknesses?.length) {
     html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
-    html += `<h4 class="report-heading" style="color:#b85a4a;">Main Weaknesses</h4>`;
+    html += `<h4 class="report-heading" style="color:#b85a4a;">${L.weaknesses}</h4>`;
     html += `<ul class="report-insight-list">`;
     report.main_weaknesses.forEach((w) => { html += `<li>${w}</li>`; });
     html += `</ul></section>`;
