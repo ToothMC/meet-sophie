@@ -1225,6 +1225,7 @@ ${transcriptText}
         key_insights: outputRow.key_insights,
         action_plan: outputRow.action_plan,
         open_questions: outputRow.open_questions,
+        ...(conversationOutput.sales_pitch_report ? { sales_pitch_report: conversationOutput.sales_pitch_report } : {}),
       },
       extracted: {
         first_name: profileRow.first_name,
