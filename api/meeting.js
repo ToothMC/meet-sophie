@@ -235,7 +235,7 @@ async function handleContext(req, res) {
     return res.status(400).json({ error: "Missing meeting_id, context_type, or content" });
   }
 
-  if (!["agenda", "participants", "goal", "text_note"].includes(context_type)) {
+  if (!["agenda", "participants", "goal", "text_note", "file", "history_ref"].includes(context_type)) {
     return res.status(400).json({ error: "Invalid context_type" });
   }
 
