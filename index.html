@@ -1886,21 +1886,20 @@
     const heroCta = document.getElementById("hero-btn-primary");
     const SESSION_MODES = ["brainstorm", "meeting", "salespitch"];
 
-    // ── Funnel: intent-based routing (replaces manual mode pills) ──
+    // ── Funnel: intent-based routing ──
     let funnelMode = null;      // null | "talk" | "brainstorm" | "meeting" | "salespitch"
     let funnelTurn = 0;         // user turn counter
     let funnelVoiceOffered = false;
-    let selectedChatMode = null; // kept for backward compat (handover, API calls)
+    let selectedChatMode = null;
+
+    const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
+    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" };
 
     function detectFunnelIntent(text) {
       const t = (text || "").toLowerCase();
-      // Sales Pitch
       if (/pitch|sales|present|investor|überzeugen|pitch üben|präsent|vortra|audience|convince/i.test(t)) return "salespitch";
-      // Meeting
       if (/meeting|protokoll|protocol|minute|agenda|besprechung|team.?meeting|stand.?up|retro/i.test(t)) return "meeting";
-      // Brainstorm
       if (/brainstorm|ideen|ideas?|kreativ|creative|possibilities|möglichkeiten|concept|konzept/i.test(t)) return "brainstorm";
-      // Talk (default) — anything else
       return "talk";
     }
 
@@ -1911,6 +1910,14 @@
         localStorage.setItem("sophie_session_mode", selectedChatMode);
       } else {
         localStorage.removeItem("sophie_session_mode");
+      }
+    }
+
+    function applyHeroMode(mode) {
+      if (heroCta) {
+        heroCta.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
+        if (mode) heroCta.classList.add("mode-" + mode);
+        heroCta.textContent = mode ? (heroModeLabels[mode] || heroCtaDefault) : heroCtaDefault;
       }
     }
 
@@ -1943,14 +1950,35 @@
     const chatBackdrop = document.getElementById("chatBackdrop");
     if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
-    // Mode pills — show capabilities + open chat with pre-set mode
+    // Mode pills — toggle active state + update button label/color
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
-        setFunnelMode(mode);
-        openChatForeground();
+        if (selectedChatMode === mode) {
+          // deselect
+          selectedChatMode = null;
+          btn.classList.remove("active");
+          setFunnelMode(null);
+          applyHeroMode(null);
+        } else {
+          // select
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          setFunnelMode(mode);
+          applyHeroMode(mode);
+        }
       });
     });
+
+    // Restore previous mode selection on page load
+    const storedMode = localStorage.getItem("sophie_session_mode");
+    if (storedMode && SESSION_MODES.includes(storedMode)) {
+      selectedChatMode = storedMode;
+      funnelMode = storedMode;
+      const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
+      if (pill) pill.classList.add("active");
+      applyHeroMode(storedMode);
+    }
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
