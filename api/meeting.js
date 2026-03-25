@@ -601,17 +601,85 @@ Return ONLY the JSON object, no other text.`;
     return res.status(502).json({ error: "Failed to parse summary JSON" });
   }
 
-  // Upsert summary
+  // Generate follow-up diff if parent meeting exists
+  let followupDiff = null;
+  if (meeting.parent_meeting_id) {
+    const { data: parentSummary } = await supabase
+      .from("meeting_summary")
+      .select("action_items, open_points")
+      .eq("meeting_id", meeting.parent_meeting_id)
+      .maybeSingle();
+
+    if (parentSummary) {
+      const diffPrompt = `You are Sophie. Compare the previous meeting's action items and open points with the current meeting notes.
+${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
+
+PREVIOUS MEETING:
+Action Items: ${JSON.stringify(parentSummary.action_items || [])}
+Open Points: ${JSON.stringify(parentSummary.open_points || [])}
+
+CURRENT MEETING NOTES:
+${notesStr}
+
+CURRENT MEETING SUMMARY:
+${JSON.stringify(summary)}
+
+Generate a JSON object with this schema:
+{
+  "resolved": [{ "text": "...", "status": "done" }],
+  "still_open": [{ "text": "...", "status": "open" }],
+  "escalated": [{ "text": "...", "status": "escalated" }],
+  "new_items": [{ "text": "..." }]
+}
+
+Rules:
+- "resolved": items from the previous meeting that were addressed or completed
+- "still_open": items from previous meeting still not resolved
+- "escalated": items that got worse or more urgent
+- "new_items": completely new action items or points from the current meeting
+Return ONLY the JSON object.`;
+
+      try {
+        const diffResp = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
+            max_tokens: 1000,
+            messages: [{ role: "system", content: diffPrompt }],
+            temperature: 0.3,
+            response_format: { type: "json_object" },
+          }),
+        });
+        if (diffResp.ok) {
+          const diffData = await diffResp.json();
+          const diffContent = diffData?.choices?.[0]?.message?.content || "{}";
+          followupDiff = JSON.parse(diffContent);
+        }
+      } catch (e) {
+        console.error("Follow-up diff generation error:", e?.message);
+        // Non-critical, continue without diff
+      }
+    }
+  }
+
+  // Upsert summary (including followup_diff if generated)
+  const upsertData = {
+    meeting_id,
+    short_summary: summary.short_summary || "",
+    decisions: summary.decisions || [],
+    action_items: summary.action_items || [],
+    open_points: summary.open_points || [],
+    risks: summary.risks || [],
+  };
+  if (followupDiff) upsertData.followup_diff = followupDiff;
+
   const { data: saved, error: saveErr } = await supabase
     .from("meeting_summary")
-    .upsert({
-      meeting_id,
-      short_summary: summary.short_summary || "",
-      decisions: summary.decisions || [],
-      action_items: summary.action_items || [],
-      open_points: summary.open_points || [],
-      risks: summary.risks || [],
-    }, { onConflict: "meeting_id" })
+    .upsert(upsertData, { onConflict: "meeting_id" })
     .select()
     .single();
 
