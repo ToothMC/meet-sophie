@@ -1998,7 +1998,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
     const headingSummary = document.getElementById("reportHeadingSummary");
     const headingInsights = document.getElementById("reportHeadingInsights");
     const headingActions = document.getElementById("reportHeadingActions");
-    if (headingSummary) headingSummary.textContent = "Scorecard";
+    if (headingSummary) headingSummary.textContent = _uiLang === "de" ? "Bewertung" : _uiLang === "fr" ? "Évaluation" : "Scorecard";
     if (headingInsights) headingInsights.style.display = "none";
     if (headingActions) headingActions.style.display = "none";
 
