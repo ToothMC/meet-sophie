@@ -1277,6 +1277,9 @@ ctaPost.addEventListener("click", () => transitionPhase("post"));
 ctaClose.addEventListener("click", () => transitionPhase("closed"));
 
 $("saveContextBtn").addEventListener("click", saveContext);
+muteToggle.addEventListener("click", toggleSophieMute);
+$("copySummaryBtn").addEventListener("click", copySummary);
+$("shareSummaryBtn").addEventListener("click", shareSummary);
 
 $("contextToggle").addEventListener("click", () => {
   contextPanel.classList.toggle("collapsed");
