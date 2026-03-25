@@ -1198,6 +1198,62 @@ function updateParticipantsBar() {
 }
 
 // ---------------------------------------------------------------------------
+// Text-to-Speech (Sophie spricht)
+// ---------------------------------------------------------------------------
+async function speak(text) {
+  if (!text || sophieMuted) return;
+  // Stop any current playback
+  stopSpeaking();
+
+  try {
+    isSpeaking = true;
+    updateParticipantsBar(); // Show speaking indicator
+
+    const resp = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text.slice(0, 2000) }),
+    });
+
+    if (!resp.ok) {
+      console.error("TTS error:", resp.status);
+      isSpeaking = false;
+      updateParticipantsBar();
+      return;
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    sophieAudio = new Audio(url);
+    sophieAudio.volume = 0.8;
+    sophieAudio.onended = () => {
+      isSpeaking = false;
+      URL.revokeObjectURL(url);
+      updateParticipantsBar();
+    };
+    sophieAudio.onerror = () => {
+      isSpeaking = false;
+      URL.revokeObjectURL(url);
+      updateParticipantsBar();
+    };
+    await sophieAudio.play();
+  } catch (e) {
+    console.error("Speak error:", e);
+    isSpeaking = false;
+    updateParticipantsBar();
+  }
+}
+
+function stopSpeaking() {
+  if (sophieAudio) {
+    sophieAudio.pause();
+    sophieAudio.currentTime = 0;
+    sophieAudio = null;
+  }
+  isSpeaking = false;
+}
+
+// ---------------------------------------------------------------------------
 // Mute/Unmute Sophie
 // ---------------------------------------------------------------------------
 async function toggleSophieMute() {
