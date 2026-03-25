@@ -2930,10 +2930,10 @@
             funnelVoiceOffered = true;
             showInlineVoiceCTA(currentFunnel);
           } else if (funnelVoiceOffered && best !== "talk") {
-            // Mode changed mid-conversation — show updated CTA
-            const prevMode = localStorage.getItem("sophie_detected_mode");
-            if (prevMode && prevMode !== best) {
-              localStorage.setItem("sophie_detected_mode", best);
+            // Mode changed mid-conversation — show new CTA but do NOT overwrite localStorage
+            // localStorage is only set when the user actually CLICKS a CTA button
+            const prevFunnel = funnelMode;
+            if (prevFunnel && prevFunnel !== best) {
               showInlineVoiceCTA(best);
             }
           }
