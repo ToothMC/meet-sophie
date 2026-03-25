@@ -186,22 +186,6 @@
       statusEl.className = isErr ? "err" : "";
     }
 
-    async function ensureUserMemoryRow(userId) {
-      const { data } = await supabase
-        .from("user_memory")
-        .select("user_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (!data) {
-        await supabase.from("user_memory").insert({
-          user_id: userId,
-          profile_notes: "",
-          relationship_summary: ""
-        });
-      }
-    }
-
     async function ensureUserUsageRow(userId) {
       const { data } = await supabase
         .from("user_usage")

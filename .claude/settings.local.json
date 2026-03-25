@@ -53,7 +53,10 @@
       "Bash(npx vercel:*)",
       "Bash(gh pr:*)",
       "Bash(python3 -c \":*)",
-      "Bash(grep -l \"CREATE TABLE.*user_profile\\\\|CREATE TABLE.*user_relationship\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(grep -l \"CREATE TABLE.*user_profile\\\\|CREATE TABLE.*user_relationship\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(ls -la /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/20260325*)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_tables",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration"
     ]
   },
   "hooks": {
