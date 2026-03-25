@@ -2551,6 +2551,16 @@ function attachChannel(ch) {
           }
         }];
         sessionUpdate.session.tool_choice = "auto";
+      } else if (selectedVoiceMode === "salespitch") {
+        // signal_pitch_report: Sophie calls this at the end of Phase D to trigger call end + report generation
+        sessionUpdate.session.tools = [{
+          type: "function",
+          name: "signal_pitch_report",
+          description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
+          parameters: { type: "object", properties: {} }
+        }];
+        sessionUpdate.session.tool_choice = "auto";
+        updateModeIndicator(selectedVoiceMode);
       } else {
         // Static mode indicator for brainstorm/meeting sessions
         updateModeIndicator(selectedVoiceMode);
