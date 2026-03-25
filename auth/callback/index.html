@@ -18,9 +18,13 @@
 
     let done = false;
 
-    // Read mode from URL params (passed via emailRedirectTo)
+    // Read mode + language from URL params (passed via emailRedirectTo)
     const urlParams = new URLSearchParams(window.location.search);
     const detectedMode = urlParams.get("mode") || localStorage.getItem("sophie_detected_mode") || "";
+    const lang = urlParams.get("lang") || localStorage.getItem("preferredLanguage") || "";
+    if (lang && ["de", "en", "fr"].includes(lang)) {
+      localStorage.setItem("preferredLanguage", lang);
+    }
 
     // Build target path with mode
     function buildTarget(base) {
