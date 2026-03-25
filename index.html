@@ -2175,6 +2175,12 @@
         return;
       }
       writeUxFlags({ hasStartedVoice: true, lastLanguage: currentLang });
+      // Set session mode from funnel intent (if specialized mode detected)
+      if (funnelMode && funnelMode !== "talk") {
+        localStorage.setItem("sophie_session_mode", funnelMode);
+      } else {
+        localStorage.removeItem("sophie_session_mode");
+      }
       saveVoiceHandover();
       sessionStorage.setItem("FORCE_NEW_CHAT", "1");
       window.location.href = "/talk";
