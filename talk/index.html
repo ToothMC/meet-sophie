@@ -3194,7 +3194,7 @@ async function stopVoice(triggeredByLimit = false){
   clearClosingTimers();
   showLiveBadge(false);
 
-  headline.textContent = t("creating_report");
+  headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
   setStatus(t("wrapping_up"));
   setSoftHint("");
   timerEl.style.display = "none";
