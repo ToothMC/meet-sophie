@@ -1186,9 +1186,10 @@ function updateParticipantsBar() {
   const names = participants ? participants.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean) : [];
 
   let html = "";
-  // Sophie chip — always present, shows mute state
-  const sophieState = sophieMuted ? "🔇" : "🔊";
-  html += `<span class="participant-chip sophie">${sophieState} ${t("sophieLabel")}</span>`;
+  // Sophie chip — always present, shows mute/speaking state
+  const sophieState = isSpeaking ? "\ud83d\udde3\ufe0f" : sophieMuted ? "\ud83d\udd07" : "\ud83d\udd0a";
+  const speakingClass = isSpeaking ? " speaking" : "";
+  html += `<span class="participant-chip sophie${speakingClass}">${sophieState} ${t("sophieLabel")}</span>`;
   // User participants
   names.forEach(name => {
     html += `<span class="participant-chip">${name}</span>`;
