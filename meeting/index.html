@@ -1209,104 +1209,147 @@ function updateParticipantsBar() {
 }
 
 // ---------------------------------------------------------------------------
-// Text-to-Speech (Sophie spricht)
+// Sophie Voice — Uses the SAME Talk-Sophie (WebRTC Realtime API)
+// Unmute = Connect Sophie voice session, Mute = Disconnect
 // ---------------------------------------------------------------------------
-async function speak(text) {
-  if (!text || sophieMuted) return;
-  // Stop any current playback
-  stopSpeaking();
+
+async function fetchRealtimeAnswerSdp(offerSdp, clientSecret) {
+  const baseUrl = "https://api.openai.com/v1/realtime";
+  const model = "gpt-realtime";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offerSdp,
+        headers: {
+          Authorization: `Bearer ${clientSecret}`,
+          "Content-Type": "application/sdp",
+        },
+      });
+      if (!res.ok) throw new Error(`Realtime handshake failed (${res.status})`);
+      const sdp = await res.text();
+      if (!sdp || sdp.trim().startsWith("<")) throw new Error("Invalid SDP");
+      return sdp;
+    } catch (e) {
+      if (attempt === 3) throw e;
+      await new Promise(r => setTimeout(r, 600 * attempt));
+    }
+  }
+}
+
+async function connectSophieVoice() {
+  if (isConnecting || sophieVoicePc) return;
+  isConnecting = true;
+  isSpeaking = true;
+  updateParticipantsBar();
+
+  const connectMsg = lang === "de" ? "Sophie wird verbunden..." : lang === "fr" ? "Connexion de Sophie..." : "Connecting Sophie...";
+  appendSystemMsg(connectMsg);
 
   try {
-    isSpeaking = true;
-    updateParticipantsBar(); // Show speaking indicator
-
-    const resp = await fetch("/api/tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text.slice(0, 2000) }),
+    // 1. Get session token from /api/session (same as Talk)
+    const tokenRes = await fetch("/api/session", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Sophie-Session-Mode": "meeting",
+      },
     });
+    const data = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(data?.error || `HTTP ${tokenRes.status}`);
 
-    if (!resp.ok) {
-      console.error("TTS error:", resp.status);
-      isSpeaking = false;
-      updateParticipantsBar();
-      return;
-    }
+    // 2. Set up WebRTC (same as Talk)
+    sophieVoicePc = new RTCPeerConnection();
 
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    sophieAudio = new Audio(url);
-    sophieAudio.volume = 0.8;
-    sophieAudio.onended = () => {
-      isSpeaking = false;
-      URL.revokeObjectURL(url);
+    // Get mic access
+    sophieVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    sophieVoiceStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieVoiceStream));
+
+    // Sophie's audio output
+    sophieVoiceAudio = document.createElement("audio");
+    sophieVoiceAudio.autoplay = true;
+    sophieVoiceAudio.playsInline = true;
+    sophieVoicePc.ontrack = e => {
+      sophieVoiceAudio.srcObject = e.streams[0];
+      isSpeaking = true;
       updateParticipantsBar();
     };
-    sophieAudio.onerror = () => {
-      isSpeaking = false;
-      URL.revokeObjectURL(url);
-      updateParticipantsBar();
+
+    // Create offer
+    const offer = await sophieVoicePc.createOffer();
+    await sophieVoicePc.setLocalDescription(offer);
+
+    // 3. Handshake with OpenAI Realtime (same as Talk)
+    const answerSdp = await fetchRealtimeAnswerSdp(offer.sdp, data.client_secret.value);
+    await sophieVoicePc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+
+    // Connection state monitoring
+    sophieVoicePc.onconnectionstatechange = () => {
+      const state = sophieVoicePc?.connectionState;
+      if (state === "disconnected" || state === "failed" || state === "closed") {
+        disconnectSophieVoice(true);
+      }
     };
-    await sophieAudio.play();
+
+    isConnecting = false;
+    isSpeaking = true;
+    updateParticipantsBar();
+
+    const joinedMsg = lang === "de" ? "Sophie ist jetzt im Meeting." : lang === "fr" ? "Sophie est dans le meeting." : "Sophie joined the meeting.";
+    appendSystemMsg(joinedMsg);
+
   } catch (e) {
-    console.error("Speak error:", e);
+    console.error("Sophie voice connect error:", e);
+    isConnecting = false;
     isSpeaking = false;
     updateParticipantsBar();
+    disconnectSophieVoice(true);
+    const errMsg = lang === "de" ? "Sophie konnte nicht verbunden werden." : "Could not connect Sophie.";
+    appendSystemMsg(errMsg + " " + e.message);
   }
 }
 
-function stopSpeaking() {
-  if (sophieAudio) {
-    sophieAudio.pause();
-    sophieAudio.currentTime = 0;
-    sophieAudio = null;
+function disconnectSophieVoice(silent = false) {
+  // Stop mic
+  if (sophieVoiceStream) {
+    sophieVoiceStream.getTracks().forEach(t => t.stop());
+    sophieVoiceStream = null;
+  }
+  // Stop audio
+  if (sophieVoiceAudio) {
+    try { sophieVoiceAudio.srcObject = null; } catch {}
+    sophieVoiceAudio = null;
+  }
+  // Close WebRTC
+  if (sophieVoicePc) {
+    sophieVoicePc.close();
+    sophieVoicePc = null;
   }
   isSpeaking = false;
+  isConnecting = false;
+  updateParticipantsBar();
+
+  if (!silent) {
+    const leftMsg = lang === "de" ? "Sophie hat das Meeting verlassen." : lang === "fr" ? "Sophie a quitté le meeting." : "Sophie left the meeting.";
+    appendSystemMsg(leftMsg);
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Mute/Unmute Sophie
+// Mute/Unmute Sophie (Connect/Disconnect Talk-Sophie)
 // ---------------------------------------------------------------------------
 async function toggleSophieMute() {
+  if (isConnecting) return; // Prevent double-click
+
   sophieMuted = !sophieMuted;
   muteToggle.classList.toggle("active", !sophieMuted);
   updateParticipantsBar();
 
-  const statusMsg = sophieMuted ? t("sophieMuted") : t("sophieActive");
-  appendSystemMsg(statusMsg);
-
-  // When unmuting in LIVE phase, Sophie actively joins — send a real API call
-  if (!sophieMuted && meetingData?.phase === "live") {
-    const joinPrompt = lang === "de"
-      ? "[SYSTEM: Sophie wurde gerade ins Meeting geholt (unmuted). Begrüße kurz, fasse den bisherigen Stand zusammen (NUR was tatsächlich besprochen wurde), und frage ob du bei etwas helfen kannst. ERFINDE NICHTS.]"
-      : lang === "fr"
-      ? "[SYSTEM: Sophie vient d'être activée. Résume brièvement ce qui a été discuté (UNIQUEMENT le contenu réel), et demande comment tu peux aider.]"
-      : "[SYSTEM: Sophie was just unmuted and joined the meeting. Briefly summarize what has been discussed so far (ONLY actual content), and ask how you can help. DO NOT INVENT ANYTHING.]";
-
-    chatMessages.push({ role: "user", content: joinPrompt });
-    showTyping();
-
-    try {
-      const data = await api("message", {
-        meeting_id: meetingId,
-        messages: chatMessages,
-      });
-      removeTyping();
-      if (data.reply) {
-        appendMsg("assistant", data.reply);
-        chatMessages.push({ role: "assistant", content: data.reply });
-        // Sophie speaks her join message
-        speak(data.reply);
-      }
-    } catch (e) {
-      removeTyping();
-      appendSystemMsg("Error: " + e.message);
-    }
-  }
-
-  // When muting, stop speaking
-  if (sophieMuted) {
-    stopSpeaking();
+  if (!sophieMuted) {
+    // UNMUTE → Connect Sophie voice (same as starting Talk)
+    await connectSophieVoice();
+  } else {
+    // MUTE → Disconnect Sophie voice
+    disconnectSophieVoice();
   }
 }
 
