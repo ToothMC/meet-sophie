@@ -1933,7 +1933,7 @@ function renderSalesPitchReportHtml(report) {
   // Improvement priorities section
   if (report.improvement_priorities?.length) {
     html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
-    html += `<h4 class="report-heading">Improvement Priorities</h4>`;
+    html += `<h4 class="report-heading">${L.priorities}</h4>`;
     report.improvement_priorities.forEach((p, i) => {
       html += `<div class="report-action-item"><span class="report-action-title">${i + 1}. ${p}</span></div>`;
     });
