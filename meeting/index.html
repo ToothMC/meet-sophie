@@ -894,6 +894,15 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
+    // Disconnect Sophie voice when leaving live phase
+    if (newPhase === "post" || newPhase === "closed") {
+      if (!sophieMuted) {
+        sophieMuted = true;
+        muteToggle.classList.remove("active");
+        disconnectSophieVoice(true);
+      }
+    }
+
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
       await generateSummary();
