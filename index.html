@@ -845,10 +845,11 @@
     .chat-card.foreground .chat-messages{
       flex:1;
       min-height:0;
-      justify-content:flex-end;
+      overflow-y:auto;
     }
     .chat-card.foreground .chat-footer{
       padding:12px 14px;
+      flex-shrink:0;
     }
     @media (max-width:640px){
       .chat-card.foreground{
