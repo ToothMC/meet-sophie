@@ -748,7 +748,8 @@ async function transitionPhase(newPhase) {
 // ---------------------------------------------------------------------------
 function appendMsg(role, content) {
   const div = document.createElement("div");
-  div.className = `msg ${role}`;
+  const isHint = role === "assistant" && content.trim().startsWith("💡");
+  div.className = `msg ${role}${isHint ? " hint" : ""}`;
   div.textContent = content;
   chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
