@@ -905,6 +905,27 @@ function renderSummary(summary) {
     details.appendChild(div);
   });
 
+  // Render follow-up diff if present
+  if (summary.followup_diff) {
+    const diff = summary.followup_diff;
+    const diffDiv = document.createElement("div");
+    diffDiv.className = "diff-section";
+
+    const diffItems = [
+      ...(diff.resolved || []).map(i => ({ icon: "✓", cls: "done", text: typeof i === "string" ? i : i.text, label: t("diffDone") })),
+      ...(diff.still_open || []).map(i => ({ icon: "○", cls: "open", text: typeof i === "string" ? i : i.text, label: t("diffOpen") })),
+      ...(diff.escalated || []).map(i => ({ icon: "!", cls: "escalated", text: typeof i === "string" ? i : i.text, label: t("diffEscalated") })),
+      ...(diff.new_items || []).map(i => ({ icon: "★", cls: "new", text: typeof i === "string" ? i : i.text, label: t("diffNew") })),
+    ];
+
+    if (diffItems.length > 0) {
+      diffDiv.innerHTML = `<h4>${t("diffTitle")}</h4>` + diffItems.map(d =>
+        `<div class="diff-item"><span class="diff-icon ${d.cls}">${d.icon}</span><span>${d.text}</span></div>`
+      ).join("");
+      details.appendChild(diffDiv);
+    }
+  }
+
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
