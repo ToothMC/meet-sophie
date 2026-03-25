@@ -2277,6 +2277,18 @@ ${(voiceHandover.recentMessages || [])
   try {
     await cancelAnyOngoingResponse();
 
+    // Sales Pitch: ignore handover entirely — start Phase A immediately
+    if (selectedVoiceMode === "salespitch") {
+      await sendWhenChannelOpen({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first. Ask who they are pitching to. No handover context. No prior conversation.`
+        }
+      }, 3000);
+      return;
+    }
+
     await sendWhenChannelOpen({
       type: "response.create",
       response: {
