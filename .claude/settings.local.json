@@ -73,7 +73,10 @@
       "Bash(npx --yes npm install mammoth)",
       "Bash(node -e \"const {execSync}=require\\(''child_process''\\); console.log\\(execSync\\(''which npm || echo not found''\\).toString\\(\\)\\)\")",
       "Read(//Users/michaelhammer/.nvm/versions/**)",
-      "Read(//Users/michaelhammer/**)"
+      "Read(//Users/michaelhammer/**)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type d \\\\\\(-name *report* -o -name *protocol* -o -name *download* \\\\\\))",
+      "Bash(grep -r download /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)",
+      "Bash(grep -r \"PDF\\\\|report\\\\|Report\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)"
     ]
   },
   "hooks": {
