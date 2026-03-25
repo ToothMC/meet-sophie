@@ -1929,6 +1929,15 @@
     const chatBackdrop = document.getElementById("chatBackdrop");
     if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
+    // Mode pills — show capabilities + open chat with pre-set mode
+    document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.mode;
+        setFunnelMode(mode);
+        openChatForeground();
+      });
+    });
+
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
       en: "You can type… but I'd rather hear you.",
