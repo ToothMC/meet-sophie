@@ -1062,8 +1062,22 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
   });
 });
 
-// Pre-select mode from landing page selection (localStorage)
+// Pre-select mode from funnel handover or localStorage
 (function() {
+  // 1. Check funnel handover (chat qualification)
+  const handoverRaw = sessionStorage.getItem("SOPHIE_HANDOVER") || localStorage.getItem("SOPHIE_HANDOVER_PERSIST");
+  if (handoverRaw) {
+    try {
+      const ho = JSON.parse(handoverRaw);
+      if (ho.funnelMode && ho.funnelMode !== "talk" && ["brainstorm", "meeting", "salespitch"].includes(ho.funnelMode)) {
+        selectedVoiceMode = ho.funnelMode;
+        const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${ho.funnelMode}"]`);
+        if (pill) pill.classList.add("active");
+        return; // funnel mode takes priority
+      }
+    } catch(_) {}
+  }
+  // 2. Fallback: localStorage (manual selection or funnel-set)
   const stored = localStorage.getItem("sophie_session_mode");
   if (stored && ["brainstorm", "meeting", "salespitch"].includes(stored)) {
     selectedVoiceMode = stored;
