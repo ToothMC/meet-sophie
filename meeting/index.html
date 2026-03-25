@@ -1284,11 +1284,18 @@ async function toggleSophieMute() {
       if (data.reply) {
         appendMsg("assistant", data.reply);
         chatMessages.push({ role: "assistant", content: data.reply });
+        // Sophie speaks her join message
+        speak(data.reply);
       }
     } catch (e) {
       removeTyping();
       appendSystemMsg("Error: " + e.message);
     }
+  }
+
+  // When muting, stop speaking
+  if (sophieMuted) {
+    stopSpeaking();
   }
 }
 
