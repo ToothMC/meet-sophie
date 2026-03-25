@@ -354,6 +354,33 @@ async function handleMessage(req, res) {
   // Build meeting context string
   const contextItems = (contextRes.data || []).map(c => `[${c.context_type.toUpperCase()}] ${c.content}`).join("\n");
   const noteItems = (notesRes.data || []).map(n => `[${n.note_type.toUpperCase()}] ${n.content}`).join("\n");
+
+  // Load parent meeting history context if linked
+  let historyBlock = null;
+  if (meeting.parent_meeting_id) {
+    const { data: parentSummary } = await supabase
+      .from("meeting_summary")
+      .select("short_summary, action_items, open_points, decisions")
+      .eq("meeting_id", meeting.parent_meeting_id)
+      .maybeSingle();
+    if (parentSummary) {
+      const openActions = (parentSummary.action_items || [])
+        .filter(a => !a.done)
+        .map(a => `- ${typeof a === "string" ? a : a.text || JSON.stringify(a)}`)
+        .join("\n");
+      const openPts = (parentSummary.open_points || [])
+        .map(p => `- ${typeof p === "string" ? p : p.text || JSON.stringify(p)}`)
+        .join("\n");
+      historyBlock = [
+        "--- PREVIOUS MEETING ---",
+        parentSummary.short_summary ? `Summary: ${parentSummary.short_summary}` : null,
+        openActions ? `Open Action Items:\n${openActions}` : null,
+        openPts ? `Open Points:\n${openPts}` : null,
+        "--- END PREVIOUS MEETING ---",
+      ].filter(Boolean).join("\n");
+    }
+  }
+
   const meetingContext = [
     meeting.title ? `Meeting: ${meeting.title}` : null,
     `Typ: ${meeting.meeting_type}`,
@@ -361,6 +388,7 @@ async function handleMessage(req, res) {
     `Sophie-Rolle: ${meeting.sophie_role}`,
     contextItems ? `\nKONTEXT:\n${contextItems}` : null,
     noteItems ? `\nBISHERIGE NOTIZEN:\n${noteItems}` : null,
+    historyBlock ? `\n${historyBlock}` : null,
   ].filter(Boolean).join("\n");
 
   // Build system prompt with meeting-specific phase prompt
