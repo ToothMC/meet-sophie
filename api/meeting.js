@@ -636,7 +636,26 @@ async function handleSummarize(req, res) {
 
   // Build summary prompt
   const contextStr = (contextRes.data || []).map(c => `[${c.context_type}] ${c.content}`).join("\n");
-  const notesStr = (notesRes.data || []).map(n => `[${n.note_type}] ${n.content}`).join("\n");
+  const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
+  const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
+
+  // If there's no content at all, return empty summary — do NOT hallucinate
+  if (!notesStr.trim() && !contextStr.trim()) {
+    const emptySummary = {
+      meeting_id,
+      short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
+      decisions: [],
+      action_items: [],
+      open_points: [],
+      risks: [],
+    };
+    const { data: saved } = await supabase
+      .from("meeting_summary")
+      .upsert(emptySummary, { onConflict: "meeting_id" })
+      .select()
+      .single();
+    return res.status(200).json({ ok: true, summary: saved || emptySummary });
+  }
 
   const summarySystemPrompt = `You are Sophie. Generate a structured meeting summary.
 ${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
@@ -646,16 +665,22 @@ Type: ${meeting.meeting_type}
 ${contextStr ? `\nContext:\n${contextStr}` : ""}
 ${notesStr ? `\nNotes from meeting:\n${notesStr}` : ""}
 
+CRITICAL RULES:
+- ONLY summarize what is EXPLICITLY written in the notes and context above.
+- Do NOT invent, assume, or hallucinate any content.
+- If a category has no items, return an empty array [].
+- If there is very little content, the summary should be very short.
+- NEVER make up decisions, action items, or risks that are not explicitly stated.
+
 Generate a JSON object with this exact schema:
 {
-  "short_summary": "2-3 sentence summary",
+  "short_summary": "2-3 sentence summary of ONLY what was actually discussed",
   "decisions": [{ "text": "...", "owner": "..." }],
   "action_items": [{ "text": "...", "owner": "...", "due": "..." }],
   "open_points": [{ "text": "..." }],
   "risks": [{ "text": "...", "severity": "low|medium|high" }]
 }
 
-Be concise and actionable. Only include items that were actually discussed.
 Return ONLY the JSON object, no other text.`;
 
   let openaiResp;
