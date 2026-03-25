@@ -1080,6 +1080,52 @@
       transform:translateY(-1px);
       box-shadow:0 6px 20px rgba(99,102,241,.45);
     }
+    .chat-voice-btn.mode-brainstorm{
+      background:linear-gradient(135deg, #f5c842, #d4a017);
+      color:#1a1200;
+      box-shadow:0 4px 16px rgba(245,200,66,.35);
+    }
+    .chat-voice-btn.mode-brainstorm:hover{ box-shadow:0 6px 20px rgba(245,200,66,.45); }
+    .chat-voice-btn.mode-meeting{
+      background:linear-gradient(135deg, #34c47a, #1e9957);
+      box-shadow:0 4px 16px rgba(52,196,122,.35);
+    }
+    .chat-voice-btn.mode-meeting:hover{ box-shadow:0 6px 20px rgba(52,196,122,.45); }
+    .chat-voice-btn.mode-salespitch{
+      background:linear-gradient(135deg, #ff5252, #c62828);
+      box-shadow:0 4px 16px rgba(255,82,82,.35);
+    }
+    .chat-voice-btn.mode-salespitch:hover{ box-shadow:0 6px 20px rgba(255,82,82,.45); }
+    .chat-email-inline{
+      display:flex;
+      gap:6px;
+      margin-top:6px;
+    }
+    .chat-email-inline input{
+      flex:1;
+      padding:8px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-size:13px;
+      font-family:inherit;
+      outline:none;
+    }
+    .chat-email-inline input:focus{ border-color:rgba(142,178,255,.38); }
+    .chat-email-inline button{
+      padding:8px 16px;
+      border-radius:16px;
+      border:none;
+      background:rgba(255,255,255,.12);
+      color:var(--text);
+      font-size:13px;
+      font-weight:600;
+      font-family:inherit;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .chat-email-inline button:hover{ background:rgba(255,255,255,.18); }
     .chat-voice-hint{
       font-size:11px;
       color:rgba(246,247,251,.4);
