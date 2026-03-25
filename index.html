@@ -2280,19 +2280,9 @@
       saveVoiceHandover(); // Save now — localStorage survives magic link navigation
       const token = await getToken();
       if (!token) {
-        // Not authenticated — show Sophie's email capture invitation
-        const inviteText = (t.chat_auth_invite || "I don't want to lose this.\nLet me send you a private invitation — where should I send it?");
-        appendBubble("sophie", inviteText);
-        const emailPrompt = currentLang === "de" ? "↓ Deine E-Mail-Adresse" :
-                            currentLang === "fr" ? "↓ Ton adresse e-mail" :
-                            "↓ Your email address";
-        appendBubble("sophie", emailPrompt);
-        chatState = "email_capture";
-        inputEl.placeholder = t.chat_email_placeholder || "here's my email...";
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.value = "";
-        setTimeout(() => inputEl.focus(), 80);
+        // Not authenticated — use inline email capture with mode context
+        const detectedMode = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
+        showInlineEmailCapture(detectedMode);
         authNudgeShown = true;
         saveChatState();
         return;
