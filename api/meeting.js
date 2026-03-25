@@ -450,7 +450,9 @@ async function handleMessage(req, res) {
 
   // Extract structured items from LIVE-phase responses
   let extractedItems = null;
+  let hintData = null;
   if (meeting.phase === "live") {
+    // Extract decisions/actions/risks/open_points JSON
     const jsonMatch = rawReply.match(/\{[\s\S]*"decisions"[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -474,12 +476,28 @@ async function handleMessage(req, res) {
         }
       } catch { /* JSON parse failed, ignore */ }
     }
+
+    // Extract hint JSON from response (silent hint system)
+    const hintMatch = rawReply.match(/\{"hint"\s*:\s*\{[^}]*\}\}/);
+    if (hintMatch) {
+      try {
+        hintData = JSON.parse(hintMatch[0]).hint;
+        // Save hint as meeting_note with type 'silent_hint'
+        const hintText = rawReply.match(/💡\s*([^\n{]+)/)?.[1]?.trim() || hintData.type;
+        await supabase.from("meeting_notes").insert({
+          meeting_id,
+          note_type: "silent_hint",
+          content: JSON.stringify({ type: hintData.type, text: hintText }),
+        });
+      } catch { /* hint parse failed, ignore */ }
+    }
   }
 
-  // Clean reply (strip JSON block if present for display)
+  // Clean reply (strip JSON blocks for display, keep 💡 hint text visible)
   const reply = rawReply
     .replace(/```json[\s\S]*?```/g, "")
     .replace(/\{[\s\S]*"decisions"[\s\S]*\}/g, "")
+    .replace(/\{"hint"\s*:\s*\{[^}]*\}\}/g, "")
     .trim() || rawReply.trim();
 
   return res.status(200).json({
@@ -487,6 +505,7 @@ async function handleMessage(req, res) {
     reply,
     phase: meeting.phase,
     extracted_items: extractedItems,
+    hint: hintData || null,
     model: openaiModel,
   });
 }
