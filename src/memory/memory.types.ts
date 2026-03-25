@@ -111,20 +111,33 @@ export interface BrainstormIdea {
   status:    'active' | 'prioritized' | 'discarded'
 }
 
+export interface PitchScorecard {
+  clarity:             number  // 1-5
+  problemSharpness:    number  // 1-5
+  valueProposition:    number  // 1-5
+  differentiation:     number  // 1-5
+  credibility:         number  // 1-5
+  audienceFit:         number  // 1-5
+  objectionResistance: number  // 1-5
+  persuasiveness:      number  // 1-5
+}
+
 export interface PitchMemory {
-  id:                 string
-  userId:             string
-  topic:              string
-  targetAudience:     string
-  score:              number          // 0-100
-  strengths:          string[]
-  weaknesses:         string[]
-  recurringErrors:    string[]
-  criticalObjections: string[]
-  version:            number
-  parentPitchId:      string | null  // fuer Versionskette
-  sessionId:          string
-  createdAt:          Date
+  id:                  string
+  userId:              string
+  pitchTopic:          string
+  audienceType:        'investor' | 'customer' | 'partner' | 'leadership' | 'skeptic' | 'mixed'
+  goalType:            'investment' | 'sale' | 'approval' | 'partnership'
+  overallScore:        number          // 1.0-5.0 (average of scorecard)
+  scores:              PitchScorecard
+  confidenceLevel:     'low' | 'medium' | 'high'
+  recurringStrengths:  string[]
+  recurringWeaknesses: string[]
+  versionLabel:        string | null
+  version:             number
+  parentPitchId:       string | null   // for version chain
+  sessionId:           string
+  createdAt:           Date
 }
 
 // ── Relevanz-Kontext (E) ───────────────────────────────────
