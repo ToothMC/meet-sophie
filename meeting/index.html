@@ -1142,6 +1142,111 @@ async function uploadFile(file) {
 }
 
 // ---------------------------------------------------------------------------
+// Participants Bar
+// ---------------------------------------------------------------------------
+function updateParticipantsBar() {
+  if (!meetingData) { participantsBar.classList.remove("visible"); return; }
+  participantsBar.classList.add("visible");
+  const participants = ($("ctxParticipants")?.value || "").trim();
+  const names = participants ? participants.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean) : [];
+
+  let html = "";
+  // Sophie chip — always present, shows mute state
+  const sophieState = sophieMuted ? "🔇" : "🔊";
+  html += `<span class="participant-chip sophie">${sophieState} ${t("sophieLabel")}</span>`;
+  // User participants
+  names.forEach(name => {
+    html += `<span class="participant-chip">${name}</span>`;
+  });
+  if (names.length === 0 && meetingData.phase !== "prep") {
+    html += `<span class="participant-chip" style="opacity:.4">—</span>`;
+  }
+  participantsBar.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Mute/Unmute Sophie
+// ---------------------------------------------------------------------------
+function toggleSophieMute() {
+  sophieMuted = !sophieMuted;
+  muteToggle.classList.toggle("active", !sophieMuted);
+  updateParticipantsBar();
+
+  const statusMsg = sophieMuted ? t("sophieMuted") : t("sophieActive");
+  appendSystemMsg(statusMsg);
+
+  // When unmuting, Sophie proactively checks in
+  if (!sophieMuted && meetingData?.phase === "live") {
+    const checkInMsg = lang === "de"
+      ? "Sophie ist jetzt aktiv im Meeting. Ich höre mit und melde mich wenn mir etwas auffällt."
+      : lang === "fr"
+      ? "Sophie est maintenant active. J'\u00e9coute et je me manifeste si quelque chose m'interpelle."
+      : "Sophie is now active in the meeting. I'm listening and will speak up if I notice something.";
+    appendMsg("assistant", checkInMsg);
+    chatMessages.push({ role: "assistant", content: checkInMsg });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Summary Export (Copy + Share)
+// ---------------------------------------------------------------------------
+function buildSummaryText() {
+  if (!meetingData) return "";
+  const lines = [];
+  lines.push(`# ${meetingData.title || meetingData.meeting_type}`);
+  lines.push(`${new Date(meetingData.created_at).toLocaleDateString()} | ${meetingData.meeting_type}\n`);
+
+  const summaryText = $("summaryText")?.textContent;
+  if (summaryText) lines.push(summaryText + "\n");
+
+  const details = $("summaryDetails");
+  if (details) {
+    details.querySelectorAll(".summary-section").forEach(sec => {
+      const h4 = sec.querySelector("h4");
+      if (h4) lines.push(`## ${h4.textContent}`);
+      sec.querySelectorAll("li").forEach(li => {
+        lines.push(`- ${li.textContent}`);
+      });
+      lines.push("");
+    });
+    details.querySelectorAll(".diff-section .diff-item").forEach(d => {
+      lines.push(`- ${d.textContent.trim()}`);
+    });
+  }
+  return lines.join("\n").trim();
+}
+
+async function copySummary() {
+  const text = buildSummaryText();
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = $("copySummaryBtn");
+    const orig = btn.textContent;
+    btn.textContent = `\u2714 ${t("copied")}`;
+    setTimeout(() => btn.textContent = orig, 2000);
+  } catch {
+    // Fallback for older browsers
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+}
+
+async function shareSummary() {
+  const text = buildSummaryText();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: t("shareTitle"), text });
+    } catch { /* user cancelled */ }
+  } else {
+    await copySummary(); // Fallback to copy
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Event Listeners
 // ---------------------------------------------------------------------------
 $("createBtn").addEventListener("click", createMeeting);
