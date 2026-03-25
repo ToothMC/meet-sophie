@@ -732,6 +732,46 @@ async function handleSummary(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Action: delete — Meeting löschen
+// ---------------------------------------------------------------------------
+
+async function handleDelete(req, res) {
+  if (req.method !== "POST" && req.method !== "DELETE") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const body = parseBody(req);
+  const { meeting_id } = body;
+  if (!meeting_id) return res.status(400).json({ error: "Missing meeting_id" });
+
+  const supabase = getSupabase();
+
+  // Verify ownership
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("id", meeting_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  // Delete meeting (cascades to context, notes, summary via ON DELETE CASCADE)
+  // Children with parent_meeting_id will get SET NULL automatically
+  const { error } = await supabase
+    .from("meetings")
+    .delete()
+    .eq("id", meeting_id);
+
+  if (error) {
+    console.error("Meeting delete error:", error);
+    return res.status(500).json({ error: "Failed to delete meeting" });
+  }
+
+  return res.status(200).json({ ok: true });
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
@@ -747,6 +787,7 @@ export default async function handler(req, res) {
     case "message":   return handleMessage(req, res);
     case "summarize": return handleSummarize(req, res);
     case "summary":   return handleSummary(req, res);
+    case "delete":    return handleDelete(req, res);
     default:
       return res.status(400).json({ error: "Missing or invalid ?action. Use: create | get | list | phase | context | note | message | summarize | summary" });
   }
