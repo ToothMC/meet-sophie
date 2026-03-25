@@ -58,7 +58,9 @@
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_tables",
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration",
       "Bash(grep -r \"STRIPE_PRICE\\\\|STRIPE_PRODUCT\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.env*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(node -e \":*)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")"
     ]
   },
   "hooks": {
