@@ -2642,7 +2642,7 @@
         const modeForAuth = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuth) }
+          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuth) + "&lang=" + encodeURIComponent(currentLang) }
         });
         if (!error) {
           wrap.remove();
