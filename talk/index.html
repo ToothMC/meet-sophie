@@ -1079,7 +1079,13 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
   }
   // 2. Fallback: localStorage (manual selection or funnel-set)
   const stored = localStorage.getItem("sophie_session_mode");
-  if (stored && ["brainstorm", "meeting", "salespitch"].includes(stored)) {
+  if (stored === "meeting") {
+    // Redirect to dedicated meeting page
+    localStorage.removeItem("sophie_session_mode");
+    window.location.href = "/meeting/";
+    return;
+  }
+  if (stored && ["brainstorm", "salespitch"].includes(stored)) {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
