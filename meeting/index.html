@@ -298,8 +298,13 @@ body{
 }
 .participant-chip.sophie{
   background:rgba(52,196,122,.12);border-color:rgba(52,196,122,.2);
-  color:#34c47a;
+  color:#34c47a;transition:all .3s;
 }
+.participant-chip.sophie.speaking{
+  background:rgba(52,196,122,.25);border-color:rgba(52,196,122,.5);
+  animation:pulse-speak 1.2s infinite;
+}
+@keyframes pulse-speak{0%,100%{box-shadow:0 0 0 0 rgba(52,196,122,.3)}50%{box-shadow:0 0 0 6px rgba(52,196,122,0)}}
 
 /* ---- EXPORT BUTTON ---- */
 .export-bar{
