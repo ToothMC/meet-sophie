@@ -2586,6 +2586,21 @@
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
+
+        // ── Funnel: detect intent + offer voice CTA inline ──
+        if (!funnelVoiceOffered) {
+          funnelTurn++;
+          if (!funnelMode || funnelMode === "talk") {
+            const detected = detectFunnelIntent(text);
+            setFunnelMode(detected);
+          }
+          // After turn 1 (clear intent) or turn 2 (fallback): show inline voice CTA
+          if (funnelTurn >= 1 && funnelMode) {
+            funnelVoiceOffered = true;
+            showInlineVoiceCTA();
+          }
+        }
+
         maybeActivateVoiceBtn(voiceOffer);
         saveChatState();
 
