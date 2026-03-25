@@ -17,6 +17,32 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let done = false;
+
+    // Read mode + language from URL params (passed via emailRedirectTo)
+    const urlParams = new URLSearchParams(window.location.search);
+    const detectedMode = urlParams.get("mode") || localStorage.getItem("sophie_detected_mode") || "";
+    const lang = urlParams.get("lang") || localStorage.getItem("preferredLanguage") || "";
+    if (lang && ["de", "en", "fr"].includes(lang)) {
+      localStorage.setItem("preferredLanguage", lang);
+    }
+
+    // Build target path with mode
+    function buildTarget(base) {
+      if (detectedMode && detectedMode !== "talk") {
+        // Map routing modes to session modes for /talk
+        const SESSION_MAP = {
+          brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
+          explore: "", decide: "", reflect: "", relax: ""
+        };
+        const sessionMode = SESSION_MAP[detectedMode] !== undefined ? SESSION_MAP[detectedMode] : "";
+        if (sessionMode) {
+          localStorage.setItem("sophie_session_mode", sessionMode);
+        }
+        return base;
+      }
+      return base;
+    }
+
     function go(path) {
       if (done) return;
       done = true;
@@ -25,13 +51,13 @@
 
     // PKCE exchange + session detection — redirect as soon as session is ready
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) go("/talk");
+      if (event === "SIGNED_IN" && session?.user) go(buildTarget("/talk"));
     });
 
     // Fallback after 3s
     setTimeout(async () => {
       const { data } = await supabase.auth.getSession();
-      go(data.session?.user ? "/talk" : "/login");
+      go(data.session?.user ? buildTarget("/talk") : "/login");
     }, 3000);
   </script>
 </body>

@@ -253,6 +253,25 @@
       background:linear-gradient(180deg, #3f8cff 0%, #2167db 100%);
       color:#ffffff;
     }
+    #hero-btn-primary{
+      min-width:200px;
+    }
+    #hero-btn-primary.mode-meeting{
+      background:linear-gradient(180deg, #34c47a 0%, #1e9957 100%);
+    }
+    #hero-btn-primary.mode-brainstorm{
+      background:linear-gradient(180deg, #f5c842 0%, #d4a017 100%);
+      color:#1a1200;
+    }
+    #hero-btn-primary.mode-salespitch{
+      background:linear-gradient(180deg, #ff5252 0%, #c62828 100%);
+      color:#ffffff;
+    }
+    .hero-pitch-hook{
+      font-size:12px;color:rgba(246,247,251,.5);
+      margin-top:8px;font-style:italic;letter-spacing:.01em;
+      min-height:16px;transition:opacity .2s;
+    }
     .btn-secondary{
       background:rgba(255,255,255,.04);
       color:var(--text);
@@ -328,6 +347,23 @@
       color:rgba(246,247,251,.55);
       font-size:12.5px;
       letter-spacing:.2px;
+    }
+    .hero-mode-bar{
+      display:flex;gap:8px;margin-top:12px;
+    }
+    .hero-mode-pill{
+      font-size:12px;font-weight:500;padding:5px 13px;
+      border-radius:20px;border:1px solid rgba(255,255,255,.15);
+      background:transparent;color:rgba(246,247,251,.45);
+      cursor:pointer;transition:all .15s;letter-spacing:.01em;
+      font-family:inherit;
+    }
+    .hero-mode-pill:hover{
+      border-color:rgba(255,255,255,.3);color:rgba(246,247,251,.75);
+    }
+    .hero-mode-pill.active{
+      background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.35);
+      color:rgba(246,247,251,.95);
     }
     .hero-visual{
       position:relative;
@@ -735,12 +771,11 @@
     }
     /* ===== SOPHIE CHAT CARD ===== */
     .chat-card{
-      position:absolute;
-      left:10px;
-      top:360px;
+      position:fixed;
+      bottom:24px;
+      right:24px;
       width:272px;
       height:268px;
-      max-width:calc(100% - 120px);
       display:flex;
       flex-direction:column;
       background:rgba(10,12,19,.32);
@@ -751,33 +786,95 @@
       box-shadow:0 14px 34px rgba(0,0,0,.18),
                  0 0 0 1px rgba(255,255,255,.02);
       overflow:hidden;
-      z-index:3;
-      transition:all .25s ease;
+      z-index:90;
+      transition:width .3s ease, height .3s ease, min-height .3s ease, max-height .3s ease, border-radius .3s ease;
     }
     .chat-card::after{
       display:none;
     }
+
+    /* ── Chat foreground state — triggered by hero CTA ── */
+    .chat-foreground-backdrop{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.35);
+      z-index:90;
+    }
+    body.chat-foreground-active .chat-foreground-backdrop{ display:block; }
+
+    .chat-card.foreground{
+      width:400px;
+      height:auto;
+      min-height:360px;
+      max-height:calc(100vh - 80px);
+      z-index:10000;
+      border-radius:24px;
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      box-shadow:0 20px 50px rgba(0,0,0,.30), 0 0 0 1px rgba(255,255,255,.04);
+    }
+    .chat-card.foreground .chat-back-btn{
+      display:flex !important;
+      align-items:center;
+      justify-content:center;
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      background:rgba(255,255,255,.08);
+      color:rgba(255,255,255,.7);
+      font-size:18px;
+      border:none;
+      cursor:pointer;
+      flex-shrink:0;
+    }
+    .chat-card.foreground .chat-back-btn:hover{
+      background:rgba(255,255,255,.14);
+    }
+    .chat-card.foreground .chat-messages{
+      flex:1;
+      min-height:0;
+      overflow-y:auto;
+    }
+    .chat-card.foreground .chat-footer{
+      padding:12px 14px;
+      flex-shrink:0;
+    }
+    @media (max-width:820px){
+      .chat-card.foreground{
+        right:auto;
+        left:50%;
+        transform:translateX(-50%);
+      }
+    }
+    @media (max-width:640px){
+      .chat-card.foreground{
+        left:12px;
+        right:12px;
+        transform:none;
+        width:auto;
+        min-height:320px;
+        max-height:calc(100vh - 80px);
+        border-radius:20px;
+      }
+    }
     @media (max-width:1200px){
       .chat-card{
-        left:36px;
-        top:340px;
         width:250px;
         height:250px;
       }
     }
     @media (max-width:1024px){
       .chat-card{
-        left:48px;
-        top:320px;
-        width:232px;
-        height:232px;
+        width:240px;
+        height:240px;
       }
     }
     @media (max-width:820px){
       .chat-card{
+        right:auto;
         left:50%;
         transform:translateX(-50%);
-        top:280px;
         width:280px;
         height:260px;
       }
@@ -785,14 +882,12 @@
     @media (max-width:640px){
       .chat-card{
         --chat-h:clamp(200px, 30vh, 230px);
-        position:absolute !important;
-        top:calc(100% - var(--chat-h) - 8px) !important;
-        left:12px !important;
-        right:12px !important;
-        bottom:auto !important;
-        transform:none !important;
-        width:auto !important;
-        max-width:none !important;
+        left:12px;
+        right:12px;
+        bottom:12px;
+        transform:none;
+        width:auto;
+        max-width:none;
         height:var(--chat-h) !important;
         border-radius:20px;
         z-index:5;
@@ -950,6 +1045,86 @@
       font-size:16px;color:rgba(246,247,251,.82);outline:none;resize:none;
       font-family:inherit;line-height:1.44;min-height:34px;max-height:90px;overflow-y:auto;
     }
+    /* ── Inline voice CTA in chat ── */
+    .chat-voice-cta{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:8px;
+      padding:4px 0;
+    }
+    .chat-voice-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 20px;
+      border-radius:20px;
+      border:none;
+      background:linear-gradient(180deg, #3f8cff, #2167db);
+      color:#fff;
+      font-size:14px;
+      font-weight:600;
+      font-family:inherit;
+      cursor:pointer;
+      transition:transform .15s ease, box-shadow .15s ease;
+      box-shadow:0 4px 16px rgba(33,103,219,.35);
+    }
+    .chat-voice-btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 6px 20px rgba(33,103,219,.45);
+    }
+    .chat-voice-btn.mode-brainstorm{
+      background:linear-gradient(135deg, #f5c842, #d4a017);
+      color:#1a1200;
+      box-shadow:0 4px 16px rgba(245,200,66,.35);
+    }
+    .chat-voice-btn.mode-brainstorm:hover{ box-shadow:0 6px 20px rgba(245,200,66,.45); }
+    .chat-voice-btn.mode-meeting{
+      background:linear-gradient(135deg, #34c47a, #1e9957);
+      box-shadow:0 4px 16px rgba(52,196,122,.35);
+    }
+    .chat-voice-btn.mode-meeting:hover{ box-shadow:0 6px 20px rgba(52,196,122,.45); }
+    .chat-voice-btn.mode-salespitch{
+      background:linear-gradient(135deg, #ff5252, #c62828);
+      box-shadow:0 4px 16px rgba(255,82,82,.35);
+    }
+    .chat-voice-btn.mode-salespitch:hover{ box-shadow:0 6px 20px rgba(255,82,82,.45); }
+    .chat-email-inline{
+      display:flex;
+      gap:6px;
+      margin-top:6px;
+    }
+    .chat-email-inline input{
+      flex:1;
+      padding:8px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-size:13px;
+      font-family:inherit;
+      outline:none;
+    }
+    .chat-email-inline input:focus{ border-color:rgba(142,178,255,.38); }
+    .chat-email-inline button{
+      padding:8px 16px;
+      border-radius:16px;
+      border:none;
+      background:rgba(255,255,255,.12);
+      color:var(--text);
+      font-size:13px;
+      font-weight:600;
+      font-family:inherit;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .chat-email-inline button:hover{ background:rgba(255,255,255,.18); }
+    .chat-voice-hint{
+      font-size:11px;
+      color:rgba(246,247,251,.4);
+      padding-left:4px;
+    }
+
     .chat-footer textarea::placeholder{color:rgba(246,247,251,.34)}
     .chat-footer textarea:focus{border-color:rgba(142,178,255,.38)}
     .chat-send{
@@ -963,9 +1138,25 @@
     .chat-send:hover:not(:disabled){transform:translateY(-1px);background:#ffffff}
     .chat-send:disabled{opacity:.35;cursor:not-allowed}
     .chat-hidden{display:none!important}
+    .chat-mode-bar{
+      display:flex;gap:6px;padding:7px 10px 4px;flex-shrink:0;
+    }
+    .mode-pill{
+      font-size:12px;font-weight:500;padding:5px 12px;
+      border-radius:20px;border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);color:rgba(246,247,251,.5);
+      cursor:pointer;transition:all .15s;letter-spacing:.01em;
+      font-family:inherit;line-height:1;
+    }
+    .mode-pill:hover{border-color:rgba(255,255,255,.22);color:rgba(246,247,251,.8)}
+    .mode-pill.active{
+      background:rgba(142,178,255,.12);border-color:rgba(142,178,255,.38);
+      color:rgba(142,178,255,.95);
+    }
   </style>
 </head>
 <body>
+  <div class="chat-foreground-backdrop" id="chatBackdrop"></div>
   <header class="site-header">
     <div class="wrap nav">
       <a class="brand" href="/">meet-sophie.com</a>
@@ -999,7 +1190,12 @@
           <h1 id="hero-title">THINK FIRST.<br>THEN ACT.</h1>
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary voice-btn" href="/login/" id="hero-btn-primary">Talk to Sophie</a>
+            <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
+          </div>
+          <div class="hero-mode-bar" id="heroModeBar">
+            <button class="hero-mode-pill" data-mode="brainstorm">✦ Brainstorm</button>
+            <button class="hero-mode-pill" data-mode="meeting">◉ Meeting</button>
+            <button class="hero-mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
           </div>
           <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
           <p id="chat-opening"></p>
@@ -1729,6 +1925,218 @@
     let awaitingVoiceConfirmation = false;
     let chatState      = "chat_idle";
 
+    const heroCta = document.getElementById("hero-btn-primary");
+    const SESSION_MODES = ["brainstorm", "meeting", "salespitch"];
+
+    // ── Funnel: intent-based routing ──
+    let funnelMode = null;      // null | "talk" | "brainstorm" | "meeting" | "salespitch"
+    let funnelTurn = 0;         // user turn counter
+    let funnelVoiceOffered = false;
+    let selectedChatMode = null;
+
+    const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
+    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" };
+
+    function detectFunnelIntent(text) {
+      const t = (text || "").toLowerCase();
+      if (/pitch|sales|present|investor|überzeugen|pitch üben|präsent|vortra|audience|convince/i.test(t)) return "salespitch";
+      if (/meeting|protokoll|protocol|minute|agenda|besprechung|team.?meeting|stand.?up|retro/i.test(t)) return "meeting";
+      if (/brainstorm|ideen|ideas?|kreativ|creative|possibilities|möglichkeiten|concept|konzept/i.test(t)) return "brainstorm";
+      return "talk";
+    }
+
+    function setFunnelMode(mode) {
+      funnelMode = mode;
+      selectedChatMode = (mode && mode !== "talk") ? mode : null;
+      if (selectedChatMode) {
+        localStorage.setItem("sophie_session_mode", selectedChatMode);
+      } else {
+        localStorage.removeItem("sophie_session_mode");
+      }
+    }
+
+    function applyHeroMode(mode) {
+      if (heroCta) {
+        heroCta.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
+        if (mode) heroCta.classList.add("mode-" + mode);
+        heroCta.textContent = mode ? (heroModeLabels[mode] || heroCtaDefault) : heroCtaDefault;
+      }
+    }
+
+    // Hero CTA → opens chat foreground
+    // Chat lives inside .hero-grid (z-index:1 stacking context).
+    // To float above the backdrop (z-index:90) we must move it to body.
+    let chatOriginalParent = null;
+    let chatOriginalNext = null;
+
+    function openChatForeground() {
+      const chatCard = document.getElementById("sophieChat");
+      if (!chatCard) return;
+      // Remember where the chat was so we can put it back
+      if (!chatOriginalParent) {
+        chatOriginalParent = chatCard.parentElement;
+        chatOriginalNext = chatCard.nextElementSibling;
+      }
+      // Move to body so it escapes the hero-grid stacking context
+      document.body.appendChild(chatCard);
+      chatCard.classList.add("foreground");
+      document.body.classList.add("chat-foreground-active");
+      const input = document.getElementById("chatInput");
+      if (input) setTimeout(() => input.focus(), 200);
+    }
+    function closeChatForeground() {
+      const chatCard = document.getElementById("sophieChat");
+      if (!chatCard) return;
+      chatCard.classList.remove("foreground");
+      document.body.classList.remove("chat-foreground-active");
+      // Move chat back to its original position in the DOM
+      if (chatOriginalParent) {
+        if (chatOriginalNext) {
+          chatOriginalParent.insertBefore(chatCard, chatOriginalNext);
+        } else {
+          chatOriginalParent.appendChild(chatCard);
+        }
+      }
+      // Restore hero CTA button
+      const btn = document.getElementById("hero-btn-primary");
+      if (btn) btn.style.display = "";
+
+      // Reset mode back to Talk (primary mode)
+      selectedChatMode = null;
+      setFunnelMode(null);
+      applyHeroMode(null);
+      document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+    }
+
+    if (heroCta) {
+      heroCta.addEventListener("click", (e) => {
+        e.preventDefault();
+        openChatForeground();
+        // Quick-start: user clicked CTA with a mode (or default talk)
+        quickStartChat();
+      });
+    }
+
+    function quickStartChat() {
+      const mode = selectedChatMode || "talk";
+
+      const QUICK_LABELS = {
+        en: {
+          talk:       { pill: "Talk with Sophie", icon: "🎙" },
+          brainstorm: { pill: "Start Brainstorming", icon: "💡" },
+          meeting:    { pill: "Start Meeting Mode", icon: "📋" },
+          salespitch: { pill: "Start Pitch Training", icon: "🎯" },
+        },
+        de: {
+          talk:       { pill: "Sprich mit Sophie", icon: "🎙" },
+          brainstorm: { pill: "Brainstorming starten", icon: "💡" },
+          meeting:    { pill: "Meeting-Modus starten", icon: "📋" },
+          salespitch: { pill: "Pitch-Training starten", icon: "🎯" },
+        },
+        fr: {
+          talk:       { pill: "Parler avec Sophie", icon: "🎙" },
+          brainstorm: { pill: "Lancer le brainstorming", icon: "💡" },
+          meeting:    { pill: "Mode réunion", icon: "📋" },
+          salespitch: { pill: "Entraînement pitch", icon: "🎯" },
+        },
+      };
+      const QUICK_MSG = {
+        en: "Great that you want to start right away!",
+        de: "Schön, dass du direkt loslegen möchtest!",
+        fr: "Super que tu veuilles commencer tout de suite !",
+      };
+
+      const labels = (QUICK_LABELS[currentLang] || QUICK_LABELS.en)[mode] || (QUICK_LABELS[currentLang] || QUICK_LABELS.en).talk;
+      const msg = QUICK_MSG[currentLang] || QUICK_MSG.en;
+
+      // Map mode to session mode + button class
+      const SESSION_MODE_MAP = {
+        brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
+        talk: "talk"
+      };
+      const sessionMode = SESSION_MODE_MAP[mode] || "talk";
+      const btnClass = ["brainstorm", "meeting", "salespitch"].includes(sessionMode)
+        ? `chat-voice-btn mode-${sessionMode}` : "chat-voice-btn";
+
+      // Clear any existing chat
+      if (messagesEl) messagesEl.innerHTML = "";
+      history = [];
+
+      // 1. Mode confirmation pill (non-clickable)
+      const pillWrap = document.createElement("div");
+      pillWrap.className = "chat-msg sophie";
+      const pillEl = document.createElement("div");
+      pillEl.className = "chat-voice-cta";
+      pillEl.innerHTML = `<span class="${btnClass}" style="display:inline-block;cursor:default;pointer-events:none">${labels.icon} ${labels.pill}</span>`;
+      pillWrap.appendChild(pillEl);
+      messagesEl.appendChild(pillWrap);
+
+      // 2. Sophie's confirmation message
+      appendBubble("sophie", msg);
+      history.push({ role: "assistant", content: msg });
+
+      // 3. Set mode state
+      funnelVoiceOffered = true;
+      localStorage.setItem("sophie_detected_mode", mode);
+      if (mode !== "talk") setFunnelMode(mode);
+
+      // 4. If already logged in → go to voice, otherwise show email capture
+      (async () => {
+        const token = await getToken();
+        if (token) {
+          goToVoiceFromChat();
+        } else {
+          showInlineEmailCapture(mode);
+        }
+      })();
+    }
+
+    // Close foreground: back button or backdrop click
+    const chatBackBtn = document.querySelector(".chat-back-btn");
+    if (chatBackBtn) chatBackBtn.addEventListener("click", closeChatForeground);
+    const chatBackdrop = document.getElementById("chatBackdrop");
+    if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
+
+    // Mode pills — toggle active state + update button label/color
+    document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.mode;
+        if (selectedChatMode === mode) {
+          // deselect
+          selectedChatMode = null;
+          btn.classList.remove("active");
+          setFunnelMode(null);
+          applyHeroMode(null);
+        } else {
+          // select
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          setFunnelMode(mode);
+          applyHeroMode(mode);
+        }
+      });
+    });
+
+    // Click outside pills/CTA → reset mode to Talk
+    document.addEventListener("click", (e) => {
+      if (!selectedChatMode) return;
+      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat")) return;
+      selectedChatMode = null;
+      setFunnelMode(null);
+      applyHeroMode(null);
+      document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+    });
+
+    // Restore previous mode selection on page load
+    const storedMode = localStorage.getItem("sophie_session_mode");
+    if (storedMode && SESSION_MODES.includes(storedMode)) {
+      selectedChatMode = storedMode;
+      funnelMode = storedMode;
+      const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
+      if (pill) pill.classList.add("active");
+      applyHeroMode(storedMode);
+    }
+
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
       en: "You can type… but I'd rather hear you.",
@@ -1929,6 +2337,7 @@
 
     function saveVoiceHandover() {
       try {
+        const detectedMode = localStorage.getItem("sophie_detected_mode") || null;
         const payload = {
           source: "chat",
           targetMode: "voice",
@@ -1936,6 +2345,8 @@
           sessionId,
           userName: detectUserNameFromHistory(history),
           summary: buildChatSummary(history),
+          funnelMode: funnelMode || "talk",
+          detectedMode: detectedMode,
           recentMessages: history
             .filter(m => m?.content && m.content !== "[CHAT_START]")
             .slice(-8),
@@ -1959,24 +2370,20 @@
       saveVoiceHandover(); // Save now — localStorage survives magic link navigation
       const token = await getToken();
       if (!token) {
-        // Not authenticated — show Sophie's email capture invitation
-        const inviteText = (t.chat_auth_invite || "I don't want to lose this.\nLet me send you a private invitation — where should I send it?");
-        appendBubble("sophie", inviteText);
-        const emailPrompt = currentLang === "de" ? "↓ Deine E-Mail-Adresse" :
-                            currentLang === "fr" ? "↓ Ton adresse e-mail" :
-                            "↓ Your email address";
-        appendBubble("sophie", emailPrompt);
-        chatState = "email_capture";
-        inputEl.placeholder = t.chat_email_placeholder || "here's my email...";
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.value = "";
-        setTimeout(() => inputEl.focus(), 80);
+        // Not authenticated — use inline email capture with mode context
+        const detectedMode = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
+        showInlineEmailCapture(detectedMode);
         authNudgeShown = true;
         saveChatState();
         return;
       }
       writeUxFlags({ hasStartedVoice: true, lastLanguage: currentLang });
+      // Set session mode from funnel intent (if specialized mode detected)
+      if (funnelMode && funnelMode !== "talk") {
+        localStorage.setItem("sophie_session_mode", funnelMode);
+      } else {
+        localStorage.removeItem("sophie_session_mode");
+      }
       saveVoiceHandover();
       sessionStorage.setItem("FORCE_NEW_CHAT", "1");
       window.location.href = "/talk";
@@ -2143,6 +2550,148 @@
       return bubble;
     }
 
+    function showInlineVoiceCTA(detectedMode) {
+      const mode = detectedMode || funnelMode || "talk";
+      // Map detected mode to session mode for handover
+      const SESSION_MODE_MAP = {
+        brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
+        explore: "talk", decide: "talk", reflect: "talk", relax: "talk", talk: "talk"
+      };
+      const sessionMode = SESSION_MODE_MAP[mode] || "talk";
+      setFunnelMode(sessionMode === "talk" ? null : sessionMode);
+
+      const MODE_LABELS = {
+        en: {
+          explore:    { btn: "Let's talk", icon: "🎙" },
+          decide:     { btn: "Let's talk it through", icon: "🎙" },
+          reflect:    { btn: "Let's talk", icon: "🎙" },
+          relax:      { btn: "Let's chat", icon: "🎙" },
+          brainstorm: { btn: "Start Brainstorming", icon: "💡" },
+          meeting:    { btn: "Start Meeting Mode", icon: "📋" },
+          salespitch: { btn: "Start Pitch Training", icon: "🎯" },
+          talk:       { btn: "Continue with voice", icon: "🎙" },
+        },
+        de: {
+          explore:    { btn: "Lass uns reden", icon: "🎙" },
+          decide:     { btn: "Lass uns das durchsprechen", icon: "🎙" },
+          reflect:    { btn: "Lass uns reden", icon: "🎙" },
+          relax:      { btn: "Lass uns plaudern", icon: "🎙" },
+          brainstorm: { btn: "Brainstorming starten", icon: "💡" },
+          meeting:    { btn: "Meeting-Modus starten", icon: "📋" },
+          salespitch: { btn: "Pitch-Training starten", icon: "🎯" },
+          talk:       { btn: "Weiter per Sprache", icon: "🎙" },
+        },
+        fr: {
+          explore:    { btn: "Parlons-en", icon: "🎙" },
+          decide:     { btn: "Discutons-en", icon: "🎙" },
+          reflect:    { btn: "Parlons-en", icon: "🎙" },
+          relax:      { btn: "Discutons", icon: "🎙" },
+          brainstorm: { btn: "Lancer le brainstorming", icon: "💡" },
+          meeting:    { btn: "Mode réunion", icon: "📋" },
+          salespitch: { btn: "Entraînement pitch", icon: "🎯" },
+          talk:       { btn: "Continuer en vocal", icon: "🎙" },
+        },
+      };
+      const labels = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || (MODE_LABELS[currentLang] || MODE_LABELS.en).talk;
+
+      const btnClass = ["brainstorm", "meeting", "salespitch"].includes(sessionMode)
+        ? `chat-voice-btn mode-${sessionMode}` : "chat-voice-btn";
+
+      const wrap = document.createElement("div");
+      wrap.className = "chat-msg sophie";
+      const cta = document.createElement("div");
+      cta.className = "chat-voice-cta";
+      cta.innerHTML = `<button class="${btnClass}" type="button">${labels.icon} ${labels.btn}</button>`;
+      wrap.appendChild(cta);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      cta.querySelector(".chat-voice-btn").addEventListener("click", async () => {
+        // Lock mode from THIS button (not global state)
+        localStorage.setItem("sophie_detected_mode", mode || "talk");
+        setFunnelMode((mode && mode !== "talk") ? sessionMode : null);
+
+        const token = await getToken();
+        if (token) {
+          goToVoiceFromChat();
+          return;
+        }
+        // Not authenticated → show inline email capture below the CTA
+        showInlineEmailCapture(mode);
+      });
+    }
+
+    function showInlineEmailCapture(detectedMode) {
+      const EMAIL_LABELS = {
+        en: { placeholder: "your email", send: "Send invite",
+              invite: "I'll send you a personal invitation — where should it go?",
+              sent: (e) => `Done! I just sent an invitation to ${e}.\nCheck your inbox — click the link and we'll continue right where we left off.`,
+              err: "Hmm, that didn't work. Try again?" },
+        de: { placeholder: "deine E-Mail", send: "Einladung senden",
+              invite: "Ich schicke dir eine persönliche Einladung — wohin soll sie gehen?",
+              sent: (e) => `Erledigt! Ich habe dir gerade eine Einladung an ${e} geschickt.\nSchau in dein Postfach — klick den Link und wir machen genau hier weiter.`,
+              err: "Hmm, das hat nicht funktioniert. Nochmal versuchen?" },
+        fr: { placeholder: "ton e-mail", send: "Envoyer",
+              invite: "Je t'envoie une invitation personnelle — où dois-je l'envoyer ?",
+              sent: (e) => `C'est fait ! Je viens d'envoyer une invitation à ${e}.\nVérifie ta boîte mail — clique sur le lien et on continue.`,
+              err: "Hmm, ça n'a pas marché. On réessaie ?" },
+      };
+      const labels = EMAIL_LABELS[currentLang] || EMAIL_LABELS.en;
+
+      // Sophie invitation message
+      appendBubble("sophie", labels.invite);
+
+      // Inline email form
+      const wrap = document.createElement("div");
+      wrap.className = "chat-msg sophie";
+      const form = document.createElement("div");
+      form.className = "chat-email-inline";
+      form.innerHTML = `<input type="email" placeholder="${labels.placeholder}" /><button type="button">${labels.send}</button>`;
+      wrap.appendChild(form);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      const emailInput = form.querySelector("input");
+      const sendBtnEl  = form.querySelector("button");
+      setTimeout(() => emailInput.focus(), 80);
+
+      const submit = async () => {
+        const email = emailInput.value.trim();
+        if (!email) return;
+        sendBtnEl.disabled = true;
+        emailInput.disabled = true;
+
+        // Lock the mode from THIS CTA (not from global state which may have changed)
+        const modeParam = detectedMode || "talk";
+        localStorage.setItem("sophie_detected_mode", modeParam);
+        setFunnelMode(modeParam === "talk" ? null : modeParam);
+
+        // Save handover before magic link (survives navigation)
+        saveVoiceHandover();
+
+        writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
+        saveChatState();
+        const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeParam) + "&lang=" + encodeURIComponent(currentLang);
+
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: redirectUrl }
+        });
+
+        if (!error) {
+          wrap.remove();
+          appendBubble("sophie", labels.sent(email));
+        } else {
+          sendBtnEl.disabled = false;
+          emailInput.disabled = false;
+          appendBubble("sophie", labels.err);
+        }
+      };
+
+      sendBtnEl.addEventListener("click", submit);
+      emailInput.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
+    }
+
     function appendAuthBubble() {
       const wrap   = document.createElement("div");
       wrap.className = "chat-msg sophie";
@@ -2166,9 +2715,10 @@
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
         btn.disabled = true;
+        const modeForAuth = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuth) + "&lang=" + encodeURIComponent(currentLang) }
         });
         if (!error) {
           wrap.remove();
@@ -2276,7 +2826,10 @@
       );
     }
     async function startSession() {
-      const startData = await callChat("start", { language: getCurrentLang() });
+      const startData = await callChat("start", {
+        language: getCurrentLang(),
+        ...(selectedChatMode ? { session_mode: selectedChatMode } : {})
+      });
       sessionId    = startData.session_id;
       systemPrompt = startData.system_prompt || "";
       // history already contains the opener shown on page load — don't override
@@ -2311,9 +2864,10 @@
 
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
+        const modeForRedirect = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
         const { error } = await supabase.auth.signInWithOtp({
           email: text,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForRedirect) + "&lang=" + encodeURIComponent(currentLang) }
         });
         inputEl.disabled = false;
         sendBtn.disabled = false;
@@ -2402,6 +2956,7 @@
         const reply          = data.reply;
         const voiceOffer     = !!data.voice_offer;
         const voiceConfirmed = !!data.voice_confirmed;
+        const detectedMode   = data.detected_mode || null;
         turnCount++;
 
         if (voiceConfirmed) {
@@ -2412,7 +2967,7 @@
           return;
         }
 
-        if (voiceOffer) {
+        if (voiceOffer || detectedMode) {
           chatState = "voice_offer_pending";
         } else {
           chatState = "chat_active";
@@ -2420,6 +2975,49 @@
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
+
+        // ── Routing: Sophie detected a mode → show mode-specific CTA ──
+        if (detectedMode) {
+          const prevMode = localStorage.getItem("sophie_detected_mode");
+          // Show CTA if first time OR if mode changed (user changed their mind)
+          if (!funnelVoiceOffered || (prevMode && prevMode !== detectedMode)) {
+            funnelVoiceOffered = true;
+            localStorage.setItem("sophie_detected_mode", detectedMode);
+            showInlineVoiceCTA(detectedMode);
+          }
+        }
+        // Fallback: client-side intent detection if server didn't detect
+        {
+          funnelTurn++;
+          // Detect from user text AND Sophie's response
+          const detectedFromUser = detectFunnelIntent(text);
+          const detectedFromSophie = detectFunnelIntent(reply);
+          const best = (detectedFromUser !== "talk") ? detectedFromUser
+                     : (detectedFromSophie !== "talk") ? detectedFromSophie
+                     : funnelMode || "talk";
+
+          // Update mode if new detection differs
+          if (best !== "talk" && best !== funnelMode) {
+            setFunnelMode(best);
+          }
+
+          // If mode pre-selected via pill: show CTA after turn 1
+          // Otherwise: show after turn 2
+          const minTurn = (selectedChatMode && selectedChatMode !== "talk") ? 1 : 2;
+          const currentFunnel = funnelMode || best;
+          if (!funnelVoiceOffered && funnelTurn >= minTurn && currentFunnel && currentFunnel !== "talk") {
+            funnelVoiceOffered = true;
+            showInlineVoiceCTA(currentFunnel);
+          } else if (funnelVoiceOffered && best !== "talk") {
+            // Mode changed mid-conversation — show new CTA but do NOT overwrite localStorage
+            // localStorage is only set when the user actually CLICKS a CTA button
+            const prevFunnel = funnelMode;
+            if (prevFunnel && prevFunnel !== best) {
+              showInlineVoiceCTA(best);
+            }
+          }
+        }
+
         maybeActivateVoiceBtn(voiceOffer);
         saveChatState();
 
@@ -2537,9 +3135,10 @@
       writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
       saveChatState();
       authBtn.disabled = true;
+      const modeForAuthBtn = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+        options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) + "&lang=" + encodeURIComponent(currentLang) }
       });
       if (!error) {
         hide(authEl);
@@ -2550,17 +3149,16 @@
         authBtn.disabled = false;
       }
     });
-    const chatToVoiceCtas = [
-      document.getElementById("chatToVoiceCta"),
-      document.getElementById("hero-btn-primary")
-    ].filter(Boolean);
-
-    chatToVoiceCtas.forEach((cta) => {
-      cta.addEventListener("click", (e) => {
+    // chatToVoiceCta (inside chat card) still triggers voice directly
+    const chatToVoiceBtn = document.getElementById("chatToVoiceCta");
+    if (chatToVoiceBtn) {
+      chatToVoiceBtn.addEventListener("click", (e) => {
         e.preventDefault();
         goToVoiceFromChat();
       });
-    });
+    }
+    // hero-btn-primary now only opens chat foreground (handled above at line ~1963)
+    // — no longer triggers goToVoiceFromChat() directly
 
     // Logo / brand links → force fresh chat on reload
     document.querySelectorAll(".brand, .footer-brand").forEach(link => {

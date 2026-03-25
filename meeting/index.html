@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" href="/favicon.ico">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sophie — Meeting Mode</title>
+
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:#fff;background:#0b0f14;
+  display:flex;flex-direction:column;
+  min-height:100vh;min-height:100dvh;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* ---- TOPBAR / BANNER ---- */
+.topbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;
+  padding-top:max(12px, env(safe-area-inset-top));
+  background:rgba(11,15,20,.92);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.topbar .back{
+  color:rgba(255,255,255,.7);text-decoration:none;font-size:14px;
+  padding:6px 10px;border-radius:8px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  white-space:nowrap;
+}
+.topbar .back:hover{background:rgba(255,255,255,.12)}
+.topbar .title{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phase-badge{
+  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 10px;border-radius:12px;white-space:nowrap;
+}
+.phase-badge[data-phase="prep"]{background:rgba(63,140,255,.2);color:#6cb4ff}
+.phase-badge[data-phase="live"]{background:rgba(255,90,90,.2);color:#ff5a5a;animation:pulse-live 2s infinite}
+.phase-badge[data-phase="post"]{background:rgba(167,139,250,.2);color:#a78bfa}
+.phase-badge[data-phase="closed"]{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ---- SETUP SCREEN ---- */
+.setup-screen{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.setup-card{
+  width:100%;max-width:420px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:28px 24px;
+}
+.setup-card h2{font-size:20px;font-weight:600;margin:0 0 20px;text-align:center}
+.setup-card label{
+  display:block;font-size:12px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px;margin-top:16px;
+}
+.setup-card label:first-of-type{margin-top:0}
+.setup-card select,.setup-card input[type="text"]{
+  width:100%;padding:10px 12px;font-size:14px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;color:#fff;outline:none;
+  font-family:inherit;
+}
+.setup-card select:focus,.setup-card input[type="text"]:focus{border-color:rgba(255,255,255,.3)}
+.setup-card select option{background:#1a1f28;color:#fff}
+.setup-card .btn-primary{
+  display:block;width:100%;margin-top:24px;padding:14px;font-size:16px;font-weight:700;
+  border:none;border-radius:12px;cursor:pointer;
+  background:#fff;color:#000;
+  font-family:inherit;
+}
+.setup-card .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- MAIN MEETING AREA ---- */
+.meeting-area{
+  flex:1;display:none;flex-direction:column;
+  max-width:680px;width:100%;margin:0 auto;
+}
+.meeting-area.active{display:flex}
+
+/* ---- CONTEXT PANEL ---- */
+.context-panel{
+  border-bottom:1px solid rgba(255,255,255,.08);
+  overflow:hidden;transition:max-height .3s ease;
+}
+.context-panel.collapsed .context-body{display:none}
+.context-toggle{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px;cursor:pointer;user-select:none;
+  font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+}
+.context-toggle:hover{color:rgba(255,255,255,.7)}
+.context-toggle .arrow{transition:transform .2s}
+.context-panel.collapsed .context-toggle .arrow{transform:rotate(-90deg)}
+.context-body{padding:0 16px 12px}
+.context-body textarea{
+  width:100%;padding:8px 10px;font-size:13px;line-height:1.5;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;color:#fff;resize:vertical;min-height:60px;
+  font-family:inherit;outline:none;margin-bottom:8px;
+}
+.context-body textarea:focus{border-color:rgba(255,255,255,.2)}
+.context-body textarea::placeholder{color:rgba(255,255,255,.25)}
+.save-context-btn{
+  font-size:12px;padding:5px 12px;border-radius:6px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;
+}
+.save-context-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+
+/* ---- CHAT ---- */
+.chat-area{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+  scroll-behavior:smooth;
+}
+.msg{
+  max-width:85%;padding:10px 14px;border-radius:14px;
+  font-size:14px;line-height:1.55;word-wrap:break-word;
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{
+  align-self:flex-end;
+  background:rgba(255,255,255,.12);color:#fff;
+  border-bottom-right-radius:4px;
+}
+.msg.assistant{
+  align-self:flex-start;
+  background:rgba(52,196,122,.12);color:rgba(255,255,255,.92);
+  border-bottom-left-radius:4px;
+}
+.msg.system{
+  align-self:center;text-align:center;
+  font-size:12px;color:rgba(255,255,255,.4);
+  background:none;padding:4px;
+}
+.msg.assistant .typing-dots{display:inline-block}
+.msg.assistant .typing-dots::after{content:'...';animation:dots 1.2s infinite}
+@keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}100%{content:'.'}}
+
+/* ---- INPUT BAR ---- */
+.input-bar{
+  display:flex;align-items:flex-end;gap:8px;
+  padding:12px 16px;
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
+  border-top:1px solid rgba(255,255,255,.08);
+  background:rgba(11,15,20,.92);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.input-bar textarea{
+  flex:1;padding:10px 14px;font-size:14px;line-height:1.5;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;color:#fff;resize:none;
+  min-height:42px;max-height:120px;
+  font-family:inherit;outline:none;
+}
+.input-bar textarea:focus{border-color:rgba(255,255,255,.25)}
+.input-bar textarea::placeholder{color:rgba(255,255,255,.3)}
+.send-btn{
+  padding:10px 16px;font-size:14px;font-weight:600;
+  background:#34c47a;color:#000;border:none;border-radius:12px;
+  cursor:pointer;white-space:nowrap;font-family:inherit;
+}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---- PHASE CTA ---- */
+.phase-cta{
+  padding:10px 16px;text-align:center;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.phase-cta button{
+  padding:10px 24px;font-size:14px;font-weight:700;
+  border:none;border-radius:10px;cursor:pointer;
+  font-family:inherit;
+}
+.phase-cta .cta-live{background:#34c47a;color:#000}
+.phase-cta .cta-post{background:#ff5a5a;color:#fff}
+.phase-cta .cta-close{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.15)}
+
+/* ---- SUMMARY CARD ---- */
+.summary-card{
+  margin:16px;padding:20px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;
+}
+.summary-card h3{font-size:16px;font-weight:600;margin:0 0 12px}
+.summary-card .summary-text{font-size:14px;line-height:1.6;color:rgba(255,255,255,.8);margin-bottom:16px}
+.summary-section{margin-bottom:14px}
+.summary-section h4{
+  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);margin:0 0 6px;
+}
+.summary-section ul{margin:0;padding:0;list-style:none}
+.summary-section li{
+  font-size:13px;line-height:1.5;padding:4px 0;
+  color:rgba(255,255,255,.75);
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.summary-section li:last-child{border-bottom:none}
+.summary-section li .owner{color:#34c47a;font-weight:500}
+.summary-section li .severity-high{color:#ff5a5a}
+.summary-section li .severity-medium{color:#f5c842}
+.summary-section li .severity-low{color:#34d399}
+
+/* ---- LOADING ---- */
+.loading-screen{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:rgba(255,255,255,.5);
+}
+.hidden{display:none!important}
+
+/* ---- LIVE TIMER ---- */
+.live-timer{
+  font-size:12px;color:rgba(255,90,90,.7);font-weight:600;
+  letter-spacing:.04em;text-align:center;padding:4px;
+}
+</style>
+</head>
+<body>
+
+<!-- Auth Loading -->
+<div id="authLoading" class="loading-screen">
+  <p>Loading...</p>
+</div>
+
+<!-- Setup Screen (create new meeting) -->
+<div id="setupScreen" class="setup-screen hidden">
+  <div class="setup-card">
+    <h2 id="setupTitle">New Meeting</h2>
+
+    <label id="lblType">Meeting Type</label>
+    <select id="meetingType">
+      <option value="team">Team</option>
+      <option value="client">Client</option>
+      <option value="strategy">Strategy</option>
+      <option value="other">Other</option>
+    </select>
+
+    <label id="lblRole">Sophie's Role</label>
+    <select id="sophieRole">
+      <option value="co-think">Co-Think (Accompaniment)</option>
+      <option value="prepare">Prepare (Preparation Focus)</option>
+      <option value="document">Document (Protocol Focus)</option>
+    </select>
+
+    <label id="lblTitle">Title (optional)</label>
+    <input type="text" id="meetingTitle" placeholder="e.g. Q2 Planning" />
+
+    <button class="btn-primary" id="createBtn">Start Preparation</button>
+  </div>
+</div>
+
+<!-- Meeting Area -->
+<div id="meetingArea" class="meeting-area">
+  <!-- Topbar -->
+  <div class="topbar">
+    <a href="/talk/" class="back" id="backBtn">&larr;</a>
+    <span class="title" id="meetingTitleDisplay">Meeting</span>
+    <span class="phase-badge" id="phaseBadge" data-phase="prep">PREP</span>
+  </div>
+
+  <!-- Context Panel (PREP phase) -->
+  <div class="context-panel" id="contextPanel">
+    <div class="context-toggle" id="contextToggle">
+      <span class="arrow">&#x25BE;</span> <span id="ctxLabel">Context</span>
+    </div>
+    <div class="context-body">
+      <textarea id="ctxAgenda" placeholder="Agenda..." rows="2"></textarea>
+      <textarea id="ctxParticipants" placeholder="Participants..." rows="2"></textarea>
+      <textarea id="ctxGoal" placeholder="Goal of this meeting..." rows="2"></textarea>
+      <button class="save-context-btn" id="saveContextBtn">Save Context</button>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-area" id="chatArea"></div>
+
+  <!-- Live Timer -->
+  <div class="live-timer hidden" id="liveTimer"></div>
+
+  <!-- Input Bar -->
+  <div class="input-bar" id="inputBar">
+    <textarea id="chatInput" placeholder="Type here..." rows="1"></textarea>
+    <button class="send-btn" id="sendBtn" disabled>Send</button>
+  </div>
+
+  <!-- Phase CTA -->
+  <div class="phase-cta" id="phaseCta">
+    <button class="cta-live" id="ctaLive">Start Meeting &rarr;</button>
+    <button class="cta-post hidden" id="ctaPost">End Meeting &rarr;</button>
+    <button class="cta-close hidden" id="ctaClose">Close</button>
+  </div>
+
+  <!-- Summary Card (POST phase) -->
+  <div class="summary-card hidden" id="summaryCard">
+    <h3 id="summaryTitle">Meeting Summary</h3>
+    <div class="summary-text" id="summaryText"></div>
+    <div id="summaryDetails"></div>
+  </div>
+</div>
+
+<!-- Meeting History (list of past meetings) -->
+<div id="historyScreen" class="hidden" style="padding:20px;max-width:680px;margin:0 auto;width:100%">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <h2 style="font-size:18px;font-weight:600;margin:0" id="historyTitle">Meetings</h2>
+    <button id="newMeetingBtn" style="padding:8px 16px;font-size:13px;font-weight:600;background:#34c47a;color:#000;border:none;border-radius:8px;cursor:pointer;font-family:inherit">+ New</button>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let currentUser = null;
+let accessToken = null;
+let meetingId = null;
+let meetingData = null;
+let chatMessages = []; // { role, content }
+let isLoading = false;
+let liveStartTime = null;
+let liveTimerInterval = null;
+
+// ---------------------------------------------------------------------------
+// DOM refs
+// ---------------------------------------------------------------------------
+const $ = (s) => document.getElementById(s);
+const authLoading   = $("authLoading");
+const setupScreen   = $("setupScreen");
+const meetingArea   = $("meetingArea");
+const historyScreen = $("historyScreen");
+const chatArea      = $("chatArea");
+const chatInput     = $("chatInput");
+const sendBtn       = $("sendBtn");
+const phaseBadge    = $("phaseBadge");
+const titleDisplay  = $("meetingTitleDisplay");
+const contextPanel  = $("contextPanel");
+const summaryCard   = $("summaryCard");
+const ctaLive       = $("ctaLive");
+const ctaPost       = $("ctaPost");
+const ctaClose      = $("ctaClose");
+const phaseCta      = $("phaseCta");
+const liveTimerEl   = $("liveTimer");
+
+// ---------------------------------------------------------------------------
+// i18n
+// ---------------------------------------------------------------------------
+const lang = localStorage.getItem("preferredLanguage") || "en";
+const T = {
+  de: {
+    newMeeting: "Neues Meeting", setupTitle: "Neues Meeting",
+    lblType: "Meeting-Typ", lblRole: "Sophies Rolle", lblTitle: "Titel (optional)",
+    startPrep: "Vorbereitung starten", startMeeting: "Meeting starten \u2192",
+    endMeeting: "Meeting beenden \u2192", close: "Abschlie\u00dfen",
+    context: "Kontext", agenda: "Agenda...", participants: "Teilnehmer...",
+    goal: "Ziel des Meetings...", saveCtx: "Kontext speichern",
+    typeHere: "Hier tippen...", send: "Senden", meetings: "Meetings",
+    summary: "Meeting-Zusammenfassung", loading: "Laden...",
+    coThink: "Co-Think (Begleitung)", prepare: "Vorbereiten (Prep-Fokus)",
+    document: "Dokumentieren (Protokoll-Fokus)",
+    team: "Team", client: "Kunde", strategy: "Strategie", other: "Sonstige",
+    decisions: "Entscheidungen", actions: "Action Items",
+    openPoints: "Offene Punkte", risks: "Risiken",
+  },
+  en: {
+    newMeeting: "New Meeting", setupTitle: "New Meeting",
+    lblType: "Meeting Type", lblRole: "Sophie's Role", lblTitle: "Title (optional)",
+    startPrep: "Start Preparation", startMeeting: "Start Meeting \u2192",
+    endMeeting: "End Meeting \u2192", close: "Close",
+    context: "Context", agenda: "Agenda...", participants: "Participants...",
+    goal: "Goal of this meeting...", saveCtx: "Save Context",
+    typeHere: "Type here...", send: "Send", meetings: "Meetings",
+    summary: "Meeting Summary", loading: "Loading...",
+    coThink: "Co-Think (Accompaniment)", prepare: "Prepare (Preparation Focus)",
+    document: "Document (Protocol Focus)",
+    team: "Team", client: "Client", strategy: "Strategy", other: "Other",
+    decisions: "Decisions", actions: "Action Items",
+    openPoints: "Open Points", risks: "Risks",
+  },
+  fr: {
+    newMeeting: "Nouveau meeting", setupTitle: "Nouveau meeting",
+    lblType: "Type de r\u00e9union", lblRole: "R\u00f4le de Sophie", lblTitle: "Titre (optionnel)",
+    startPrep: "D\u00e9marrer la pr\u00e9paration", startMeeting: "D\u00e9marrer le meeting \u2192",
+    endMeeting: "Terminer le meeting \u2192", close: "Fermer",
+    context: "Contexte", agenda: "Ordre du jour...", participants: "Participants...",
+    goal: "Objectif du meeting...", saveCtx: "Sauvegarder le contexte",
+    typeHere: "Tapez ici...", send: "Envoyer", meetings: "Meetings",
+    summary: "R\u00e9sum\u00e9 du meeting", loading: "Chargement...",
+    coThink: "Co-Think (Accompagnement)", prepare: "Pr\u00e9parer (Focus pr\u00e9paration)",
+    document: "Documenter (Focus protocole)",
+    team: "\u00c9quipe", client: "Client", strategy: "Strat\u00e9gie", other: "Autre",
+    decisions: "D\u00e9cisions", actions: "Actions",
+    openPoints: "Points ouverts", risks: "Risques",
+  },
+};
+const t = (key) => (T[lang] || T.en)[key] || (T.en)[key] || key;
+
+function applyI18n() {
+  $("setupTitle").textContent = t("setupTitle");
+  $("lblType").textContent = t("lblType");
+  $("lblRole").textContent = t("lblRole");
+  $("lblTitle").textContent = t("lblTitle");
+  $("createBtn").textContent = t("startPrep");
+  ctaLive.textContent = t("startMeeting");
+  ctaPost.textContent = t("endMeeting");
+  ctaClose.textContent = t("close");
+  $("ctxLabel").textContent = t("context");
+  $("ctxAgenda").placeholder = t("agenda");
+  $("ctxParticipants").placeholder = t("participants");
+  $("ctxGoal").placeholder = t("goal");
+  $("saveContextBtn").textContent = t("saveCtx");
+  chatInput.placeholder = t("typeHere");
+  sendBtn.textContent = t("send");
+  $("historyTitle").textContent = t("meetings");
+  $("newMeetingBtn").textContent = "+ " + t("newMeeting");
+  $("summaryTitle").textContent = t("summary");
+  // Role options
+  const roleSelect = $("sophieRole");
+  roleSelect.options[0].text = t("coThink");
+  roleSelect.options[1].text = t("prepare");
+  roleSelect.options[2].text = t("document");
+  // Type options
+  const typeSelect = $("meetingType");
+  typeSelect.options[0].text = t("team");
+  typeSelect.options[1].text = t("client");
+  typeSelect.options[2].text = t("strategy");
+  typeSelect.options[3].text = t("other");
+}
+
+// ---------------------------------------------------------------------------
+// API helpers
+// ---------------------------------------------------------------------------
+async function api(action, body = null, method = "POST") {
+  const opts = {
+    method,
+    headers: { "Content-Type": "application/json" },
+  };
+  if (accessToken) opts.headers.Authorization = `Bearer ${accessToken}`;
+
+  let url = `/api/meeting?action=${action}`;
+  if (body && method === "GET") {
+    // For GET requests, append id to query
+    if (body.id) url += `&id=${body.id}`;
+    opts.method = "GET";
+    opts.body = undefined;
+  } else if (body) {
+    opts.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    window.location.href = "/login/";
+    return;
+  }
+  currentUser = session.user;
+  accessToken = session.access_token;
+
+  // Check URL for meeting_id
+  const params = new URLSearchParams(window.location.search);
+  const urlMeetingId = params.get("id");
+
+  authLoading.classList.add("hidden");
+
+  if (urlMeetingId) {
+    await loadMeeting(urlMeetingId);
+  } else {
+    await showHistory();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// History screen
+// ---------------------------------------------------------------------------
+async function showHistory() {
+  setupScreen.classList.add("hidden");
+  meetingArea.classList.remove("active");
+  historyScreen.classList.remove("hidden");
+
+  const list = $("historyList");
+  list.innerHTML = '<p style="color:rgba(255,255,255,.4);font-size:14px">' + t("loading") + '</p>';
+
+  try {
+    const data = await api("list", null, "GET");
+    const meetings = data.meetings || [];
+
+    if (meetings.length === 0) {
+      list.innerHTML = '<p style="color:rgba(255,255,255,.3);font-size:14px;text-align:center;padding:40px 0">No meetings yet.</p>';
+      return;
+    }
+
+    list.innerHTML = meetings.map(m => {
+      const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      const phaseColors = { prep: "#6cb4ff", live: "#ff5a5a", post: "#a78bfa", closed: "rgba(255,255,255,.3)" };
+      return `<a href="/meeting/?id=${m.id}" style="display:block;padding:12px 14px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;text-decoration:none;color:#fff">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:500">${m.title || m.meeting_type}</span>
+          <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#fff'};text-transform:uppercase">${m.phase}</span>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">${date} &middot; ${m.meeting_type}</div>
+      </a>`;
+    }).join("");
+  } catch (e) {
+    list.innerHTML = `<p style="color:#ff5a5a;font-size:13px">Error: ${e.message}</p>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Setup / Create
+// ---------------------------------------------------------------------------
+function showSetup() {
+  historyScreen.classList.add("hidden");
+  meetingArea.classList.remove("active");
+  setupScreen.classList.remove("hidden");
+}
+
+async function createMeeting() {
+  const btn = $("createBtn");
+  btn.disabled = true;
+
+  try {
+    const data = await api("create", {
+      meeting_type: $("meetingType").value,
+      sophie_role: $("sophieRole").value,
+      title: $("meetingTitle").value.trim() || null,
+    });
+
+    meetingId = data.meeting.id;
+    window.history.replaceState({}, "", `/meeting/?id=${meetingId}`);
+    await loadMeeting(meetingId);
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Load meeting
+// ---------------------------------------------------------------------------
+async function loadMeeting(id) {
+  setupScreen.classList.add("hidden");
+  historyScreen.classList.add("hidden");
+  meetingArea.classList.add("active");
+
+  try {
+    const data = await api("get", { id }, "GET");
+    meetingId = id;
+    meetingData = data.meeting;
+    chatMessages = [];
+
+    // Update UI
+    titleDisplay.textContent = meetingData.title || meetingData.meeting_type;
+    updatePhaseUI(meetingData.phase);
+
+    // Load context into fields
+    const contexts = data.context || [];
+    const agendaCtx = contexts.find(c => c.context_type === "agenda");
+    const partCtx = contexts.find(c => c.context_type === "participants");
+    const goalCtx = contexts.find(c => c.context_type === "goal");
+    if (agendaCtx) $("ctxAgenda").value = agendaCtx.content;
+    if (partCtx) $("ctxParticipants").value = partCtx.content;
+    if (goalCtx) $("ctxGoal").value = goalCtx.content;
+
+    // Load existing notes as system messages
+    const notes = data.notes || [];
+    notes.forEach(n => {
+      appendSystemMsg(`[${n.note_type.toUpperCase()}] ${n.content}`);
+    });
+
+    // Show summary if exists
+    if (data.summary) {
+      renderSummary(data.summary);
+    }
+
+    // Auto-send opener in prep phase
+    if (meetingData.phase === "prep" && notes.length === 0) {
+      await sendMessage(lang === "de"
+        ? "Ich bereite mich auf ein Meeting vor. Hilf mir bitte."
+        : lang === "fr"
+        ? "Je me pr\u00e9pare pour une r\u00e9union. Aide-moi s'il te pla\u00eet."
+        : "I'm preparing for a meeting. Please help me.",
+        true
+      );
+    }
+  } catch (e) {
+    chatArea.innerHTML = `<div class="msg system">Error loading meeting: ${e.message}</div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase UI management
+// ---------------------------------------------------------------------------
+function updatePhaseUI(phase) {
+  phaseBadge.textContent = phase.toUpperCase();
+  phaseBadge.dataset.phase = phase;
+
+  // Context panel: only in prep
+  contextPanel.classList.toggle("hidden", phase !== "prep");
+
+  // CTA buttons
+  ctaLive.classList.toggle("hidden", phase !== "prep");
+  ctaPost.classList.toggle("hidden", phase !== "live");
+  ctaClose.classList.toggle("hidden", phase !== "post");
+  phaseCta.classList.toggle("hidden", phase === "closed");
+
+  // Input bar: disabled in closed
+  $("inputBar").classList.toggle("hidden", phase === "closed");
+
+  // Summary card visibility
+  if (phase !== "post" && phase !== "closed") {
+    summaryCard.classList.add("hidden");
+  }
+
+  // Live timer
+  if (phase === "live") {
+    startLiveTimer();
+  } else {
+    stopLiveTimer();
+  }
+}
+
+function startLiveTimer() {
+  liveStartTime = meetingData?.started_at ? new Date(meetingData.started_at).getTime() : Date.now();
+  liveTimerEl.classList.remove("hidden");
+  liveTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - liveStartTime) / 1000);
+    const m = Math.floor(elapsed / 60).toString().padStart(2, "0");
+    const s = (elapsed % 60).toString().padStart(2, "0");
+    liveTimerEl.textContent = `LIVE ${m}:${s}`;
+  }, 1000);
+}
+
+function stopLiveTimer() {
+  clearInterval(liveTimerInterval);
+  liveTimerEl.classList.add("hidden");
+}
+
+// ---------------------------------------------------------------------------
+// Phase transitions
+// ---------------------------------------------------------------------------
+async function transitionPhase(newPhase) {
+  try {
+    const data = await api("phase", { meeting_id: meetingId, phase: newPhase });
+    meetingData = { ...meetingData, ...data.meeting };
+    updatePhaseUI(newPhase);
+    appendSystemMsg(lang === "de"
+      ? `Phase gewechselt: ${newPhase.toUpperCase()}`
+      : `Phase changed: ${newPhase.toUpperCase()}`
+    );
+
+    // Auto-summarize when entering post phase
+    if (newPhase === "post") {
+      await generateSummary();
+    }
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+function appendMsg(role, content) {
+  const div = document.createElement("div");
+  div.className = `msg ${role}`;
+  div.textContent = content;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function appendSystemMsg(text) {
+  const div = document.createElement("div");
+  div.className = "msg system";
+  div.textContent = text;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function showTyping() {
+  const div = document.createElement("div");
+  div.className = "msg assistant";
+  div.id = "typingIndicator";
+  div.innerHTML = '<span class="typing-dots"></span>';
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function removeTyping() {
+  const el = $("typingIndicator");
+  if (el) el.remove();
+}
+
+async function sendMessage(text, isAutoOpener = false) {
+  if (isLoading || !text.trim()) return;
+  isLoading = true;
+  sendBtn.disabled = true;
+
+  if (!isAutoOpener) {
+    appendMsg("user", text);
+  }
+  chatMessages.push({ role: "user", content: text });
+
+  showTyping();
+
+  try {
+    const data = await api("message", {
+      meeting_id: meetingId,
+      messages: chatMessages,
+    });
+
+    removeTyping();
+    appendMsg("assistant", data.reply);
+    chatMessages.push({ role: "assistant", content: data.reply });
+
+  } catch (e) {
+    removeTyping();
+    appendSystemMsg("Error: " + e.message);
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    chatInput.focus();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Context saving
+// ---------------------------------------------------------------------------
+async function saveContext() {
+  const agenda = $("ctxAgenda").value.trim();
+  const participants = $("ctxParticipants").value.trim();
+  const goal = $("ctxGoal").value.trim();
+
+  const saves = [];
+  if (agenda) saves.push(api("context", { meeting_id: meetingId, context_type: "agenda", content: agenda }));
+  if (participants) saves.push(api("context", { meeting_id: meetingId, context_type: "participants", content: participants }));
+  if (goal) saves.push(api("context", { meeting_id: meetingId, context_type: "goal", content: goal }));
+
+  if (saves.length === 0) return;
+
+  const btn = $("saveContextBtn");
+  btn.disabled = true;
+  try {
+    await Promise.all(saves);
+    appendSystemMsg(lang === "de" ? "Kontext gespeichert" : "Context saved");
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Summary
+// ---------------------------------------------------------------------------
+async function generateSummary() {
+  appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
+
+  try {
+    const data = await api("summarize", { meeting_id: meetingId });
+    renderSummary(data.summary);
+  } catch (e) {
+    appendSystemMsg("Summary error: " + e.message);
+  }
+}
+
+function renderSummary(summary) {
+  summaryCard.classList.remove("hidden");
+  $("summaryText").textContent = summary.short_summary || "";
+
+  const details = $("summaryDetails");
+  details.innerHTML = "";
+
+  const sections = [
+    { key: "decisions", label: t("decisions"), items: summary.decisions || [] },
+    { key: "action_items", label: t("actions"), items: summary.action_items || [] },
+    { key: "open_points", label: t("openPoints"), items: summary.open_points || [] },
+    { key: "risks", label: t("risks"), items: summary.risks || [] },
+  ];
+
+  sections.forEach(sec => {
+    if (sec.items.length === 0) return;
+    const div = document.createElement("div");
+    div.className = "summary-section";
+    div.innerHTML = `<h4>${sec.label}</h4><ul>${sec.items.map(item => {
+      const text = typeof item === "string" ? item : item.text || JSON.stringify(item);
+      const owner = item.owner ? ` <span class="owner">\u2014 ${item.owner}</span>` : "";
+      const severity = item.severity ? ` <span class="severity-${item.severity}">[${item.severity}]</span>` : "";
+      return `<li>${text}${owner}${severity}</li>`;
+    }).join("")}</ul>`;
+    details.appendChild(div);
+  });
+
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// Event Listeners
+// ---------------------------------------------------------------------------
+$("createBtn").addEventListener("click", createMeeting);
+$("newMeetingBtn").addEventListener("click", showSetup);
+sendBtn.addEventListener("click", () => { sendMessage(chatInput.value); chatInput.value = ""; autoResize(); });
+
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage(chatInput.value);
+    chatInput.value = "";
+    autoResize();
+  }
+});
+
+chatInput.addEventListener("input", () => {
+  sendBtn.disabled = !chatInput.value.trim() || isLoading;
+  autoResize();
+});
+
+function autoResize() {
+  chatInput.style.height = "auto";
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
+}
+
+ctaLive.addEventListener("click", () => transitionPhase("live"));
+ctaPost.addEventListener("click", () => transitionPhase("post"));
+ctaClose.addEventListener("click", () => transitionPhase("closed"));
+
+$("saveContextBtn").addEventListener("click", saveContext);
+
+$("contextToggle").addEventListener("click", () => {
+  contextPanel.classList.toggle("collapsed");
+});
+
+$("backBtn").addEventListener("click", (e) => {
+  if (meetingId) {
+    e.preventDefault();
+    meetingId = null;
+    meetingData = null;
+    chatMessages = [];
+    chatArea.innerHTML = "";
+    summaryCard.classList.add("hidden");
+    window.history.replaceState({}, "", "/meeting/");
+    showHistory();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+applyI18n();
+initAuth();
+</script>
+</body>
+</html>

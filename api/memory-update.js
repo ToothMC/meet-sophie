@@ -242,6 +242,172 @@ ${transcriptText}
   };
 }
 
+// ---------------------------------------------------------------------------
+// Sales Pitch Report generator — returns same shape as generateConversationOutput
+// but with pitch-specific scorecard in key_insights + action_plan
+// ---------------------------------------------------------------------------
+async function generateSalesPitchReport({ transcriptText, openAiKey, model }) {
+  const system = `You analyze a Sales Pitch training session and produce a structured Sales Pitch Report.
+The transcript contains a pitch practice: the user pitched, Sophie asked critical questions, and gave verbal feedback.
+
+Extract ALL evaluation data from the conversation. Score each criterion yourself based on the pitch quality you observe.
+
+IMPORTANT: Write the ENTIRE output in the SAME language as the transcript.
+This includes ALL fields: overall_verdict, notes, strongest_elements, main_weaknesses, likely_audience_questions, improvement_priorities, recommended_next_attempt.
+Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Resistance, Persuasiveness) — but the "note" field for each criterion must be in the transcript language.`;
+
+  const userMsg = `Transcript:\n${transcriptText}`;
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      session_title: { type: "string" },
+      short_summary: { type: "string" },
+      audience_type: { type: "string" },
+      pitch_goal: { type: "string" },
+      pitch_topic: { type: "string" },
+      overall_verdict: { type: "string" },
+      scorecard: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            criterion: { type: "string" },
+            score: { type: "number" },
+            note: { type: "string" },
+          },
+          required: ["criterion", "score", "note"],
+        },
+      },
+      overall_score: { type: "number" },
+      confidence_level: { type: "string" },
+      strongest_elements: { type: "array", items: { type: "string" } },
+      main_weaknesses: { type: "array", items: { type: "string" } },
+      likely_audience_questions: { type: "array", items: { type: "string" } },
+      improvement_priorities: { type: "array", items: { type: "string" } },
+      recommended_next_attempt: { type: "string" },
+    },
+    required: [
+      "session_title", "short_summary", "audience_type", "pitch_goal", "pitch_topic",
+      "overall_verdict", "scorecard", "overall_score", "confidence_level",
+      "strongest_elements", "main_weaknesses", "likely_audience_questions",
+      "improvement_priorities", "recommended_next_attempt"
+    ],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openAiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        { role: "system", content: system },
+        { role: "user", content: userMsg },
+      ],
+      temperature: 0.3,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "sophie_sales_pitch_report_v1",
+          strict: true,
+          schema,
+        },
+      },
+      truncation: "auto",
+    }),
+  });
+
+  if (!r.ok) {
+    const errorText = await r.text().catch(() => "");
+    throw new Error(`Sales pitch report model error ${r.status}: ${errorText.slice(0, 300)}`);
+  }
+
+  const out = await r.json();
+  const text =
+    out?.output_text ||
+    out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text ||
+    "";
+
+  let parsed;
+  try {
+    parsed = JSON.parse(String(text || "").trim());
+  } catch {
+    throw new Error("Bad JSON from sales pitch report model");
+  }
+
+  // Map scorecard to key_insights format for the report UI
+  const scorecardInsights = (parsed.scorecard || []).map((item) => ({
+    type: "scorecard",
+    text: `${item.criterion}: ${item.score}/5 — ${item.note}`,
+  }));
+
+  const strengthInsights = (parsed.strongest_elements || []).map((s) => ({
+    type: "strength",
+    text: s,
+  }));
+
+  const weaknessInsights = (parsed.main_weaknesses || []).map((w) => ({
+    type: "weakness",
+    text: w,
+  }));
+
+  const questionInsights = (parsed.likely_audience_questions || []).map((q) => ({
+    type: "audience_question",
+    text: q,
+  }));
+
+  const actionPlan = (parsed.improvement_priorities || []).map((p, i) => ({
+    label: `Priority ${i + 1}`,
+    detail: p,
+  }));
+
+  if (parsed.recommended_next_attempt) {
+    actionPlan.push({
+      label: "Next Attempt Focus",
+      detail: parsed.recommended_next_attempt,
+    });
+  }
+
+  return {
+    session_title: parsed.session_title || "Sales Pitch",
+    short_summary: parsed.overall_verdict || parsed.short_summary || "",
+    structured_summary: {
+      summary: parsed.short_summary || "",
+      emotional_tone: "focused",
+      stress_level: null,
+      closeness_level: null,
+    },
+    key_insights: [
+      ...scorecardInsights,
+      ...strengthInsights,
+      ...weaknessInsights,
+      ...questionInsights,
+    ],
+    action_plan: actionPlan,
+    open_questions: parsed.likely_audience_questions || [],
+    // Extra pitch-specific data for the frontend
+    sales_pitch_report: {
+      audience_type: parsed.audience_type || "",
+      pitch_goal: parsed.pitch_goal || "",
+      pitch_topic: parsed.pitch_topic || "",
+      overall_verdict: parsed.overall_verdict || "",
+      scorecard: parsed.scorecard || [],
+      overall_score: parsed.overall_score || 0,
+      confidence_level: parsed.confidence_level || "low",
+      strongest_elements: parsed.strongest_elements || [],
+      main_weaknesses: parsed.main_weaknesses || [],
+      likely_audience_questions: parsed.likely_audience_questions || [],
+      improvement_priorities: parsed.improvement_priorities || [],
+      recommended_next_attempt: parsed.recommended_next_attempt || "",
+    },
+  };
+}
+
 /**
  * POST /api/memory-update
  * Body: {
@@ -310,6 +476,7 @@ export default async function handler(req, res) {
 
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
+    const sessionMode = typeof body.session_mode === "string" ? body.session_mode.trim().toLowerCase() : null;
     const secondsUsed = Number(body.seconds_used ?? 0) || 0;
     const nowIso = new Date().toISOString();
     const sessionStartedAt =
@@ -965,15 +1132,23 @@ ${transcriptText}
 
     let conversationOutput;
     try {
-      conversationOutput = await generateConversationOutput({
-        transcriptText,
-        fallbackSummary: sessSummary,
-        emotionalTone: clean(ss.emotional_tone),
-        stressLevel: ss.stress_level,
-        closenessLevel: ss.closeness_level,
-        openAiKey: process.env.OPENAI_API_KEY,
-        model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-      });
+      if (sessionMode === "salespitch") {
+        conversationOutput = await generateSalesPitchReport({
+          transcriptText,
+          openAiKey: process.env.OPENAI_API_KEY,
+          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
+        });
+      } else {
+        conversationOutput = await generateConversationOutput({
+          transcriptText,
+          fallbackSummary: sessSummary,
+          emotionalTone: clean(ss.emotional_tone),
+          stressLevel: ss.stress_level,
+          closenessLevel: ss.closeness_level,
+          openAiKey: process.env.OPENAI_API_KEY,
+          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
+        });
+      }
     } catch (e) {
       console.error("conversation output generation failed:", e?.message || e);
       conversationOutput = {
@@ -1052,6 +1227,7 @@ ${transcriptText}
         key_insights: outputRow.key_insights,
         action_plan: outputRow.action_plan,
         open_questions: outputRow.open_questions,
+        ...(conversationOutput.sales_pitch_report ? { sales_pitch_report: conversationOutput.sales_pitch_report } : {}),
       },
       extracted: {
         first_name: profileRow.first_name,

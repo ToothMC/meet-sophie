@@ -15,11 +15,7 @@
 
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-
-html{
-  height:100%;
-}
-
+html{ height:100%; }
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
@@ -32,9 +28,8 @@ body{
   position:relative;
   overflow-x:hidden;
   overflow-y:auto;
-  padding:24px 0 40px;
+  padding:24px 0 48px;
 }
-
 .bg{
   position:absolute; inset:-40px;
   background:
@@ -42,217 +37,240 @@ body{
     radial-gradient(700px 500px at 80% 65%, rgba(255,170,210,.14), transparent 60%),
     radial-gradient(900px 600px at 50% 110%, rgba(120,255,210,.10), transparent 65%);
 }
-
 .wrap{
-  width:min(620px,92vw);
+  width:min(640px,92vw);
   position:relative;
   z-index:2;
   margin:0 auto;
 }
 
+/* ── Top bar ── */
 .top{
   display:flex;
   justify-content:space-between;
-  margin-bottom:12px;
+  margin-bottom:24px;
   font-size:13px;
-  opacity:.85;
 }
-
-.lang{
-  display:flex;
-  gap:8px;
-}
-
+.lang{ display:flex; gap:8px; }
 .lang span{
   cursor:pointer;
   padding:4px 8px;
   border-radius:10px;
   border:1px solid rgba(255,255,255,.15);
-}
-
-.lang .active{
-  background:white;
-  color:#0b0f14;
-}
-
-.panel{
-  border-radius:24px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);
-  box-shadow:0 10px 40px rgba(0,0,0,.35);
-  padding:28px;
-  text-align:center;
-  backdrop-filter:blur(10px);
-}
-
-h1{
-  margin:0 0 12px;
-  font-size:28px;
-  line-height:1.2;
-}
-
-.lead{
-  margin:0;
-  font-size:16px;
-  color:rgba(255,255,255,.78);
-}
-
-.note{
-  margin-top:14px;
-  font-size:14px;
-  opacity:.75;
-}
-
-.price{
-  margin-top:24px;
-  font-size:32px;
-  font-weight:800;
-}
-
-.per{
-  font-size:14px;
   opacity:.7;
-  margin-top:4px;
 }
-
-button{
-  margin-top:22px;
-  width:100%;
-  padding:16px;
-  border-radius:16px;
-  border:0;
-  font-size:16px;
-  font-weight:800;
-  cursor:pointer;
-  background:white;
-  color:#0b0f14;
-}
-
-button:hover{ opacity:.95; }
-
-button:disabled{
-  opacity:.55;
-  cursor:not-allowed;
-}
-
-.btn-secondary{
-  margin-top:10px;
-  background:rgba(255,255,255,.14);
-  color:white;
-  border:1px solid rgba(255,255,255,.18);
-}
-
-/* prepaid section */
-.divider{
-  margin:22px 0 14px;
-  height:1px;
-  background:rgba(255,255,255,.12);
-}
-
-.subhead{
-  margin:0;
-  font-size:14px;
-  font-weight:800;
-  letter-spacing:.2px;
-  text-transform:uppercase;
-  opacity:.85;
-  text-align:left;
-}
-
-.prepaid-note{
-  margin:8px 0 10px;
-  font-size:13px;
-  color:rgba(255,255,255,.75);
-  text-align:left;
-}
-
-.packs{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-top:10px;
-}
-
-.pack{
-  margin-top:0;
-  width:100%;
-  padding:12px 10px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.10);
-  color:white;
-  font-weight:900;
-  cursor:pointer;
-}
-
-.pack:hover{ background:rgba(255,255,255,.14); }
-
-/* NEW: keep only amount + “Sophie Time” */
-.pack span{
-  display:block;
-  font-size:12px;
-  font-weight:700;
-  opacity:.8;
-  margin-top:4px;
-  letter-spacing:.2px;
-}
-
-@media (max-width:520px){
-  .packs{ grid-template-columns:1fr; }
-}
-
-.msg{
-  margin-top:10px;
-  font-size:13px;
-  color:rgba(255,255,255,.78);
-  min-height:18px;
-}
-
-.legal{
-  margin-top:18px;
-  font-size:13px;
-  color:rgba(255,255,255,.75);
-  text-align:left;
-}
-
-.legal label{
-  display:flex;
-  gap:10px;
-  margin:10px 0;
-}
-
-.footer{
-  margin-top:16px;
-  text-align:center;
-  font-size:12px;
-  opacity:.6;
-}
-
-.footer a{
-  color:white;
-  text-decoration:none;
-}
-
+.lang .active{ background:white; color:#0b0f14; opacity:1; }
 .back{
-  color:rgba(255,255,255,.8);
+  color:rgba(255,255,255,.7);
   text-decoration:none;
   font-size:14px;
   font-weight:600;
   padding:6px 10px;
   border-radius:10px;
-  background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
   cursor:pointer;
+}
+
+/* ── Header ── */
+.header{
+  text-align:center;
+  margin-bottom:28px;
+}
+.header h1{
+  margin:0 0 10px;
+  font-size:27px;
+  font-weight:700;
+  line-height:1.2;
+  letter-spacing:-.3px;
+}
+.header p{
+  margin:0;
+  font-size:15px;
+  color:rgba(255,255,255,.65);
+  line-height:1.5;
+}
+
+/* ── Primary: Abo + 5€ ── */
+.primary-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:16px;
+}
+.card{
+  border-radius:20px;
+  padding:20px 18px;
+  display:flex;
+  flex-direction:column;
+}
+.card-abo{
+  background:rgba(100,140,255,.13);
+  border:1.5px solid rgba(120,160,255,.45);
+  box-shadow:0 0 32px rgba(100,140,255,.10);
+}
+.card-topup5{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.20);
+}
+.card-badge{
+  display:inline-block;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.03em;
+  padding:3px 9px;
+  border-radius:8px;
+  margin-bottom:12px;
+  align-self:flex-start;
+}
+.badge-abo{ background:rgba(120,160,255,.22); color:#a8c4ff; }
+.badge-topup5{ background:rgba(255,255,255,.11); color:rgba(255,255,255,.75); }
+.card-name{
+  font-size:13px;
+  font-weight:500;
+  color:rgba(255,255,255,.6);
+  margin-bottom:4px;
+}
+.card-price{
+  font-size:28px;
+  font-weight:800;
+  margin-bottom:0;
+  line-height:1;
+}
+.card-per{
+  font-size:11px;
+  color:rgba(255,255,255,.4);
+  margin-bottom:10px;
+  margin-top:3px;
+}
+.card-sub{
+  font-size:12.5px;
+  color:rgba(255,255,255,.55);
+  line-height:1.5;
+  margin-bottom:16px;
+  flex:1;
+}
+.card-btn{
+  width:100%;
+  padding:13px 10px;
+  border-radius:13px;
+  border:0;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:opacity .15s;
+}
+.card-btn:hover{ opacity:.9; }
+.card-btn:disabled{ opacity:.35; cursor:not-allowed; }
+.btn-abo{ background:white; color:#0b0f14; }
+.btn-topup5{ background:rgba(255,255,255,.13); color:white; border:1px solid rgba(255,255,255,.22); }
+
+/* ── Secondary: €10 + €20 ── */
+.secondary-wrap{
+  margin-bottom:20px;
+}
+.secondary-label{
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.3);
+  text-align:center;
+  margin-bottom:8px;
+}
+.secondary-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.pack-btn{
+  padding:10px 10px 9px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.55);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .15s, color .15s;
+  width:100%;
+}
+.pack-btn:hover{ background:rgba(255,255,255,.08); color:rgba(255,255,255,.8); }
+.pack-btn:disabled{ opacity:.25; cursor:not-allowed; }
+.pack-btn span{
+  display:block;
+  font-size:10px;
+  font-weight:500;
+  opacity:.7;
+  margin-top:2px;
+  letter-spacing:.02em;
+}
+
+/* ── Legal — compact ── */
+.legal-block{
+  border-top:1px solid rgba(255,255,255,.07);
+  padding-top:16px;
+  margin-bottom:14px;
+}
+.legal-block label{
+  display:flex;
+  gap:9px;
+  font-size:12px;
+  color:rgba(255,255,255,.5);
+  line-height:1.5;
+  margin-bottom:8px;
+}
+.legal-block label:last-child{ margin-bottom:0; }
+.legal-block input[type=checkbox]{ flex-shrink:0; margin-top:2px; accent-color:rgba(255,255,255,.6); }
+.legal-block a{ color:rgba(255,255,255,.65); }
+
+/* ── Login link ── */
+.login-link{
+  display:none;
+  text-align:center;
+  margin-bottom:14px;
+  font-size:13px;
+  color:rgba(255,255,255,.5);
+}
+.login-link a{
+  color:rgba(255,255,255,.75);
+  text-decoration:underline;
+  cursor:pointer;
+}
+
+/* ── Msg ── */
+.msg{
+  text-align:center;
+  font-size:13px;
+  color:rgba(255,255,255,.65);
+  min-height:18px;
+  margin-bottom:6px;
+}
+
+/* ── Footer ── */
+.footer{
+  margin-top:16px;
+  text-align:center;
+  font-size:12px;
+  opacity:.4;
+}
+.footer a{ color:white; text-decoration:none; }
+
+/* ── Responsive ── */
+@media (max-width:460px){
+  .primary-row{ grid-template-columns:1fr; }
+  .card-price{ font-size:25px; }
+  .header h1{ font-size:23px; }
 }
 </style>
 </head>
 
 <body>
-
 <div class="bg"></div>
 
 <div class="wrap">
 
+  <!-- Top bar -->
   <div class="top">
     <a class="back" id="backBtn" href="/">← Zurück</a>
     <div class="lang">
@@ -261,59 +279,70 @@ button:disabled{
     </div>
   </div>
 
-  <div class="panel">
-
+  <!-- Header -->
+  <div class="header">
     <h1 id="tH1"></h1>
-    <p class="lead" id="tLead"></p>
-    <p class="note" id="tNote"></p>
+    <p id="tLead"></p>
+  </div>
 
-    <div class="price">
-      19,90€
-      <div class="per">
-        <span id="tPer"></span>
-        <span id="tPerHint" style="font-size:12px;opacity:.7;margin-left:6px;"></span>
-      </div>
+  <!-- Primary: Abo + €5 -->
+  <div class="primary-row">
+
+    <!-- Abo -->
+    <div class="card card-abo">
+      <div class="card-badge badge-abo" id="tAboBadge"></div>
+      <div class="card-name" id="tAboName"></div>
+      <div class="card-price">€19,90</div>
+      <div class="card-per" id="tAboPer"></div>
+      <div class="card-sub" id="tAboSub"></div>
+      <button class="card-btn btn-abo" id="btnAbo" disabled></button>
     </div>
 
-    <button id="btnContinue" disabled></button>
-    <button class="btn-secondary" id="btnLogin"></button>
-
-    <!-- Prepaid -->
-    <div class="divider"></div>
-    <p class="subhead" id="tPrepaidTitle"></p>
-    <p class="prepaid-note" id="tPrepaidHint" style="font-size:12px;opacity:.7;margin-top:6px;"></p>
-
-    <div class="packs">
-      <button class="pack" id="topup5"  disabled>
-        €5
-        <span id="tSophieTime"></span>
-      </button>
-      <button class="pack" id="topup10" disabled>
-        €10
-        <span id="tSophieTime2"></span>
-      </button>
-      <button class="pack" id="topup20" disabled>
-        €20
-        <span id="tSophieTime3"></span>
-      </button>
-    </div>
-
-    <div class="msg" id="msg"></div>
-
-    <div class="legal">
-      <label>
-        <input type="checkbox" id="legal1">
-        <span id="tLegal1"></span>
-      </label>
-
-      <label>
-        <input type="checkbox" id="legal2">
-        <span id="tLegal2"></span>
-      </label>
+    <!-- €5 -->
+    <div class="card card-topup5">
+      <div class="card-badge badge-topup5" id="tTopup5Badge"></div>
+      <div class="card-name" id="tTopup5Name"></div>
+      <div class="card-price">€5</div>
+      <div class="card-sub" id="tTopup5Sub"></div>
+      <button class="card-btn btn-topup5" id="btnTopup5" disabled></button>
     </div>
 
   </div>
 
+  <!-- Secondary: €10 + €20 -->
+  <div class="secondary-wrap">
+    <div class="secondary-label" id="tMoreTime"></div>
+    <div class="secondary-row">
+      <button class="pack-btn" id="btnTopup10" disabled>
+        €10 <span id="tSophieTime10"></span>
+      </button>
+      <button class="pack-btn" id="btnTopup20" disabled>
+        €20 <span id="tSophieTime20"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Legal — compact, below cards -->
+  <div class="legal-block">
+    <label>
+      <input type="checkbox" id="legal1">
+      <span id="tLegal1"></span>
+    </label>
+    <label>
+      <input type="checkbox" id="legal2">
+      <span id="tLegal2"></span>
+    </label>
+  </div>
+
+  <!-- Login — subtle link -->
+  <div class="login-link" id="loginHint">
+    <span id="tLoginHint"></span> <a id="btnLogin"></a>
+  </div>
+
+  <!-- Msg -->
+  <div class="msg" id="msg"></div>
+
+  <!-- Footer -->
   <div class="footer">
     <a href="/impressum.html">Impressum</a> ·
     <a href="/privacy.html" id="tPrivacy">Datenschutz</a>
@@ -324,116 +353,117 @@ button:disabled{
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-// ✅ Setze deinen echten Public ANON Key ein
-const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_URL     = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const TEXT = {
   de:{
-    h1:"Warte. Geh noch nicht.",
-    lead:"Sophie wollte dich gerade etwas fragen.",
-    note:"Wenn du willst, machen wir genau hier weiter.",
-    per:"pro Monat",
-    perHint:"(inkl. Gesprächszeit)",
-    btn:"Weiter mit Sophie",
-    login:"Ich bin noch nicht eingeloggt",
-    loading:"Einen Moment…",
-    checkoutError:"Fehler beim Starten des Checkouts.",
-    topupError:"Fehler beim Starten des Top-ups.",
-    prepaidTitle:"Prepaid (ohne Abo)",
-    prepaidHint:"(Zusätzliche Zeit kann als Prepaid-Guthaben gekauft werden.)",
-    sophieTime:"Sophie Time",
-    topupLoading:"Checkout wird geöffnet…",
-    privacy:"Datenschutz",
-    legal1:`Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
-    legal2:`Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
-    legalMissing:"Bitte bestätige beide Checkboxen."
+    h1:          "Mach jetzt weiter mit Sophie.",
+    lead:        "Setze das Gespräch fort — mit Abo oder flexiblem Sofortzugang.",
+    aboBadge:    "★ Beste Wahl",
+    aboName:     "Abo · monatlich",
+    aboPer:      "pro Monat",
+    aboSub:      "Am besten für regelmäßige Nutzung. Kontinuität, Memory und stabiler Zugang. Optional: automatisch weiterlaufen, wenn dein Kontingent endet.",
+    aboBtn:      "Mit Abo weitermachen",
+    topup5Badge: "⚡ Sofort los",
+    topup5Name:  "5€ Sophie Time",
+    topup5Sub:   "Ohne Bindung. Einfach jetzt weitermachen.",
+    topup5Btn:   "Jetzt für 5€ weiter",
+    moreTime:    "Mehr Zeit laden",
+    sophieTime:  "Sophie Time",
+    loginHint:   "Noch kein Login?",
+    loginLink:   "Einloggen, um fortzufahren",
+    loading:     "Einen Moment…",
+    checkoutErr: "Fehler beim Starten des Checkouts.",
+    topupErr:    "Fehler beim Starten des Top-ups.",
+    legalMissing:"Bitte bestätige beide Checkboxen.",
+    privacy:     "Datenschutz",
+    legal1:      `Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
+    legal2:      `Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
   },
   en:{
-    h1:"Wait. Don’t go yet.",
-    lead:"Sophie was about to ask you something.",
-    note:"If you want, we continue right here.",
-    per:"per month",
-    perHint:"(incl. conversation time)",
-    btn:"Continue with Sophie",
-    login:"I’m not logged in",
-    loading:"One moment…",
-    checkoutError:"Failed to start checkout.",
-    topupError:"Failed to start top-up checkout.",
-    prepaidTitle:"Prepaid (no subscription)",
-    prepaidHint:"(Additional time can be purchased as prepaid credit)",
-    sophieTime:"Sophie Time",
-    topupLoading:"Opening checkout…",
-    privacy:"Privacy Policy",
-    legal1:`I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
-    legal2:`I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
-    legalMissing:"Please confirm both checkboxes."
+    h1:          "Keep going with Sophie.",
+    lead:        "Continue the conversation — with subscription or instant access.",
+    aboBadge:    "★ Best Value",
+    aboName:     "Subscription · monthly",
+    aboPer:      "per month",
+    aboSub:      "Best for regular use. Continuity, memory, and reliable access. Optionally continue automatically when your included time runs out.",
+    aboBtn:      "Continue with subscription",
+    topup5Badge: "⚡ Start now",
+    topup5Name:  "€5 Sophie Time",
+    topup5Sub:   "No commitment. Just continue right now.",
+    topup5Btn:   "Continue now for €5",
+    moreTime:    "More time",
+    sophieTime:  "Sophie Time",
+    loginHint:   "Not signed in?",
+    loginLink:   "Sign in to continue",
+    loading:     "One moment…",
+    checkoutErr: "Failed to start checkout.",
+    topupErr:    "Failed to start top-up.",
+    legalMissing:"Please confirm both checkboxes.",
+    privacy:     "Privacy Policy",
+    legal1:      `I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
+    legal2:      `I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
   }
 };
 
-const btnContinue = document.getElementById("btnContinue");
-const btnLogin = document.getElementById("btnLogin");
-const msg = document.getElementById("msg");
 const c1 = document.getElementById("legal1");
 const c2 = document.getElementById("legal2");
-
-const topup5 = document.getElementById("topup5");
-const topup10 = document.getElementById("topup10");
-const topup20 = document.getElementById("topup20");
+const msg = document.getElementById("msg");
+const btnAbo     = document.getElementById("btnAbo");
+const btnTopup5  = document.getElementById("btnTopup5");
+const btnTopup10 = document.getElementById("btnTopup10");
+const btnTopup20 = document.getElementById("btnTopup20");
+const btnLogin   = document.getElementById("btnLogin");
+const loginHint  = document.getElementById("loginHint");
 
 let currentLang = "en";
-const navLang = (navigator.language || "").toLowerCase();
-if (navLang.startsWith("de")) currentLang = "de";
+if ((navigator.language || "").toLowerCase().startsWith("de")) currentLang = "de";
 
 function setLang(l){
   currentLang = l;
-
-  document.getElementById("langDE").classList.toggle("active", l==="de");
-  document.getElementById("langEN").classList.toggle("active", l==="en");
+  document.getElementById("langDE").classList.toggle("active", l === "de");
+  document.getElementById("langEN").classList.toggle("active", l === "en");
 
   const t = TEXT[l];
-  document.getElementById("tH1").textContent = t.h1;
-  document.getElementById("tLead").textContent = t.lead;
-  document.getElementById("tNote").textContent = t.note;
-  document.getElementById("tPer").textContent = t.per;
-  document.getElementById("tPerHint").textContent = t.perHint;
-
-  btnContinue.textContent = t.btn;
-  btnLogin.textContent = t.login;
-
-  document.getElementById("tPrepaidTitle").textContent = t.prepaidTitle;
-  document.getElementById("tPrepaidHint").textContent = t.prepaidHint;
-
-  // NEW: same label under each amount
-  document.getElementById("tSophieTime").textContent = t.sophieTime;
-  document.getElementById("tSophieTime2").textContent = t.sophieTime;
-  document.getElementById("tSophieTime3").textContent = t.sophieTime;
-
-  document.getElementById("tLegal1").innerHTML = t.legal1;
-  document.getElementById("tLegal2").innerHTML = t.legal2;
-  document.getElementById("tPrivacy").textContent = t.privacy;
-  document.getElementById("backBtn").textContent = l === "de" ? "← Zurück" : "← Back";
-
+  document.getElementById("tH1").textContent          = t.h1;
+  document.getElementById("tLead").textContent         = t.lead;
+  document.getElementById("tAboBadge").textContent     = t.aboBadge;
+  document.getElementById("tAboName").textContent      = t.aboName;
+  document.getElementById("tAboPer").textContent       = t.aboPer;
+  document.getElementById("tAboSub").textContent       = t.aboSub;
+  btnAbo.textContent                                   = t.aboBtn;
+  document.getElementById("tTopup5Badge").textContent  = t.topup5Badge;
+  document.getElementById("tTopup5Name").textContent   = t.topup5Name;
+  document.getElementById("tTopup5Sub").textContent    = t.topup5Sub;
+  btnTopup5.textContent                                = t.topup5Btn;
+  document.getElementById("tMoreTime").textContent     = t.moreTime;
+  document.getElementById("tSophieTime10").textContent = t.sophieTime;
+  document.getElementById("tSophieTime20").textContent = t.sophieTime;
+  document.getElementById("tLegal1").innerHTML         = t.legal1;
+  document.getElementById("tLegal2").innerHTML         = t.legal2;
+  document.getElementById("tPrivacy").textContent      = t.privacy;
+  document.getElementById("tLoginHint").textContent    = t.loginHint;
+  btnLogin.textContent                                 = t.loginLink;
+  document.getElementById("backBtn").textContent       = l === "de" ? "← Zurück" : "← Back";
   updateEnabled();
 }
 
 document.getElementById("langDE").onclick = () => setLang("de");
 document.getElementById("langEN").onclick = () => setLang("en");
 
-document.getElementById("backBtn").addEventListener("click", (e) => {
+document.getElementById("backBtn").addEventListener("click", e => {
   e.preventDefault();
   if (history.length > 1) { history.back(); } else { window.location.href = "/"; }
 });
 
 function updateEnabled(){
-  const ok = (c1.checked && c2.checked);
-  btnContinue.disabled = !ok;
-
-  topup5.disabled = !ok;
-  topup10.disabled = !ok;
-  topup20.disabled = !ok;
+  const ok = c1.checked && c2.checked;
+  btnAbo.disabled     = !ok;
+  btnTopup5.disabled  = !ok;
+  btnTopup10.disabled = !ok;
+  btnTopup20.disabled = !ok;
 }
 c1.onchange = updateEnabled;
 c2.onchange = updateEnabled;
@@ -442,132 +472,68 @@ function goLogin(){
   const redirect = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `/login/?redirect=${redirect}`;
 }
-
 btnLogin.onclick = goLogin;
 
 async function getTokenOrLogin(){
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    goLogin();
-    return null;
-  }
+  if (!session?.access_token) { goLogin(); return null; }
   return session.access_token;
 }
 
+function legalPayload(){
+  return { termsAccepted:true, privacyAccepted:true, waiverAccepted:true, lang:currentLang, at:new Date().toISOString() };
+}
+
+function setAllDisabled(v){ btnAbo.disabled = btnTopup5.disabled = btnTopup10.disabled = btnTopup20.disabled = v; }
+
 async function startCheckout(){
   msg.textContent = "";
-
-  if (!(c1.checked && c2.checked)) {
-    msg.textContent = TEXT[currentLang].legalMissing;
-    return;
-  }
-
-  btnContinue.disabled = true;
-  btnContinue.textContent = TEXT[currentLang].loading;
-
+  if (!(c1.checked && c2.checked)){ msg.textContent = TEXT[currentLang].legalMissing; return; }
+  setAllDisabled(true);
+  const prev = btnAbo.textContent;
+  btnAbo.textContent = TEXT[currentLang].loading;
   try {
-    const token = await getTokenOrLogin();
-    if (!token) return;
-
+    const token = await getTokenOrLogin(); if (!token) return;
     const res = await fetch("/api/billing?action=checkout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        plan: "plus",
-        legal: {
-          termsAccepted: true,
-          privacyAccepted: true,
-          waiverAccepted: true,
-          lang: currentLang,
-          at: new Date().toISOString()
-        }
-      }),
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+      body:JSON.stringify({ plan:"plus", legal:legalPayload() }),
     });
-
     const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || !data?.url) {
-      msg.textContent = (data?.error ? `Error: ${data.error}` : TEXT[currentLang].checkoutError);
-      return;
-    }
-
+    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : TEXT[currentLang].checkoutErr; return; }
     window.location.href = data.url;
-
-  } catch (e) {
-    msg.textContent = TEXT[currentLang].checkoutError;
-  } finally {
-    btnContinue.textContent = TEXT[currentLang].btn;
-    updateEnabled();
-  }
+  } catch { msg.textContent = TEXT[currentLang].checkoutErr; }
+  finally { btnAbo.textContent = prev; updateEnabled(); }
 }
 
 async function startTopup(pack){
   msg.textContent = "";
-
-  if (!(c1.checked && c2.checked)) {
-    msg.textContent = TEXT[currentLang].legalMissing;
-    return;
-  }
-
-  const t = TEXT[currentLang];
-  topup5.disabled = true; topup10.disabled = true; topup20.disabled = true;
-  btnContinue.disabled = true;
-  msg.textContent = t.topupLoading;
-
+  if (!(c1.checked && c2.checked)){ msg.textContent = TEXT[currentLang].legalMissing; return; }
+  setAllDisabled(true);
+  msg.textContent = currentLang === "de" ? "Checkout wird geöffnet…" : "Opening checkout…";
   try {
-    const token = await getTokenOrLogin();
-    if (!token) return;
-
+    const token = await getTokenOrLogin(); if (!token) return;
     const res = await fetch("/api/billing?action=topup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        pack,
-        legal: {
-          termsAccepted: true,
-          privacyAccepted: true,
-          waiverAccepted: true,
-          lang: currentLang,
-          at: new Date().toISOString()
-        }
-      }),
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+      body:JSON.stringify({ pack, legal:legalPayload() }),
     });
-
     const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || !data?.url) {
-      msg.textContent = (data?.error ? `Error: ${data.error}` : t.topupError);
-      return;
-    }
-
+    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : TEXT[currentLang].topupErr; return; }
     window.location.href = data.url;
-
-  } catch (e) {
-    msg.textContent = t.topupError;
-  } finally {
-    msg.textContent = "";
-    updateEnabled();
-  }
+  } catch { msg.textContent = TEXT[currentLang].topupErr; }
+  finally { msg.textContent = ""; updateEnabled(); }
 }
 
-btnContinue.onclick = startCheckout;
-topup5.onclick = () => startTopup(5);
-topup10.onclick = () => startTopup(10);
-topup20.onclick = () => startTopup(20);
+btnAbo.onclick     = startCheckout;
+btnTopup5.onclick  = () => startTopup(5);
+btnTopup10.onclick = () => startTopup(10);
+btnTopup20.onclick = () => startTopup(20);
 
 (async function init(){
   setLang(currentLang);
-
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    btnLogin.style.display = "none";
-  }
+  if (!session?.access_token) loginHint.style.display = "block";
 })();
 </script>
 

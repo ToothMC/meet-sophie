@@ -152,8 +152,37 @@ body{
 
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
-.status{ margin-bottom:10px; opacity:.88; }
+.status{ margin-bottom:6px; opacity:.88; }
+.mode-indicator{
+  font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  margin-bottom:12px;opacity:0;transition:opacity .4s ease;
+}
+.mode-indicator.visible{ opacity:.55; }
+.mode-indicator[data-mode="explorer"]{ color:#3f8cff; }
+.mode-indicator[data-mode="reflect"]{ color:#a78bfa; }
+.mode-indicator[data-mode="decide"]{ color:#f5c842; }
+.mode-indicator[data-mode="relax"]{ color:#34d399; }
+.mode-indicator[data-mode="brainstorm"]{ color:#f5c842; }
+.mode-indicator[data-mode="meeting"]{ color:#34c47a; }
+.mode-indicator[data-mode="salespitch"]{ color:#ff5252; }
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
+
+.mode-bar{
+  display:flex;justify-content:center;gap:8px;
+  margin-bottom:18px;
+}
+.mode-pill{
+  font-size:13px;font-weight:500;padding:6px 16px;
+  border-radius:20px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);
+  cursor:pointer;transition:all .15s;letter-spacing:.01em;
+  font-family:inherit;
+}
+.mode-pill:hover{ border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.82) }
+.mode-pill.active{
+  background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.45);
+  color:#fff;
+}
 
 .live-badge{
   display:none;
@@ -741,6 +770,7 @@ body{
 <div class="wrap" style="display:none">
   <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Whenever you're ready.</div>
+  <div class="mode-indicator" id="modeIndicator" aria-hidden="true"></div>
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
     <span class="live-text">LIVE</span>
@@ -752,6 +782,11 @@ body{
     <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
   </div>
 
+  <div class="mode-bar" id="modeBar">
+    <button class="mode-pill" data-mode="brainstorm">✦ Brainstorm</button>
+    <button class="mode-pill" data-mode="meeting">◉ Meeting</button>
+    <button class="mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
+  </div>
   <button id="start" class="btn">Start conversation</button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 </div>
@@ -981,7 +1016,8 @@ async function sendMemoryUpdate(secondsUsed) {
         seconds_used: secondsUsed,
         session_started_at: startedAtIso,
         session_ended_at: endedAtIso,
-        session_id: sessionId
+        session_id: sessionId,
+        session_mode: selectedVoiceMode || null
       }),
       keepalive: true,
     });
@@ -1006,6 +1042,49 @@ async function sendMemoryUpdate(secondsUsed) {
 
 const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
+
+let selectedVoiceMode = null;
+
+// Mode pill toggle (voice page)
+document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const mode = btn.dataset.mode;
+    if (selectedVoiceMode === mode) {
+      selectedVoiceMode = null;
+      btn.classList.remove("active");
+      localStorage.removeItem("sophie_session_mode");
+    } else {
+      selectedVoiceMode = mode;
+      document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      localStorage.setItem("sophie_session_mode", mode);
+    }
+  });
+});
+
+// Pre-select mode from funnel handover or localStorage
+(function() {
+  // 1. Check funnel handover (chat qualification)
+  const handoverRaw = sessionStorage.getItem("SOPHIE_HANDOVER") || localStorage.getItem("SOPHIE_HANDOVER_PERSIST");
+  if (handoverRaw) {
+    try {
+      const ho = JSON.parse(handoverRaw);
+      if (ho.funnelMode && ho.funnelMode !== "talk" && ["brainstorm", "meeting", "salespitch"].includes(ho.funnelMode)) {
+        selectedVoiceMode = ho.funnelMode;
+        const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${ho.funnelMode}"]`);
+        if (pill) pill.classList.add("active");
+        return; // funnel mode takes priority
+      }
+    } catch(_) {}
+  }
+  // 2. Fallback: localStorage (manual selection or funnel-set)
+  const stored = localStorage.getItem("sophie_session_mode");
+  if (stored && ["brainstorm", "meeting", "salespitch"].includes(stored)) {
+    selectedVoiceMode = stored;
+    const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
+    if (pill) pill.classList.add("active");
+  }
+})();
 const statusEl = document.getElementById("status");
 const timerEl  = document.getElementById("timer");
 const headline = document.getElementById("headline");
@@ -1063,6 +1142,7 @@ let pc = null;
 let stream = null;
 let audioEl = null;
 let dc = null;
+// selectedVoiceMode declared above (before mode-pill handlers)
 
 let convoLog = [];
 let partialAssistant = "";
@@ -1094,6 +1174,7 @@ let closingResponseExpected = false;
 let closingResponseActive = false; // true only while OUR closing response is playing
 let closingResponseId = null; // ID of our closing response — prevents cancelled responses from triggering session end
 let endCleanlyAfterResponse = false; // Sophie was mid-sentence at 22s — just end after she finishes
+let pitchReportSignaled = false;    // Sales Pitch: Sophie announced report → end call after response
 
 let hasUserSpoken = false;
 
@@ -1147,8 +1228,12 @@ const _i18n = {
   sophie_listening:   { en: "Sophie is listening.",           de: "Sophie hört zu.",                   fr: "Sophie écoute." },
   sophie_waiting:     { en: "Sophie is waiting.",             de: "Sophie wartet.",                    fr: "Sophie attend." },
   tap_to_start:       { en: "Tap the button to start.",      de: "Tippe auf den Button, um zu starten.", fr: "Appuie sur le bouton pour commencer." },
-  report_title:       { en: "Your Thinking Report",          de: "Dein Thinking Report",              fr: "Ton Thinking Report" },
-  creating_report:    { en: "Creating your Thinking Report …", de: "Dein Thinking Report wird erstellt …", fr: "Création de ton Thinking Report …" },
+  report_title:       { en: "Your Thinking Report",          de: "Dein Denkbericht",                  fr: "Ton rapport de réflexion" },
+  creating_report:    { en: "Creating your Thinking Report …", de: "Dein Bericht wird erstellt …",       fr: "Création de ton rapport …" },
+  report_title_pitch: { en: "Your Sales Pitch Report",       de: "Dein Sales Pitch Report",            fr: "Ton rapport Sales Pitch" },
+  creating_report_pitch: { en: "Creating your Pitch Report …", de: "Dein Pitch Report wird erstellt …",  fr: "Création de ton rapport Pitch …" },
+  report_title_brainstorm: { en: "Your Brainstorming Report",  de: "Dein Brainstorming Bericht",         fr: "Ton rapport de brainstorming" },
+  report_title_meeting:    { en: "Your Meeting Report",        de: "Dein Meeting Bericht",               fr: "Ton rapport de réunion" },
   session_ended:      { en: "Your session has ended.",       de: "Deine Sitzung ist beendet.",        fr: "Ta session est terminée." },
   new_session:        { en: "New session",                   de: "Neue Sitzung starten",              fr: "Nouvelle session" },
   close:              { en: "Close",                         de: "Schließen",                         fr: "Fermer" },
@@ -1255,6 +1340,17 @@ function dcSend(obj) {
 
 function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
+
+const modeIndicatorEl = document.getElementById("modeIndicator");
+const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", relax: "◆ Relax", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
+function updateModeIndicator(mode) {
+  if (!modeIndicatorEl) return;
+  if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
+  modeIndicatorEl.textContent = modeIndicatorLabels[mode] || ("◆ " + mode);
+  modeIndicatorEl.dataset.mode = mode;
+  modeIndicatorEl.classList.add("visible");
+}
+function clearModeIndicator() { updateModeIndicator(null); }
 
 function showReadyStatus() {
   statusEl.textContent = t("ready");
@@ -1772,16 +1868,117 @@ function showTranscriptView() {
   showSummaryBtn.classList.remove("active");
 }
 
+function renderSalesPitchReportHtml(report) {
+  if (!report) return "";
+
+  const scoreColor = (s) => s >= 4 ? "#4a8c5c" : s >= 3 ? "#b89a5a" : "#b85a4a";
+  const lang = _uiLang || "en";
+  const L = {
+    overallScore:    lang === "de" ? "Gesamtscore" : "Overall Score",
+    confidence:      lang === "de" ? "Konfidenz" : "Confidence",
+    strengths:       lang === "de" ? "Stärken" : "Strongest Elements",
+    weaknesses:      lang === "de" ? "Schwächen" : "Main Weaknesses",
+    audienceQ:       lang === "de" ? "Wahrscheinliche Publikumsfragen" : "Likely Audience Questions",
+    priorities:      lang === "de" ? "Verbesserungsprioritäten" : "Improvement Priorities",
+    nextFocus:       lang === "de" ? "Fokus nächster Versuch" : "Next Attempt Focus",
+  };
+
+  let html = "";
+
+  // Context pill
+  const ctxParts = [report.audience_type, report.pitch_goal, report.pitch_topic].filter(Boolean);
+  if (ctxParts.length) {
+    html += `<div style="margin-bottom:20px;font-size:13px;color:#a09080;letter-spacing:0.01em;">${ctxParts.join(" · ")}</div>`;
+  }
+
+  // Overall verdict
+  if (report.overall_verdict) {
+    html += `<p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#3a3028;">${report.overall_verdict}</p>`;
+  }
+
+  // Scorecard card
+  if (report.scorecard?.length) {
+    html += `<div style="background:rgba(0,0,0,0.025);border:1px solid #ede8e2;border-radius:16px;padding:20px;margin-bottom:28px;">`;
+    report.scorecard.forEach((item, i) => {
+      const pct = (item.score / 5) * 100;
+      const isLast = i === report.scorecard.length - 1;
+      html += `<div style="margin-bottom:${isLast ? '0' : '16px'};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:15px;font-weight:600;color:#1a1210;">${item.criterion}</span>
+          <span style="font-weight:700;font-size:15px;color:${scoreColor(item.score)};">${item.score}/5</span>
+        </div>
+        <div style="background:#ede8e2;border-radius:6px;height:7px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${scoreColor(item.score)};border-radius:6px;transition:width 0.4s ease;"></div>
+        </div>
+        <div style="font-size:13px;line-height:1.5;color:#8a7a6a;margin-top:4px;">${item.note}</div>
+      </div>`;
+    });
+    // Overall score footer
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #ede8e2;margin-top:20px;">
+      <span style="font-weight:700;font-size:14px;color:#1a1210;letter-spacing:0.02em;">${L.overallScore}</span>
+      <span style="font-weight:800;font-size:22px;color:${scoreColor(report.overall_score)};">${report.overall_score?.toFixed?.(1) || report.overall_score}<span style="font-size:14px;font-weight:500;color:#a09080;">/5.0</span></span>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#b0a090;margin-top:2px;letter-spacing:0.04em;">${L.confidence}: ${report.confidence_level}</div>
+    </div>`;
+  }
+
+  // Strengths section
+  if (report.strongest_elements?.length) {
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading" style="color:#4a8c5c;">${L.strengths}</h4>`;
+    html += `<ul class="report-insight-list">`;
+    report.strongest_elements.forEach((s) => { html += `<li>${s}</li>`; });
+    html += `</ul></section>`;
+  }
+
+  // Weaknesses section
+  if (report.main_weaknesses?.length) {
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading" style="color:#b85a4a;">${L.weaknesses}</h4>`;
+    html += `<ul class="report-insight-list">`;
+    report.main_weaknesses.forEach((w) => { html += `<li>${w}</li>`; });
+    html += `</ul></section>`;
+  }
+
+  // Audience questions section
+  if (report.likely_audience_questions?.length) {
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading">${L.audienceQ}</h4>`;
+    html += `<ul class="report-insight-list">`;
+    report.likely_audience_questions.forEach((q) => { html += `<li>${q}</li>`; });
+    html += `</ul></section>`;
+  }
+
+  // Improvement priorities section
+  if (report.improvement_priorities?.length) {
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading">${L.priorities}</h4>`;
+    report.improvement_priorities.forEach((p, i) => {
+      html += `<div class="report-action-item"><span class="report-action-title">${i + 1}. ${p}</span></div>`;
+    });
+    html += `</section>`;
+  }
+
+  // Next attempt focus box
+  if (report.recommended_next_attempt) {
+    html += `<div style="margin-top:28px;padding:18px 20px;background:rgba(196,168,130,0.08);border:1px solid #ede8e2;border-radius:16px;border-left:3px solid #c4a882;">
+      <div style="font-size:11px;font-weight:700;color:#c4a882;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">${L.nextFocus}</div>
+      <div style="font-size:16px;line-height:1.8;color:#3a3028;">${report.recommended_next_attempt}</div>
+    </div>`;
+  }
+
+  return html;
+}
+
 function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   const triggeredByLimit = !!opts.triggeredByLimit;
+  const pitchReport = apiResult?.output?.sales_pitch_report || null;
 
   const summary =
     apiResult?.output?.short_summary ||
     apiResult?.session?.short_summary ||
     t("no_summary");
 
-  const insights = normalizeInsights(apiResult?.output?.key_insights);
-  const actions = normalizeActions(apiResult?.output?.action_plan);
   const transcriptText = buildTranscriptText(transcriptLog);
 
   const sessionTitle =
@@ -1791,9 +1988,51 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
 
-  postCallSummary.textContent = summary;
-  postCallInsights.innerHTML = renderInsightsHtml(insights);
-  postCallActions.innerHTML = renderActionsHtml(actions);
+  if (pitchReport) {
+    // Sales Pitch Report — custom layout
+    const titleEl = document.querySelector(".postCallTitle");
+    const subtitleEl = document.querySelector(".postCallSubtitle");
+    if (titleEl) titleEl.textContent = t("report_title_pitch");
+    if (subtitleEl) subtitleEl.textContent = pitchReport.pitch_topic || (_uiLang === "de" ? "Deine Pitch-Analyse" : _uiLang === "fr" ? "Ton analyse de pitch" : "Your pitch analysis");
+
+    const headingSummary = document.getElementById("reportHeadingSummary");
+    const headingInsights = document.getElementById("reportHeadingInsights");
+    const headingActions = document.getElementById("reportHeadingActions");
+    if (headingSummary) headingSummary.textContent = _uiLang === "de" ? "Bewertung" : _uiLang === "fr" ? "Évaluation" : "Scorecard";
+    if (headingInsights) headingInsights.style.display = "none";
+    if (headingActions) headingActions.style.display = "none";
+
+    postCallSummary.innerHTML = renderSalesPitchReportHtml(pitchReport);
+    postCallInsights.innerHTML = "";
+    postCallActions.innerHTML = "";
+  } else {
+    // Standard Thinking Report
+    const titleEl = document.querySelector(".postCallTitle");
+    const subtitleEl = document.querySelector(".postCallSubtitle");
+    // Mode-specific report title
+    const modeTitle = selectedVoiceMode === "brainstorm" ? t("report_title_brainstorm")
+                    : selectedVoiceMode === "meeting" ? t("report_title_meeting")
+                    : t("report_title");
+    if (titleEl) titleEl.textContent = modeTitle;
+    if (subtitleEl) subtitleEl.textContent = _uiLang === "de" ? "Eine kurze Zusammenfassung deines Gesprächs mit Sophie."
+      : _uiLang === "fr" ? "Un bref résumé de ta conversation avec Sophie."
+      : "A short summary of your conversation with Sophie.";
+
+    const headingSummary = document.getElementById("reportHeadingSummary");
+    const headingInsights = document.getElementById("reportHeadingInsights");
+    const headingActions = document.getElementById("reportHeadingActions");
+    if (headingSummary) headingSummary.textContent = _uiLang === "de" ? "Zusammenfassung" : _uiLang === "fr" ? "Résumé" : "Summary";
+    if (headingInsights) { headingInsights.textContent = _uiLang === "de" ? "Wichtige Erkenntnisse" : _uiLang === "fr" ? "Points clés" : "Key Insights"; headingInsights.style.display = ""; }
+    if (headingActions) { headingActions.textContent = _uiLang === "de" ? "Nächste Schritte" : _uiLang === "fr" ? "Prochaines étapes" : "Next Steps"; headingActions.style.display = ""; }
+
+    const insights = normalizeInsights(apiResult?.output?.key_insights);
+    const actions = normalizeActions(apiResult?.output?.action_plan);
+
+    postCallSummary.textContent = summary;
+    postCallInsights.innerHTML = renderInsightsHtml(insights);
+    postCallActions.innerHTML = renderActionsHtml(actions);
+  }
+
   postCallTranscript.textContent = transcriptText || t("no_transcript");
 
   configurePostCallCta(triggeredByLimit);
@@ -2062,6 +2301,18 @@ ${(voiceHandover.recentMessages || [])
   try {
     await cancelAnyOngoingResponse();
 
+    // Sales Pitch: ignore handover entirely — start Phase A immediately
+    if (selectedVoiceMode === "salespitch") {
+      await sendWhenChannelOpen({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first. Ask who they are pitching to. No handover context. No prior conversation.`
+        }
+      }, 3000);
+      return;
+    }
+
     await sendWhenChannelOpen({
       type: "response.create",
       response: {
@@ -2307,7 +2558,7 @@ function attachChannel(ch) {
     console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}`);
 
     try {
-      dcSend({
+      const sessionUpdate = {
         type: "session.update",
         session: {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
@@ -2320,7 +2571,37 @@ function attachChannel(ch) {
             interrupt_response: true
           }
         }
-      });
+      };
+      // Add signal_mode tool only for normal conversations (not brainstorm/meeting/salespitch)
+      if (!selectedVoiceMode) {
+        sessionUpdate.session.tools = [{
+          type: "function",
+          name: "signal_mode",
+          description: "Signal the current thinking mode to the UI. Call this silently at the start of every response.",
+          parameters: {
+            type: "object",
+            properties: {
+              mode: { type: "string", enum: ["explorer", "reflect", "decide", "relax"] }
+            },
+            required: ["mode"]
+          }
+        }];
+        sessionUpdate.session.tool_choice = "auto";
+      } else if (selectedVoiceMode === "salespitch") {
+        // signal_pitch_report: Sophie calls this at the end of Phase D to trigger call end + report generation
+        sessionUpdate.session.tools = [{
+          type: "function",
+          name: "signal_pitch_report",
+          description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
+          parameters: { type: "object", properties: {} }
+        }];
+        sessionUpdate.session.tool_choice = "auto";
+        updateModeIndicator(selectedVoiceMode);
+      } else {
+        // Static mode indicator for brainstorm/meeting sessions
+        updateModeIndicator(selectedVoiceMode);
+      }
+      dcSend(sessionUpdate);
       console.log(`[${runId}] [dc] session.update sent`);
     } catch (e) {
       console.log(`[${runId}] [dc] session.update failed`, e);
@@ -2409,6 +2690,36 @@ function attachChannel(ch) {
         // user text is logged via transcription.completed; assistant text via response.audio_transcript.done
       }
 
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_mode") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          if (args.mode) updateModeIndicator(args.mode);
+          // Return function result so Sophie can continue
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (_) {}
+        return;
+      }
+
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_pitch_report") {
+        try {
+          // Acknowledge the function call (required by API) but do NOT send response.create
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
+          }});
+          // Guard: only honour if user has actually pitched (at least 2 user turns = setup answer + pitch)
+          if (hasUserSpoken && convoLog.filter(m => m.role === "user").length >= 2) {
+            pitchReportSignaled = true;
+            console.log(`[${runId}] [salespitch] signal_pitch_report received — ending after audio`);
+          } else {
+            console.log(`[${runId}] [salespitch] signal_pitch_report ignored — too early (user turns: ${convoLog.filter(m => m.role === "user").length})`);
+          }
+        } catch (_) {}
+        return;
+      }
+
       if (msg?.type === "response.audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) {
@@ -2446,6 +2757,14 @@ function attachChannel(ch) {
         }
 
         partialAssistant = "";
+
+        // Sales Pitch: Sophie announced report → end call now (audio already played)
+        if (pitchReportSignaled && !limitTriggered && !softEndFinalizing) {
+          pitchReportSignaled = false;
+          console.log(`[${runId}] [salespitch] ending call after report announcement`);
+          setTimeout(() => { void handleTimeLimitReached(); }, 1500);
+          return;
+        }
 
         // Summary during report phase (fired inside stopVoice) — resolve after transcript saved
         if (window.__summaryDoneResolve) {
@@ -2577,6 +2896,7 @@ async function startVoice(){
   softEndWarningTriggered = false;
   softEndSummaryTriggered = false;
   softEndFinalizing = false;
+  pitchReportSignaled = false;
   resetClosingState();
 
   stopDynamicResets();
@@ -2598,10 +2918,15 @@ async function startVoice(){
       }
     })();
 
+    // Hide mode bar once session starts (can't change mid-call)
+    const modeBarEl = document.getElementById("modeBar");
+    if (modeBarEl) modeBarEl.style.display = "none";
+
     const tokenRes = await fetch("/api/session", {
       headers: {
         Authorization: `Bearer ${session.access_token}`,
-        ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {})
+        ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
+        ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {})
       }
     });
 
@@ -2859,6 +3184,7 @@ async function startVoice(){
 }
 
 async function stopVoice(triggeredByLimit = false){
+  clearModeIndicator();
   endBtn.disabled = true;
   startBtn.disabled = true;
   logoutBtn.disabled = true;
@@ -2868,7 +3194,7 @@ async function stopVoice(triggeredByLimit = false){
   clearClosingTimers();
   showLiveBadge(false);
 
-  headline.textContent = t("creating_report");
+  headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
   setStatus(t("wrapping_up"));
   setSoftHint("");
   timerEl.style.display = "none";
