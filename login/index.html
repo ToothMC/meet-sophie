@@ -228,7 +228,6 @@
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      await ensureUserMemoryRow(user.id);
       await ensureUserUsageRow(user.id);
       await ensureUserRelationshipRow(user.id);
 
