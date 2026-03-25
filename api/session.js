@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
-    const sessionMode = ["brainstorm", "meeting"].includes(rawSessionMode) ? rawSessionMode : null;
+    const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
 
     // ---------------------------
     // Session ending config
