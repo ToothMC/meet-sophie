@@ -602,10 +602,12 @@ async function createMeeting() {
   btn.disabled = true;
 
   try {
+    const parentVal = $("parentMeeting").value || null;
     const data = await api("create", {
       meeting_type: $("meetingType").value,
       sophie_role: $("sophieRole").value,
       title: $("meetingTitle").value.trim() || null,
+      parent_meeting_id: parentVal,
     });
 
     meetingId = data.meeting.id;
