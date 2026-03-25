@@ -11,6 +11,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
 // Auth helpers (shared with chat.js)
