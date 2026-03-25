@@ -2016,40 +2016,64 @@
 
       const QUICK_LABELS = {
         en: {
-          talk:       { msg: "Great that you want to start right away!", pill: "Talk with Sophie", icon: "🎙" },
-          brainstorm: { msg: "Great — let's brainstorm!", pill: "Start Brainstorming", icon: "💡" },
-          meeting:    { msg: "Great — let's prepare your meeting!", pill: "Start Meeting Mode", icon: "📋" },
-          salespitch: { msg: "Great — let's train your pitch!", pill: "Start Pitch Training", icon: "🎯" },
+          talk:       { pill: "Talk with Sophie", icon: "🎙" },
+          brainstorm: { pill: "Start Brainstorming", icon: "💡" },
+          meeting:    { pill: "Start Meeting Mode", icon: "📋" },
+          salespitch: { pill: "Start Pitch Training", icon: "🎯" },
         },
         de: {
-          talk:       { msg: "Schön, dass du direkt starten willst!", pill: "Mit Sophie sprechen", icon: "🎙" },
-          brainstorm: { msg: "Super — lass uns brainstormen!", pill: "Brainstorming starten", icon: "💡" },
-          meeting:    { msg: "Super — lass uns dein Meeting vorbereiten!", pill: "Meeting-Modus starten", icon: "📋" },
-          salespitch: { msg: "Super — lass uns deinen Pitch trainieren!", pill: "Pitch-Training starten", icon: "🎯" },
+          talk:       { pill: "Sprich mit Sophie", icon: "🎙" },
+          brainstorm: { pill: "Brainstorming starten", icon: "💡" },
+          meeting:    { pill: "Meeting-Modus starten", icon: "📋" },
+          salespitch: { pill: "Pitch-Training starten", icon: "🎯" },
         },
         fr: {
-          talk:       { msg: "Super que tu veuilles commencer tout de suite !", pill: "Parler avec Sophie", icon: "🎙" },
-          brainstorm: { msg: "Super — lançons le brainstorming !", pill: "Lancer le brainstorming", icon: "💡" },
-          meeting:    { msg: "Super — préparons ta réunion !", pill: "Mode réunion", icon: "📋" },
-          salespitch: { msg: "Super — entraînons ton pitch !", pill: "Entraînement pitch", icon: "🎯" },
+          talk:       { pill: "Parler avec Sophie", icon: "🎙" },
+          brainstorm: { pill: "Lancer le brainstorming", icon: "💡" },
+          meeting:    { pill: "Mode réunion", icon: "📋" },
+          salespitch: { pill: "Entraînement pitch", icon: "🎯" },
         },
+      };
+      const QUICK_MSG = {
+        en: "Great that you want to start right away!",
+        de: "Schön, dass du direkt loslegen möchtest!",
+        fr: "Super que tu veuilles commencer tout de suite !",
       };
 
       const labels = (QUICK_LABELS[currentLang] || QUICK_LABELS.en)[mode] || (QUICK_LABELS[currentLang] || QUICK_LABELS.en).talk;
+      const msg = QUICK_MSG[currentLang] || QUICK_MSG.en;
 
-      // Clear any existing chat and show quick-start
+      // Map mode to session mode + button class
+      const SESSION_MODE_MAP = {
+        brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
+        talk: "talk"
+      };
+      const sessionMode = SESSION_MODE_MAP[mode] || "talk";
+      const btnClass = ["brainstorm", "meeting", "salespitch"].includes(sessionMode)
+        ? `chat-voice-btn mode-${sessionMode}` : "chat-voice-btn";
+
+      // Clear any existing chat
       if (messagesEl) messagesEl.innerHTML = "";
       history = [];
 
-      // Sophie's quick-start message
-      appendBubble("sophie", labels.msg);
-      history.push({ role: "assistant", content: labels.msg });
+      // 1. Mode confirmation pill (non-clickable)
+      const pillWrap = document.createElement("div");
+      pillWrap.className = "chat-msg sophie";
+      const pillEl = document.createElement("div");
+      pillEl.className = "chat-voice-cta";
+      pillEl.innerHTML = `<span class="${btnClass}" style="display:inline-block;cursor:default;pointer-events:none">${labels.icon} ${labels.pill}</span>`;
+      pillWrap.appendChild(pillEl);
+      messagesEl.appendChild(pillWrap);
 
-      // Mode-specific colored CTA pill
+      // 2. Sophie's confirmation message
+      appendBubble("sophie", msg);
+      history.push({ role: "assistant", content: msg });
+
+      // 3. Set mode state + show email capture directly
       funnelVoiceOffered = true;
       localStorage.setItem("sophie_detected_mode", mode);
       if (mode !== "talk") setFunnelMode(mode);
-      showInlineVoiceCTA(mode);
+      showInlineEmailCapture(mode);
     }
 
     // Close foreground: back button or backdrop click
