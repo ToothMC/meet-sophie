@@ -2629,9 +2629,10 @@
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
         btn.disabled = true;
+        const modeForAuth = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuth) }
         });
         if (!error) {
           wrap.remove();
