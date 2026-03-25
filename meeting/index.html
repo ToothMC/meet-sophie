@@ -1092,6 +1092,20 @@ $("contextToggle").addEventListener("click", () => {
   contextPanel.classList.toggle("collapsed");
 });
 
+// Delete meeting
+window.deleteMeeting = async function(id, btn) {
+  const confirmMsg = lang === "de" ? "Meeting wirklich löschen?" : lang === "fr" ? "Supprimer ce meeting ?" : "Delete this meeting?";
+  if (!confirm(confirmMsg)) return;
+  btn.disabled = true;
+  try {
+    await api("delete", { meeting_id: id });
+    btn.closest("div").remove();
+  } catch (e) {
+    alert("Error: " + e.message);
+    btn.disabled = false;
+  }
+};
+
 // File upload handlers
 $("uploadArea").addEventListener("click", () => $("fileInput").click());
 $("fileInput").addEventListener("change", (e) => {
