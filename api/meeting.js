@@ -250,10 +250,13 @@ async function handleContext(req, res) {
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
+  const insertData = { meeting_id, context_type, content: content.trim() };
+  if (body.file_path) insertData.file_path = body.file_path;
+
   const { data, error } = await supabase
     .from("meeting_context")
-    .insert({ meeting_id, context_type, content: content.trim() })
-    .select("id, context_type, created_at")
+    .insert(insertData)
+    .select("id, context_type, file_path, created_at")
     .single();
 
   if (error) {
