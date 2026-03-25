@@ -461,6 +461,8 @@ let isLoading = false;
 let liveStartTime = null;
 let liveTimerInterval = null;
 let sophieMuted = true; // Sophie starts muted (passive listener)
+let sophieAudio = null; // Current audio element for TTS
+let isSpeaking = false;
 
 // ---------------------------------------------------------------------------
 // DOM refs
