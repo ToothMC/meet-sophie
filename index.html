@@ -2000,6 +2000,12 @@
       // Restore hero CTA button
       const btn = document.getElementById("hero-btn-primary");
       if (btn) btn.style.display = "";
+
+      // Reset mode back to Talk (primary mode)
+      selectedChatMode = null;
+      setFunnelMode(null);
+      applyHeroMode(null);
+      document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
     }
 
     if (heroCta) {
