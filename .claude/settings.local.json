@@ -60,7 +60,8 @@
       "Bash(grep -r \"STRIPE_PRICE\\\\|STRIPE_PRODUCT\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.env*)",
       "Bash(git merge:*)",
       "Bash(node -e \":*)",
-      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")"
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(npx --yes vercel --version)"
     ]
   },
   "hooks": {
