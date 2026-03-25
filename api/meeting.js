@@ -110,19 +110,36 @@ async function extractFileContent(supabase, filePath) {
       }
     }
 
-    // PDF/DOCX/PPTX: read as text where possible, otherwise describe
+    // DOCX: extract with mammoth
+    if (ext === "docx") {
+      try {
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        const result = await mammoth.extractRawText({ buffer });
+        const text = (result.value || "").trim();
+        if (text) {
+          return `[DOCX: ${fileName}]\n${text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text}`;
+        }
+      } catch (e) {
+        console.error("DOCX extraction error:", e?.message);
+      }
+      return `[DOCX: ${fileName}] — Could not extract text.`;
+    }
+
+    // PDF: extract readable strings from raw binary
     if (ext === "pdf") {
-      // Try to extract raw text from PDF buffer
       const buffer = await fileData.arrayBuffer();
       const textContent = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-      // Extract readable strings (rough PDF text extraction)
       const readable = textContent.match(/\(([^)]+)\)/g);
       if (readable && readable.length > 5) {
         const extracted = readable.map(s => s.slice(1, -1)).join(" ").slice(0, 8000);
         return `[PDF: ${fileName}]\n${extracted}`;
       }
-      // Fallback: describe the file name
-      return `[PDF: ${fileName}] — Uploaded but text extraction limited. Content available as reference.`;
+      return `[PDF: ${fileName}] — Text extraction limited. Content stored as reference.`;
+    }
+
+    // PPTX: basic reference (full extraction would need separate library)
+    if (ext === "pptx") {
+      return `[PPTX: ${fileName}] — Presentation uploaded for reference.`;
     }
 
     return `[Document: ${fileName}] — Uploaded for reference.`;
