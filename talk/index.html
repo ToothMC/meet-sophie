@@ -1906,7 +1906,7 @@ function renderSalesPitchReportHtml(report) {
   // Strengths section
   if (report.strongest_elements?.length) {
     html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
-    html += `<h4 class="report-heading" style="color:#4a8c5c;">Strongest Elements</h4>`;
+    html += `<h4 class="report-heading" style="color:#4a8c5c;">${L.strengths}</h4>`;
     html += `<ul class="report-insight-list">`;
     report.strongest_elements.forEach((s) => { html += `<li>${s}</li>`; });
     html += `</ul></section>`;
