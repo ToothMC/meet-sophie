@@ -1018,6 +1018,15 @@ const FILE_ICONS = {
 async function uploadFile(file) {
   if (!meetingId) return;
 
+  // Reject Pages files with helpful message
+  if (file.name.endsWith(".pages")) {
+    const pagesMsg = lang === "de"
+      ? "Pages-Dateien werden nicht unterstützt. Bitte als DOCX oder PDF exportieren."
+      : "Pages files are not supported. Please export as DOCX or PDF.";
+    appendSystemMsg("⚠️ " + pagesMsg);
+    return;
+  }
+
   const fileList = $("fileList");
   const itemDiv = document.createElement("div");
   itemDiv.className = "file-item uploading";
