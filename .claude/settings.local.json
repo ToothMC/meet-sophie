@@ -62,7 +62,10 @@
       "Bash(node -e \":*)",
       "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")",
       "Bash(npx --yes vercel --version)",
-      "Bash(sort -t' ' -k2)"
+      "Bash(sort -t' ' -k2)",
+      "Bash(echo $PATH)",
+      "Bash(source ~/.zshrc)",
+      "Read(//opt/homebrew/bin/**)"
     ]
   },
   "hooks": {
