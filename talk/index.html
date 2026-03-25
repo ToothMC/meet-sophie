@@ -2685,8 +2685,13 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
           }});
-          pitchReportSignaled = true;
-          console.log(`[${runId}] [salespitch] signal_pitch_report received — ending after audio`);
+          // Guard: only honour if user has actually pitched (at least 2 user turns = setup answer + pitch)
+          if (hasUserSpoken && convoLog.filter(m => m.role === "user").length >= 2) {
+            pitchReportSignaled = true;
+            console.log(`[${runId}] [salespitch] signal_pitch_report received — ending after audio`);
+          } else {
+            console.log(`[${runId}] [salespitch] signal_pitch_report ignored — too early (user turns: ${convoLog.filter(m => m.role === "user").length})`);
+          }
         } catch (_) {}
         return;
       }
