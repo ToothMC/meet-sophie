@@ -140,7 +140,7 @@ async function handleStart(req, res) {
 
   // Session mode from request body (user-selected via UI)
   const rawSessionMode = String(body.session_mode || "").toLowerCase().trim();
-  const sessionMode = ["brainstorm", "meeting"].includes(rawSessionMode) ? rawSessionMode : null;
+  const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
 
   // Prefer request lang; fall back to profile setting
   let preferredLanguage = ["en", "de", "fr"].includes(lang) ? lang : (profile.preferred_language || "en").toLowerCase().trim();
