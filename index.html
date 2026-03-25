@@ -840,9 +840,18 @@
       padding:12px 14px;
       flex-shrink:0;
     }
+    @media (max-width:820px){
+      .chat-card.foreground{
+        left:50%;
+        transform:translateX(-50%);
+      }
+    }
     @media (max-width:640px){
       .chat-card.foreground{
-        width:calc(100vw - 24px);
+        left:12px;
+        right:12px;
+        transform:none;
+        width:auto;
         min-height:320px;
         max-height:calc(100vh - 80px);
         border-radius:20px;
