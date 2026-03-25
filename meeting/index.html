@@ -938,6 +938,12 @@ function shouldShowHint() {
   return true;
 }
 
+// Check if user is directly addressing Sophie
+function isAddressingSophie(text) {
+  const lower = text.toLowerCase();
+  return /\bsophie\b/.test(lower) || /^@sophie/i.test(lower) || lower.startsWith("hey sophie") || lower.startsWith("sophie,");
+}
+
 async function sendMessage(text, isAutoOpener = false) {
   if (isLoading || !text.trim()) return;
   isLoading = true;
@@ -948,12 +954,36 @@ async function sendMessage(text, isAutoOpener = false) {
   }
   chatMessages.push({ role: "user", content: text });
 
+  // If Sophie is muted in LIVE phase and user is NOT addressing her directly,
+  // just save the note silently (Sophie tracks but doesn't respond)
+  const inLive = meetingData?.phase === "live";
+  if (sophieMuted && inLive && !isAutoOpener && !isAddressingSophie(text)) {
+    // Save as meeting note silently
+    try {
+      await api("note", { meeting_id: meetingId, note_type: "note", content: text });
+    } catch { /* ignore */ }
+    isLoading = false;
+    sendBtn.disabled = false;
+    chatInput.focus();
+    return;
+  }
+
   showTyping();
 
   try {
+    // Add mute state context so Sophie knows her role
+    const muteContext = sophieMuted
+      ? "[SYSTEM: Sophie is muted/passive. Only respond if directly addressed by name.]"
+      : "[SYSTEM: Sophie is unmuted/active participant. Proactively contribute, give hints, track decisions.]";
+
+    const messagesWithContext = [
+      ...chatMessages.slice(0, -1),
+      { role: "user", content: muteContext + "\n" + chatMessages[chatMessages.length - 1].content },
+    ];
+
     const data = await api("message", {
       meeting_id: meetingId,
-      messages: chatMessages,
+      messages: messagesWithContext,
     });
 
     removeTyping();
@@ -961,10 +991,9 @@ async function sendMessage(text, isAutoOpener = false) {
     let reply = data.reply;
 
     // Handle hint throttle: if reply contains a hint but throttle says no, strip it
-    if (data.hint && reply.includes("💡")) {
+    if (data.hint && reply.includes("\ud83d\udca1")) {
       if (!shouldShowHint()) {
-        // Strip the hint line from visible reply
-        reply = reply.replace(/💡[^\n]*/g, "").trim();
+        reply = reply.replace(/\ud83d\udca1[^\n]*/g, "").trim();
       } else {
         lastHintAt = Date.now();
         hintCount++;
