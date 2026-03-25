@@ -2009,6 +2009,9 @@
           chatOriginalParent.appendChild(chatCard);
         }
       }
+      // Restore hero CTA button
+      const btn = document.getElementById("hero-btn-primary");
+      if (btn) btn.style.display = "";
     }
 
     if (heroCta) {
