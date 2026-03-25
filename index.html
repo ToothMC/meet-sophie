@@ -2386,7 +2386,12 @@
       }
       saveVoiceHandover();
       sessionStorage.setItem("FORCE_NEW_CHAT", "1");
-      window.location.href = "/talk";
+      // Meeting mode → dedicated meeting page, all others → talk
+      if (funnelMode === "meeting") {
+        window.location.href = "/meeting/";
+      } else {
+        window.location.href = "/talk";
+      }
     }
 
     function hasDirectVoiceIntent(text = "") {
