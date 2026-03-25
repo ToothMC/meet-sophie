@@ -3073,17 +3073,16 @@
         authBtn.disabled = false;
       }
     });
-    const chatToVoiceCtas = [
-      document.getElementById("chatToVoiceCta"),
-      document.getElementById("hero-btn-primary")
-    ].filter(Boolean);
-
-    chatToVoiceCtas.forEach((cta) => {
-      cta.addEventListener("click", (e) => {
+    // chatToVoiceCta (inside chat card) still triggers voice directly
+    const chatToVoiceBtn = document.getElementById("chatToVoiceCta");
+    if (chatToVoiceBtn) {
+      chatToVoiceBtn.addEventListener("click", (e) => {
         e.preventDefault();
         goToVoiceFromChat();
       });
-    });
+    }
+    // hero-btn-primary now only opens chat foreground (handled above at line ~1963)
+    // — no longer triggers goToVoiceFromChat() directly
 
     // Logo / brand links → force fresh chat on reload
     document.querySelectorAll(".brand, .footer-brand").forEach(link => {
