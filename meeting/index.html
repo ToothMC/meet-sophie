@@ -965,6 +965,60 @@ function renderSummary(summary) {
 }
 
 // ---------------------------------------------------------------------------
+// File Upload
+// ---------------------------------------------------------------------------
+const FILE_ICONS = {
+  "application/pdf": "📄",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "📝",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "📊",
+  "text/plain": "📃",
+  "image/png": "🖼️", "image/jpeg": "🖼️", "image/webp": "🖼️",
+};
+
+async function uploadFile(file) {
+  if (!meetingId) return;
+
+  const fileList = $("fileList");
+  const itemDiv = document.createElement("div");
+  itemDiv.className = "file-item uploading";
+  itemDiv.innerHTML = `<span class="file-icon">${FILE_ICONS[file.type] || "📎"}</span><span class="file-name">${file.name}</span><span class="file-status">...</span>`;
+  fileList.appendChild(itemDiv);
+
+  try {
+    // 1. Upload to Supabase Storage
+    const path = `${meetingId}/${Date.now()}_${file.name}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("meeting-files")
+      .upload(path, file, { contentType: file.type });
+    if (uploadErr) throw uploadErr;
+
+    // 2. Extract text content for TXT files
+    let content = `[File: ${file.name}]`;
+    if (file.type === "text/plain") {
+      content = await file.text();
+      if (content.length > 8000) content = content.slice(0, 8000) + "\n... (truncated)";
+    }
+
+    // 3. Save as meeting_context
+    await api("context", {
+      meeting_id: meetingId,
+      context_type: "file",
+      content,
+      file_path: path,
+    });
+
+    itemDiv.classList.remove("uploading");
+    itemDiv.querySelector(".file-status").textContent = "✓";
+    appendSystemMsg(`${file.name} ${t("uploadDone").toLowerCase()}`);
+  } catch (e) {
+    itemDiv.classList.remove("uploading");
+    itemDiv.querySelector(".file-status").textContent = "✗";
+    itemDiv.querySelector(".file-status").style.color = "#ff5a5a";
+    console.error("Upload error:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Event Listeners
 // ---------------------------------------------------------------------------
 $("createBtn").addEventListener("click", createMeeting);
