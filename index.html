@@ -804,26 +804,15 @@
     body.chat-foreground-active .chat-foreground-backdrop{ display:block; }
 
     .chat-card.foreground{
-      position:fixed !important;
-      left:50% !important;
-      bottom:24px !important;
-      top:auto !important;
-      transform:translateX(-50%) !important;
-      width:380px !important;
-      height:auto !important;
-      min-height:280px;
-      max-width:calc(100vw - 32px) !important;
-      max-height:calc(100vh - 80px) !important;
-      z-index:10000 !important;
+      width:400px;
+      height:auto;
+      min-height:360px;
+      max-height:calc(100vh - 80px);
+      z-index:10000;
       border-radius:24px;
-      background:rgba(10,12,19,.32) !important;
-      backdrop-filter:blur(16px) !important;
-      -webkit-backdrop-filter:blur(16px) !important;
-      border:1px solid rgba(255,255,255,.08) !important;
-      box-shadow:0 14px 34px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.02);
-      overflow:hidden !important;
-      display:flex !important;
-      flex-direction:column !important;
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      box-shadow:0 20px 50px rgba(0,0,0,.30), 0 0 0 1px rgba(255,255,255,.04);
     }
     .chat-card.foreground .chat-back-btn{
       display:flex !important;
