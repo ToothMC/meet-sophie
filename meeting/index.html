@@ -1197,7 +1197,7 @@ function updateParticipantsBar() {
 // ---------------------------------------------------------------------------
 // Mute/Unmute Sophie
 // ---------------------------------------------------------------------------
-function toggleSophieMute() {
+async function toggleSophieMute() {
   sophieMuted = !sophieMuted;
   muteToggle.classList.toggle("active", !sophieMuted);
   updateParticipantsBar();
@@ -1205,15 +1205,31 @@ function toggleSophieMute() {
   const statusMsg = sophieMuted ? t("sophieMuted") : t("sophieActive");
   appendSystemMsg(statusMsg);
 
-  // When unmuting, Sophie proactively checks in
+  // When unmuting in LIVE phase, Sophie actively joins — send a real API call
   if (!sophieMuted && meetingData?.phase === "live") {
-    const checkInMsg = lang === "de"
-      ? "Sophie ist jetzt aktiv im Meeting. Ich höre mit und melde mich wenn mir etwas auffällt."
+    const joinPrompt = lang === "de"
+      ? "[SYSTEM: Sophie wurde gerade ins Meeting geholt (unmuted). Begrüße kurz, fasse den bisherigen Stand zusammen (NUR was tatsächlich besprochen wurde), und frage ob du bei etwas helfen kannst. ERFINDE NICHTS.]"
       : lang === "fr"
-      ? "Sophie est maintenant active. J'\u00e9coute et je me manifeste si quelque chose m'interpelle."
-      : "Sophie is now active in the meeting. I'm listening and will speak up if I notice something.";
-    appendMsg("assistant", checkInMsg);
-    chatMessages.push({ role: "assistant", content: checkInMsg });
+      ? "[SYSTEM: Sophie vient d'être activée. Résume brièvement ce qui a été discuté (UNIQUEMENT le contenu réel), et demande comment tu peux aider.]"
+      : "[SYSTEM: Sophie was just unmuted and joined the meeting. Briefly summarize what has been discussed so far (ONLY actual content), and ask how you can help. DO NOT INVENT ANYTHING.]";
+
+    chatMessages.push({ role: "user", content: joinPrompt });
+    showTyping();
+
+    try {
+      const data = await api("message", {
+        meeting_id: meetingId,
+        messages: chatMessages,
+      });
+      removeTyping();
+      if (data.reply) {
+        appendMsg("assistant", data.reply);
+        chatMessages.push({ role: "assistant", content: data.reply });
+      }
+    } catch (e) {
+      removeTyping();
+      appendSystemMsg("Error: " + e.message);
+    }
   }
 }
 
