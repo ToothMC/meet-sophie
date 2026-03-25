@@ -777,10 +777,26 @@ async function transitionPhase(newPhase) {
     const data = await api("phase", { meeting_id: meetingId, phase: newPhase });
     meetingData = { ...meetingData, ...data.meeting };
     updatePhaseUI(newPhase);
-    appendSystemMsg(lang === "de"
-      ? `Phase gewechselt: ${newPhase.toUpperCase()}`
-      : `Phase changed: ${newPhase.toUpperCase()}`
-    );
+    // Phase info messages
+    const PHASE_INFO = {
+      de: {
+        live: "🟢 LIVE — Schreib mir was im Meeting passiert. Ich höre mit, strukturiere mit und gebe dir Hinweise wenn nötig.",
+        post: "📝 NACHBEREITUNG — Ich erstelle jetzt die Zusammenfassung...",
+        closed: "✅ Meeting abgeschlossen.",
+      },
+      en: {
+        live: "🟢 LIVE — Tell me what's happening in the meeting. I'll listen, structure, and give you hints when needed.",
+        post: "📝 POST — Generating your meeting summary...",
+        closed: "✅ Meeting closed.",
+      },
+      fr: {
+        live: "🟢 LIVE — Dis-moi ce qui se passe en réunion. J'écoute, structure et te donne des indices si nécessaire.",
+        post: "📝 POST — Je génère le résumé...",
+        closed: "✅ Réunion terminée.",
+      },
+    };
+    const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
+    if (phaseInfo) appendSystemMsg(phaseInfo);
 
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
