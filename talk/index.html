@@ -2704,6 +2704,14 @@ function attachChannel(ch) {
 
         partialAssistant = "";
 
+        // Sales Pitch: Sophie announced report → end call now (audio already played)
+        if (pitchReportSignaled && !limitTriggered && !softEndFinalizing) {
+          pitchReportSignaled = false;
+          console.log(`[${runId}] [salespitch] ending call after report announcement`);
+          setTimeout(() => { void handleTimeLimitReached(); }, 1500);
+          return;
+        }
+
         // Summary during report phase (fired inside stopVoice) — resolve after transcript saved
         if (window.__summaryDoneResolve) {
           console.log(`[${runId}] [softend] summary response.done during report phase`);
