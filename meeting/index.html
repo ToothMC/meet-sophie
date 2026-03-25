@@ -1014,8 +1014,6 @@ async function sendMessage(text, isAutoOpener = false) {
     if (reply) {
       appendMsg("assistant", reply);
       chatMessages.push({ role: "assistant", content: reply });
-      // If Sophie is unmuted, she speaks her response
-      if (!sophieMuted) speak(reply);
     }
 
   } catch (e) {
