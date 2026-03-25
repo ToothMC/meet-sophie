@@ -254,9 +254,11 @@ async function handleMessage(req, res) {
   const turnNumber = session.turn_count + 1;
 
   // Turn-aware routing nudge — injected as last system message so it's fresh in context
-  // Fires on turns 2–3 to help Sophie identify the user's intent and suggest a mode
-  const voiceNudge = turnNumber === 2
-    ? "[INTERNAL] Turn 2. You should now have enough context. If the user has a real topic, identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
+  // Fires on turns 1–3 to help Sophie identify the user's intent and suggest a mode
+  const voiceNudge = turnNumber === 1
+    ? "[INTERNAL] Turn 1. If the user's intent is already clear (especially if a session mode is pre-selected), end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is unclear, ask ONE clarifying question."
+    : turnNumber === 2
+    ? "[INTERNAL] Turn 2. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
     : turnNumber === 3
     ? "[INTERNAL] Turn 3. If you have not yet emitted a [MODE_DETECTED:xxx] token, you must do so now. Pick the best mode based on everything you've heard."
     : null;
