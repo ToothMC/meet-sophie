@@ -1849,16 +1849,97 @@ function showTranscriptView() {
   showSummaryBtn.classList.remove("active");
 }
 
+function renderSalesPitchReportHtml(report) {
+  if (!report) return "";
+
+  const scoreColor = (s) => s >= 4 ? "#34c47a" : s >= 3 ? "#f5c842" : "#ff5252";
+
+  let html = "";
+
+  // Context
+  html += `<div style="margin-bottom:16px;opacity:0.7;font-size:0.85em;">
+    ${report.audience_type ? `<span>${report.audience_type}</span>` : ""}
+    ${report.pitch_goal ? ` · <span>${report.pitch_goal}</span>` : ""}
+    ${report.pitch_topic ? ` · <span>${report.pitch_topic}</span>` : ""}
+  </div>`;
+
+  // Overall verdict
+  if (report.overall_verdict) {
+    html += `<p style="margin-bottom:20px;font-size:1.05em;line-height:1.5;">${report.overall_verdict}</p>`;
+  }
+
+  // Scorecard
+  if (report.scorecard?.length) {
+    html += `<div style="margin-bottom:20px;">`;
+    report.scorecard.forEach((item) => {
+      const pct = (item.score / 5) * 100;
+      html += `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:0.9em;">${item.criterion}</span>
+          <span style="font-weight:600;color:${scoreColor(item.score)};">${item.score}/5</span>
+        </div>
+        <div style="background:#2a2520;border-radius:4px;height:6px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${scoreColor(item.score)};border-radius:4px;transition:width 0.3s;"></div>
+        </div>
+        <div style="font-size:0.8em;opacity:0.6;margin-top:2px;">${item.note}</div>
+      </div>`;
+    });
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #3a3530;margin-top:12px;">
+      <span style="font-weight:600;">Overall Score</span>
+      <span style="font-weight:700;font-size:1.2em;color:${scoreColor(report.overall_score)};">${report.overall_score?.toFixed?.(1) || report.overall_score}/5.0</span>
+    </div>
+    <div style="text-align:right;font-size:0.8em;opacity:0.6;">Confidence: ${report.confidence_level}</div>
+    </div>`;
+  }
+
+  // Strengths
+  if (report.strongest_elements?.length) {
+    html += `<h4 class="report-heading" style="color:#34c47a;">Strongest Elements</h4><ul class="report-insight-list">`;
+    report.strongest_elements.forEach((s) => { html += `<li>${s}</li>`; });
+    html += `</ul>`;
+  }
+
+  // Weaknesses
+  if (report.main_weaknesses?.length) {
+    html += `<h4 class="report-heading" style="color:#ff5252;">Main Weaknesses</h4><ul class="report-insight-list">`;
+    report.main_weaknesses.forEach((w) => { html += `<li>${w}</li>`; });
+    html += `</ul>`;
+  }
+
+  // Audience questions
+  if (report.likely_audience_questions?.length) {
+    html += `<h4 class="report-heading">Likely Audience Questions</h4><ul class="report-insight-list">`;
+    report.likely_audience_questions.forEach((q) => { html += `<li>${q}</li>`; });
+    html += `</ul>`;
+  }
+
+  // Improvement priorities
+  if (report.improvement_priorities?.length) {
+    html += `<h4 class="report-heading">Improvement Priorities</h4><ol style="padding-left:20px;margin:8px 0;">`;
+    report.improvement_priorities.forEach((p) => { html += `<li style="margin-bottom:6px;">${p}</li>`; });
+    html += `</ol>`;
+  }
+
+  // Next attempt
+  if (report.recommended_next_attempt) {
+    html += `<div style="margin-top:16px;padding:12px;background:#2a2520;border-radius:8px;border-left:3px solid #f5c842;">
+      <div style="font-size:0.8em;opacity:0.6;margin-bottom:4px;">Next Attempt Focus</div>
+      <div>${report.recommended_next_attempt}</div>
+    </div>`;
+  }
+
+  return html;
+}
+
 function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   const triggeredByLimit = !!opts.triggeredByLimit;
+  const pitchReport = apiResult?.output?.sales_pitch_report || null;
 
   const summary =
     apiResult?.output?.short_summary ||
     apiResult?.session?.short_summary ||
     t("no_summary");
 
-  const insights = normalizeInsights(apiResult?.output?.key_insights);
-  const actions = normalizeActions(apiResult?.output?.action_plan);
   const transcriptText = buildTranscriptText(transcriptLog);
 
   const sessionTitle =
@@ -1868,9 +1949,45 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
 
-  postCallSummary.textContent = summary;
-  postCallInsights.innerHTML = renderInsightsHtml(insights);
-  postCallActions.innerHTML = renderActionsHtml(actions);
+  if (pitchReport) {
+    // Sales Pitch Report — custom layout
+    const titleEl = document.querySelector(".postCallTitle");
+    const subtitleEl = document.querySelector(".postCallSubtitle");
+    if (titleEl) titleEl.textContent = "Sales Pitch Report";
+    if (subtitleEl) subtitleEl.textContent = pitchReport.pitch_topic || "Your pitch analysis";
+
+    const headingSummary = document.getElementById("reportHeadingSummary");
+    const headingInsights = document.getElementById("reportHeadingInsights");
+    const headingActions = document.getElementById("reportHeadingActions");
+    if (headingSummary) headingSummary.textContent = "Scorecard";
+    if (headingInsights) headingInsights.style.display = "none";
+    if (headingActions) headingActions.style.display = "none";
+
+    postCallSummary.innerHTML = renderSalesPitchReportHtml(pitchReport);
+    postCallInsights.innerHTML = "";
+    postCallActions.innerHTML = "";
+  } else {
+    // Standard Thinking Report
+    const titleEl = document.querySelector(".postCallTitle");
+    const subtitleEl = document.querySelector(".postCallSubtitle");
+    if (titleEl) titleEl.textContent = "Your Thinking Report";
+    if (subtitleEl) subtitleEl.textContent = "A short summary of your conversation with Sophie.";
+
+    const headingSummary = document.getElementById("reportHeadingSummary");
+    const headingInsights = document.getElementById("reportHeadingInsights");
+    const headingActions = document.getElementById("reportHeadingActions");
+    if (headingSummary) headingSummary.textContent = "Summary";
+    if (headingInsights) { headingInsights.textContent = "Key Insights"; headingInsights.style.display = ""; }
+    if (headingActions) { headingActions.textContent = "Next Steps"; headingActions.style.display = ""; }
+
+    const insights = normalizeInsights(apiResult?.output?.key_insights);
+    const actions = normalizeActions(apiResult?.output?.action_plan);
+
+    postCallSummary.textContent = summary;
+    postCallInsights.innerHTML = renderInsightsHtml(insights);
+    postCallActions.innerHTML = renderActionsHtml(actions);
+  }
+
   postCallTranscript.textContent = transcriptText || t("no_transcript");
 
   configurePostCallCta(triggeredByLimit);
