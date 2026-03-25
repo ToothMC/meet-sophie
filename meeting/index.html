@@ -575,10 +575,26 @@ async function showHistory() {
 // ---------------------------------------------------------------------------
 // Setup / Create
 // ---------------------------------------------------------------------------
-function showSetup() {
+async function showSetup() {
   historyScreen.classList.add("hidden");
   meetingArea.classList.remove("active");
   setupScreen.classList.remove("hidden");
+
+  // Load past meetings for parent selector
+  try {
+    const data = await api("list", null, "GET");
+    const meetings = (data.meetings || []).filter(m => m.phase === "closed" || m.phase === "post");
+    const select = $("parentMeeting");
+    // Keep first "None" option, clear rest
+    while (select.options.length > 1) select.remove(1);
+    meetings.slice(0, 10).forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
+      opt.textContent = `${m.title || m.meeting_type} (${date})`;
+      select.appendChild(opt);
+    });
+  } catch { /* ignore, selector stays empty */ }
 }
 
 async function createMeeting() {
