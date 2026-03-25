@@ -815,7 +815,7 @@ function updatePhaseUI(phase) {
   const PHASE_PLACEHOLDERS = {
     de: { prep: "Frage Sophie zur Vorbereitung...", live: "Was passiert gerade im Meeting?", post: "Fragen zur Zusammenfassung..." },
     en: { prep: "Ask Sophie about preparation...", live: "What's happening in the meeting?", post: "Questions about the summary..." },
-    fr: { prep: "Demande à Sophie pour la préparation...", live: "Que se passe-t-il en réunion ?", post: "Questions sur le résumé..." },
+    fr: { prep: "Demande \u00e0 Sophie pour la pr\u00e9paration...", live: "Que se passe-t-il en r\u00e9union ?", post: "Questions sur le r\u00e9sum\u00e9 ?" },
   };
   chatInput.placeholder = (PHASE_PLACEHOLDERS[lang] || PHASE_PLACEHOLDERS.en)[phase] || t("typeHere");
 
@@ -830,6 +830,12 @@ function updatePhaseUI(phase) {
   } else {
     stopLiveTimer();
   }
+
+  // Mute toggle: visible in live + post phases
+  muteToggle.style.display = (phase === "live" || phase === "post") ? "inline-flex" : "none";
+
+  // Participants bar: visible when meeting is loaded
+  updateParticipantsBar();
 }
 
 function startLiveTimer() {
