@@ -68,7 +68,12 @@
       "Read(//opt/homebrew/bin/**)",
       "Bash(mdfind -name npx -onlyin /usr/local -onlyin /opt)",
       "Bash(ls /usr/local/bin/node* /usr/local/bin/npm* /usr/local/bin/npx*)",
-      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f \\\\\\(-name .env* -o -name supabase.json -o -name supabase.config.* -o -name *supabase*config* \\\\\\))"
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f \\\\\\(-name .env* -o -name supabase.json -o -name supabase.config.* -o -name *supabase*config* \\\\\\))",
+      "Bash(npm install:*)",
+      "Bash(npx --yes npm install mammoth)",
+      "Bash(node -e \"const {execSync}=require\\(''child_process''\\); console.log\\(execSync\\(''which npm || echo not found''\\).toString\\(\\)\\)\")",
+      "Read(//Users/michaelhammer/.nvm/versions/**)",
+      "Read(//Users/michaelhammer/**)"
     ]
   },
   "hooks": {
