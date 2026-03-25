@@ -466,8 +466,11 @@ let isLoading = false;
 let liveStartTime = null;
 let liveTimerInterval = null;
 let sophieMuted = true; // Sophie starts muted (passive listener)
-let sophieAudio = null; // Current audio element for TTS
+let sophieVoicePc = null;     // WebRTC PeerConnection (same as Talk)
+let sophieVoiceStream = null; // Mic stream
+let sophieVoiceAudio = null;  // Audio element for Sophie's voice
 let isSpeaking = false;
+let isConnecting = false;
 
 // ---------------------------------------------------------------------------
 // DOM refs
