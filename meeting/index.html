@@ -280,6 +280,51 @@ body{
 .diff-icon.escalated{color:#ff5a5a}
 .diff-icon.new{color:#6cb4ff}
 
+/* ---- MUTE TOGGLE ---- */
+.mute-toggle{
+  padding:6px 10px;font-size:13px;border-radius:8px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.5);transition:all .2s;white-space:nowrap;
+  font-family:inherit;display:none;
+}
+.mute-toggle:hover{background:rgba(255,255,255,.12);color:#fff}
+.mute-toggle.active{
+  background:rgba(52,196,122,.15);border-color:rgba(52,196,122,.3);
+  color:#34c47a;
+}
+.mute-toggle.active .mute-icon::after{content:"🔊"}
+.mute-toggle .mute-icon::after{content:"🔇"}
+
+/* ---- PARTICIPANTS BAR ---- */
+.participants-bar{
+  display:none;align-items:center;gap:6px;
+  padding:6px 16px;font-size:12px;color:rgba(255,255,255,.4);
+  border-bottom:1px solid rgba(255,255,255,.05);
+  overflow-x:auto;white-space:nowrap;
+}
+.participants-bar.visible{display:flex}
+.participant-chip{
+  padding:3px 8px;border-radius:10px;font-size:11px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.6);flex-shrink:0;
+}
+.participant-chip.sophie{
+  background:rgba(52,196,122,.12);border-color:rgba(52,196,122,.2);
+  color:#34c47a;
+}
+
+/* ---- EXPORT BUTTON ---- */
+.export-bar{
+  display:flex;gap:8px;margin-top:12px;
+}
+.export-btn{
+  padding:8px 14px;font-size:12px;font-weight:600;border-radius:8px;
+  cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);
+  transition:all .2s;
+}
+.export-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+
 /* ---- LOADING ---- */
 .loading-screen{
   flex:1;display:flex;align-items:center;justify-content:center;
