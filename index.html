@@ -2595,7 +2595,7 @@
 
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
-        const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeParam);
+        const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeParam) + "&lang=" + encodeURIComponent(currentLang);
 
         const { error } = await supabase.auth.signInWithOtp({
           email,
