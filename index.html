@@ -2567,14 +2567,7 @@
           talk:       { btn: "Continuer en vocal", icon: "🎙" },
         },
       };
-      const EMAIL_LABELS = {
-        en: { hint: "Voice conversation · 2 min free", placeholder: "your email", send: "Send invite" },
-        de: { hint: "Sprachgespräch · 2 Min kostenlos", placeholder: "deine E-Mail", send: "Einladung senden" },
-        fr: { hint: "Conversation vocale · 2 min gratuites", placeholder: "ton e-mail", send: "Envoyer" },
-      };
-
       const labels = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || (MODE_LABELS[currentLang] || MODE_LABELS.en).talk;
-      const emailLabels = EMAIL_LABELS[currentLang] || EMAIL_LABELS.en;
 
       const btnClass = ["brainstorm", "meeting", "salespitch"].includes(sessionMode)
         ? `chat-voice-btn mode-${sessionMode}` : "chat-voice-btn";
@@ -2583,7 +2576,7 @@
       wrap.className = "chat-msg sophie";
       const cta = document.createElement("div");
       cta.className = "chat-voice-cta";
-      cta.innerHTML = `<button class="${btnClass}" type="button">${labels.icon} ${labels.btn}</button><span class="chat-voice-hint">${emailLabels.hint}</span>`;
+      cta.innerHTML = `<button class="${btnClass}" type="button">${labels.icon} ${labels.btn}</button>`;
       wrap.appendChild(cta);
       messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
