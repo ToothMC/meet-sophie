@@ -2879,6 +2879,7 @@
         const reply          = data.reply;
         const voiceOffer     = !!data.voice_offer;
         const voiceConfirmed = !!data.voice_confirmed;
+        const detectedMode   = data.detected_mode || null;
         turnCount++;
 
         if (voiceConfirmed) {
@@ -2889,7 +2890,7 @@
           return;
         }
 
-        if (voiceOffer) {
+        if (voiceOffer || detectedMode) {
           chatState = "voice_offer_pending";
         } else {
           chatState = "chat_active";
@@ -2898,17 +2899,22 @@
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply);
 
-        // ── Funnel: detect intent + offer voice CTA inline ──
+        // ── Routing: Sophie detected a mode → show mode-specific CTA ──
+        if (!funnelVoiceOffered && detectedMode) {
+          funnelVoiceOffered = true;
+          localStorage.setItem("sophie_detected_mode", detectedMode);
+          showInlineVoiceCTA(detectedMode);
+        }
+        // Fallback: client-side intent detection if server didn't detect
         if (!funnelVoiceOffered) {
           funnelTurn++;
           if (!funnelMode || funnelMode === "talk") {
             const detected = detectFunnelIntent(text);
             setFunnelMode(detected);
           }
-          // After turn 1 (clear intent) or turn 2 (fallback): show inline voice CTA
-          if (funnelTurn >= 1 && funnelMode) {
+          if (funnelTurn >= 2 && funnelMode) {
             funnelVoiceOffered = true;
-            showInlineVoiceCTA();
+            showInlineVoiceCTA(funnelMode);
           }
         }
 
