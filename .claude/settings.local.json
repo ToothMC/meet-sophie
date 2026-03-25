@@ -52,7 +52,8 @@
       "Bash(grep -r \"voice.*prompt\\\\|instructions.*voice\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
       "Bash(npx vercel:*)",
       "Bash(gh pr:*)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(grep -l \"CREATE TABLE.*user_profile\\\\|CREATE TABLE.*user_relationship\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {
