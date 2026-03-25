@@ -1035,6 +1035,7 @@ async function saveContext() {
   try {
     await Promise.all(saves);
     appendSystemMsg(lang === "de" ? "Kontext gespeichert" : "Context saved");
+    updateParticipantsBar();
   } catch (e) {
     alert("Error: " + e.message);
   } finally {
