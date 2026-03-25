@@ -1852,79 +1852,90 @@ function showTranscriptView() {
 function renderSalesPitchReportHtml(report) {
   if (!report) return "";
 
-  const scoreColor = (s) => s >= 4 ? "#34c47a" : s >= 3 ? "#f5c842" : "#ff5252";
+  const scoreColor = (s) => s >= 4 ? "#4a8c5c" : s >= 3 ? "#b89a5a" : "#b85a4a";
+  const barBg = (s) => s >= 4 ? "rgba(74,140,92,0.15)" : s >= 3 ? "rgba(184,154,90,0.15)" : "rgba(184,90,74,0.15)";
 
   let html = "";
 
-  // Context
-  html += `<div style="margin-bottom:16px;opacity:0.7;font-size:0.85em;">
-    ${report.audience_type ? `<span>${report.audience_type}</span>` : ""}
-    ${report.pitch_goal ? ` · <span>${report.pitch_goal}</span>` : ""}
-    ${report.pitch_topic ? ` · <span>${report.pitch_topic}</span>` : ""}
-  </div>`;
+  // Context pill
+  const ctxParts = [report.audience_type, report.pitch_goal, report.pitch_topic].filter(Boolean);
+  if (ctxParts.length) {
+    html += `<div style="margin-bottom:20px;font-size:13px;color:#a09080;letter-spacing:0.01em;">${ctxParts.join(" · ")}</div>`;
+  }
 
   // Overall verdict
   if (report.overall_verdict) {
-    html += `<p style="margin-bottom:20px;font-size:1.05em;line-height:1.5;">${report.overall_verdict}</p>`;
+    html += `<p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#3a3028;">${report.overall_verdict}</p>`;
   }
 
-  // Scorecard
+  // Scorecard card
   if (report.scorecard?.length) {
-    html += `<div style="margin-bottom:20px;">`;
-    report.scorecard.forEach((item) => {
+    html += `<div style="background:rgba(0,0,0,0.025);border:1px solid #ede8e2;border-radius:16px;padding:20px;margin-bottom:28px;">`;
+    report.scorecard.forEach((item, i) => {
       const pct = (item.score / 5) * 100;
-      html += `<div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <span style="font-size:0.9em;">${item.criterion}</span>
-          <span style="font-weight:600;color:${scoreColor(item.score)};">${item.score}/5</span>
+      const isLast = i === report.scorecard.length - 1;
+      html += `<div style="margin-bottom:${isLast ? '0' : '16px'};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:15px;font-weight:600;color:#1a1210;">${item.criterion}</span>
+          <span style="font-weight:700;font-size:15px;color:${scoreColor(item.score)};">${item.score}/5</span>
         </div>
-        <div style="background:#2a2520;border-radius:4px;height:6px;overflow:hidden;">
-          <div style="width:${pct}%;height:100%;background:${scoreColor(item.score)};border-radius:4px;transition:width 0.3s;"></div>
+        <div style="background:#ede8e2;border-radius:6px;height:7px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${scoreColor(item.score)};border-radius:6px;transition:width 0.4s ease;"></div>
         </div>
-        <div style="font-size:0.8em;opacity:0.6;margin-top:2px;">${item.note}</div>
+        <div style="font-size:13px;line-height:1.5;color:#8a7a6a;margin-top:4px;">${item.note}</div>
       </div>`;
     });
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #3a3530;margin-top:12px;">
-      <span style="font-weight:600;">Overall Score</span>
-      <span style="font-weight:700;font-size:1.2em;color:${scoreColor(report.overall_score)};">${report.overall_score?.toFixed?.(1) || report.overall_score}/5.0</span>
+    // Overall score footer
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #ede8e2;margin-top:20px;">
+      <span style="font-weight:700;font-size:14px;color:#1a1210;letter-spacing:0.02em;">Overall Score</span>
+      <span style="font-weight:800;font-size:22px;color:${scoreColor(report.overall_score)};">${report.overall_score?.toFixed?.(1) || report.overall_score}<span style="font-size:14px;font-weight:500;color:#a09080;">/5.0</span></span>
     </div>
-    <div style="text-align:right;font-size:0.8em;opacity:0.6;">Confidence: ${report.confidence_level}</div>
+    <div style="text-align:right;font-size:12px;color:#b0a090;margin-top:2px;letter-spacing:0.04em;">Confidence: ${report.confidence_level}</div>
     </div>`;
   }
 
-  // Strengths
+  // Strengths section
   if (report.strongest_elements?.length) {
-    html += `<h4 class="report-heading" style="color:#34c47a;">Strongest Elements</h4><ul class="report-insight-list">`;
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading" style="color:#4a8c5c;">Strongest Elements</h4>`;
+    html += `<ul class="report-insight-list">`;
     report.strongest_elements.forEach((s) => { html += `<li>${s}</li>`; });
-    html += `</ul>`;
+    html += `</ul></section>`;
   }
 
-  // Weaknesses
+  // Weaknesses section
   if (report.main_weaknesses?.length) {
-    html += `<h4 class="report-heading" style="color:#ff5252;">Main Weaknesses</h4><ul class="report-insight-list">`;
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading" style="color:#b85a4a;">Main Weaknesses</h4>`;
+    html += `<ul class="report-insight-list">`;
     report.main_weaknesses.forEach((w) => { html += `<li>${w}</li>`; });
-    html += `</ul>`;
+    html += `</ul></section>`;
   }
 
-  // Audience questions
+  // Audience questions section
   if (report.likely_audience_questions?.length) {
-    html += `<h4 class="report-heading">Likely Audience Questions</h4><ul class="report-insight-list">`;
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading">Likely Audience Questions</h4>`;
+    html += `<ul class="report-insight-list">`;
     report.likely_audience_questions.forEach((q) => { html += `<li>${q}</li>`; });
-    html += `</ul>`;
+    html += `</ul></section>`;
   }
 
-  // Improvement priorities
+  // Improvement priorities section
   if (report.improvement_priorities?.length) {
-    html += `<h4 class="report-heading">Improvement Priorities</h4><ol style="padding-left:20px;margin:8px 0;">`;
-    report.improvement_priorities.forEach((p) => { html += `<li style="margin-bottom:6px;">${p}</li>`; });
-    html += `</ol>`;
+    html += `<section class="report-section" style="margin-top:28px;padding-top:26px;border-top:1px solid #ede8e2;">`;
+    html += `<h4 class="report-heading">Improvement Priorities</h4>`;
+    report.improvement_priorities.forEach((p, i) => {
+      html += `<div class="report-action-item"><span class="report-action-title">${i + 1}. ${p}</span></div>`;
+    });
+    html += `</section>`;
   }
 
-  // Next attempt
+  // Next attempt focus box
   if (report.recommended_next_attempt) {
-    html += `<div style="margin-top:16px;padding:12px;background:#2a2520;border-radius:8px;border-left:3px solid #f5c842;">
-      <div style="font-size:0.8em;opacity:0.6;margin-bottom:4px;">Next Attempt Focus</div>
-      <div>${report.recommended_next_attempt}</div>
+    html += `<div style="margin-top:28px;padding:18px 20px;background:rgba(196,168,130,0.08);border:1px solid #ede8e2;border-radius:16px;border-left:3px solid #c4a882;">
+      <div style="font-size:11px;font-weight:700;color:#c4a882;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Next Attempt Focus</div>
+      <div style="font-size:16px;line-height:1.8;color:#3a3028;">${report.recommended_next_attempt}</div>
     </div>`;
   }
 
