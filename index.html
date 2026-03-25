@@ -3062,7 +3062,7 @@
       const modeForAuthBtn = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) }
+        options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) + "&lang=" + encodeURIComponent(currentLang) }
       });
       if (!error) {
         hide(authEl);
