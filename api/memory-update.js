@@ -1130,15 +1130,23 @@ ${transcriptText}
 
     let conversationOutput;
     try {
-      conversationOutput = await generateConversationOutput({
-        transcriptText,
-        fallbackSummary: sessSummary,
-        emotionalTone: clean(ss.emotional_tone),
-        stressLevel: ss.stress_level,
-        closenessLevel: ss.closeness_level,
-        openAiKey: process.env.OPENAI_API_KEY,
-        model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-      });
+      if (sessionMode === "salespitch") {
+        conversationOutput = await generateSalesPitchReport({
+          transcriptText,
+          openAiKey: process.env.OPENAI_API_KEY,
+          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
+        });
+      } else {
+        conversationOutput = await generateConversationOutput({
+          transcriptText,
+          fallbackSummary: sessSummary,
+          emotionalTone: clean(ss.emotional_tone),
+          stressLevel: ss.stress_level,
+          closenessLevel: ss.closeness_level,
+          openAiKey: process.env.OPENAI_API_KEY,
+          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
+        });
+      }
     } catch (e) {
       console.error("conversation output generation failed:", e?.message || e);
       conversationOutput = {
