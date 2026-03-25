@@ -340,6 +340,13 @@ body{
       <textarea id="ctxParticipants" placeholder="Participants..." rows="2"></textarea>
       <textarea id="ctxGoal" placeholder="Goal of this meeting..." rows="2"></textarea>
       <button class="save-context-btn" id="saveContextBtn">Save Context</button>
+
+      <!-- File Upload -->
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.webp" multiple />
+        <span class="upload-label" id="uploadLabel">📎 Drop files or click to upload</span>
+      </div>
+      <div class="file-list" id="fileList"></div>
     </div>
   </div>
 
