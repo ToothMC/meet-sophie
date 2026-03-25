@@ -2069,11 +2069,20 @@
       appendBubble("sophie", msg);
       history.push({ role: "assistant", content: msg });
 
-      // 3. Set mode state + show email capture directly
+      // 3. Set mode state
       funnelVoiceOffered = true;
       localStorage.setItem("sophie_detected_mode", mode);
       if (mode !== "talk") setFunnelMode(mode);
-      showInlineEmailCapture(mode);
+
+      // 4. If already logged in → go to voice, otherwise show email capture
+      (async () => {
+        const token = await getToken();
+        if (token) {
+          goToVoiceFromChat();
+        } else {
+          showInlineEmailCapture(mode);
+        }
+      })();
     }
 
     // Close foreground: back button or backdrop click
