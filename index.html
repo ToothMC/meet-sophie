@@ -1925,19 +1925,39 @@
     }
 
     // Hero CTA → opens chat foreground
+    // Chat lives inside .hero-grid (z-index:1 stacking context).
+    // To float above the backdrop (z-index:90) we must move it to body.
+    let chatOriginalParent = null;
+    let chatOriginalNext = null;
+
     function openChatForeground() {
       const chatCard = document.getElementById("sophieChat");
-      if (chatCard) {
-        chatCard.classList.add("foreground");
-        document.body.classList.add("chat-foreground-active");
+      if (!chatCard) return;
+      // Remember where the chat was so we can put it back
+      if (!chatOriginalParent) {
+        chatOriginalParent = chatCard.parentElement;
+        chatOriginalNext = chatCard.nextElementSibling;
       }
+      // Move to body so it escapes the hero-grid stacking context
+      document.body.appendChild(chatCard);
+      chatCard.classList.add("foreground");
+      document.body.classList.add("chat-foreground-active");
       const input = document.getElementById("chatInput");
       if (input) setTimeout(() => input.focus(), 200);
     }
     function closeChatForeground() {
       const chatCard = document.getElementById("sophieChat");
-      if (chatCard) chatCard.classList.remove("foreground");
+      if (!chatCard) return;
+      chatCard.classList.remove("foreground");
       document.body.classList.remove("chat-foreground-active");
+      // Move chat back to its original position in the DOM
+      if (chatOriginalParent) {
+        if (chatOriginalNext) {
+          chatOriginalParent.insertBefore(chatCard, chatOriginalNext);
+        } else {
+          chatOriginalParent.appendChild(chatCard);
+        }
+      }
     }
 
     if (heroCta) {
