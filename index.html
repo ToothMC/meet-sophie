@@ -2791,7 +2791,7 @@
         const modeForRedirect = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
         const { error } = await supabase.auth.signInWithOtp({
           email: text,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForRedirect) }
+          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForRedirect) + "&lang=" + encodeURIComponent(currentLang) }
         });
         inputEl.disabled = false;
         sendBtn.disabled = false;
