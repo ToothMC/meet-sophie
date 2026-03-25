@@ -806,8 +806,9 @@
     .chat-card.foreground{
       position:fixed !important;
       left:50% !important;
-      top:50% !important;
-      transform:translate(-50%,-50%) !important;
+      bottom:24px !important;
+      top:auto !important;
+      transform:translateX(-50%) !important;
       width:380px !important;
       height:auto !important;
       min-height:280px;
@@ -821,6 +822,8 @@
       border:1px solid rgba(255,255,255,.08) !important;
       box-shadow:0 14px 34px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.02);
       overflow:hidden !important;
+      display:flex !important;
+      flex-direction:column !important;
     }
     .chat-card.foreground .chat-back-btn{
       display:flex !important;
