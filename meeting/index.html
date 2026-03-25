@@ -777,6 +777,18 @@ function removeTyping() {
   if (el) el.remove();
 }
 
+// Hint throttle state
+const HINT_MIN_INTERVAL = 3 * 60 * 1000; // 3 min
+const HINT_MAX_PER_MEETING = 8;
+let lastHintAt = null;
+let hintCount = 0;
+
+function shouldShowHint() {
+  if (hintCount >= HINT_MAX_PER_MEETING) return false;
+  if (lastHintAt && Date.now() - lastHintAt < HINT_MIN_INTERVAL) return false;
+  return true;
+}
+
 async function sendMessage(text, isAutoOpener = false) {
   if (isLoading || !text.trim()) return;
   isLoading = true;
@@ -796,8 +808,24 @@ async function sendMessage(text, isAutoOpener = false) {
     });
 
     removeTyping();
-    appendMsg("assistant", data.reply);
-    chatMessages.push({ role: "assistant", content: data.reply });
+
+    let reply = data.reply;
+
+    // Handle hint throttle: if reply contains a hint but throttle says no, strip it
+    if (data.hint && reply.includes("💡")) {
+      if (!shouldShowHint()) {
+        // Strip the hint line from visible reply
+        reply = reply.replace(/💡[^\n]*/g, "").trim();
+      } else {
+        lastHintAt = Date.now();
+        hintCount++;
+      }
+    }
+
+    if (reply) {
+      appendMsg("assistant", reply);
+      chatMessages.push({ role: "assistant", content: reply });
+    }
 
   } catch (e) {
     removeTyping();
