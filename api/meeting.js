@@ -250,7 +250,20 @@ async function handleContext(req, res) {
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
-  const insertData = { meeting_id, context_type, content: content.trim() };
+  let finalContent = content.trim();
+
+  // For file uploads: extract text content server-side if not already extracted
+  if (context_type === "file" && body.file_path && finalContent.startsWith("[File:")) {
+    try {
+      const extracted = await extractFileContent(supabase, body.file_path);
+      if (extracted) finalContent = extracted;
+    } catch (e) {
+      console.error("File extraction error:", e?.message);
+      // Keep original placeholder content
+    }
+  }
+
+  const insertData = { meeting_id, context_type, content: finalContent };
   if (body.file_path) insertData.file_path = body.file_path;
 
   const { data, error } = await supabase
