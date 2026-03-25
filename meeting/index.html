@@ -1054,6 +1054,25 @@ $("contextToggle").addEventListener("click", () => {
   contextPanel.classList.toggle("collapsed");
 });
 
+// File upload handlers
+$("uploadArea").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", (e) => {
+  for (const file of e.target.files) uploadFile(file);
+  e.target.value = "";
+});
+$("uploadArea").addEventListener("dragover", (e) => {
+  e.preventDefault();
+  $("uploadArea").style.borderColor = "rgba(255,255,255,.4)";
+});
+$("uploadArea").addEventListener("dragleave", () => {
+  $("uploadArea").style.borderColor = "";
+});
+$("uploadArea").addEventListener("drop", (e) => {
+  e.preventDefault();
+  $("uploadArea").style.borderColor = "";
+  for (const file of e.dataTransfer.files) uploadFile(file);
+});
+
 $("backBtn").addEventListener("click", (e) => {
   if (meetingId) {
     e.preventDefault();
