@@ -76,8 +76,21 @@ async function handleCreate(req, res) {
   const meetingType = ["team", "client", "strategy", "other"].includes(body.meeting_type) ? body.meeting_type : "other";
   const sophieRole = ["prepare", "co-think", "document"].includes(body.sophie_role) ? body.sophie_role : "co-think";
   const title = (body.title || "").trim() || null;
+  const parentMeetingId = (body.parent_meeting_id || "").trim() || null;
 
   const supabase = getSupabase();
+
+  // Validate parent_meeting_id if provided
+  if (parentMeetingId) {
+    const { data: parent } = await supabase
+      .from("meetings")
+      .select("id")
+      .eq("id", parentMeetingId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!parent) return res.status(400).json({ error: "Parent meeting not found" });
+  }
+
   const { data, error } = await supabase
     .from("meetings")
     .insert({
@@ -86,8 +99,9 @@ async function handleCreate(req, res) {
       meeting_type: meetingType,
       phase: "prep",
       sophie_role: sophieRole,
+      parent_meeting_id: parentMeetingId,
     })
-    .select("id, phase, meeting_type, sophie_role, created_at")
+    .select("id, phase, meeting_type, sophie_role, parent_meeting_id, created_at")
     .single();
 
   if (error) {

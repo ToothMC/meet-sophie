@@ -67,7 +67,8 @@
       "Bash(source ~/.zshrc)",
       "Read(//opt/homebrew/bin/**)",
       "Bash(mdfind -name npx -onlyin /usr/local -onlyin /opt)",
-      "Bash(ls /usr/local/bin/node* /usr/local/bin/npm* /usr/local/bin/npx*)"
+      "Bash(ls /usr/local/bin/node* /usr/local/bin/npm* /usr/local/bin/npx*)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f \\\\\\(-name .env* -o -name supabase.json -o -name supabase.config.* -o -name *supabase*config* \\\\\\))"
     ]
   },
   "hooks": {
