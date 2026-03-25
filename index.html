@@ -1783,49 +1783,48 @@
 
     // Hero mode pill toggle — changes button text + stores in localStorage for talk page
     const heroCta = document.getElementById("hero-btn-primary");
-    const heroPitchHook = document.getElementById("heroPitchHook");
-    const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
-    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" };
     const SESSION_MODES = ["brainstorm", "meeting", "salespitch"];
 
-    function applyHeroMode(mode) {
-      if (heroCta) {
-        heroCta.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
-        if (mode) heroCta.classList.add("mode-" + mode);
-        heroCta.textContent = mode ? (heroModeLabels[mode] || heroCtaDefault) : heroCtaDefault;
-      }
-      if (heroPitchHook) {
-        heroPitchHook.textContent = mode === "salespitch"
-          ? "\"If you can convince Sophie, you can convince anyone.\""
-          : "";
+    // ── Funnel: intent-based routing (replaces manual mode pills) ──
+    let funnelMode = null;      // null | "talk" | "brainstorm" | "meeting" | "salespitch"
+    let funnelTurn = 0;         // user turn counter
+    let funnelVoiceOffered = false;
+    let selectedChatMode = null; // kept for backward compat (handover, API calls)
+
+    function detectFunnelIntent(text) {
+      const t = (text || "").toLowerCase();
+      // Sales Pitch
+      if (/pitch|sales|present|investor|überzeugen|pitch üben|präsent|vortra|audience|convince/i.test(t)) return "salespitch";
+      // Meeting
+      if (/meeting|protokoll|protocol|minute|agenda|besprechung|team.?meeting|stand.?up|retro/i.test(t)) return "meeting";
+      // Brainstorm
+      if (/brainstorm|ideen|ideas?|kreativ|creative|possibilities|möglichkeiten|concept|konzept/i.test(t)) return "brainstorm";
+      // Talk (default) — anything else
+      return "talk";
+    }
+
+    function setFunnelMode(mode) {
+      funnelMode = mode;
+      selectedChatMode = (mode && mode !== "talk") ? mode : null;
+      if (selectedChatMode) {
+        localStorage.setItem("sophie_session_mode", selectedChatMode);
+      } else {
+        localStorage.removeItem("sophie_session_mode");
       }
     }
 
-    document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const mode = btn.dataset.mode;
-        if (selectedChatMode === mode) {
-          selectedChatMode = null;
-          btn.classList.remove("active");
-          applyHeroMode(null);
-          localStorage.removeItem("sophie_session_mode");
-        } else {
-          selectedChatMode = mode;
-          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          applyHeroMode(mode);
-          localStorage.setItem("sophie_session_mode", mode);
+    // Hero CTA → opens chat foreground
+    if (heroCta) {
+      heroCta.addEventListener("click", (e) => {
+        e.preventDefault();
+        const chatCard = document.getElementById("sophieChat");
+        if (chatCard) {
+          chatCard.classList.add("foreground");
+          document.body.classList.add("chat-foreground-active");
         }
+        const input = document.getElementById("chatInput");
+        if (input) setTimeout(() => input.focus(), 200);
       });
-    });
-
-    // Restore previous selection from localStorage on page load
-    const storedMode = localStorage.getItem("sophie_session_mode");
-    if (storedMode && SESSION_MODES.includes(storedMode)) {
-      selectedChatMode = storedMode;
-      const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
-      if (pill) pill.classList.add("active");
-      applyHeroMode(storedMode);
     }
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
