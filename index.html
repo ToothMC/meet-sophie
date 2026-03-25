@@ -2249,6 +2249,7 @@
 
     function saveVoiceHandover() {
       try {
+        const detectedMode = localStorage.getItem("sophie_detected_mode") || null;
         const payload = {
           source: "chat",
           targetMode: "voice",
@@ -2257,6 +2258,7 @@
           userName: detectUserNameFromHistory(history),
           summary: buildChatSummary(history),
           funnelMode: funnelMode || "talk",
+          detectedMode: detectedMode,
           recentMessages: history
             .filter(m => m?.content && m.content !== "[CHAT_START]")
             .slice(-8),
