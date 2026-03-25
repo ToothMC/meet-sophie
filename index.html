@@ -815,10 +815,12 @@
       max-height:calc(100vh - 40px) !important;
       z-index:100 !important;
       border-radius:24px;
-      background:#0a0c13;
-      backdrop-filter:none;
-      -webkit-backdrop-filter:none;
-      box-shadow:0 24px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
+      background:#111520 !important;
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
+      border:1px solid rgba(255,255,255,.12) !important;
+      box-shadow:0 24px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06);
+      transition:none !important;
     }
     .chat-card.foreground .chat-back-btn{
       display:flex !important;
@@ -840,15 +842,28 @@
     .chat-card.foreground .chat-messages{
       flex:1;
       min-height:0;
+      justify-content:flex-end;
+    }
+    .chat-card.foreground .chat-msg.sophie .chat-msg-bubble{
+      background:rgba(255,255,255,.10);
+      border-color:rgba(255,255,255,.10);
+    }
+    .chat-card.foreground .chat-msg.user .chat-msg-bubble{
+      background:rgba(142,178,255,.18);
+      border-color:rgba(142,178,255,.14);
     }
     .chat-card.foreground .chat-footer{
       padding:12px 14px;
     }
+    .chat-card.foreground .chat-footer textarea{
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.14);
+    }
     @media (max-width:640px){
       .chat-card.foreground{
         width:calc(100vw - 16px) !important;
-        height:calc(100vh - 80px) !important;
-        max-width:calc(100vw - 16px) !important;
+        height:auto !important;
+        min-height:320px;
         max-height:calc(100vh - 80px) !important;
         border-radius:20px !important;
         left:50% !important;
