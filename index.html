@@ -798,7 +798,7 @@
       display:none;
       position:fixed;
       inset:0;
-      background:rgba(0,0,0,.55);
+      background:rgba(0,0,0,.25);
       z-index:90;
     }
     body.chat-foreground-active .chat-foreground-backdrop{ display:block; }
@@ -814,11 +814,11 @@
       max-height:calc(100vh - 40px) !important;
       z-index:100 !important;
       border-radius:24px;
-      background:#2a3148 !important;
-      backdrop-filter:none !important;
-      -webkit-backdrop-filter:none !important;
-      border:1px solid rgba(255,255,255,.16) !important;
-      box-shadow:0 24px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06);
+      background:rgba(10,12,19,.32) !important;
+      backdrop-filter:blur(10px) !important;
+      -webkit-backdrop-filter:blur(10px) !important;
+      border:1px solid rgba(255,255,255,.08) !important;
+      box-shadow:0 24px 60px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
     }
     .chat-card.foreground .chat-back-btn{
       display:flex !important;
@@ -842,23 +842,8 @@
       min-height:0;
       justify-content:flex-end;
     }
-    .chat-card.foreground .chat-msg.sophie .chat-msg-bubble{
-      background:rgba(255,255,255,.12);
-      border-color:rgba(255,255,255,.12);
-      color:#f0f1f5;
-    }
-    .chat-card.foreground .chat-msg.user .chat-msg-bubble{
-      background:rgba(142,178,255,.22);
-      border-color:rgba(142,178,255,.18);
-      color:#f0f1f5;
-    }
     .chat-card.foreground .chat-footer{
       padding:12px 14px;
-    }
-    .chat-card.foreground .chat-footer textarea{
-      background:rgba(255,255,255,.10);
-      border-color:rgba(255,255,255,.18);
-      color:#f0f1f5;
     }
     @media (max-width:640px){
       .chat-card.foreground{
