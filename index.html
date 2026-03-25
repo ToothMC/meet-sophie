@@ -2898,10 +2898,14 @@
         appendBubble("sophie", reply);
 
         // ── Routing: Sophie detected a mode → show mode-specific CTA ──
-        if (!funnelVoiceOffered && detectedMode) {
-          funnelVoiceOffered = true;
-          localStorage.setItem("sophie_detected_mode", detectedMode);
-          showInlineVoiceCTA(detectedMode);
+        if (detectedMode) {
+          const prevMode = localStorage.getItem("sophie_detected_mode");
+          // Show CTA if first time OR if mode changed (user changed their mind)
+          if (!funnelVoiceOffered || (prevMode && prevMode !== detectedMode)) {
+            funnelVoiceOffered = true;
+            localStorage.setItem("sophie_detected_mode", detectedMode);
+            showInlineVoiceCTA(detectedMode);
+          }
         }
         // Fallback: client-side intent detection if server didn't detect
         if (!funnelVoiceOffered) {
