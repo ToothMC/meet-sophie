@@ -771,12 +771,11 @@
     }
     /* ===== SOPHIE CHAT CARD ===== */
     .chat-card{
-      position:absolute;
-      left:10px;
-      top:360px;
+      position:fixed;
+      bottom:24px;
+      left:24px;
       width:272px;
       height:268px;
-      max-width:calc(100% - 120px);
       display:flex;
       flex-direction:column;
       background:rgba(10,12,19,.32);
@@ -787,7 +786,8 @@
       box-shadow:0 14px 34px rgba(0,0,0,.18),
                  0 0 0 1px rgba(255,255,255,.02);
       overflow:hidden;
-      z-index:3;
+      z-index:90;
+      transition:width .3s ease, height .3s ease, min-height .3s ease, max-height .3s ease, border-radius .3s ease;
     }
     .chat-card::after{
       display:none;
