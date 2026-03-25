@@ -300,10 +300,13 @@ async function handleMessage(req, res) {
 
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
-  // Detect and strip voice signal tags
-  const voice_offer     = rawReply.includes("[VOICE_OFFER]");
+  // Detect and strip routing signal tags
+  const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/);
+  const detected_mode = modeMatch ? modeMatch[1].toLowerCase() : null;
+  const voice_offer     = !!detected_mode; // backwards compat: mode detection triggers the CTA
   const voice_confirmed = rawReply.includes("[VOICE_CONFIRMED]");
   const reply = rawReply
+    .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
     .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
     .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
     .trim();
