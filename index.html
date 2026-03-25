@@ -1035,6 +1035,40 @@
       font-size:16px;color:rgba(246,247,251,.82);outline:none;resize:none;
       font-family:inherit;line-height:1.44;min-height:34px;max-height:90px;overflow-y:auto;
     }
+    /* ── Inline voice CTA in chat ── */
+    .chat-voice-cta{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:8px;
+      padding:4px 0;
+    }
+    .chat-voice-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 20px;
+      border-radius:20px;
+      border:none;
+      background:linear-gradient(135deg, #6366f1, #818cf8);
+      color:#fff;
+      font-size:14px;
+      font-weight:600;
+      font-family:inherit;
+      cursor:pointer;
+      transition:transform .15s ease, box-shadow .15s ease;
+      box-shadow:0 4px 16px rgba(99,102,241,.35);
+    }
+    .chat-voice-btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 6px 20px rgba(99,102,241,.45);
+    }
+    .chat-voice-hint{
+      font-size:11px;
+      color:rgba(246,247,251,.4);
+      padding-left:4px;
+    }
+
     .chat-footer textarea::placeholder{color:rgba(246,247,251,.34)}
     .chat-footer textarea:focus{border-color:rgba(142,178,255,.38)}
     .chat-send{
