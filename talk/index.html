@@ -1973,8 +1973,8 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
     // Sales Pitch Report — custom layout
     const titleEl = document.querySelector(".postCallTitle");
     const subtitleEl = document.querySelector(".postCallSubtitle");
-    if (titleEl) titleEl.textContent = "Sales Pitch Report";
-    if (subtitleEl) subtitleEl.textContent = pitchReport.pitch_topic || "Your pitch analysis";
+    if (titleEl) titleEl.textContent = _uiLang === "de" ? "Sales Pitch Report" : "Sales Pitch Report";
+    if (subtitleEl) subtitleEl.textContent = pitchReport.pitch_topic || (_uiLang === "de" ? "Deine Pitch-Analyse" : "Your pitch analysis");
 
     const headingSummary = document.getElementById("reportHeadingSummary");
     const headingInsights = document.getElementById("reportHeadingInsights");
