@@ -54,6 +54,82 @@ async function requireAuth(req, res) {
   return user;
 }
 
+// ---------------------------------------------------------------------------
+// File content extraction (server-side)
+// ---------------------------------------------------------------------------
+
+async function extractFileContent(supabase, filePath) {
+  // Download file from Supabase Storage
+  const { data: fileData, error: dlError } = await supabase.storage
+    .from("meeting-files")
+    .download(filePath);
+  if (dlError || !fileData) return null;
+
+  const fileName = filePath.split("/").pop().replace(/^\d+_/, "");
+  const ext = fileName.split(".").pop().toLowerCase();
+
+  // TXT: read directly
+  if (ext === "txt") {
+    const text = await fileData.text();
+    return text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text;
+  }
+
+  // PDF / DOCX / PPTX / Images: use OpenAI to extract/describe content
+  if (["pdf", "docx", "pptx", "png", "jpg", "jpeg", "webp"].includes(ext)) {
+    const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
+
+    // Convert to base64 for images
+    if (isImage) {
+      const buffer = await fileData.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          max_tokens: 1500,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: `Describe and extract all text from this image (${fileName}). Be thorough. If it contains a document, table, or chart, extract the data.` },
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+            ],
+          }],
+        }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        return `[Image: ${fileName}]\n${data?.choices?.[0]?.message?.content || ""}`;
+      }
+    }
+
+    // PDF/DOCX/PPTX: read as text where possible, otherwise describe
+    if (ext === "pdf") {
+      // Try to extract raw text from PDF buffer
+      const buffer = await fileData.arrayBuffer();
+      const textContent = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+      // Extract readable strings (rough PDF text extraction)
+      const readable = textContent.match(/\(([^)]+)\)/g);
+      if (readable && readable.length > 5) {
+        const extracted = readable.map(s => s.slice(1, -1)).join(" ").slice(0, 8000);
+        return `[PDF: ${fileName}]\n${extracted}`;
+      }
+      // Fallback: describe the file name
+      return `[PDF: ${fileName}] — Uploaded but text extraction limited. Content available as reference.`;
+    }
+
+    return `[Document: ${fileName}] — Uploaded for reference.`;
+  }
+
+  return `[File: ${fileName}]`;
+}
+
 // Phase transition validation
 const VALID_TRANSITIONS = {
   prep: ["live"],
