@@ -2787,9 +2787,10 @@
 
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
+        const modeForRedirect = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
         const { error } = await supabase.auth.signInWithOtp({
           email: text,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForRedirect) }
         });
         inputEl.disabled = false;
         sendBtn.disabled = false;
