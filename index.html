@@ -2531,7 +2531,10 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
 
       cta.querySelector(".chat-voice-btn").addEventListener("click", async () => {
-        // Check if already authenticated → go directly
+        // Lock mode from THIS button (not global state)
+        localStorage.setItem("sophie_detected_mode", mode || "talk");
+        setFunnelMode((mode && mode !== "talk") ? sessionMode : null);
+
         const token = await getToken();
         if (token) {
           goToVoiceFromChat();
