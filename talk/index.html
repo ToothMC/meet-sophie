@@ -2009,15 +2009,21 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
     // Standard Thinking Report
     const titleEl = document.querySelector(".postCallTitle");
     const subtitleEl = document.querySelector(".postCallSubtitle");
-    if (titleEl) titleEl.textContent = "Your Thinking Report";
-    if (subtitleEl) subtitleEl.textContent = "A short summary of your conversation with Sophie.";
+    // Mode-specific report title
+    const modeTitle = selectedVoiceMode === "brainstorm" ? t("report_title_brainstorm")
+                    : selectedVoiceMode === "meeting" ? t("report_title_meeting")
+                    : t("report_title");
+    if (titleEl) titleEl.textContent = modeTitle;
+    if (subtitleEl) subtitleEl.textContent = _uiLang === "de" ? "Eine kurze Zusammenfassung deines Gesprächs mit Sophie."
+      : _uiLang === "fr" ? "Un bref résumé de ta conversation avec Sophie."
+      : "A short summary of your conversation with Sophie.";
 
     const headingSummary = document.getElementById("reportHeadingSummary");
     const headingInsights = document.getElementById("reportHeadingInsights");
     const headingActions = document.getElementById("reportHeadingActions");
-    if (headingSummary) headingSummary.textContent = "Summary";
-    if (headingInsights) { headingInsights.textContent = "Key Insights"; headingInsights.style.display = ""; }
-    if (headingActions) { headingActions.textContent = "Next Steps"; headingActions.style.display = ""; }
+    if (headingSummary) headingSummary.textContent = _uiLang === "de" ? "Zusammenfassung" : _uiLang === "fr" ? "Résumé" : "Summary";
+    if (headingInsights) { headingInsights.textContent = _uiLang === "de" ? "Wichtige Erkenntnisse" : _uiLang === "fr" ? "Points clés" : "Key Insights"; headingInsights.style.display = ""; }
+    if (headingActions) { headingActions.textContent = _uiLang === "de" ? "Nächste Schritte" : _uiLang === "fr" ? "Prochaines étapes" : "Next Steps"; headingActions.style.display = ""; }
 
     const insights = normalizeInsights(apiResult?.output?.key_insights);
     const actions = normalizeActions(apiResult?.output?.action_plan);
