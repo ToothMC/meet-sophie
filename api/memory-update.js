@@ -252,7 +252,9 @@ The transcript contains a pitch practice: the user pitched, Sophie asked critica
 
 Extract ALL evaluation data from the conversation. Score each criterion yourself based on the pitch quality you observe.
 
-IMPORTANT: Write the entire output in the SAME language as the transcript.`;
+IMPORTANT: Write the ENTIRE output in the SAME language as the transcript.
+This includes ALL fields: overall_verdict, notes, strongest_elements, main_weaknesses, likely_audience_questions, improvement_priorities, recommended_next_attempt.
+Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Resistance, Persuasiveness) — but the "note" field for each criterion must be in the transcript language.`;
 
   const userMsg = `Transcript:\n${transcriptText}`;
 
