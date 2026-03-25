@@ -253,14 +253,12 @@ async function handleMessage(req, res) {
   const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
   const turnNumber = session.turn_count + 1;
 
-  // Turn-aware voice nudge — injected as last system message so it's fresh in context
-  // Only fires on turns 2–4 to ensure Sophie offers voice early enough
+  // Turn-aware routing nudge — injected as last system message so it's fresh in context
+  // Fires on turns 2–3 to help Sophie identify the user's intent and suggest a mode
   const voiceNudge = turnNumber === 2
-    ? "[INTERNAL] Turn 2. If this conversation has any real topic, end your response with [VOICE_OFFER]."
+    ? "[INTERNAL] Turn 2. You should now have enough context. If the user has a real topic, identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
     : turnNumber === 3
-    ? "[INTERNAL] Turn 3. End your response with [VOICE_OFFER] — unless the user is only asking a quick factual question."
-    : turnNumber === 4
-    ? "[INTERNAL] Turn 4. If you have not yet offered voice, you must do so now. End your response with [VOICE_OFFER]."
+    ? "[INTERNAL] Turn 3. If you have not yet emitted a [MODE_DETECTED:xxx] token, you must do so now. Pick the best mode based on everything you've heard."
     : null;
 
   const openaiMessages = [
