@@ -1263,6 +1263,158 @@ function buildSummaryText() {
   return lines.join("\n").trim();
 }
 
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function getDatePrefix() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function slugify(str) {
+  return str.toLowerCase().replace(/[äÄ]/g,"ae").replace(/[öÖ]/g,"oe").replace(/[üÜ]/g,"ue").replace(/[ß]/g,"ss").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
+}
+
+function downloadProtocol() {
+  if (!meetingData) return;
+  const isDE = lang === "de";
+  const isFR = lang === "fr";
+
+  const title = meetingData.title || meetingData.meeting_type;
+  const dateStr = new Date(meetingData.created_at).toLocaleDateString(
+    isDE ? "de-DE" : isFR ? "fr-FR" : "en-US",
+    { day: "numeric", month: "long", year: "numeric" }
+  );
+  const timeStart = meetingData.started_at ? new Date(meetingData.started_at).toLocaleTimeString(
+    isDE ? "de-DE" : isFR ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" }
+  ) : "—";
+  const timeEnd = meetingData.ended_at ? new Date(meetingData.ended_at).toLocaleTimeString(
+    isDE ? "de-DE" : isFR ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" }
+  ) : "—";
+
+  // Gather participants
+  const partText = ($("ctxParticipants")?.value || "").trim();
+  const participants = partText ? partText.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean) : [];
+
+  // Gather summary data from DOM
+  const summaryText = ($("summaryText")?.textContent || "").trim();
+  const details = $("summaryDetails");
+
+  const sections = [];
+  if (details) {
+    details.querySelectorAll(".summary-section").forEach(sec => {
+      const h4 = sec.querySelector("h4")?.textContent || "";
+      const items = Array.from(sec.querySelectorAll("li")).map(li => li.textContent.trim());
+      if (items.length > 0) sections.push({ title: h4, items });
+    });
+  }
+
+  // Gather diff items
+  const diffItems = [];
+  if (details) {
+    details.querySelectorAll(".diff-item").forEach(d => {
+      diffItems.push(d.textContent.trim());
+    });
+  }
+
+  // Build protocol HTML — classic meeting protocol layout
+  const protocolLabel = isDE ? "Meeting Protokoll" : isFR ? "Proc\u00e8s-verbal" : "Meeting Protocol";
+  const dateLabel = isDE ? "Datum" : isFR ? "Date" : "Date";
+  const timeLabel = isDE ? "Zeit" : isFR ? "Heure" : "Time";
+  const partLabel = isDE ? "Teilnehmer" : isFR ? "Participants" : "Participants";
+  const typeLabel = isDE ? "Typ" : isFR ? "Type" : "Type";
+  const summaryLabel = isDE ? "Zusammenfassung" : isFR ? "R\u00e9sum\u00e9" : "Summary";
+  const diffLabel = isDE ? "Vergleich mit Vorg\u00e4nger-Meeting" : isFR ? "Comparaison" : "Comparison with previous meeting";
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sophie \u2013 ${escapeHtml(protocolLabel)}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;}
+  h1{font-size:26px;font-weight:700;color:#1a1210;margin:0 0 8px;}
+  .subtitle{font-size:14px;color:#a09080;margin:0 0 32px;}
+  .meta-table{width:100%;border-collapse:collapse;margin:0 0 36px;}
+  .meta-table td{padding:8px 12px;font-size:14px;border-bottom:1px solid #ede8e2;vertical-align:top;}
+  .meta-table td:first-child{font-weight:600;color:#1a1210;width:120px;white-space:nowrap;}
+  .meta-table td:last-child{color:#5a4a40;}
+  .section{margin:0 0 36px;padding-bottom:36px;border-bottom:1px solid #ede8e2;}
+  .section:last-child{border-bottom:none;}
+  .section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 12px;}
+  p{margin:0 0 12px;font-size:16px;line-height:1.8;color:#3a3028;}
+  ul{margin:0;padding-left:20px;}
+  li{margin:0 0 10px;font-size:15px;line-height:1.7;color:#3a3028;}
+  li::marker{color:#c4a882;}
+  .owner{color:#6a8a5a;font-weight:600;}
+  .severity-high{color:#c44;}
+  .severity-medium{color:#c90;}
+  .severity-low{color:#5a8a5a;}
+  .diff-item{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:14px;color:#5a4a40;}
+  .diff-icon{font-size:16px;}
+  .footer{margin-top:48px;font-size:12px;color:#b0a090;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="label">${escapeHtml(protocolLabel)}</p>
+  <h1>${escapeHtml(title)}</h1>
+  <p class="subtitle">Sophie \u2013 ${escapeHtml(protocolLabel)}</p>
+
+  <table class="meta-table">
+    <tr><td>${dateLabel}</td><td>${escapeHtml(dateStr)}</td></tr>
+    <tr><td>${timeLabel}</td><td>${escapeHtml(timeStart)} \u2013 ${escapeHtml(timeEnd)}</td></tr>
+    <tr><td>${typeLabel}</td><td>${escapeHtml(meetingData.meeting_type)}</td></tr>
+    ${participants.length > 0 ? `<tr><td>${partLabel}</td><td>${participants.map(p => escapeHtml(p)).join(", ")}</td></tr>` : ""}
+  </table>
+
+  ${summaryText ? `<div class="section">
+    <p class="section-title">${summaryLabel}</p>
+    <p>${escapeHtml(summaryText)}</p>
+  </div>` : ""}
+
+  ${sections.map(sec => `<div class="section">
+    <p class="section-title">${escapeHtml(sec.title)}</p>
+    <ul>${sec.items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+  </div>`).join("")}
+
+  ${diffItems.length > 0 ? `<div class="section">
+    <p class="section-title">${diffLabel}</p>
+    ${diffItems.map(d => `<div class="diff-item">${escapeHtml(d)}</div>`).join("")}
+  </div>` : ""}
+
+  <div class="footer">${isDE ? "Erstellt mit Sophie" : isFR ? "Cr\u00e9\u00e9 avec Sophie" : "Created with Sophie"} \u00b7 meet-sophie.com</div>
+</div>
+</body>
+</html>`;
+
+  const filename = `${getDatePrefix()}_sophie-meeting-protokoll_${slugify(title)}.html`;
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+
+  // iOS fallback
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isIOS && navigator.share && navigator.canShare) {
+    const file = new File([blob], filename, { type: "text/html" });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: protocolLabel }).catch(() => {});
+      return;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 async function copySummary() {
   const text = buildSummaryText();
   try {
