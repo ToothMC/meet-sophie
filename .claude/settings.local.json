@@ -65,7 +65,9 @@
       "Bash(sort -t' ' -k2)",
       "Bash(echo $PATH)",
       "Bash(source ~/.zshrc)",
-      "Read(//opt/homebrew/bin/**)"
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(mdfind -name npx -onlyin /usr/local -onlyin /opt)",
+      "Bash(ls /usr/local/bin/node* /usr/local/bin/npm* /usr/local/bin/npx*)"
     ]
   },
   "hooks": {
