@@ -2133,6 +2133,7 @@
           sessionId,
           userName: detectUserNameFromHistory(history),
           summary: buildChatSummary(history),
+          funnelMode: funnelMode || "talk",
           recentMessages: history
             .filter(m => m?.content && m.content !== "[CHAT_START]")
             .slice(-8),
