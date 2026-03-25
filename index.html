@@ -1864,18 +1864,33 @@
     }
 
     // Hero CTA → opens chat foreground
+    function openChatForeground() {
+      const chatCard = document.getElementById("sophieChat");
+      if (chatCard) {
+        chatCard.classList.add("foreground");
+        document.body.classList.add("chat-foreground-active");
+      }
+      const input = document.getElementById("chatInput");
+      if (input) setTimeout(() => input.focus(), 200);
+    }
+    function closeChatForeground() {
+      const chatCard = document.getElementById("sophieChat");
+      if (chatCard) chatCard.classList.remove("foreground");
+      document.body.classList.remove("chat-foreground-active");
+    }
+
     if (heroCta) {
       heroCta.addEventListener("click", (e) => {
         e.preventDefault();
-        const chatCard = document.getElementById("sophieChat");
-        if (chatCard) {
-          chatCard.classList.add("foreground");
-          document.body.classList.add("chat-foreground-active");
-        }
-        const input = document.getElementById("chatInput");
-        if (input) setTimeout(() => input.focus(), 200);
+        openChatForeground();
       });
     }
+
+    // Close foreground: back button or backdrop click
+    const chatBackBtn = document.querySelector(".chat-back-btn");
+    if (chatBackBtn) chatBackBtn.addEventListener("click", closeChatForeground);
+    const chatBackdrop = document.getElementById("chatBackdrop");
+    if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
     // Voice button pulse — activated by Sophie when conversation moves toward voice
     const CHAT_OPENING = {
