@@ -326,6 +326,7 @@ async function handleMessage(req, res) {
     reply,
     voice_offer,
     voice_confirmed,
+    detected_mode,
     turn_count: session.turn_count + 1,
     model: openaiModel,
   });
