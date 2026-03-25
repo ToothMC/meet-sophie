@@ -737,8 +737,14 @@ function updatePhaseUI(phase) {
   ctaClose.classList.toggle("hidden", phase !== "post");
   phaseCta.classList.toggle("hidden", phase === "closed");
 
-  // Input bar: disabled in closed
+  // Input bar: disabled in closed, placeholder changes per phase
   $("inputBar").classList.toggle("hidden", phase === "closed");
+  const PHASE_PLACEHOLDERS = {
+    de: { prep: "Frage Sophie zur Vorbereitung...", live: "Was passiert gerade im Meeting?", post: "Fragen zur Zusammenfassung..." },
+    en: { prep: "Ask Sophie about preparation...", live: "What's happening in the meeting?", post: "Questions about the summary..." },
+    fr: { prep: "Demande à Sophie pour la préparation...", live: "Que se passe-t-il en réunion ?", post: "Questions sur le résumé..." },
+  };
+  chatInput.placeholder = (PHASE_PLACEHOLDERS[lang] || PHASE_PLACEHOLDERS.en)[phase] || t("typeHere");
 
   // Summary card visibility
   if (phase !== "post" && phase !== "closed") {
