@@ -2908,23 +2908,34 @@
           }
         }
         // Fallback: client-side intent detection if server didn't detect
-        if (!funnelVoiceOffered) {
+        {
           funnelTurn++;
           // Detect from user text AND Sophie's response
-          if (!funnelMode || funnelMode === "talk") {
-            const detectedFromUser = detectFunnelIntent(text);
-            const detectedFromSophie = detectFunnelIntent(reply);
-            const best = (detectedFromUser !== "talk") ? detectedFromUser
-                       : (detectedFromSophie !== "talk") ? detectedFromSophie
-                       : "talk";
+          const detectedFromUser = detectFunnelIntent(text);
+          const detectedFromSophie = detectFunnelIntent(reply);
+          const best = (detectedFromUser !== "talk") ? detectedFromUser
+                     : (detectedFromSophie !== "talk") ? detectedFromSophie
+                     : funnelMode || "talk";
+
+          // Update mode if new detection differs
+          if (best !== "talk" && best !== funnelMode) {
             setFunnelMode(best);
           }
+
           // If mode pre-selected via pill: show CTA after turn 1
           // Otherwise: show after turn 2
           const minTurn = (selectedChatMode && selectedChatMode !== "talk") ? 1 : 2;
-          if (funnelTurn >= minTurn && funnelMode && funnelMode !== "talk") {
+          const currentFunnel = funnelMode || best;
+          if (!funnelVoiceOffered && funnelTurn >= minTurn && currentFunnel && currentFunnel !== "talk") {
             funnelVoiceOffered = true;
-            showInlineVoiceCTA(funnelMode);
+            showInlineVoiceCTA(currentFunnel);
+          } else if (funnelVoiceOffered && best !== "talk") {
+            // Mode changed mid-conversation — show updated CTA
+            const prevMode = localStorage.getItem("sophie_detected_mode");
+            if (prevMode && prevMode !== best) {
+              localStorage.setItem("sophie_detected_mode", best);
+              showInlineVoiceCTA(best);
+            }
           }
         }
 
