@@ -1016,7 +1016,8 @@ async function sendMemoryUpdate(secondsUsed) {
         seconds_used: secondsUsed,
         session_started_at: startedAtIso,
         session_ended_at: endedAtIso,
-        session_id: sessionId
+        session_id: sessionId,
+        session_mode: selectedVoiceMode || null
       }),
       keepalive: true,
     });
