@@ -3026,9 +3026,10 @@
       writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
       saveChatState();
       authBtn.disabled = true;
+      const modeForAuthBtn = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin + "/auth/callback" }
+        options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) }
       });
       if (!error) {
         hide(authEl);
