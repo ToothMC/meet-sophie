@@ -2470,25 +2470,150 @@
       return bubble;
     }
 
-    function showInlineVoiceCTA() {
-      const VOICE_LABELS = {
-        en: { btn: "Continue with voice", hint: "Voice conversation · 2 min free" },
-        de: { btn: "Weiter per Sprache", hint: "Sprachgespräch · 2 Min kostenlos" },
-        fr: { btn: "Continuer en vocal", hint: "Conversation vocale · 2 min gratuites" },
+    function showInlineVoiceCTA(detectedMode) {
+      const mode = detectedMode || funnelMode || "talk";
+      // Map detected mode to session mode for handover
+      const SESSION_MODE_MAP = {
+        brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
+        explore: "talk", decide: "talk", reflect: "talk", relax: "talk", talk: "talk"
       };
-      const labels = VOICE_LABELS[currentLang] || VOICE_LABELS.en;
+      const sessionMode = SESSION_MODE_MAP[mode] || "talk";
+      setFunnelMode(sessionMode === "talk" ? null : sessionMode);
+
+      const MODE_LABELS = {
+        en: {
+          explore:    { btn: "Let's talk", icon: "🎙" },
+          decide:     { btn: "Let's talk it through", icon: "🎙" },
+          reflect:    { btn: "Let's talk", icon: "🎙" },
+          relax:      { btn: "Let's chat", icon: "🎙" },
+          brainstorm: { btn: "Start Brainstorming", icon: "💡" },
+          meeting:    { btn: "Start Meeting Mode", icon: "📋" },
+          salespitch: { btn: "Start Pitch Training", icon: "🎯" },
+          talk:       { btn: "Continue with voice", icon: "🎙" },
+        },
+        de: {
+          explore:    { btn: "Lass uns reden", icon: "🎙" },
+          decide:     { btn: "Lass uns das durchsprechen", icon: "🎙" },
+          reflect:    { btn: "Lass uns reden", icon: "🎙" },
+          relax:      { btn: "Lass uns plaudern", icon: "🎙" },
+          brainstorm: { btn: "Brainstorming starten", icon: "💡" },
+          meeting:    { btn: "Meeting-Modus starten", icon: "📋" },
+          salespitch: { btn: "Pitch-Training starten", icon: "🎯" },
+          talk:       { btn: "Weiter per Sprache", icon: "🎙" },
+        },
+        fr: {
+          explore:    { btn: "Parlons-en", icon: "🎙" },
+          decide:     { btn: "Discutons-en", icon: "🎙" },
+          reflect:    { btn: "Parlons-en", icon: "🎙" },
+          relax:      { btn: "Discutons", icon: "🎙" },
+          brainstorm: { btn: "Lancer le brainstorming", icon: "💡" },
+          meeting:    { btn: "Mode réunion", icon: "📋" },
+          salespitch: { btn: "Entraînement pitch", icon: "🎯" },
+          talk:       { btn: "Continuer en vocal", icon: "🎙" },
+        },
+      };
+      const EMAIL_LABELS = {
+        en: { hint: "Voice conversation · 2 min free", placeholder: "your email", send: "Send invite" },
+        de: { hint: "Sprachgespräch · 2 Min kostenlos", placeholder: "deine E-Mail", send: "Einladung senden" },
+        fr: { hint: "Conversation vocale · 2 min gratuites", placeholder: "ton e-mail", send: "Envoyer" },
+      };
+
+      const labels = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || (MODE_LABELS[currentLang] || MODE_LABELS.en).talk;
+      const emailLabels = EMAIL_LABELS[currentLang] || EMAIL_LABELS.en;
+
+      const btnClass = ["brainstorm", "meeting", "salespitch"].includes(sessionMode)
+        ? `chat-voice-btn mode-${sessionMode}` : "chat-voice-btn";
+
       const wrap = document.createElement("div");
       wrap.className = "chat-msg sophie";
       const cta = document.createElement("div");
       cta.className = "chat-voice-cta";
-      cta.innerHTML = `<button class="chat-voice-btn" type="button">🎙 ${labels.btn}</button><span class="chat-voice-hint">${labels.hint}</span>`;
+      cta.innerHTML = `<button class="${btnClass}" type="button">${labels.icon} ${labels.btn}</button><span class="chat-voice-hint">${emailLabels.hint}</span>`;
       wrap.appendChild(cta);
       messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
 
-      cta.querySelector(".chat-voice-btn").addEventListener("click", () => {
-        goToVoiceFromChat();
+      cta.querySelector(".chat-voice-btn").addEventListener("click", async () => {
+        // Check if already authenticated → go directly
+        const token = await getToken();
+        if (token) {
+          goToVoiceFromChat();
+          return;
+        }
+        // Not authenticated → show inline email capture below the CTA
+        showInlineEmailCapture(mode);
       });
+    }
+
+    function showInlineEmailCapture(detectedMode) {
+      const EMAIL_LABELS = {
+        en: { placeholder: "your email", send: "Send invite",
+              invite: "I'll send you a personal invitation — where should it go?",
+              sent: (e) => `Done! I just sent an invitation to ${e}.\nCheck your inbox — click the link and we'll continue right where we left off.`,
+              err: "Hmm, that didn't work. Try again?" },
+        de: { placeholder: "deine E-Mail", send: "Einladung senden",
+              invite: "Ich schicke dir eine persönliche Einladung — wohin soll sie gehen?",
+              sent: (e) => `Erledigt! Ich habe dir gerade eine Einladung an ${e} geschickt.\nSchau in dein Postfach — klick den Link und wir machen genau hier weiter.`,
+              err: "Hmm, das hat nicht funktioniert. Nochmal versuchen?" },
+        fr: { placeholder: "ton e-mail", send: "Envoyer",
+              invite: "Je t'envoie une invitation personnelle — où dois-je l'envoyer ?",
+              sent: (e) => `C'est fait ! Je viens d'envoyer une invitation à ${e}.\nVérifie ta boîte mail — clique sur le lien et on continue.`,
+              err: "Hmm, ça n'a pas marché. On réessaie ?" },
+      };
+      const labels = EMAIL_LABELS[currentLang] || EMAIL_LABELS.en;
+
+      // Sophie invitation message
+      appendBubble("sophie", labels.invite);
+
+      // Inline email form
+      const wrap = document.createElement("div");
+      wrap.className = "chat-msg sophie";
+      const form = document.createElement("div");
+      form.className = "chat-email-inline";
+      form.innerHTML = `<input type="email" placeholder="${labels.placeholder}" /><button type="button">${labels.send}</button>`;
+      wrap.appendChild(form);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      const emailInput = form.querySelector("input");
+      const sendBtnEl  = form.querySelector("button");
+      setTimeout(() => emailInput.focus(), 80);
+
+      const submit = async () => {
+        const email = emailInput.value.trim();
+        if (!email) return;
+        sendBtnEl.disabled = true;
+        emailInput.disabled = true;
+
+        // Save handover before magic link (survives navigation)
+        saveVoiceHandover();
+        // Also save detected mode for auth callback
+        localStorage.setItem("sophie_detected_mode", detectedMode || "talk");
+
+        writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
+        saveChatState();
+
+        // Build redirect URL with mode encoded
+        const modeParam = detectedMode || funnelMode || "talk";
+        const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeParam);
+
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: redirectUrl }
+        });
+
+        if (!error) {
+          wrap.remove();
+          appendBubble("sophie", labels.sent(email));
+        } else {
+          sendBtnEl.disabled = false;
+          emailInput.disabled = false;
+          appendBubble("sophie", labels.err);
+        }
+      };
+
+      sendBtnEl.addEventListener("click", submit);
+      emailInput.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
     }
 
     function appendAuthBubble() {
