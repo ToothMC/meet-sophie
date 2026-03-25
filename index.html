@@ -2582,16 +2582,16 @@
         sendBtnEl.disabled = true;
         emailInput.disabled = true;
 
+        // Lock the mode from THIS CTA (not from global state which may have changed)
+        const modeParam = detectedMode || "talk";
+        localStorage.setItem("sophie_detected_mode", modeParam);
+        setFunnelMode(modeParam === "talk" ? null : modeParam);
+
         // Save handover before magic link (survives navigation)
         saveVoiceHandover();
-        // Also save detected mode for auth callback
-        localStorage.setItem("sophie_detected_mode", detectedMode || "talk");
 
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
-
-        // Build redirect URL with mode encoded
-        const modeParam = detectedMode || funnelMode || "talk";
         const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeParam);
 
         const { error } = await supabase.auth.signInWithOtp({
