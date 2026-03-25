@@ -1853,7 +1853,16 @@ function renderSalesPitchReportHtml(report) {
   if (!report) return "";
 
   const scoreColor = (s) => s >= 4 ? "#4a8c5c" : s >= 3 ? "#b89a5a" : "#b85a4a";
-  const barBg = (s) => s >= 4 ? "rgba(74,140,92,0.15)" : s >= 3 ? "rgba(184,154,90,0.15)" : "rgba(184,90,74,0.15)";
+  const lang = _uiLang || "en";
+  const L = {
+    overallScore:    lang === "de" ? "Gesamtscore" : "Overall Score",
+    confidence:      lang === "de" ? "Konfidenz" : "Confidence",
+    strengths:       lang === "de" ? "Stärken" : "Strongest Elements",
+    weaknesses:      lang === "de" ? "Schwächen" : "Main Weaknesses",
+    audienceQ:       lang === "de" ? "Wahrscheinliche Publikumsfragen" : "Likely Audience Questions",
+    priorities:      lang === "de" ? "Verbesserungsprioritäten" : "Improvement Priorities",
+    nextFocus:       lang === "de" ? "Fokus nächster Versuch" : "Next Attempt Focus",
+  };
 
   let html = "";
 
