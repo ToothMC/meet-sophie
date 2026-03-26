@@ -1547,8 +1547,9 @@ ${transcriptText}
         action_plan: outputRow.action_plan,
         open_questions: outputRow.open_questions,
         ...(conversationOutput.sales_pitch_report ? { sales_pitch_report: conversationOutput.sales_pitch_report } : {}),
-        ...(conversationOutput.meeting_data ? { meeting_data: conversationOutput.meeting_data } : {}),
-        report_style: conversationOutput.report_style || reportStyle || "thinking",
+        ...(conversationOutput.report_blocks ? { report_blocks: conversationOutput.report_blocks } : {}),
+        ...(conversationOutput.report_providers ? { report_providers: conversationOutput.report_providers } : {}),
+        report_style: conversationOutput.report_style || "smart",
       },
       extracted: {
         first_name: profileRow.first_name,
