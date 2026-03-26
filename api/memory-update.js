@@ -265,17 +265,30 @@ ${analysesBlock}`;
     };
   } catch (e) {
     console.error('[smart-report] synthesis failed:', e?.message);
-    // Fallback: use best single analysis
+    // Fallback: build blocks from best single analysis
     const best = analyses[0].data;
+    const fallbackBlocks = [
+      { type: 'title', text: best.title || 'Session', subtitle: '' },
+      { type: 'summary', text: best.summary || fallbackSummary || '' },
+    ];
+    if (best.highlights?.length) fallbackBlocks.push({ type: 'highlights', items: best.highlights });
+    if (best.key_points?.length) fallbackBlocks.push({ type: 'insights', items: best.key_points });
+    if (best.scores?.length) fallbackBlocks.push({ type: 'scorecard', items: best.scores });
+    if (best.decisions?.length) fallbackBlocks.push({ type: 'decisions', items: best.decisions });
+    if (best.action_items?.length) fallbackBlocks.push({ type: 'actions', items: best.action_items });
+    if (best.participants?.length) fallbackBlocks.push({ type: 'participants', items: best.participants });
+    if (best.open_questions?.length) fallbackBlocks.push({ type: 'questions', items: best.open_questions });
+
     return {
       session_title: best.title || 'Session',
       short_summary: best.summary || fallbackSummary || '',
       structured_summary: { summary: best.summary || '', emotional_tone: emotionalTone || 'neutral', stress_level: stressLevel, closeness_level: closenessLevel },
       key_insights: (best.key_points || []).map(t => ({ type: 'insight', text: t })),
-      action_plan: (best.action_items || []).map(a => ({ label: a.task || a, detail: a.owner ? `Owner: ${a.owner}` : '' })),
+      action_plan: (best.action_items || []).map(a => ({ label: typeof a === 'string' ? a : a.task || '', detail: typeof a === 'object' && a.owner ? `Owner: ${a.owner}` : '' })),
       open_questions: best.open_questions || [],
-      report_blocks: null,
-      report_style: 'fallback',
+      report_blocks: fallbackBlocks,
+      report_providers: [analyses[0].provider],
+      report_style: 'smart',
     };
   }
 }
