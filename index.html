@@ -3009,11 +3009,12 @@
         const voiceOffer     = !!data.voice_offer;
         const voiceConfirmed = !!data.voice_confirmed;
         const detectedMode   = data.detected_mode || null;
+        const aiProvider     = data.provider ? [data.provider] : [];
         turnCount++;
 
         if (voiceConfirmed) {
           history.push({ role: "assistant", content: reply });
-          appendBubble("sophie", reply);
+          appendBubble("sophie", reply, aiProvider);
           saveChatState();
           goToVoiceFromChat();
           return;
@@ -3026,7 +3027,7 @@
         }
 
         history.push({ role: "assistant", content: reply });
-        appendBubble("sophie", reply);
+        appendBubble("sophie", reply, aiProvider);
 
         // ── Routing: Sophie detected a mode → show mode-specific CTA ──
         if (detectedMode) {
