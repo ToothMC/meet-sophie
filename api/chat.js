@@ -212,6 +212,11 @@ async function handleStart(req, res) {
     channel: "chat",
   });
 
+  // Append imported context to system prompt
+  const fullSystemPrompt = importedContext
+    ? systemPrompt + importedContext
+    : systemPrompt;
+
   const opener = getOpener(preferredLanguage);
 
   return res.status(200).json({
