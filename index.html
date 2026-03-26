@@ -3328,13 +3328,17 @@
         const token = await getToken();
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
-        // Get last assistant answer as context for comparison
+        // Build clean messages: system prompt + conversation (no compare/challenge results)
         const lastAssistant = [...history].reverse().find(m => m.role === "assistant");
+        const cleanMessages = [
+          { role: "system", content: systemPrompt || "" },
+          ...history.filter(m => m.role === "user" || m.role === "assistant").slice(-20),
+        ];
         const res = await fetch("/api/ai/compare", {
           method: "POST",
           headers,
           body: JSON.stringify({
-            messages: history.slice(-20),
+            messages: cleanMessages,
             priorAnswer: lastAssistant?.content || null,
             userId: window.__sophieUserId || null,
           }),
