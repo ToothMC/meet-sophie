@@ -97,7 +97,8 @@
       "WebSearch",
       "Bash(grep -r routing_reason /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html --include=*.jsx)",
       "Bash(grep -r \"cost_cap\\\\|cost.cap\\\\|COST_CAP\\\\|budgetCap\\\\|budget_cap\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html)",
-      "Bash(grep -r \"ai_cost_daily\\\\|ai_request_log\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js)"
+      "Bash(grep -r \"ai_cost_daily\\\\|ai_request_log\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js)",
+      "Bash(curl -s \"https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de\")"
     ]
   },
   "hooks": {

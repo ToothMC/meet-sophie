@@ -162,8 +162,6 @@ export async function getNews(topic) {
   }
 
   // Fallback: Google News RSS
-
-  // Google News RSS feed — reliable, free, no key needed
   const lang = 'de';
   const url = topic === 'world'
     ? `https://news.google.com/rss?hl=${lang}&gl=DE&ceid=DE:de`
@@ -174,20 +172,24 @@ export async function getNews(topic) {
     if (!rssRes.ok) throw new Error(`RSS fetch failed: ${rssRes.status}`);
     const xml = await rssRes.text();
 
-    // Parse RSS items with simple regex (no XML parser needed)
+    // Split by <item> tags and parse each
     const items = [];
-    const itemRegex = /<item>[\s\S]*?<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && items.length < 8) {
-      const titleMatch = match[0].match(/<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/);
-      const sourceMatch = match[0].match(/<source[^>]*>(.*?)<\/source>/);
-      const pubDateMatch = match[0].match(/<pubDate>(.*?)<\/pubDate>/);
+    const chunks = xml.split('<item>').slice(1); // skip everything before first <item>
+    for (const chunk of chunks) {
+      if (items.length >= 8) break;
+      const endIdx = chunk.indexOf('</item>');
+      const itemXml = endIdx > -1 ? chunk.slice(0, endIdx) : chunk;
 
-      const title = (titleMatch?.[1] || titleMatch?.[2] || '').trim();
-      const source = (sourceMatch?.[1] || '').trim();
-      const pubDate = pubDateMatch?.[1] || '';
+      // Extract title — Google News uses plain <title>, not CDATA
+      const tMatch = itemXml.match(/<title>(.*?)<\/title>/s);
+      const sMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/s);
+      const dMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/s);
 
-      if (title && title !== topic) {
+      const title = (tMatch?.[1] || '').replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+      const source = (sMatch?.[1] || '').trim();
+      const pubDate = dMatch?.[1] || '';
+
+      if (title) {
         const dateStr = pubDate ? new Date(pubDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
         items.push(`- ${title}${source ? ` (${source})` : ''}${dateStr ? ` — ${dateStr}` : ''}`);
       }
