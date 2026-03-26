@@ -2928,7 +2928,11 @@
     }
     async function getToken() {
       const { data: { session } } = await supabase.auth.getSession();
-      return session?.access_token || null;
+      const token = session?.access_token || null;
+      // Show settings icon when logged in
+      const settingsBtn = document.getElementById("chatSettingsBtn");
+      if (settingsBtn) settingsBtn.style.display = token ? "block" : "none";
+      return token;
     }
     async function callChat(action, payload = {}) {
       const token = await getToken();
