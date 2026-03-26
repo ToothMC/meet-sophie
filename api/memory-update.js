@@ -1504,17 +1504,7 @@ ${transcriptText}
 
     const { error: outErr } = await supabase.from("conversation_outputs").insert(outputRow);
 
-    // Fire async report generation (non-blocking)
-    const reportUrl = `https://${req.headers.host}/api/ai/generate-report`;
-    fetch(reportUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: insertedSession.id,
-        transcript_text: transcriptText,
-        session_mode: sessionMode,
-      }),
-    }).catch(err => console.error('Async report trigger failed:', err?.message));
+    // Report generation is triggered by the frontend via /api/ai/generate-report
 
     if (outErr) {
       console.error("conversation_outputs insert failed:", outErr);
