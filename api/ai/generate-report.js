@@ -1,8 +1,10 @@
-// api/ai/generate-report.js — Async Report Generator
-// Called after session ends. Queries all AI providers, synthesizes the best report.
-// Stores progress + result in conversation_outputs table.
+// api/ai/generate-report.js — Smart Report Generator
+// All 4 AIs analyze, Claude generates the final HTML report directly.
+// No JSON blocks, no templates — pure HTML creativity.
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
+
+export const config = { maxDuration: 60 };
 
 const REPORT_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
@@ -10,9 +12,6 @@ const REPORT_PROVIDERS = [
   { provider: 'google', model: 'gemini-2.5-flash' },
   { provider: 'mistral', model: 'mistral-small-latest' },
 ];
-
-// Allow up to 60s for report generation (4 AI calls + synthesis)
-export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -25,34 +24,22 @@ export default async function handler(req, res) {
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
 
-  // Mark report as generating
   await supabase.from('conversation_outputs')
     .update({ report_status: 'generating', report_progress: 5 })
     .eq('session_id', session_id);
 
-  // Synchronous processing — frontend polls report-status in parallel
   try {
-    const modeHint = session_mode ? `\nDer Session-Modus war: "${session_mode}". Berücksichtige das bei deiner Analyse.` : '';
+    const modeHint = session_mode ? `Session-Modus: "${session_mode}".` : '';
 
-    const analysisPrompt = `Analysiere dieses Gesprächs-Transcript. Extrahiere ALLES was relevant ist.
-Keine starre Vorlage — extrahiere was DA ist:
-- Wenn Scores/Bewertungen vorkommen → extrahiere sie mit Zahlen
-- Wenn Teilnehmer erkennbar → nenne sie
-- Wenn Entscheidungen getroffen wurden → liste sie
-- Wenn Action Items besprochen wurden → mit Owner und Deadline
-- Wenn es ein Pitch war → bewerte Kriterien wie Clarity, Value Proposition etc. mit Score 0-5
-- Wenn es ein Meeting war → Agenda, Beschlüsse, Protokoll
-- Wenn es ein kurzes Gespräch war → kurze Zusammenfassung reicht
-Antworte als freies JSON-Objekt. Nutze die Felder die PASSEN. Erfinde NICHTS.${modeHint}
-Schreibe in der GLEICHEN Sprache wie das Transcript.`;
+    // Step 1: All 4 AIs analyze the transcript
+    const analysisPrompt = `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
+${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.`;
 
-    // Step 1: Query all providers SEQUENTIALLY (no timeout pressure)
     const analyses = [];
     for (let i = 0; i < REPORT_PROVIDERS.length; i++) {
       const { provider, model } = REPORT_PROVIDERS[i];
-      const progress = 10 + Math.round((i / REPORT_PROVIDERS.length) * 50);
       await supabase.from('conversation_outputs')
-        .update({ report_progress: progress, report_status_detail: `Analysiere mit ${provider}...` })
+        .update({ report_progress: 10 + Math.round((i / 4) * 50), report_status_detail: `Analysiere mit ${provider}...` })
         .eq('session_id', session_id);
 
       try {
@@ -62,17 +49,9 @@ Schreibe in der GLEICHEN Sprache wie das Transcript.`;
             { role: 'system', content: analysisPrompt },
             { role: 'user', content: `Transcript:\n${transcript_text}` },
           ],
-          model,
-          maxTokens: 2048,
-          temperature: 0.2,
+          model, maxTokens: 2048, temperature: 0.2,
         });
-        const text = response.content || '';
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            analyses.push({ provider, data: JSON.parse(jsonMatch[0]) });
-          } catch { console.error(`[report] ${provider} bad JSON`); }
-        }
+        if (response.content) analyses.push({ provider, text: response.content });
       } catch (e) {
         console.error(`[report] ${provider} failed:`, e?.message);
       }
@@ -80,64 +59,53 @@ Schreibe in der GLEICHEN Sprache wie das Transcript.`;
 
     if (analyses.length === 0) {
       await supabase.from('conversation_outputs')
-        .update({
-          report_status: 'failed',
-          report_progress: 100,
-          report_status_detail: 'Keine AI-Provider verfügbar',
-        })
+        .update({ report_status: 'failed', report_progress: 100, report_status_detail: 'Keine AI-Provider verfügbar' })
         .eq('session_id', session_id);
-      return;
+      return res.status(500).json({ error: 'No providers available' });
     }
 
-    // Step 2: Synthesis with Claude Sonnet
+    // Step 2: Claude generates the final HTML report
     await supabase.from('conversation_outputs')
-      .update({ report_progress: 70, report_status_detail: `Synthese aus ${analyses.length} Analysen...` })
+      .update({ report_progress: 70, report_status_detail: `Erstelle Report aus ${analyses.length} Analysen...` })
       .eq('session_id', session_id);
 
     const analysesBlock = analyses
-      .map(a => `[${a.provider.toUpperCase()}]:\n${JSON.stringify(a.data, null, 2)}`)
+      .map(a => `[${a.provider.toUpperCase()}]:\n${a.text}`)
       .join('\n\n---\n\n');
 
-    const synthesisPrompt = `Du bist ein Premium Report-Designer für eine hochintelligente KI namens Sophie.
-${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert. Erstelle den BESTEN Report.
+    const htmlPrompt = `Du bist ein Premium Report-Designer für Sophie, eine hochintelligente KI.
+${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
 
-DESIGN-PRINZIPIEN:
-- Modern, elegant, visuell ansprechend — der User soll merken dass er mit einer intelligenten KI arbeitet
-- NUR Informationen die von mindestens 2 KIs bestätigt werden (Confidence-Check gegen Halluzinationen)
-- Der Inhalt bestimmt die Form — wähle frei welche Blöcke passen
-- Wenn es ein kurzes Gespräch war → kurzer Report. Keine künstliche Tiefe
+Erstelle einen REPORT als reines HTML (nur den <body> Inhalt, kein <html>/<head>).
+
+DESIGN-REGELN:
+- Modernes, elegantes Design — der User soll spüren dass er mit einer intelligenten KI arbeitet
+- NUR Fakten verwenden die mindestens 2 KIs bestätigen
+- Der INHALT bestimmt die FORM:
+  → Routenplanung? Zeige die Route visuell als Timeline/Stationen mit Pfeilen, Distanzen, Fahrzeiten
+  → Sales Pitch? Score-Card mit farbigen Balken (grün ≥4, gelb ≥3, rot <3), Overall Score
+  → Meeting? Protokoll mit Agenda, Beschlüssen (✓), Action Items mit Owner
+  → Brainstorm? Ideen-Cluster, Favoriten hervorgehoben
+  → Kurzes Gespräch? Kompakte Zusammenfassung, keine erzwungene Tiefe
+  → Entscheidung? Pro/Contra visuell gegenübergestellt
+- KEINE starre Vorlage — jeder Report ist einzigartig, passend zum Inhalt
+- Nutze moderne CSS: border-radius, subtle shadows, gradient accents, pill badges
+- Farbpalette: #2a2420 (dark), #c4a882 (gold accent), #4a8c5c (green/positive), #b85a4a (red/negative), #f5f0ea (background)
+- Schriftart: system font stack (wird vom Parent vererbt)
+- Responsive: max-width 100%, keine festen Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
 
-KONSISTENZ-LEITPLANKEN (damit wiederholte Sessions vergleichbar bleiben):
-- SALES PITCH → IMMER Scorecard mit diesen 8 Kriterien: Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Handling, Persuasiveness (Score 0-5). Plus: Stärken, Schwächen, Overall Score.
-- MEETING → IMMER: Agenda/Themen → Beschlüsse → Action Items (mit Owner + Deadline) → Offene Punkte.
-- BRAINSTORM → IMMER: Ideen-Cluster → Favoriten → Nächste Schritte.
-- REFLEXION/COACHING → Frei, aber Erkenntnisse und offene Fragen sollten dabei sein.
-- CASUAL/KURZ → Kompakte Zusammenfassung, keine erzwungene Tiefe.
+KONSISTENZ bei wiederholten Session-Typen:
+- Sales Pitch: IMMER diese 8 Kriterien mit Score 0-5: Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Handling, Persuasiveness
+- Meeting: IMMER Agenda → Beschlüsse → Action Items → Offene Punkte
 
-VERFÜGBARE BLOCK-TYPEN (nutze NUR was zum Inhalt passt):
-{"type":"title","text":"...","subtitle":"..."} — Titel
-{"type":"metadata","date":"...","duration":"...","mood":"..."} — Kontext-Pills
-{"type":"summary","text":"..."} — Zusammenfassung
-{"type":"highlights","items":["..."]} — Wichtigste Punkte (visuell hervorgehoben)
-{"type":"scorecard","items":[{"label":"...","score":0-5,"note":"..."}]} — Bewertung mit Scores
-{"type":"decisions","items":["..."]} — Getroffene Beschlüsse
-{"type":"actions","items":[{"task":"...","owner":"...","deadline":"..."}]} — Aufgaben
-{"type":"participants","items":["..."]} — Teilnehmer
-{"type":"insights","items":["..."]} — Erkenntnisse
-{"type":"questions","items":["..."]} — Offene Fragen
-{"type":"quote","text":"...","source":"..."} — Markantes Zitat
-
-Antworte NUR mit dem JSON-Array. Kein Text davor oder danach.
+Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
 
 DIE ${analyses.length} ANALYSEN:
 
 ${analysesBlock}`;
 
-    let blocks = null;
-    let synthesisProvider = 'anthropic';
-
-    // Try Claude Sonnet first, then GPT-4o as fallback
+    let reportHtml = null;
     for (const synth of [
       { provider: 'anthropic', model: 'claude-sonnet-4-6' },
       { provider: 'openai', model: 'gpt-4o-mini' },
@@ -145,67 +113,51 @@ ${analysesBlock}`;
       try {
         const adapter = getAdapter(synth.provider);
         const response = await adapter.complete({
-          messages: [{ role: 'user', content: synthesisPrompt }],
-          model: synth.model,
-          maxTokens: 4000,
-          temperature: 0.3,
+          messages: [{ role: 'user', content: htmlPrompt }],
+          model: synth.model, maxTokens: 4000, temperature: 0.4,
         });
-        const text = response.content || '';
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          blocks = JSON.parse(jsonMatch[0]);
-          synthesisProvider = synth.provider;
-          break;
-        }
+        const text = (response.content || '').trim();
+        // Strip markdown code fences if present
+        reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
+        if (reportHtml.length > 50) break; // looks like real HTML
+        reportHtml = null;
       } catch (e) {
-        console.error(`[report] synthesis with ${synth.provider} failed:`, e?.message);
+        console.error(`[report] HTML generation with ${synth.provider} failed:`, e?.message);
       }
     }
 
-    // Step 3: If synthesis failed, build blocks from best analysis
-    if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
-      const best = analyses[0].data;
-      blocks = [
-        { type: 'title', text: best.title || 'Session Report', subtitle: '' },
-        { type: 'summary', text: best.summary || '' },
-      ];
-      if (best.highlights?.length) blocks.push({ type: 'highlights', items: best.highlights });
-      if (best.key_points?.length) blocks.push({ type: 'insights', items: best.key_points });
-      if (best.scores?.length) blocks.push({ type: 'scorecard', items: best.scores });
-      if (best.decisions?.length) blocks.push({ type: 'decisions', items: best.decisions });
-      if (best.action_items?.length) blocks.push({ type: 'actions', items: best.action_items });
-      if (best.participants?.length) blocks.push({ type: 'participants', items: best.participants });
-      if (best.open_questions?.length) blocks.push({ type: 'questions', items: best.open_questions });
+    if (!reportHtml) {
+      // Last resort fallback
+      reportHtml = `<div style="padding:20px;"><h2>${session_mode || 'Session'} Report</h2><p>${analyses[0].text}</p></div>`;
     }
 
-    // Step 4: Save to DB
+    // Extract title from HTML
+    const titleMatch = reportHtml.match(/<h[12][^>]*>(.*?)<\/h[12]>/i);
+    const reportTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : 'Session Report';
+
+    // Save to DB
     await supabase.from('conversation_outputs')
       .update({
+        title: reportTitle.slice(0, 120),
         report_status: 'done',
         report_progress: 100,
         report_status_detail: null,
-        report_blocks: blocks,
+        report_html: reportHtml,
         report_providers: analyses.map(a => a.provider),
         report_style: 'smart',
       })
       .eq('session_id', session_id);
 
-    // Also update has_output flag
-    await supabase.from('user_sessions')
-      .update({ has_output: true })
-      .eq('id', session_id);
+    await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
 
-    console.log(`[report] Done for session ${session_id}: ${blocks.length} blocks from ${analyses.length} providers, synthesized by ${synthesisProvider}`);
-    return res.status(200).json({ ok: true, status: 'done', blocks_count: blocks.length, providers: analyses.length });
+    console.log(`[report] Done: ${session_id} — ${reportHtml.length} chars HTML from ${analyses.length} providers`);
+    return res.status(200).json({ ok: true, status: 'done' });
+
   } catch (err) {
-    console.error(`[report] Fatal error for session ${session_id}:`, err?.message);
+    console.error(`[report] Fatal:`, err?.message);
     await supabase.from('conversation_outputs')
-      .update({
-        report_status: 'failed',
-        report_progress: 100,
-        report_status_detail: err?.message || 'Unknown error',
-      })
+      .update({ report_status: 'failed', report_progress: 100, report_status_detail: err?.message })
       .eq('session_id', session_id);
-    return res.status(500).json({ error: err?.message || 'Report generation failed' });
+    return res.status(500).json({ error: err?.message });
   }
 }
