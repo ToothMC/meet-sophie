@@ -294,15 +294,21 @@ ${analysesBlock}`;
 }
 
 function buildFallbackReport(transcriptText, fallbackSummary, emotionalTone) {
+  const title = buildSessionTitle(fallbackSummary);
+  const summary = (fallbackSummary || '').slice(0, 300);
   return {
-    session_title: buildSessionTitle(fallbackSummary),
-    short_summary: (fallbackSummary || '').slice(0, 300),
-    structured_summary: { summary: fallbackSummary || '', emotional_tone: emotionalTone || 'neutral', stress_level: null, closeness_level: null },
+    session_title: title,
+    short_summary: summary,
+    structured_summary: { summary: summary, emotional_tone: emotionalTone || 'neutral', stress_level: null, closeness_level: null },
     key_insights: buildFallbackKeyInsights(fallbackSummary),
     action_plan: buildFallbackActionPlan(fallbackSummary),
     open_questions: buildFallbackOpenQuestions(),
-    report_blocks: null,
-    report_style: 'fallback',
+    report_blocks: [
+      { type: 'title', text: title, subtitle: '' },
+      { type: 'summary', text: summary },
+    ],
+    report_providers: [],
+    report_style: 'smart',
   };
 }
 
