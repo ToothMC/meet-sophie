@@ -1937,6 +1937,72 @@ function getDatePrefix() {
   return `${year}-${month}-${day}`;
 }
 
+// Poll report generation progress from backend
+async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
+
+  inlineReportProgress.style.display = "block";
+  inlineReportProgressBar.style.width = "5%";
+
+  // Show status text below progress bar
+  const softHint = document.getElementById("softHint");
+
+  const maxAttempts = 60; // 60 * 2s = 2 minutes max
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise(r => setTimeout(r, 2000));
+
+    try {
+      const res = await fetch(`/api/ai/report-status?session_id=${sessionId}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      // Update progress bar
+      const progress = Math.max(5, Math.min(98, data.progress || 0));
+      inlineReportProgressBar.style.width = progress + "%";
+
+      // Update status text
+      if (softHint && data.detail) {
+        softHint.textContent = data.detail;
+        softHint.style.display = "block";
+      }
+
+      // Done!
+      if (data.status === "done" && data.output) {
+        inlineReportProgressBar.style.width = "100%";
+        if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
+        setTimeout(() => {
+          inlineReportProgress.style.display = "none";
+        }, 500);
+
+        showPostCallResults({
+          session: { id: sessionId },
+          output: data.output,
+        }, transcriptLog, opts);
+        return;
+      }
+
+      // Failed
+      if (data.status === "failed") {
+        if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
+        inlineReportProgress.style.display = "none";
+        showPostCallResults({
+          output: { short_summary: data.detail || "Report generation failed", key_insights: [], action_plan: [] }
+        }, transcriptLog, opts);
+        return;
+      }
+    } catch (e) {
+      console.error("[report-poll] error:", e?.message);
+    }
+  }
+
+  // Timeout — show what we have
+  inlineReportProgress.style.display = "none";
+  if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
+  showPostCallResults({
+    output: { short_summary: "Report generation timed out", key_insights: [], action_plan: [] }
+  }, transcriptLog, opts);
+}
+
 function startFakeReportLoader() {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
