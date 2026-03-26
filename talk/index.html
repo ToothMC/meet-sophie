@@ -1796,67 +1796,81 @@ function downloadReport() {
   const withTranscript = isTranscriptTabActive();
   const datePrefix = getDatePrefix();
   const topicSlug = lastReportExport.topicSlug || "session";
-
-  const summary = (postCallSummary.textContent || "").trim();
-  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
-    .map(li => li.textContent.trim()).filter(Boolean);
-  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
-    .map((node) => ({
-      title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
-      detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
-    })).filter(item => item.title || item.detail);
   const transcript = (postCallTranscript.textContent || "").trim();
+
+  // Smart Report: export the rendered blocks as proper HTML
+  const ctx = window._lastReportContext;
+  const reportBlocks = ctx?.apiResult?.output?.report_blocks;
+  const reportProviders = ctx?.apiResult?.output?.report_providers || [];
+  const titleBlock = reportBlocks?.find(b => b.type === 'title');
+  const reportTitle = titleBlock?.text || ctx?.apiResult?.output?.session_title || t("report_title");
+
+  let bodyContent;
+  if (reportBlocks) {
+    // Use the same block renderer but for standalone HTML
+    bodyContent = renderReportBlocks(reportBlocks);
+    if (reportProviders.length > 1) {
+      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#b0a090;">Verified by ${reportProviders.length} AIs</div>`;
+    }
+  } else {
+    // Legacy: read from DOM
+    const summary = (postCallSummary.textContent || "").trim();
+    const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+      .map(li => li.textContent.trim()).filter(Boolean);
+    const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+      .map((node) => ({
+        title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
+        detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
+      })).filter(item => item.title || item.detail);
+
+    bodyContent = `<div class="section"><p class="label">${_uiLang === "de" ? "Zusammenfassung" : "Summary"}</p><p>${escapeHtml(summary)}</p></div>`;
+    if (insightLines.length) bodyContent += `<div class="section"><p class="label">${_uiLang === "de" ? "Erkenntnisse" : "Insights"}</p><ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul></div>`;
+    if (actionItems.length) bodyContent += `<div class="section"><p class="label">${_uiLang === "de" ? "Nächste Schritte" : "Next Steps"}</p>${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}</div>`;
+  }
+
+  if (withTranscript && transcript) {
+    bodyContent += `<div class="section"><p class="label">${_uiLang === "de" ? "Transkript" : "Transcript"}</p><pre>${escapeHtml(transcript)}</pre></div>`;
+  }
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="${_uiLang || "en"}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sophie – ${t("report_title")}</title>
+<title>Sophie – ${escapeHtml(reportTitle)}</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
   .wrap{max-width:640px;margin:0 auto;}
   .label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;}
   h1{font-size:26px;font-weight:700;color:#1a1210;margin:0 0 8px;}
-  .subtitle{font-size:14px;color:#a09080;margin:0 0 40px;}
-  .section{margin:0 0 36px;padding-bottom:36px;border-bottom:1px solid #ede8e2;}
-  .section:last-child{border-bottom:none;}
+  .subtitle{font-size:14px;color:#a09080;margin:0 0 28px;}
+  .section{margin:0 0 24px;}
+  .report-section{margin-top:20px;padding-top:20px;border-top:1px solid #ede8e2;}
+  .report-section:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .report-heading{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b0a090;margin:0 0 10px;}
+  .report-summary-text{font-size:16px;line-height:1.8;color:#3a3028;margin:0;}
+  .report-insight-list{list-style:none;padding:0;margin:0;}
+  .report-insight-list li{padding:6px 0 6px 16px;position:relative;font-size:15px;line-height:1.7;color:#3a3028;}
+  .report-insight-list li::before{content:"\\2022";position:absolute;left:0;color:#c4a882;font-weight:bold;}
+  .report-action-item{margin-bottom:14px;}
+  .report-action-title{font-size:15px;font-weight:600;color:#2a2420;}
   p{margin:0;font-size:16px;line-height:1.8;color:#3a3028;}
   ul{margin:0;padding-left:20px;}
-  li{margin:0 0 10px;font-size:16px;line-height:1.7;color:#3a3028;}
+  li{margin:0 0 8px;font-size:15px;line-height:1.7;color:#3a3028;}
   li::marker{color:#c4a882;}
   .action-title{font-size:16px;font-weight:700;color:#1a1210;margin:0 0 4px;}
   .action-detail{font-size:15px;color:#6a5a50;margin:0 0 18px;}
   pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;line-height:1.75;color:#5a4a40;background:rgba(0,0,0,.025);border:1px solid #ede8e2;border-radius:12px;padding:20px;margin:0;}
+  blockquote{margin:0;padding:14px 20px;background:rgba(196,168,130,0.06);border-left:3px solid #c4a882;border-radius:0 14px 14px 0;font-style:italic;font-size:15px;line-height:1.7;color:#3a3028;}
   .footer{margin-top:48px;font-size:12px;color:#b0a090;text-align:center;}
+  @media print{body{padding:20px;background:#fff;}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <p class="label">${t("report_title")}</p>
-  <h1>${_uiLang === "de" ? "Sophie – Gesprächszusammenfassung" : _uiLang === "fr" ? "Sophie – Résumé de conversation" : "Sophie – Conversation Summary"}</h1>
+  <h1>${escapeHtml(reportTitle)}</h1>
   <p class="subtitle">${new Date().toLocaleDateString(_uiLang === "de" ? "de-DE" : _uiLang === "fr" ? "fr-FR" : "en-US", {day:"numeric",month:"long",year:"numeric"})}</p>
-
-  <div class="section">
-    <p class="label">${_uiLang === "de" ? "Zusammenfassung" : _uiLang === "fr" ? "Résumé" : "Summary"}</p>
-    <p>${escapeHtml(summary || "—")}</p>
-  </div>
-
-  <div class="section">
-    <p class="label">${_uiLang === "de" ? "Wichtige Erkenntnisse" : _uiLang === "fr" ? "Points clés" : "Key Insights"}</p>
-    <ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
-  </div>
-
-  <div class="section">
-    <p class="label">${_uiLang === "de" ? "Nächste Schritte" : _uiLang === "fr" ? "Prochaines étapes" : "Next Steps"}</p>
-    ${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}
-  </div>
-
-  ${withTranscript && transcript ? `<div class="section">
-    <p class="label">${_uiLang === "de" ? "Vollständiges Transkript" : _uiLang === "fr" ? "Transcription complète" : "Full Transcript"}</p>
-    <pre>${escapeHtml(transcript)}</pre>
-  </div>` : ""}
-
+  ${bodyContent}
   <div class="footer">${_uiLang === "de" ? "Erstellt mit Sophie" : _uiLang === "fr" ? "Créé avec Sophie" : "Created with Sophie"} · meet-sophie.com</div>
 </div>
 </body>
