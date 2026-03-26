@@ -3320,8 +3320,9 @@
       sending = true;
       compareBtn.disabled = true;
       challengeBtn.disabled = true;
+      startPulse();
       show(typingEl);
-      appendBubble("sophie", "⚡ Vergleiche läuft — befrage alle KIs...");
+      const statusBubble = appendBubble("sophie", "⚡ Vergleiche läuft — befrage alle KIs...");
 
       try {
         const token = await getToken();
