@@ -3438,7 +3438,9 @@
         options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) + "&lang=" + encodeURIComponent(currentLang) }
       });
       if (!error) {
-        hide(authEl);
+        // Keep email visible so user can verify, just disable editing
+        authEmail.readOnly = true;
+        authBtn.textContent = "✓ Sent";
         const sentMsg = t.chat_auth_sent_msg || "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.";
         appendBubble("sophie", sentMsg);
         saveChatState();
