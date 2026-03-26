@@ -3126,6 +3126,19 @@
         appendBubble("sophie", reply, aiProvider);
         maybeShowActionBar();
 
+        // ── Import Hint: show settings link ──
+        if (data.import_hint) {
+          const importWrap = document.createElement("div");
+          importWrap.className = "chat-msg sophie";
+          const importLink = document.createElement("a");
+          importLink.href = "/settings/";
+          importLink.textContent = currentLang === "de" ? "Einstellungen öffnen →" : "Open settings →";
+          importLink.style.cssText = "display:inline-block;padding:6px 12px;border-radius:10px;background:rgba(142,178,255,.14);border:1px solid rgba(142,178,255,.25);color:#c8d8ff;font-size:12px;font-weight:600;text-decoration:none;margin-top:4px;";
+          importWrap.appendChild(importLink);
+          messagesEl.appendChild(importWrap);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
         // ── Routing: Sophie detected a mode → show mode-specific CTA ──
         if (detectedMode) {
           const prevMode = localStorage.getItem("sophie_detected_mode");
