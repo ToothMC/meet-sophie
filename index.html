@@ -2578,22 +2578,20 @@
       bubble.textContent = text;
       wrap.appendChild(bubble);
 
-      // Show provider badge(s) for Sophie's responses
+      // Show provider icon(s) for Sophie's responses
       if (role === "sophie" && providers && providers.length > 0) {
         const badgeWrap = document.createElement("div");
         badgeWrap.className = "chat-provider-badges";
         for (const p of providers) {
-          const badge = document.createElement("span");
-          badge.className = "chat-provider-badge";
           const icon = PROVIDER_ICONS[p];
           if (icon) {
             const img = document.createElement("img");
             img.src = icon;
-            img.alt = p;
-            badge.appendChild(img);
+            img.alt = PROVIDER_LABELS[p] || p;
+            img.title = PROVIDER_LABELS[p] || p;
+            img.className = "chat-provider-icon";
+            badgeWrap.appendChild(img);
           }
-          badge.appendChild(document.createTextNode(PROVIDER_LABELS[p] || p));
-          badgeWrap.appendChild(badge);
         }
         wrap.appendChild(badgeWrap);
       }
