@@ -1199,6 +1199,65 @@ const shareReportBtn = document.getElementById("shareReportBtn");
 const downloadReportBtn = document.getElementById("downloadReportBtn");
 
 
+// Style-Switcher: regenerate report in different style
+document.getElementById("reportStyleBar")?.addEventListener("click", async (e) => {
+  const pill = e.target.closest(".reportStylePill");
+  if (!pill || pill.classList.contains("active") || pill.disabled) return;
+
+  const newStyle = pill.dataset.style;
+  const ctx = window._lastReportContext;
+  if (!ctx) return;
+
+  // Disable all pills during loading
+  document.querySelectorAll(".reportStylePill").forEach(p => p.disabled = true);
+  pill.classList.add("active");
+  document.querySelectorAll(".reportStylePill").forEach(p => { if (p !== pill) p.classList.remove("active"); });
+
+  postCallSummary.textContent = _uiLang === "de" ? "Wird neu generiert..." : "Regenerating...";
+  postCallInsights.innerHTML = "";
+  postCallActions.innerHTML = "";
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+    } catch (_) {}
+
+    const res = await fetch("/api/memory-update", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        transcript: ctx.transcriptLog,
+        reportStyle: newStyle,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      showPostCallResults(data, ctx.transcriptLog);
+
+      // Save preferred style to user profile
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.access_token) {
+          const user = authSession.user;
+          if (user?.id) {
+            await supabase.from("user_profile").update({ preferred_report_style: newStyle }).eq("user_id", user.id);
+          }
+        }
+      } catch (_) {}
+    } else {
+      postCallSummary.textContent = _uiLang === "de" ? "Fehler bei der Regenerierung." : "Regeneration failed.";
+    }
+  } catch (e) {
+    console.error("Style switch error:", e);
+    postCallSummary.textContent = _uiLang === "de" ? "Fehler bei der Regenerierung." : "Regeneration failed.";
+  }
+
+  document.querySelectorAll(".reportStylePill").forEach(p => p.disabled = false);
+});
+
 const postCallCta = document.getElementById("postCallCta");
 const postCallCtaTitle = document.getElementById("postCallCtaTitle");
 const postCallPrimaryBtn = document.getElementById("postCallPrimaryBtn");
