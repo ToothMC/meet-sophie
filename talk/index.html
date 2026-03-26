@@ -1389,6 +1389,23 @@ function updateModeIndicator(mode) {
 }
 function clearModeIndicator() { updateModeIndicator(null); }
 
+// Research indicator — shows which providers are being queried
+const researchEl = document.getElementById("researchIndicator");
+function showResearchIndicator() {
+  if (!researchEl) return;
+  researchEl.classList.add("visible");
+  // Activate all icons with staggered animation
+  const icons = researchEl.querySelectorAll(".ri-icon");
+  icons.forEach((icon, i) => {
+    setTimeout(() => icon.classList.add("active"), i * 200);
+  });
+}
+function hideResearchIndicator() {
+  if (!researchEl) return;
+  researchEl.classList.remove("visible");
+  researchEl.querySelectorAll(".ri-icon").forEach(icon => icon.classList.remove("active"));
+}
+
 function showReadyStatus() {
   statusEl.textContent = t("ready");
   statusEl.style.visibility = "visible";
