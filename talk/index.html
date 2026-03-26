@@ -1392,6 +1392,20 @@ function clearModeIndicator() { updateModeIndicator(null); }
 
 // Research indicator — shows which providers are being queried
 const researchEl = document.getElementById("researchIndicator");
+// Import toast — shows settings link during voice when Sophie mentions import
+function showImportToast() {
+  // Don't show twice
+  if (document.getElementById("importToast")) return;
+  const toast = document.createElement("a");
+  toast.id = "importToast";
+  toast.href = "/settings/";
+  toast.textContent = "Einstellungen öffnen →";
+  toast.style.cssText = "position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:12px;background:rgba(142,178,255,.18);border:1px solid rgba(142,178,255,.3);color:#c8d8ff;font-size:13px;font-weight:600;text-decoration:none;z-index:100;backdrop-filter:blur(8px);animation:fadeIn .3s ease;";
+  document.body.appendChild(toast);
+  // Auto-remove after 15 seconds
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 15000);
+}
+
 function showResearchIndicator() {
   if (!researchEl) return;
   researchEl.classList.add("visible");
