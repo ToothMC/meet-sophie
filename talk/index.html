@@ -2578,7 +2578,7 @@ function attachChannel(ch) {
           }
         }
       };
-      // Add signal_mode tool only for normal conversations (not brainstorm/meeting/salespitch)
+      // Add signal_mode + deep_research tools for normal conversations
       if (!selectedVoiceMode) {
         sessionUpdate.session.tools = [{
           type: "function",
@@ -2590,6 +2590,18 @@ function attachChannel(ch) {
               mode: { type: "string", enum: ["explorer", "reflect", "decide", "relax"] }
             },
             required: ["mode"]
+          }
+        }, {
+          type: "function",
+          name: "deep_research",
+          description: "Query multiple AI models (Claude, Gemini, Mistral) in parallel to get diverse perspectives on a question. Use when the user asks complex questions, needs fact-checking, a second opinion, or deeper analysis. The result contains answers from all available AI providers.",
+          parameters: {
+            type: "object",
+            properties: {
+              question: { type: "string", description: "The question or topic to research across AI models" },
+              context: { type: "string", description: "Optional additional context from the conversation" }
+            },
+            required: ["question"]
           }
         }];
         sessionUpdate.session.tool_choice = "auto";
