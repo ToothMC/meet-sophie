@@ -3173,7 +3173,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         } catch (_) {}
         return;
@@ -3232,7 +3231,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ research: resultText })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         } catch (e) {
           hideResearchIndicator();
@@ -3240,7 +3238,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Research failed" })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         }
         return;
@@ -3278,7 +3275,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ history: resultText })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         } catch (e) {
           hideResearchIndicator();
@@ -3286,7 +3282,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Search failed" })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         }
         return;
@@ -3322,7 +3317,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ result: resultText })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         } catch (e) {
           hideResearchIndicator();
@@ -3330,7 +3324,6 @@ function attachChannel(ch) {
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Tool failed" })
           }});
-          try { dcSend({ type: "response.cancel" }); } catch(_) {}
           dcSend({ type: "response.create" });
         }
         return;
