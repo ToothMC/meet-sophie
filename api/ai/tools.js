@@ -133,32 +133,32 @@ export async function webSearch(query) {
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // DuckDuckGo news endpoint (HTML scraping alternative: use Instant Answer with news focus)
-  const ddgRes = await fetch(
-    `https://api.duckduckgo.com/?q=${encodeURIComponent(topic + ' news')}&format=json&no_html=1&skip_disambig=1`
-  );
-  if (!ddgRes.ok) return `Nachrichten-Suche für "${topic}" fehlgeschlagen.`;
-  const ddg = await ddgRes.json();
+  // Use wttr.in-style approach: fetch from a simple news API
+  // Primary: DuckDuckGo Instant Answer (robust JSON)
+  try {
+    const ddgRes = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(topic)}&format=json&no_html=1&skip_disambig=1`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (ddgRes.ok) {
+      const text = await ddgRes.text();
+      let ddg;
+      try { ddg = JSON.parse(text); } catch { ddg = {}; }
 
-  const parts = [];
-
-  if (ddg.Abstract) {
-    parts.push(`${ddg.AbstractSource}: ${ddg.Abstract}`);
-  }
-
-  if (ddg.RelatedTopics?.length > 0) {
-    const topics = ddg.RelatedTopics
-      .filter(t => t.Text)
-      .slice(0, 8)
-      .map(t => `- ${t.Text}`);
-    if (topics.length > 0) {
-      parts.push(`Aktuelle Themen zu "${topic}":\n${topics.join('\n')}`);
+      const parts = [];
+      if (ddg.Abstract) parts.push(`${ddg.AbstractSource}: ${ddg.Abstract}`);
+      if (ddg.Answer) parts.push(`Antwort: ${ddg.Answer}`);
+      if (ddg.RelatedTopics?.length > 0) {
+        const topics = ddg.RelatedTopics
+          .filter(t => t && t.Text)
+          .slice(0, 8)
+          .map(t => `- ${t.Text}`);
+        if (topics.length > 0) parts.push(`Themen zu "${topic}":\n${topics.join('\n')}`);
+      }
+      if (parts.length > 0) return parts.join('\n\n');
     }
-  }
+  } catch (_) {}
 
-  if (parts.length === 0) {
-    return `Keine aktuellen Nachrichten zu "${topic}" gefunden. Sophie sollte mit eigenem Wissen antworten.`;
-  }
-
-  return parts.join('\n\n');
+  // Fallback: return what we know
+  return `Aktuelle Nachrichten zu "${topic}" konnten nicht abgerufen werden. Sophie sollte mit eigenem Wissen antworten und erwähnen, dass sie keine Echtzeit-News hat.`;
 }
