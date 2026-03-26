@@ -502,6 +502,14 @@ async function handleMessage(req, res) {
     });
   }
 
+  // Inject onboarding nudge for authenticated first-session users too
+  const isFirstAuth = (!profile.first_name || profile.first_name.trim() === "");
+  if (isFirstAuth && turnNumber === 1) {
+    routerMessages.push({ role: "system", content: "[CRITICAL] This is a FIRST SESSION. After responding to the user, you MUST end with: 'Übrigens — wie soll ich dich nennen?' Do NOT skip this." });
+  } else if (isFirstAuth && turnNumber === 2) {
+    routerMessages.push({ role: "system", content: "[CRITICAL] The user should have given their name. Use it once. Then ask: 'Nutzt du schon eine andere KI — ChatGPT, Claude oder so?' Do NOT skip this." });
+  }
+
   // Classify and route (authenticated users only)
   const ctx = classify({ messages: routerMessages }, { userTier, channel: "text" });
   const decision = route(ctx);
