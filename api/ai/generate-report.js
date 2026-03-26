@@ -27,10 +27,7 @@ export default async function handler(req, res) {
     .update({ report_status: 'generating', report_progress: 5 })
     .eq('session_id', session_id);
 
-  // Respond immediately — processing happens after
-  res.status(202).json({ ok: true, status: 'generating' });
-
-  // === ASYNC PROCESSING (after response sent) ===
+  // Synchronous processing — frontend polls report-status in parallel
   try {
     const modeHint = session_mode ? `\nDer Session-Modus war: "${session_mode}". Berücksichtige das bei deiner Analyse.` : '';
 
