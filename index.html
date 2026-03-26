@@ -3077,6 +3077,7 @@
 
         history.push({ role: "assistant", content: reply });
         appendBubble("sophie", reply, aiProvider);
+        maybeShowActionBar();
 
         // ── Routing: Sophie detected a mode → show mode-specific CTA ──
         if (detectedMode) {
