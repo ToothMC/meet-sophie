@@ -304,7 +304,7 @@ async function handleMessage(req, res) {
   try {
     const adapter = getAdapter(decision.primary.provider);
     aiResponse = await Promise.race([
-      adapter.complete({ messages: routerMessages, model: decision.primary.model, maxTokens: 512, temperature: 0.85 }),
+      adapter.complete({ messages: routerMessages, model: decision.primary.model, maxTokens: 1024, temperature: 0.85 }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000)),
     ]);
   } catch (primaryErr) {
@@ -312,7 +312,7 @@ async function handleMessage(req, res) {
       try {
         const fallbackAdapter = getAdapter(decision.fallback.provider);
         aiResponse = await fallbackAdapter.complete({
-          messages: routerMessages, model: decision.fallback.model, maxTokens: 512, temperature: 0.85,
+          messages: routerMessages, model: decision.fallback.model, maxTokens: 1024, temperature: 0.85,
         });
         decision.reason += "+fallback";
       } catch (fallbackErr) {
