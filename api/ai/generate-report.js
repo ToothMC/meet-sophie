@@ -11,6 +11,9 @@ const REPORT_PROVIDERS = [
   { provider: 'mistral', model: 'mistral-small-latest' },
 ];
 
+// Allow up to 60s for report generation (4 AI calls + synthesis)
+export const config = { maxDuration: 60 };
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
