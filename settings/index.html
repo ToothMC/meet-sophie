@@ -155,6 +155,32 @@ main{max-width:520px;margin:0 auto;padding:12px}
 }
 .prompt-box .copy-btn:hover{color:#fff}
 
+/* File upload drop zone */
+.drop-zone{
+  border:2px dashed rgba(255,255,255,.12);border-radius:12px;
+  padding:20px;text-align:center;margin:12px 0;
+  color:rgba(255,255,255,.35);font-size:12px;
+  cursor:pointer;transition:all .2s;
+}
+.drop-zone:hover,.drop-zone.dragover{
+  border-color:rgba(142,178,255,.4);background:rgba(142,178,255,.06);
+  color:rgba(200,216,255,.7);
+}
+.drop-zone input[type=file]{display:none}
+.drop-zone .dz-icon{font-size:24px;margin-bottom:6px;opacity:.4}
+.drop-zone .dz-file{
+  margin-top:8px;font-size:11px;color:rgba(142,178,255,.7);font-weight:600;
+}
+.drop-zone .dz-formats{font-size:10px;color:rgba(255,255,255,.2);margin-top:4px}
+.import-tabs{display:flex;gap:0;margin-bottom:12px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+.import-tab{
+  flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;
+  cursor:pointer;background:rgba(255,255,255,.03);color:rgba(255,255,255,.4);
+  transition:all .15s;border:none;font-family:inherit;
+}
+.import-tab:hover{background:rgba(255,255,255,.06)}
+.import-tab.active{background:rgba(142,178,255,.12);color:#c8d8ff}
+
 /* Candidate list */
 .candidate{
   display:flex;align-items:flex-start;gap:8px;padding:8px 0;
