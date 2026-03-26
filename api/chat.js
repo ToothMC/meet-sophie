@@ -229,6 +229,15 @@ async function handleStart(req, res) {
     (!profile.first_name || profile.first_name.trim() === "") &&
     (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
+  console.log("[chat] start:", {
+    userId: user?.id?.slice(0, 8) || "anon",
+    isFirstSession,
+    firstName: profile.first_name || "(empty)",
+    hasSummary: !!(rel.last_interaction_summary?.trim()),
+    tier,
+    lang: preferredLanguage,
+  });
+
   // Create chat session
   const { data: session, error: sessErr } = await supabase
     .from("chat_sessions")
