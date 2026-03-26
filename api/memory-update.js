@@ -1482,58 +1482,39 @@ ${transcriptText}
       }
     }
 
-    let conversationOutput;
-    try {
-      // Always Smart Report — AI decides the format, no rigid templates
-      conversationOutput = await generateSmartReport({
-        transcriptText,
-        fallbackSummary: sessSummary,
-        emotionalTone: clean(ss.emotional_tone),
-        stressLevel: ss.stress_level,
-        closenessLevel: ss.closeness_level,
-        sessionMode,
-      });
-    } catch (e) {
-      console.error("conversation output generation failed:", e?.message || e);
-      conversationOutput = {
-        session_title: buildSessionTitle(sessSummary),
-        short_summary: sessSummary.slice(0, 300),
-        structured_summary: buildStructuredSummary({
-          shortSummary: sessSummary,
-          emotionalTone: clean(ss.emotional_tone),
-          stressLevel: ss.stress_level,
-          closenessLevel: ss.closeness_level,
-        }),
-        key_insights: buildFallbackKeyInsights(sessSummary),
-        action_plan: buildFallbackActionPlan(sessSummary),
-        open_questions: buildFallbackOpenQuestions(),
-      };
-    }
-
+    // Insert output row with "pending" status — report will be generated async
     const outputRow = {
       session_id: insertedSession.id,
-      title: cleanText(conversationOutput.session_title || finalSessionTitle).slice(0, 120),
-      short_summary: cleanText(conversationOutput.short_summary || sessSummary).slice(0, 300),
-      structured_summary: conversationOutput.structured_summary || buildStructuredSummary({
+      title: cleanText(finalSessionTitle).slice(0, 120),
+      short_summary: cleanText(sessSummary).slice(0, 300),
+      structured_summary: buildStructuredSummary({
         shortSummary: sessSummary,
         emotionalTone: clean(ss.emotional_tone),
         stressLevel: ss.stress_level,
         closenessLevel: ss.closeness_level,
       }),
-      key_insights: Array.isArray(conversationOutput.key_insights)
-        ? conversationOutput.key_insights
-        : buildFallbackKeyInsights(sessSummary),
-      action_plan: Array.isArray(conversationOutput.action_plan)
-        ? conversationOutput.action_plan
-        : buildFallbackActionPlan(sessSummary),
-      open_questions: Array.isArray(conversationOutput.open_questions)
-        ? conversationOutput.open_questions
-        : buildFallbackOpenQuestions(),
+      key_insights: [],
+      action_plan: [],
+      open_questions: [],
       model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-      prompt_version: "conversation-insights-v1",
+      prompt_version: "smart-report-v2",
+      report_status: 'pending',
+      report_progress: 0,
     };
 
     const { error: outErr } = await supabase.from("conversation_outputs").insert(outputRow);
+
+    // Fire async report generation (non-blocking)
+    const reportUrl = `https://${req.headers.host}/api/ai/generate-report`;
+    fetch(reportUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: insertedSession.id,
+        transcript_text: transcriptText,
+        session_mode: sessionMode,
+      }),
+    }).catch(err => console.error('Async report trigger failed:', err?.message));
 
     if (outErr) {
       console.error("conversation_outputs insert failed:", outErr);
