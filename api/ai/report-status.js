@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const { data, error } = await supabase
     .from('conversation_outputs')
-    .select('report_status, report_progress, report_status_detail, report_blocks, report_providers, report_style, title, short_summary, key_insights, action_plan, open_questions')
+    .select('report_status, report_progress, report_status_detail, report_html, report_providers, title')
     .eq('session_id', sessionId)
     .maybeSingle();
 
@@ -24,16 +24,9 @@ export default async function handler(req, res) {
     progress: data.report_progress || 0,
     detail: data.report_status_detail || null,
     ...(data.report_status === 'done' ? {
-      output: {
-        session_title: data.title,
-        short_summary: data.short_summary,
-        key_insights: data.key_insights,
-        action_plan: data.action_plan,
-        open_questions: data.open_questions,
-        report_blocks: data.report_blocks,
-        report_providers: data.report_providers,
-        report_style: data.report_style,
-      },
+      title: data.title,
+      report_html: data.report_html,
+      report_providers: data.report_providers,
     } : {}),
   });
 }
