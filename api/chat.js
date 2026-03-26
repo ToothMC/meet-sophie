@@ -138,23 +138,47 @@ async function handleStart(req, res) {
       }
       if (Array.isArray(sessRes.data)) recentSessions = sessRes.data;
 
-      // Load imported insights from active sources
+      // Load imported data from active sources
       if (importRes.data?.length > 0) {
         const sourceIds = importRes.data.map(s => s.id);
-        const { data: items } = await supabase
+
+        // First try Zone B+C (extracted insights)
+        const { data: insights } = await supabase
           .from("source_items")
           .select("summary, extracted_insights, content_type, zone")
           .in("source_id", sourceIds)
           .in("zone", ["B", "C"])
           .limit(30);
 
-        if (items?.length > 0) {
-          const insights = items
-            .map(i => i.summary || (i.extracted_insights ? JSON.stringify(i.extracted_insights) : null))
+        const insightTexts = (insights || [])
+          .map(i => {
+            if (i.extracted_insights && Object.keys(i.extracted_insights).length > 0) {
+              return JSON.stringify(i.extracted_insights);
+            }
+            return i.summary;
+          })
+          .filter(t => t && t !== "Import von claude" && t !== "Import von chatgpt" && t.length > 10);
+
+        if (insightTexts.length > 0) {
+          importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users):\n" + insightTexts.slice(0, 20).join("\n");
+        } else {
+          // Fallback: read raw content from Zone A (truncated)
+          const { data: rawItems } = await supabase
+            .from("source_items")
+            .select("raw_content")
+            .in("source_id", sourceIds)
+            .eq("zone", "A")
+            .limit(5);
+
+          const rawTexts = (rawItems || [])
+            .map(i => i.raw_content)
             .filter(Boolean)
-            .slice(0, 20);
-          if (insights.length > 0) {
-            importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users):\n" + insights.join("\n");
+            .join("\n\n");
+
+          if (rawTexts.length > 0) {
+            // Truncate to max 4000 chars to fit in context window
+            const truncated = rawTexts.slice(0, 4000);
+            importedContext = "\n\nIMPORTIERTER KONTEXT (Rohdaten aus früheren KI-Gesprächen des Users — nutze diese Informationen um den User besser zu verstehen):\n" + truncated;
           }
         }
       }
