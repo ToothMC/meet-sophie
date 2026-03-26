@@ -162,7 +162,7 @@ async function handleStart(req, res) {
         if (insightTexts.length > 0) {
           importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users):\n" + insightTexts.slice(0, 20).join("\n");
         } else {
-          // Fallback: read raw content from Zone A (truncated)
+          // Fallback: build structured overview from Zone A raw content
           const { data: rawItems } = await supabase
             .from("source_items")
             .select("raw_content")
@@ -176,9 +176,36 @@ async function handleStart(req, res) {
             .join("\n\n");
 
           if (rawTexts.length > 0) {
-            // Truncate to max 4000 chars to fit in context window
-            const truncated = rawTexts.slice(0, 4000);
-            importedContext = "\n\nIMPORTIERTER KONTEXT (Rohdaten aus früheren KI-Gesprächen des Users — nutze diese Informationen um den User besser zu verstehen):\n" + truncated;
+            // Extract conversation titles for overview
+            const titles = rawTexts.split("\n")
+              .filter(line => line.startsWith("# ") && line !== "# Untitled")
+              .map(line => line.replace("# ", "").trim())
+              .filter(t => t.length > 3);
+
+            // Extract user messages for key topics (skip short/trivial ones)
+            const userMsgs = rawTexts.split("\n")
+              .filter(line => line.startsWith("[human]: "))
+              .map(line => line.replace("[human]: ", "").trim())
+              .filter(msg => msg.length > 30 && !msg.match(/^(ja|nein|ok|danke|hi|hallo|gut)/i));
+
+            // Build structured context
+            const parts = [];
+            if (titles.length > 0) {
+              parts.push("GESPRÄCHSTHEMEN (" + titles.length + " Gespräche):\n" + titles.slice(0, 40).map(t => "- " + t).join("\n"));
+            }
+            if (userMsgs.length > 0) {
+              // Sample diverse user messages (first, middle, recent)
+              const sampled = [];
+              if (userMsgs.length > 0) sampled.push(userMsgs[0]);
+              if (userMsgs.length > 5) sampled.push(userMsgs[Math.floor(userMsgs.length / 3)]);
+              if (userMsgs.length > 10) sampled.push(userMsgs[Math.floor(userMsgs.length * 2 / 3)]);
+              if (userMsgs.length > 2) sampled.push(userMsgs[userMsgs.length - 1]);
+              parts.push("BEISPIEL-ANFRAGEN DES USERS:\n" + sampled.map(m => "- " + m.slice(0, 150)).join("\n"));
+            }
+
+            if (parts.length > 0) {
+              importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users — nutze diese Informationen um den User besser zu verstehen und auf seine Projekte/Themen einzugehen):\n" + parts.join("\n\n");
+            }
           }
         }
       }
