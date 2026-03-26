@@ -2652,6 +2652,17 @@ function attachChannel(ch) {
             },
             required: ["question"]
           }
+        }, {
+          type: "function",
+          name: "search_history",
+          description: "Search through the user's imported conversation history from other AI assistants. Use when the user asks about previous conversations, past projects, what was discussed before, or wants to find specific information from their chat history. Returns matching conversation excerpts.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search keywords to find in the conversation history" }
+            },
+            required: ["query"]
+          }
         }];
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
