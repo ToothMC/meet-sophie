@@ -546,6 +546,7 @@ async function handleMessage(req, res) {
     model: aiResponse.model,
     provider: aiResponse.provider,
     routing_reason: decision.reason,
+    import_hint: import_hint,
   });
 }
 
