@@ -342,6 +342,7 @@ async function handleMessage(req, res) {
       latencyMs: Date.now() - routerStartMs,
       routingReason: decision.reason,
     }).catch(err => console.error("Cost tracking error:", err?.message));
+  }
 
   // Detect and strip routing signal tags
   const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/);
