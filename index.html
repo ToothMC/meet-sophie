@@ -3291,6 +3291,10 @@
       appendBubble("sophie", loginMsg);
       show(authEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+      // Focus on email field, not chat input
+      setTimeout(() => {
+        if (authEmail) { authEmail.focus(); authEmail.scrollIntoView({ behavior: "smooth" }); }
+      }, 150);
       return false;
     }
 
