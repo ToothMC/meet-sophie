@@ -305,7 +305,7 @@ async function handleMessage(req, res) {
     const adapter = getAdapter(decision.primary.provider);
     aiResponse = await Promise.race([
       adapter.complete({ messages: routerMessages, model: decision.primary.model, maxTokens: 1024, temperature: 0.85 }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
     ]);
   } catch (primaryErr) {
     if (decision.fallback) {
