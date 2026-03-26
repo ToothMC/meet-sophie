@@ -567,11 +567,16 @@ uploadBtn.addEventListener("click", async () => {
       approveBtn.classList.remove("hidden");
     }
 
-    // Switch to step 2 (approval)
+    // Switch to step 2 (approval) — keep file info visible
     document.getElementById("importTabUpload").classList.add("hidden");
     document.getElementById("importTabPaste").classList.add("hidden");
     step2.classList.remove("hidden");
     document.querySelector(".import-tabs").classList.add("hidden");
+
+    // Auto-open Source Ledger and refresh
+    const sourcesSection = document.getElementById("sectionSources");
+    if (sourcesSection.classList.contains("collapsed")) sourcesSection.classList.remove("collapsed");
+    loadSources();
   } catch (e) {
     document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Upload fehlgeschlagen");
     document.getElementById("importStatus").classList.add("msg-error");
