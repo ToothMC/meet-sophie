@@ -372,7 +372,9 @@ async function handleMessage(req, res) {
     voice_confirmed,
     detected_mode,
     turn_count: session.turn_count + 1,
-    model: openaiModel,
+    model: aiResponse.model,
+    provider: aiResponse.provider,
+    routing_reason: decision.reason,
   });
 }
 
