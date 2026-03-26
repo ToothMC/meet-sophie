@@ -344,13 +344,15 @@ async function handleMessage(req, res) {
     }).catch(err => console.error("Cost tracking error:", err?.message));
   }
 
-  // Detect and strip routing signal tags
-  const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/);
+  // Detect and strip routing signal tags (multiple formats: OpenAI vs Claude)
+  const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/)
+    || rawReply.match(/signal_mode\(\s*\{\s*"mode"\s*:\s*"(\w+)"\s*\}\s*\)/);
   const detected_mode = modeMatch ? modeMatch[1].toLowerCase() : null;
   const voice_offer     = !!detected_mode; // backwards compat: mode detection triggers the CTA
   const voice_confirmed = rawReply.includes("[VOICE_CONFIRMED]");
   const reply = rawReply
     .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
+    .replace(/\s*signal_mode\([^)]*\)\s*/g, "")
     .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
     .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
     .trim();
