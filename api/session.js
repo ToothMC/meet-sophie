@@ -367,6 +367,52 @@ export default async function handler(req, res) {
       (!profile.first_name || profile.first_name.trim() === "") &&
       (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
 
+    // Load imported context from other AIs
+    let importedContext = "";
+    try {
+      const { data: sources } = await supabase
+        .from("source_connections")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+
+      if (sources?.length > 0) {
+        const sourceIds = sources.map(s => s.id);
+        const { data: insights } = await supabase
+          .from("source_items")
+          .select("summary, extracted_insights, raw_content, zone")
+          .in("source_id", sourceIds)
+          .in("zone", ["B", "C"])
+          .limit(30);
+
+        const insightTexts = (insights || [])
+          .map(i => {
+            if (i.extracted_insights && Object.keys(i.extracted_insights).length > 0) return JSON.stringify(i.extracted_insights);
+            return i.summary;
+          })
+          .filter(t => t && t.length > 10 && !t.startsWith("Import von"));
+
+        if (insightTexts.length > 0) {
+          importedContext = "\n\nIMPORTIERTER KONTEXT:\n" + insightTexts.slice(0, 20).join("\n");
+        } else {
+          // Fallback: Zone A raw content
+          const { data: rawItems } = await supabase
+            .from("source_items")
+            .select("raw_content")
+            .in("source_id", sourceIds)
+            .eq("zone", "A")
+            .limit(5);
+
+          const raw = (rawItems || []).map(i => i.raw_content).filter(Boolean).join("\n\n");
+          if (raw.length > 0) {
+            importedContext = "\n\nIMPORTIERTER KONTEXT:\n" + raw.slice(0, 4000);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Import context load error:", e?.message);
+    }
+
     const sophiePrompt = buildSophiePrompt({
       tier,
       sessionMode,
