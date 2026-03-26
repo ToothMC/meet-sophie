@@ -553,7 +553,7 @@ async function handleMessage(req, res) {
   }
 
   // Normalize response
-  const rawReply = normalizeResponse(aiResponse.content || "", aiResponse.provider);
+  let rawReply = normalizeResponse(aiResponse.content || "", aiResponse.provider);
 
   if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
@@ -569,6 +569,29 @@ async function handleMessage(req, res) {
       latencyMs: Date.now() - routerStartMs,
       routingReason: decision.reason,
     }).catch(err => console.error("Cost tracking error:", err?.message));
+  }
+
+  // Second Opinion: auto-trigger for high-risk requests (authenticated users only)
+  let secondOpinionMeta = null;
+  if (user && shouldTriggerSecondOpinion(ctx)) {
+    try {
+      const soResult = await getSecondOpinion(
+        routerMessages,
+        { content: rawReply, provider: aiResponse.provider, model: aiResponse.model },
+        { userId: user.id },
+      );
+      secondOpinionMeta = {
+        confidence: soResult.confidence,
+        agreementLevel: soResult.agreementLevel,
+        synthesized: soResult.synthesized,
+        providers: soResult.providers,
+      };
+      if (soResult.synthesized) {
+        rawReply = soResult.result;
+      }
+    } catch (err) {
+      console.error("Second opinion error (non-fatal):", err?.message);
+    }
   }
 
   // Detect and strip routing signal tags (multiple formats: OpenAI vs Claude)
