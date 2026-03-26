@@ -450,31 +450,17 @@ async function handleMessage(req, res) {
     ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
 
-  // Realtime tools: detect if user needs live data (weather, news, search)
-  const lastMsg = messages[messages.length - 1]?.content?.toLowerCase() || "";
-  const weatherMatch = /wetter|weather|temperatur|regen|rain|sonnig|sunny|grad|forecast|vorhersage/.test(lastMsg);
-  const newsMatch = /news|nachrichten|schlagzeilen|headlines|aktuell.*passiert|was.*los.*welt/.test(lastMsg);
-  const searchMatch = /aktuell.*preis|current.*price|wieviel.*kostet|wie.*teuer|börse|stock|kurs|exchange.*rate|wechselkurs/.test(lastMsg);
-
-  if (weatherMatch) {
-    try {
-      const locMatch = lastMsg.match(/(?:in|für|at|for)\s+([a-zäöüß\s]+?)(?:\?|$|\.|,)/i);
-      const location = locMatch?.[1]?.trim() || "Berlin";
-      const weatherData = await getWeather(location);
-      routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Wetterdaten:\n${weatherData}\n\nNutze diese Daten in deiner Antwort.` });
-    } catch (e) { console.error("Weather tool error:", e?.message); }
-  } else if (newsMatch) {
-    try {
-      const topic = lastMsg.replace(/news|nachrichten|was.*los|aktuell/gi, "").trim() || "world";
-      const newsData = await getNews(topic);
-      routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Nachrichten:\n${newsData}\n\nNutze diese Daten in deiner Antwort.` });
-    } catch (e) { console.error("News tool error:", e?.message); }
-  } else if (searchMatch) {
-    try {
-      const searchData = await webSearch(lastMsg);
-      routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Web-Suche:\n${searchData}\n\nNutze diese Daten in deiner Antwort.` });
-    } catch (e) { console.error("Search tool error:", e?.message); }
-  }
+  // Realtime tools: inject tool instructions into system prompt
+  // AI decides contextually when to request a tool (no keyword matching)
+  routerMessages.push({ role: "system", content:
+    `ECHTZEIT-TOOLS: Du hast Zugriff auf Echtzeit-Daten. Wenn der User nach Informationen fragt die aktueller sind als dein Trainingsdaten-Cutoff, ` +
+    `antworte NUR mit einem Tool-Tag — sonst nichts. Formate:\n` +
+    `[TOOL:weather:Ortsname] — für Wetter, Temperatur, Outdoor-Bedingungen\n` +
+    `[TOOL:search:Suchanfrage] — für aktuelle Fakten, Preise, Ereignisse\n` +
+    `[TOOL:news:Thema] — für aktuelle Nachrichten und Headlines\n` +
+    `Antworte mit dem Tag ALLEIN wenn du Echtzeit-Daten brauchst. Du bekommst die Daten dann automatisch. ` +
+    `Wenn du KEINE Echtzeit-Daten brauchst, antworte ganz normal ohne Tag.`
+  });
 
   // Determine user tier for routing
   let userTier = "free";
