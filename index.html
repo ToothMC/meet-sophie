@@ -1056,6 +1056,13 @@
       color:rgba(200,216,255,.8);
     }
     .chat-action-bar button:disabled{opacity:.3;cursor:default}
+    .chat-action-bar button.pulsing{
+      animation:btnPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes btnPulse{
+      0%,100%{opacity:.4;transform:scale(1)}
+      50%{opacity:1;transform:scale(1.03)}
+    }
     .chat-action-bar .challenge-btn{
       border-color:rgba(255,178,100,.15);
       color:rgba(255,200,140,.45);
