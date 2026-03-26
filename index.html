@@ -3239,15 +3239,19 @@
 
     // ── Login gate for Compare/Challenge ──
     async function requireLogin(featureName, featureDesc) {
-      const token = await getToken();
-      if (token) return true;
-      // Show login prompt inside chat
-      const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
-      const loginMsg = featureDesc + "\n\n🔒 Diese Funktion ist nur nach dem Einloggen verfügbar.";
+      let isLoggedIn = false;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        isLoggedIn = !!(session?.access_token && session?.user);
+      } catch { isLoggedIn = false; }
+
+      if (isLoggedIn) return true;
+
+      // Show explanation + login prompt
+      const loginMsg = featureDesc + "\n\n🔒 Nur nach dem Einloggen verfügbar.";
       appendBubble("sophie", loginMsg);
-      // Show auth section
       show(authEl);
-      authEl.scrollIntoView({ behavior: "smooth" });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       return false;
     }
 
