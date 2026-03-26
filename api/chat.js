@@ -630,6 +630,7 @@ async function handleMessage(req, res) {
     provider: aiResponse.provider,
     routing_reason: decision.reason,
     import_hint: import_hint,
+    ...(secondOpinionMeta && { second_opinion: secondOpinionMeta }),
   });
 }
 
