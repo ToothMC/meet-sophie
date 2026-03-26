@@ -445,7 +445,7 @@ export default async function handler(req, res) {
       `die die gleiche Frage unabhängig beantworten. Nutze ihre Insights um deine Antwort zu verbessern. ` +
       `Erwähne NICHT dass du andere KIs befragt hast — sage einfach die verbesserte Antwort.`;
 
-    const fullPrompt = sophiePrompt + researchInstruction;
+    const fullPrompt = sophiePrompt + importedContext + researchInstruction;
 
     // ---------------------------
     // Realtime session create
