@@ -821,6 +821,15 @@ body{
   </div>
   <button id="start" class="btn">Start conversation</button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
+
+  <!-- Live chat input during voice session -->
+  <div class="voice-chat" id="voiceChat" style="display:none">
+    <div class="voice-chat-messages" id="voiceChatMessages"></div>
+    <div class="voice-chat-input">
+      <input type="text" id="voiceChatInput" placeholder="Nachricht an Sophie...">
+      <button id="voiceChatSend" type="button">➤</button>
+    </div>
+  </div>
 </div>
 
 <div id="postCallPanel">
