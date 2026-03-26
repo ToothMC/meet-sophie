@@ -190,10 +190,18 @@ ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert. Erstelle
 DESIGN-PRINZIPIEN:
 - Modern, elegant, visuell ansprechend — der User soll merken dass er mit einer intelligenten KI arbeitet
 - NUR Informationen die von mindestens 2 KIs bestätigt werden (Confidence-Check gegen Halluzinationen)
-- Keine starre Vorlage — der Inhalt bestimmt die Form
-- Wenn es Scores gibt → Scorecard mit Zahlen. Wenn nicht → keine erzwingen
+- Der Inhalt bestimmt die Form — wähle frei welche Blöcke passen
 - Wenn es ein kurzes Gespräch war → kurzer Report. Keine künstliche Tiefe
 - Schreibe in der gleichen Sprache wie die Analysen
+
+KONSISTENZ-LEITPLANKEN (damit wiederholte Sessions vergleichbar bleiben):
+- SALES PITCH → IMMER Scorecard mit diesen 8 Kriterien: Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Handling, Persuasiveness (Score 0-5). Plus: Stärken, Schwächen, Overall Score. So kann der User Pitch #1 mit Pitch #5 vergleichen.
+- MEETING → IMMER: Agenda/Themen → Beschlüsse → Action Items (mit Owner + Deadline) → Offene Punkte. Konsistente Struktur für jedes Meeting-Protokoll.
+- BRAINSTORM → IMMER: Ideen-Cluster → Favoriten → Nächste Schritte. Damit Brainstorming-Sessions vergleichbar sind.
+- REFLEXION/COACHING → Frei, aber Erkenntnisse und offene Fragen sollten immer dabei sein.
+- CASUAL/KURZ → Kompakte Zusammenfassung, keine erzwungene Tiefe.
+
+Diese Leitplanken sind KEINE starren Templates — du entscheidest was zum Gespräch passt. Aber wenn es z.B. ein Pitch war, nutze die 8 Scorecard-Kriterien damit der User seinen Fortschritt tracken kann.
 
 VERFÜGBARE BLOCK-TYPEN (nutze NUR was zum Inhalt passt):
 {"type":"title","text":"...","subtitle":"..."} — Titel
