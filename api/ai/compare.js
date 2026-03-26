@@ -28,18 +28,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing messages array' });
   }
 
-  // Query all providers in parallel
+  // Query all providers in parallel (8s timeout per provider)
+  const PER_PROVIDER_TIMEOUT = 8000;
   const results = await Promise.allSettled(
     COMPARE_PROVIDERS.map(async ({ provider, model }) => {
       const start = Date.now();
       try {
         const adapter = getAdapter(provider);
-        const response = await adapter.complete({
-          messages,
-          model,
-          maxTokens: 1024,
-          temperature: 0.85,
-        });
+        const response = await Promise.race([
+          adapter.complete({ messages, model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), PER_PROVIDER_TIMEOUT)),
+        ]);
         response.content = normalizeResponse(response.content, provider);
         response.latencyMs = Date.now() - start;
         return response;
