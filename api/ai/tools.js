@@ -131,37 +131,47 @@ export async function webSearch(query) {
   return parts.join('\n\n');
 }
 
-// ── News: DuckDuckGo News (kostenlos, kein API-Key) ──
+// ── News: Google News RSS (kostenlos, kein API-Key) ──
 
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // Use wttr.in-style approach: fetch from a simple news API
-  // Primary: DuckDuckGo Instant Answer (robust JSON)
+  // Google News RSS feed — reliable, free, no key needed
+  const lang = 'de';
+  const url = topic === 'world'
+    ? `https://news.google.com/rss?hl=${lang}&gl=DE&ceid=DE:de`
+    : `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=${lang}&gl=DE&ceid=DE:de`;
+
   try {
-    const ddgRes = await fetch(
-      `https://api.duckduckgo.com/?q=${encodeURIComponent(topic)}&format=json&no_html=1&skip_disambig=1`,
-      { signal: AbortSignal.timeout(5000) }
-    );
-    if (ddgRes.ok) {
-      const text = await ddgRes.text();
-      let ddg;
-      try { ddg = JSON.parse(text); } catch { ddg = {}; }
+    const rssRes = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!rssRes.ok) throw new Error(`RSS fetch failed: ${rssRes.status}`);
+    const xml = await rssRes.text();
 
-      const parts = [];
-      if (ddg.Abstract) parts.push(`${ddg.AbstractSource}: ${ddg.Abstract}`);
-      if (ddg.Answer) parts.push(`Antwort: ${ddg.Answer}`);
-      if (ddg.RelatedTopics?.length > 0) {
-        const topics = ddg.RelatedTopics
-          .filter(t => t && t.Text)
-          .slice(0, 8)
-          .map(t => `- ${t.Text}`);
-        if (topics.length > 0) parts.push(`Themen zu "${topic}":\n${topics.join('\n')}`);
+    // Parse RSS items with simple regex (no XML parser needed)
+    const items = [];
+    const itemRegex = /<item>[\s\S]*?<\/item>/g;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null && items.length < 8) {
+      const titleMatch = match[0].match(/<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/);
+      const sourceMatch = match[0].match(/<source[^>]*>(.*?)<\/source>/);
+      const pubDateMatch = match[0].match(/<pubDate>(.*?)<\/pubDate>/);
+
+      const title = (titleMatch?.[1] || titleMatch?.[2] || '').trim();
+      const source = (sourceMatch?.[1] || '').trim();
+      const pubDate = pubDateMatch?.[1] || '';
+
+      if (title && title !== topic) {
+        const dateStr = pubDate ? new Date(pubDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        items.push(`- ${title}${source ? ` (${source})` : ''}${dateStr ? ` — ${dateStr}` : ''}`);
       }
-      if (parts.length > 0) return parts.join('\n\n');
     }
-  } catch (_) {}
 
-  // Fallback: return what we know
-  return `Aktuelle Nachrichten zu "${topic}" konnten nicht abgerufen werden. Sophie sollte mit eigenem Wissen antworten und erwähnen, dass sie keine Echtzeit-News hat.`;
+    if (items.length > 0) {
+      return `Aktuelle Nachrichten${topic !== 'world' ? ` zu "${topic}"` : ''}:\n${items.join('\n')}`;
+    }
+  } catch (e) {
+    console.error('[tools] news RSS error:', e?.message);
+  }
+
+  return `Keine aktuellen Nachrichten zu "${topic}" verfügbar.`;
 }
