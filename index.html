@@ -991,8 +991,9 @@
       line-height:1;
     }
     .chat-provider-badge img{
-      width:10px;height:10px;border-radius:2px;
-      opacity:.6;
+      width:10px;height:10px;max-width:10px;max-height:10px;
+      border-radius:2px;opacity:.6;
+      display:inline-block;flex-shrink:0;
     }
     .chat-provider-badges{
       display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;
