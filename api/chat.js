@@ -458,7 +458,43 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Classify and route
+  // Anonymous users → always OpenAI (no multi-AI routing)
+  if (!user) {
+    const openaiAdapter = getAdapter("openai");
+    const aiResp = await openaiAdapter.complete({
+      messages: routerMessages, model: "gpt-4o-mini", maxTokens: 1024, temperature: 0.85,
+    });
+    const rawReply = normalizeResponse(aiResp.content || "", aiResp.provider);
+    if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
+
+    // Strip signal tags
+    const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/) || rawReply.match(/signal_mode\(\s*\{\s*"mode"\s*:\s*"(\w+)"\s*\}\s*\)/);
+    const detected_mode = modeMatch ? modeMatch[1].toLowerCase() : null;
+    const import_hint = rawReply.includes("[IMPORT_HINT]");
+    const reply = rawReply
+      .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
+      .replace(/\s*signal_mode\([^)]*\)\s*/g, "")
+      .replace(/\s*\[IMPORT_HINT\]\s*/g, "")
+      .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
+      .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
+      .trim();
+
+    await supabase.from("chat_sessions").update({
+      turn_count: session.turn_count + 1,
+      last_message_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", session_id);
+
+    return res.status(200).json({
+      ok: true, reply,
+      voice_offer: !!detected_mode, voice_confirmed: false,
+      detected_mode, turn_count: session.turn_count + 1,
+      model: aiResp.model, provider: aiResp.provider,
+      routing_reason: "anonymous-openai", import_hint,
+    });
+  }
+
+  // Classify and route (authenticated users only)
   const ctx = classify({ messages: routerMessages }, { userTier, channel: "text" });
   const decision = route(ctx);
 
