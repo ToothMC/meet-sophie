@@ -2152,6 +2152,25 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   postCallTranscript.textContent = transcriptText || t("no_transcript");
 
+  // Style-Switcher: show pills and highlight active style
+  const reportStyle = apiResult?.output?.report_style || "thinking";
+  const styleBar = document.getElementById("reportStyleBar");
+  if (styleBar) {
+    styleBar.style.display = "flex";
+    styleBar.querySelectorAll(".reportStylePill").forEach(pill => {
+      pill.classList.toggle("active", pill.dataset.style === reportStyle);
+      pill.disabled = false;
+    });
+  }
+
+  // Store current transcript + session for regeneration
+  window._lastReportContext = {
+    transcriptLog,
+    transcriptText,
+    sessionId: apiResult?.session?.id,
+    apiResult,
+  };
+
   configurePostCallCta(triggeredByLimit);
   showSummaryView();
 
