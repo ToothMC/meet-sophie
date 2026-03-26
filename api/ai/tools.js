@@ -87,7 +87,7 @@ export async function getWeather(location) {
 
 // ── Web Search: DuckDuckGo Instant Answer (kostenlos, kein API-Key) ──
 
-async function webSearch(query) {
+export async function webSearch(query) {
   if (!query) return 'Keine Suchanfrage angegeben.';
 
   // DuckDuckGo Instant Answer API
