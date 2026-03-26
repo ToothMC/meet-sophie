@@ -3228,6 +3228,150 @@
     inputEl.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
+
+    // Show action bar after first assistant message
+    function maybeShowActionBar() {
+      if (history.some(m => m.role === "assistant")) {
+        actionBar.classList.remove("chat-hidden");
+      }
+    }
+
+    // ── Compare Mode: all providers in parallel ──
+    compareBtn.addEventListener("click", async () => {
+      if (sending || history.length === 0) return;
+      const lastUserMsg = [...history].reverse().find(m => m.role === "user");
+      if (!lastUserMsg) return;
+
+      sending = true;
+      compareBtn.disabled = true;
+      challengeBtn.disabled = true;
+      show(typingEl);
+      appendBubble("sophie", "⚡ Vergleiche läuft — befrage alle KIs...");
+
+      try {
+        const token = await getToken();
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch("/api/ai/compare", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            messages: history.slice(-20),
+            userId: window.__sophieUserId || null,
+          }),
+        });
+        hide(typingEl);
+        if (!res.ok) throw new Error("Compare failed");
+        const data = await res.json();
+
+        // Build compare result
+        const wrap = document.createElement("div");
+        wrap.className = "chat-msg sophie";
+        const result = document.createElement("div");
+        result.className = "chat-compare-result";
+
+        // Header: fastest
+        const hdr = document.createElement("div");
+        hdr.className = "compare-header";
+        const fIcon = PROVIDER_ICONS[data.fastest.provider];
+        if (fIcon) { const img = document.createElement("img"); img.src = fIcon; img.style.cssText = "width:12px;height:12px;"; hdr.appendChild(img); }
+        hdr.appendChild(document.createTextNode(`${PROVIDER_LABELS[data.fastest.provider] || data.fastest.provider} — ${data.fastest.latencyMs}ms`));
+        result.appendChild(hdr);
+
+        // Fastest answer
+        const fBubble = document.createElement("div");
+        fBubble.style.cssText = "margin:4px 0;color:rgba(255,255,255,.75);";
+        fBubble.textContent = data.fastest.content.slice(0, 300) + (data.fastest.content.length > 300 ? "…" : "");
+        result.appendChild(fBubble);
+
+        // Others: deviations
+        for (const other of (data.others || [])) {
+          const row = document.createElement("div");
+          row.className = "compare-provider";
+          const oIcon = PROVIDER_ICONS[other.provider];
+          if (oIcon) { const img = document.createElement("img"); img.src = oIcon; img.alt = other.provider; row.appendChild(img); }
+          const label = document.createElement("span");
+          label.className = "provider-label";
+          label.textContent = PROVIDER_LABELS[other.provider] || other.provider;
+          row.appendChild(label);
+          const diff = document.createElement("span");
+          diff.className = "compare-diff";
+          diff.textContent = other.content.slice(0, 150) + (other.content.length > 150 ? "…" : "");
+          row.appendChild(diff);
+          result.appendChild(row);
+        }
+
+        // Cost
+        const cost = document.createElement("div");
+        cost.className = "chat-compare-cost";
+        cost.textContent = `${data.providerCount} Provider · $${data.totalCost.toFixed(4)}`;
+        result.appendChild(cost);
+
+        wrap.appendChild(result);
+        messagesEl.appendChild(wrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      } catch (err) {
+        hide(typingEl);
+        appendBubble("sophie", "Vergleich fehlgeschlagen — versuch es nochmal.");
+      } finally {
+        sending = false;
+        compareBtn.disabled = false;
+        challengeBtn.disabled = false;
+      }
+    });
+
+    // ── Challenge Mode: KIs diskutieren ──
+    challengeBtn.addEventListener("click", async () => {
+      if (sending || history.length === 0) return;
+      const lastUserMsg = [...history].reverse().find(m => m.role === "user");
+      if (!lastUserMsg) return;
+
+      sending = true;
+      compareBtn.disabled = true;
+      challengeBtn.disabled = true;
+      show(typingEl);
+      appendBubble("sophie", "🏆 Challenge läuft — alle KIs diskutieren...\n(3 Runden, kann 15-20s dauern)");
+
+      try {
+        const token = await getToken();
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch("/api/ai/challenge", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            messages: history.slice(-20),
+            userId: window.__sophieUserId || null,
+          }),
+        });
+        hide(typingEl);
+        if (!res.ok) throw new Error("Challenge failed");
+        const data = await res.json();
+
+        // Show final synthesized answer with all provider icons
+        history.push({ role: "assistant", content: data.finalAnswer });
+        appendBubble("sophie", data.finalAnswer, data.providers || []);
+
+        // Show meta info
+        const meta = document.createElement("div");
+        meta.className = "chat-msg sophie";
+        const metaResult = document.createElement("div");
+        metaResult.className = "chat-compare-result";
+        metaResult.innerHTML =
+          `<div class="compare-header">🏆 Challenge — ${data.rounds} Runden</div>` +
+          `<div class="chat-compare-cost">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
+        meta.appendChild(metaResult);
+        messagesEl.appendChild(meta);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      } catch (err) {
+        hide(typingEl);
+        appendBubble("sophie", "Challenge fehlgeschlagen — versuch es nochmal.");
+      } finally {
+        sending = false;
+        compareBtn.disabled = false;
+        challengeBtn.disabled = false;
+      }
+    });
     inputEl.addEventListener("input", () => {
       inputEl.style.height = "auto";
       inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + "px";
