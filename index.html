@@ -3243,6 +3243,14 @@
         actionBar.classList.remove("chat-hidden");
       }
     }
+    function startPulse() {
+      compareBtn.classList.add("pulsing");
+      challengeBtn.classList.add("pulsing");
+    }
+    function stopPulse() {
+      compareBtn.classList.remove("pulsing");
+      challengeBtn.classList.remove("pulsing");
+    }
 
     // ── Login gate for Compare/Challenge ──
     async function requireLogin(featureName, featureDesc) {
