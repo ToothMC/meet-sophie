@@ -112,6 +112,182 @@ function sanitizeOpenQuestions(items) {
     .slice(0, 8);
 }
 
+// ---------------------------------------------------------------------------
+// Smart Report Generator — Multi-AI + Flexible Blocks
+// All 4 providers analyze the transcript in parallel,
+// Claude Sonnet synthesizes the best report with dynamic blocks.
+// ---------------------------------------------------------------------------
+
+const REPORT_PROVIDERS = [
+  { provider: 'openai', model: 'gpt-4o-mini' },
+  { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+  { provider: 'google', model: 'gemini-2.5-flash' },
+  { provider: 'mistral', model: 'mistral-small-latest' },
+];
+
+async function generateSmartReport({ transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel }) {
+  const analysisPrompt = `Analysiere dieses Gesprächs-Transcript und extrahiere ALLE relevanten Informationen.
+Antworte als JSON mit folgender Struktur:
+{
+  "title": "kurzer Titel (max 5 Wörter)",
+  "summary": "2-3 Sätze Zusammenfassung",
+  "participants": ["Name1", "Name2"] oder null wenn nicht erkennbar,
+  "date_context": "Datum/Zeit wenn erwähnt" oder null,
+  "key_points": ["Punkt 1", "Punkt 2", ...],
+  "decisions": ["Beschluss 1", ...] oder [],
+  "action_items": [{"task": "...", "owner": "...", "deadline": "..."}] oder [],
+  "scores": [{"label": "...", "score": 0-5, "note": "..."}] oder [],
+  "open_questions": ["Frage 1", ...] oder [],
+  "highlights": ["Besonders wichtiger Punkt", ...] oder [],
+  "emotional_summary": "Stimmung/Ton des Gesprächs",
+  "type_hint": "meeting|pitch|brainstorm|reflection|coaching|analysis|casual"
+}
+Nur Felder füllen die wirklich aus dem Transcript ableitbar sind. KEINE Halluzinationen.
+Schreibe in der GLEICHEN Sprache wie das Transcript.`;
+
+  // Step 1: All 4 providers analyze in parallel (8s timeout)
+  const results = await Promise.allSettled(
+    REPORT_PROVIDERS.map(async ({ provider, model }) => {
+      try {
+        const adapter = getAdapter(provider);
+        const response = await Promise.race([
+          adapter.complete({
+            messages: [
+              { role: 'system', content: analysisPrompt },
+              { role: 'user', content: `Transcript:\n${transcriptText}` },
+            ],
+            model,
+            maxTokens: 2048,
+            temperature: 0.2,
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000)),
+        ]);
+        // Try to parse JSON from response
+        const text = response.content || '';
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return { provider, data: JSON.parse(jsonMatch[0]) };
+        }
+        return null;
+      } catch (e) {
+        console.error(`[smart-report] ${provider} failed:`, e?.message);
+        return null;
+      }
+    })
+  );
+
+  const analyses = results
+    .map(r => r.status === 'fulfilled' ? r.value : null)
+    .filter(Boolean);
+
+  if (analyses.length === 0) {
+    // Fallback to simple summary
+    return buildFallbackReport(transcriptText, fallbackSummary, emotionalTone);
+  }
+
+  // Step 2: Claude Sonnet synthesizes the best report from all analyses
+  const analysesBlock = analyses
+    .map(a => `[${a.provider.toUpperCase()}]:\n${JSON.stringify(a.data, null, 2)}`)
+    .join('\n\n---\n\n');
+
+  const synthesisPrompt = `Du bist ein Report-Designer. ${analyses.length} KIs haben dasselbe Gespräch analysiert.
+Erstelle den BESTEN Report als JSON-Array von Blöcken.
+
+REGELN:
+- NUR Informationen die mindestens 2 KIs bestätigen (Confidence-Check)
+- Wähle dynamisch welche Blöcke sinnvoll sind — NICHT alle verwenden
+- Schreibe in der gleichen Sprache wie die Analysen
+
+BLOCK-TYPEN (nutze nur was passt):
+- {"type":"title","text":"...","subtitle":"..."} — Report-Titel
+- {"type":"summary","text":"..."} — Zusammenfassung (immer)
+- {"type":"highlights","items":["..."]} — Besonders wichtige Punkte (große Darstellung)
+- {"type":"insights","items":["..."]} — Erkenntnisse als Liste
+- {"type":"scorecard","items":[{"label":"...","score":0-5,"note":"..."}]} — Nur bei Bewertungen/Pitches
+- {"type":"decisions","items":["..."]} — Nur bei konkreten Beschlüssen
+- {"type":"actions","items":[{"task":"...","owner":"...","deadline":"..."}]} — Nur bei Action Items
+- {"type":"participants","items":["..."]} — Nur wenn Teilnehmer bekannt
+- {"type":"questions","items":["..."]} — Offene Fragen
+- {"type":"quote","text":"...","source":"..."} — Markantes Zitat aus dem Gespräch
+- {"type":"metadata","date":"...","duration":"...","mood":"..."} — Kontextdaten
+
+Antworte NUR mit dem JSON-Array. Keine Erklärung.
+
+DIE ANALYSEN:
+
+${analysesBlock}`;
+
+  try {
+    const synthesizer = getAdapter('anthropic');
+    const synthesisResponse = await Promise.race([
+      synthesizer.complete({
+        messages: [{ role: 'user', content: synthesisPrompt }],
+        model: 'claude-sonnet-4-6',
+        maxTokens: 3000,
+        temperature: 0.3,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000)),
+    ]);
+
+    const text = synthesisResponse.content || '';
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array in synthesis');
+    const blocks = JSON.parse(jsonMatch[0]);
+
+    // Extract standard fields for backward compatibility
+    const titleBlock = blocks.find(b => b.type === 'title');
+    const summaryBlock = blocks.find(b => b.type === 'summary');
+
+    return {
+      session_title: titleBlock?.text || analyses[0]?.data?.title || 'Session',
+      short_summary: summaryBlock?.text || analyses[0]?.data?.summary || fallbackSummary || '',
+      structured_summary: {
+        summary: summaryBlock?.text || '',
+        emotional_tone: emotionalTone || analyses[0]?.data?.emotional_summary || 'neutral',
+        stress_level: stressLevel,
+        closeness_level: closenessLevel,
+      },
+      // Legacy fields for backward compat
+      key_insights: (blocks.find(b => b.type === 'insights')?.items || []).map(t => ({ type: 'insight', text: t })),
+      action_plan: (blocks.find(b => b.type === 'actions')?.items || []).map(a => ({
+        label: a.task || a, detail: a.owner ? `Owner: ${a.owner}${a.deadline ? ` | Deadline: ${a.deadline}` : ''}` : '',
+      })),
+      open_questions: blocks.find(b => b.type === 'questions')?.items || [],
+      // New: flexible blocks for dynamic rendering
+      report_blocks: blocks,
+      report_providers: analyses.map(a => a.provider),
+      report_style: 'smart',
+    };
+  } catch (e) {
+    console.error('[smart-report] synthesis failed:', e?.message);
+    // Fallback: use best single analysis
+    const best = analyses[0].data;
+    return {
+      session_title: best.title || 'Session',
+      short_summary: best.summary || fallbackSummary || '',
+      structured_summary: { summary: best.summary || '', emotional_tone: emotionalTone || 'neutral', stress_level: stressLevel, closeness_level: closenessLevel },
+      key_insights: (best.key_points || []).map(t => ({ type: 'insight', text: t })),
+      action_plan: (best.action_items || []).map(a => ({ label: a.task || a, detail: a.owner ? `Owner: ${a.owner}` : '' })),
+      open_questions: best.open_questions || [],
+      report_blocks: null,
+      report_style: 'fallback',
+    };
+  }
+}
+
+function buildFallbackReport(transcriptText, fallbackSummary, emotionalTone) {
+  return {
+    session_title: buildSessionTitle(fallbackSummary),
+    short_summary: (fallbackSummary || '').slice(0, 300),
+    structured_summary: { summary: fallbackSummary || '', emotional_tone: emotionalTone || 'neutral', stress_level: null, closeness_level: null },
+    key_insights: buildFallbackKeyInsights(fallbackSummary),
+    action_plan: buildFallbackActionPlan(fallbackSummary),
+    open_questions: buildFallbackOpenQuestions(),
+    report_blocks: null,
+    report_style: 'fallback',
+  };
+}
+
 async function generateConversationOutput({
   transcriptText,
   fallbackSummary,
