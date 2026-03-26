@@ -1988,12 +1988,19 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
         softHint.style.display = "block";
       }
 
-      if (data.status === "done" && data.output) {
+      if (data.status === "done" && data.report_html) {
         inlineReportProgressBar.style.width = "100%";
         if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
         setTimeout(() => { inlineReportProgress.style.display = "none"; }, 500);
 
-        showPostCallResults({ session: { id: sessionId }, output: data.output }, transcriptLog, opts);
+        showPostCallResults({
+          session: { id: sessionId },
+          output: {
+            session_title: data.title,
+            report_html: data.report_html,
+            report_providers: data.report_providers,
+          },
+        }, transcriptLog, opts);
         return;
       }
 
