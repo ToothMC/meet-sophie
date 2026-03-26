@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
 // ── Weather: Open-Meteo (kostenlos, kein API-Key) ──
 
-async function getWeather(location) {
+export async function getWeather(location) {
   if (!location) return 'Kein Ort angegeben.';
 
   // Step 1: Geocode location
