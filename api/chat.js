@@ -503,8 +503,15 @@ async function handleMessage(req, res) {
     });
   }
 
+  // Load profile for onboarding check
+  let profileFirstName = "";
+  if (user) {
+    const { data: prof } = await supabase.from("user_profile").select("first_name").eq("user_id", user.id).maybeSingle();
+    profileFirstName = (prof?.first_name || "").trim();
+  }
+
   // Inject onboarding nudge for authenticated first-session users too
-  const isFirstAuth = (!profile.first_name || profile.first_name.trim() === "");
+  const isFirstAuth = !profileFirstName;
   if (isFirstAuth && turnNumber === 1) {
     routerMessages.push({ role: "system", content: "[CRITICAL] This is a FIRST SESSION. After responding to the user, you MUST end with: 'Übrigens — wie soll ich dich nennen?' Do NOT skip this." });
   } else if (isFirstAuth && turnNumber === 2) {
