@@ -2361,15 +2361,15 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
 
-  if (reportBlocks && Array.isArray(reportBlocks) && reportBlocks.length > 0) {
-    // Smart Report — dynamic blocks rendered by AI
+  const reportHtml = apiResult?.output?.report_html || null;
+
+  if (reportHtml) {
+    // Smart HTML Report — AI generated the complete HTML
     const titleEl = document.querySelector(".postCallTitle");
     const subtitleEl = document.querySelector(".postCallSubtitle");
-    const titleBlock = reportBlocks.find(b => b.type === 'title');
-    if (titleEl) titleEl.textContent = titleBlock?.text || sessionTitle || t("report_title");
-    if (subtitleEl) subtitleEl.textContent = titleBlock?.subtitle || '';
+    if (titleEl) titleEl.textContent = apiResult?.output?.session_title || sessionTitle || "Report";
+    if (subtitleEl) subtitleEl.textContent = "";
 
-    // Hide standard section headings — blocks have their own
     const headingSummary = document.getElementById("reportHeadingSummary");
     const headingInsights = document.getElementById("reportHeadingInsights");
     const headingActions = document.getElementById("reportHeadingActions");
@@ -2377,17 +2377,14 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
     if (headingInsights) headingInsights.style.display = "none";
     if (headingActions) headingActions.style.display = "none";
 
-    // Render all blocks into the summary area
-    const html = renderReportBlocks(reportBlocks);
-    postCallSummary.innerHTML = html || summary;
+    postCallSummary.innerHTML = reportHtml;
     postCallInsights.innerHTML = "";
     postCallActions.innerHTML = "";
 
-    // Show provider badges
     const providers = apiResult?.output?.report_providers || [];
     if (providers.length > 1) {
       const badge = document.createElement("div");
-      badge.style.cssText = "text-align:center;margin-top:12px;font-size:10px;color:#b0a090;letter-spacing:.3px;";
+      badge.style.cssText = "text-align:center;margin-top:16px;font-size:10px;color:#b0a090;letter-spacing:.3px;";
       badge.textContent = `Verified by ${providers.length} AIs`;
       postCallSummary.appendChild(badge);
     }
