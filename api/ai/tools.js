@@ -91,7 +91,27 @@ export async function getWeather(location) {
 export async function webSearch(query) {
   if (!query) return 'Keine Suchanfrage angegeben.';
 
-  // Primary: Bing Search API (if key is set)
+  // Primary: Google Custom Search API (if keys are set)
+  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const googleCx = process.env.GOOGLE_SEARCH_CX;
+  if (googleKey && googleCx) {
+    try {
+      const gRes = await fetch(
+        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query)}&num=5&lr=lang_de`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (gRes.ok) {
+        const data = await gRes.json();
+        const results = (data.items || []).slice(0, 5);
+        if (results.length > 0) {
+          const items = results.map(r => `- ${r.title}: ${r.snippet}`);
+          return `Web-Suchergebnisse für "${query}":\n${items.join('\n')}`;
+        }
+      }
+    } catch (e) { console.error('[tools] Google search error:', e?.message); }
+  }
+
+  // Secondary: Bing Search API (if key is set)
   const bingKey = process.env.BING_API_KEY;
   if (bingKey) {
     try {

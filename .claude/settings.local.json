@@ -99,7 +99,11 @@
       "Bash(grep -r \"cost_cap\\\\|cost.cap\\\\|COST_CAP\\\\|budgetCap\\\\|budget_cap\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html)",
       "Bash(grep -r \"ai_cost_daily\\\\|ai_request_log\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js)",
       "Bash(curl -s \"https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de\")",
-      "Bash(curl -s -X POST \"https://meet-sophie-git-feat-multi-ai-router-michaels-projects-674b8d24.vercel.app/api/ai/report-status?session_id=test-123\")"
+      "Bash(curl -s -X POST \"https://meet-sophie-git-feat-multi-ai-router-michaels-projects-674b8d24.vercel.app/api/ai/report-status?session_id=test-123\")",
+      "Bash(curl -s \"https://api.duckduckgo.com/?q=Consense+GmbH&format=json&no_html=1\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''Abstract:'''', d.get\\(''''Abstract'''',''''''''\\)[:200]\\); print\\(''''Answer:'''', d.get\\(''''Answer'''',''''''''\\)\\); print\\(''''Topics:'''', len\\(d.get\\(''''RelatedTopics'''',[]\\)\\)\\)\")",
+      "Bash(curl -s \"https://html.duckduckgo.com/html/?q=Consense+GmbH\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://html.duckduckgo.com/html/?q=Consense+GmbH\")"
     ]
   },
   "hooks": {
