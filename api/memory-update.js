@@ -1281,24 +1281,40 @@ ${transcriptText}
     }
 
     let conversationOutput;
+    let reportStyle = body.reportStyle || null;
+    const openAiKey = process.env.OPENAI_API_KEY;
+    const outputModel = process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini";
     try {
-      if (sessionMode === "salespitch") {
-        conversationOutput = await generateSalesPitchReport({
-          transcriptText,
-          openAiKey: process.env.OPENAI_API_KEY,
-          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-        });
-      } else {
-        conversationOutput = await generateConversationOutput({
-          transcriptText,
-          fallbackSummary: sessSummary,
-          emotionalTone: clean(ss.emotional_tone),
-          stressLevel: ss.stress_level,
-          closenessLevel: ss.closeness_level,
-          openAiKey: process.env.OPENAI_API_KEY,
-          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-        });
+      // Determine report style: explicit > session mode > user preference > AI recommendation
+      if (!reportStyle) {
+        if (sessionMode === "salespitch") {
+          reportStyle = "scorecard";
+        } else if (sessionMode === "meeting") {
+          reportStyle = "meeting";
+        } else {
+          // Check user's preferred style
+          if (user?.id) {
+            const { data: pref } = await supabase.from("user_profile").select("preferred_report_style").eq("user_id", user.id).maybeSingle();
+            reportStyle = pref?.preferred_report_style || null;
+          }
+          // AI recommendation as last resort
+          if (!reportStyle) {
+            reportStyle = await recommendReportStyle({ transcriptText, openAiKey, model: outputModel });
+          }
+        }
       }
+
+      conversationOutput = await generateReport({
+        style: reportStyle,
+        transcriptText,
+        fallbackSummary: sessSummary,
+        emotionalTone: clean(ss.emotional_tone),
+        stressLevel: ss.stress_level,
+        closenessLevel: ss.closeness_level,
+        openAiKey,
+        model: outputModel,
+      });
+      conversationOutput.report_style = reportStyle;
     } catch (e) {
       console.error("conversation output generation failed:", e?.message || e);
       conversationOutput = {
