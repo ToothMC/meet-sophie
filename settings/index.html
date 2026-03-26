@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sophie — Einstellungen</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:#06070b;color:#f6f7fb;
+  min-height:100vh;min-height:100dvh;
+  -webkit-font-smoothing:antialiased;
+}
+.topbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;
+  background:rgba(6,7,11,.92);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.topbar .back{
+  color:rgba(255,255,255,.6);text-decoration:none;font-size:14px;
+  display:flex;align-items:center;gap:4px;
+}
+.topbar .back:hover{color:#fff}
+.topbar .title{flex:1;font-size:15px;font-weight:600}
+.topbar .logout-btn{
+  background:none;border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.5);font-size:11px;padding:5px 12px;
+  border-radius:8px;cursor:pointer;font-family:inherit;
+}
+.topbar .logout-btn:hover{color:#fff;border-color:rgba(255,255,255,.25)}
+.loading{text-align:center;padding:80px 20px;color:rgba(255,255,255,.4);font-size:14px}
+main{max-width:520px;margin:0 auto;padding:12px}
+
+/* Sections */
+.section{
+  margin-bottom:8px;border-radius:16px;overflow:hidden;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08);
+}
+.section-toggle{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 16px;cursor:pointer;
+  transition:background .15s;
+}
+.section-toggle:hover{background:rgba(255,255,255,.04)}
+.section-toggle .arrow{
+  font-size:10px;transition:transform .2s;color:rgba(255,255,255,.3);
+}
+.section.collapsed .arrow{transform:rotate(-90deg)}
+.section-toggle .s-title{font-size:14px;font-weight:600;flex:1}
+.section-toggle .s-sub{font-size:11px;color:rgba(255,255,255,.35)}
+.section-body{padding:0 16px 16px}
+.section.collapsed .section-body{display:none}
+
+/* Cards */
+.card{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:12px;margin-bottom:8px;
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  cursor:pointer;font-family:inherit;border:none;transition:all .15s;
+}
+.btn-primary{background:#fff;color:#0b0f14}
+.btn-primary:hover{opacity:.85}
+.btn-secondary{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.7);
+}
+.btn-secondary:hover{background:rgba(255,255,255,.1)}
+.btn-danger{
+  background:rgba(255,70,70,.12);border:1px solid rgba(255,70,70,.2);
+  color:#ff5a5a;
+}
+.btn-danger:hover{background:rgba(255,70,70,.2)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:8px}
+
+/* Status badges */
+.badge{
+  display:inline-block;font-size:10px;font-weight:600;
+  padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.05em;
+}
+.badge-healthy{background:rgba(52,196,122,.15);color:#34c47a}
+.badge-degraded{background:rgba(245,200,66,.15);color:#f5c842}
+.badge-down{background:rgba(255,90,90,.15);color:#ff5a5a}
+.badge-active{background:rgba(52,196,122,.15);color:#34c47a}
+.badge-decoupled{background:rgba(245,200,66,.15);color:#f5c842}
+.badge-deleted{background:rgba(255,90,90,.15);color:#ff5a5a}
+
+/* Provider grid */
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.provider-card{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+}
+.provider-card .p-icon{width:18px;height:18px;opacity:.6}
+.provider-card .p-info{flex:1}
+.provider-card .p-name{font-size:12px;font-weight:600}
+.provider-card .p-latency{font-size:10px;color:rgba(255,255,255,.35)}
+
+/* Cost bars */
+.cost-row{
+  display:flex;align-items:center;gap:8px;padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.cost-row:last-child{border-bottom:none}
+.cost-row .c-icon{width:14px;height:14px;opacity:.5}
+.cost-row .c-name{font-size:12px;flex:1}
+.cost-row .c-value{font-size:12px;font-weight:600;color:rgba(255,255,255,.7)}
+.cost-total{
+  font-size:20px;font-weight:700;margin-bottom:4px;
+}
+.cost-count{font-size:11px;color:rgba(255,255,255,.35);margin-bottom:12px}
+
+/* Source pills */
+.pill-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.pill{
+  padding:7px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  cursor:pointer;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);
+  transition:all .15s;
+}
+.pill:hover{background:rgba(255,255,255,.08)}
+.pill.active{background:rgba(142,178,255,.16);border-color:rgba(142,178,255,.3);color:#c8d8ff}
+
+/* Textareas */
+.ta{
+  width:100%;min-height:80px;padding:10px 12px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  color:#f6f7fb;font-size:12px;font-family:inherit;resize:vertical;
+  outline:none;line-height:1.5;
+}
+.ta:focus{border-color:rgba(142,178,255,.4)}
+.ta-readonly{opacity:.7;cursor:default;resize:none}
+
+/* Prompt box */
+.prompt-box{position:relative;margin-bottom:12px}
+.prompt-box .copy-btn{
+  position:absolute;top:8px;right:8px;
+  font-size:10px;padding:3px 8px;border-radius:6px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;
+}
+.prompt-box .copy-btn:hover{color:#fff}
+
+/* Candidate list */
+.candidate{
+  display:flex;align-items:flex-start;gap:8px;padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.candidate input[type=checkbox]{margin-top:3px;accent-color:#34c47a}
+.candidate .c-text{font-size:12px;color:rgba(255,255,255,.7);flex:1}
+.candidate .c-type{
+  font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  color:rgba(255,255,255,.3);background:rgba(255,255,255,.06);
+  padding:2px 6px;border-radius:4px;white-space:nowrap;
+}
+
+/* Source list item */
+.source-item{
+  display:flex;align-items:center;gap:10px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.source-item:last-child{border-bottom:none}
+.source-item .s-info{flex:1}
+.source-item .s-name{font-size:13px;font-weight:500}
+.source-item .s-meta{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px}
+.source-item .s-actions{display:flex;gap:4px}
+
+.msg{font-size:12px;color:rgba(255,255,255,.5);padding:8px 0}
+.msg-success{color:#34c47a}
+.msg-error{color:#ff5a5a}
+
+.hidden{display:none!important}
+
+@media(max-width:460px){
+  main{padding:8px}
+  .provider-grid{grid-template-columns:1fr}
+  .pill-row{flex-direction:column}
+  .pill{text-align:center}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back">&larr; Zur&uuml;ck</a>
+  <span class="title">Einstellungen</span>
+  <button class="logout-btn" id="logoutBtn">Abmelden</button>
+</div>
+
+<div class="loading" id="authLoading">Laden...</div>
+
+<main id="mainContent" class="hidden">
+
+  <!-- Section 1: KI-Import -->
+  <div class="section" id="sectionImport">
+    <div class="section-toggle" onclick="toggleSection('sectionImport')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">KI-Import</span>
+      <span class="s-sub">Bring deine KI-History mit</span>
+    </div>
+    <div class="section-body">
+      <p class="msg">W&auml;hle deine bisherige KI &mdash; Sophie generiert einen Extraktions-Prompt zum Kopieren.</p>
+      <div class="pill-row" id="importPills">
+        <div class="pill" data-source="chatgpt">ChatGPT</div>
+        <div class="pill" data-source="claude">Claude</div>
+        <div class="pill" data-source="gemini">Gemini</div>
+      </div>
+      <div id="importStep1" class="hidden">
+        <p class="msg">1. Kopiere diesen Prompt und f&uuml;ge ihn in deine andere KI ein:</p>
+        <div class="prompt-box">
+          <textarea class="ta ta-readonly" id="importPrompt" readonly></textarea>
+          <button class="copy-btn" id="copyPromptBtn">Kopieren</button>
+        </div>
+        <p class="msg">2. F&uuml;ge die Antwort hier ein:</p>
+        <textarea class="ta" id="importPaste" placeholder="Antwort hier einf&uuml;gen..."></textarea>
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="importBtn" disabled>Importieren</button>
+        </div>
+      </div>
+      <div id="importStep2" class="hidden">
+        <p class="msg msg-success" id="importStatus"></p>
+        <p class="msg">Sophie hat folgende Insights extrahiert. W&auml;hle was in ihr Ged&auml;chtnis &uuml;bernommen werden soll:</p>
+        <div id="importCandidates"></div>
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="approveBtn">In Ged&auml;chtnis &uuml;bernehmen</button>
+        </div>
+        <p class="msg hidden" id="approveStatus"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Source Ledger -->
+  <div class="section collapsed" id="sectionSources">
+    <div class="section-toggle" onclick="toggleSection('sectionSources')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Quellen</span>
+      <span class="s-sub">Was wei&szlig; Sophie &uuml;ber mich?</span>
+    </div>
+    <div class="section-body">
+      <div id="sourcesList"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+  <!-- Section 3: Kosten -->
+  <div class="section" id="sectionCosts">
+    <div class="section-toggle" onclick="toggleSection('sectionCosts')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Kosten</span>
+      <span class="s-sub">Deine AI-Kosten heute</span>
+    </div>
+    <div class="section-body">
+      <div id="costsContent"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+  <!-- Section 4: Provider-Status -->
+  <div class="section" id="sectionHealth">
+    <div class="section-toggle" onclick="toggleSection('sectionHealth')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Provider-Status</span>
+      <span class="s-sub">KI-Provider Live-Status</span>
+    </div>
+    <div class="section-body">
+      <div class="provider-grid" id="healthGrid"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Provider icons (inline SVG)
+const ICONS = {
+  openai:    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z'/%3E%3C/svg%3E",
+  anthropic: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.304 2.002h-4.108l6.144 19.996h4.108zM6.696 2.002.552 21.998h4.108l1.26-4.248h6.16l1.26 4.248h4.108L11.304 2.002zm-.18 12.248L8.86 7.054l2.344 7.196z'/%3E%3C/svg%3E",
+  google:    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E",
+  mistral:   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Crect x='2' y='2' width='5' height='5'/%3E%3Crect x='17' y='2' width='5' height='5'/%3E%3Crect x='2' y='7' width='5' height='5'/%3E%3Crect x='7' y='7' width='5' height='5'/%3E%3Crect x='12' y='7' width='5' height='5'/%3E%3Crect x='17' y='7' width='5' height='5'/%3E%3Crect x='2' y='12' width='5' height='5'/%3E%3Crect x='17' y='12' width='5' height='5'/%3E%3C/svg%3E",
+};
+const NAMES = { openai: "OpenAI", anthropic: "Anthropic", google: "Google", mistral: "Mistral" };
+
+let session = null;
+let currentSource = null;
+let importSourceId = null;
+
+// ── Auth ──
+const authLoading = document.getElementById("authLoading");
+const mainContent = document.getElementById("mainContent");
+
+try {
+  const { data } = await supabase.auth.getSession();
+  session = data?.session;
+} catch {}
+
+if (!session?.user) {
+  window.location.href = "/login";
+} else {
+  authLoading.classList.add("hidden");
+  mainContent.classList.remove("hidden");
+  loadHealth();
+  loadCosts();
+}
+
+// Logout
+document.getElementById("logoutBtn").onclick = async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/login";
+};
+
+// ── Helpers ──
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle("collapsed");
+  // Load data on first open
+  if (id === "sectionSources" && !document.getElementById(id).classList.contains("collapsed")) loadSources();
+}
+window.toggleSection = toggleSection;
+
+async function api(action, body = null, method = "GET") {
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (session?.access_token) opts.headers.Authorization = "Bearer " + session.access_token;
+  if (body && method === "POST") opts.body = JSON.stringify(body);
+  const res = await fetch("/api/settings?action=" + action, opts);
+  return res.json();
+}
+
+async function importApi(body) {
+  const opts = {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+    body: JSON.stringify(body),
+  };
+  const res = await fetch("/api/ai/import-context", opts);
+  return res.json();
+}
+
+function icon(provider) {
+  return ICONS[provider] ? `<img src="${ICONS[provider]}" style="width:14px;height:14px;opacity:.6">` : "";
+}
+
+// ── Section 4: Provider-Status ──
+async function loadHealth() {
+  const grid = document.getElementById("healthGrid");
+  try {
+    const data = await api("health");
+    if (!data.providers?.length) { grid.innerHTML = '<p class="msg">Keine Daten</p>'; return; }
+    grid.innerHTML = data.providers.map(p => `
+      <div class="provider-card">
+        ${icon(p.provider)}
+        <div class="p-info">
+          <div class="p-name">${NAMES[p.provider] || p.provider}</div>
+          <div class="p-latency">${p.latency_ms || "?"}ms</div>
+        </div>
+        <span class="badge badge-${p.status}">${p.status}</span>
+      </div>
+    `).join("");
+  } catch { grid.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+// Auto-refresh every 60s
+setInterval(loadHealth, 60000);
+
+// ── Section 3: Kosten ──
+async function loadCosts() {
+  const el = document.getElementById("costsContent");
+  try {
+    const data = await api("costs");
+    const total = parseFloat(data.totalCost || 0);
+    const providers = data.perProvider || {};
+    const count = data.requestCount || 0;
+
+    if (count === 0) {
+      el.innerHTML = '<p class="msg">Noch keine Kosten heute.</p>';
+      return;
+    }
+
+    let rows = "";
+    for (const [p, cost] of Object.entries(providers)) {
+      rows += `<div class="cost-row">
+        ${icon(p)}
+        <span class="c-name">${NAMES[p] || p}</span>
+        <span class="c-value">$${parseFloat(cost).toFixed(4)}</span>
+      </div>`;
+    }
+
+    el.innerHTML = `
+      <div class="cost-total">$${total.toFixed(4)}</div>
+      <div class="cost-count">${count} Requests &middot; ${data.date}</div>
+      ${rows}
+    `;
+  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+
+// ── Section 2: Source Ledger ──
+async function loadSources() {
+  const el = document.getElementById("sourcesList");
+  try {
+    const data = await api("sources");
+    if (!data.sources?.length) {
+      el.innerHTML = '<p class="msg">Keine importierten Quellen. Nutze den KI-Import oben.</p>';
+      return;
+    }
+    el.innerHTML = data.sources.map(s => `
+      <div class="source-item">
+        <div class="s-info">
+          <div class="s-name">${s.source_name}</div>
+          <div class="s-meta">${s.source_type} &middot; ${s.item_count || 0} Items &middot; ${new Date(s.created_at).toLocaleDateString("de-DE")}</div>
+        </div>
+        <span class="badge badge-${s.status}">${s.status}</span>
+        <div class="s-actions">
+          ${s.status === "active" ? `<button class="btn btn-sm btn-secondary" onclick="sourceAction('decouple','${s.id}')">Entkoppeln</button>` : ""}
+          <button class="btn btn-sm btn-danger" onclick="sourceAction('delete-all','${s.id}')">L&ouml;schen</button>
+        </div>
+      </div>
+    `).join("");
+  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+
+window.sourceAction = async function(action, sourceId) {
+  if (action === "delete-all" && !confirm("Alle Daten dieser Quelle wirklich l\u00f6schen?")) return;
+  await api(action, { sourceId }, "POST");
+  loadSources();
+};
+
+// ── Section 1: KI-Import ──
+const importPills = document.querySelectorAll("#importPills .pill");
+const step1 = document.getElementById("importStep1");
+const step2 = document.getElementById("importStep2");
+const promptEl = document.getElementById("importPrompt");
+const pasteEl = document.getElementById("importPaste");
+const importBtn = document.getElementById("importBtn");
+const approveBtn = document.getElementById("approveBtn");
+
+importPills.forEach(pill => {
+  pill.addEventListener("click", async () => {
+    importPills.forEach(p => p.classList.remove("active"));
+    pill.classList.add("active");
+    currentSource = pill.dataset.source;
+    step1.classList.remove("hidden");
+    step2.classList.add("hidden");
+
+    // Fetch extraction prompt
+    const data = await importApi({ action: "get-prompt", source: currentSource });
+    promptEl.value = data.prompt || "Fehler beim Laden des Prompts";
+  });
+});
+
+document.getElementById("copyPromptBtn").addEventListener("click", () => {
+  navigator.clipboard.writeText(promptEl.value);
+  document.getElementById("copyPromptBtn").textContent = "Kopiert!";
+  setTimeout(() => document.getElementById("copyPromptBtn").textContent = "Kopieren", 2000);
+});
+
+pasteEl.addEventListener("input", () => {
+  importBtn.disabled = !pasteEl.value.trim();
+});
+
+importBtn.addEventListener("click", async () => {
+  importBtn.disabled = true;
+  importBtn.textContent = "Importiere...";
+  try {
+    const data = await importApi({ action: "import", source: currentSource, content: pasteEl.value.trim() });
+    importSourceId = data.sourceId;
+    document.getElementById("importStatus").textContent = data.message || "Import verarbeitet.";
+
+    // Show candidates
+    const candidates = data.memoryCandidates || [];
+    const container = document.getElementById("importCandidates");
+    if (candidates.length === 0) {
+      container.innerHTML = '<p class="msg">Keine Memory-Kandidaten gefunden.</p>';
+      approveBtn.classList.add("hidden");
+    } else {
+      container.innerHTML = candidates.map((c, i) => `
+        <div class="candidate">
+          <input type="checkbox" checked data-idx="${i}">
+          <span class="c-text">${c.summary || c.content?.slice(0, 100) || "Insight"}</span>
+          <span class="c-type">${c.type || "?"}</span>
+        </div>
+      `).join("");
+      approveBtn.classList.remove("hidden");
+    }
+
+    step1.classList.add("hidden");
+    step2.classList.remove("hidden");
+  } catch (e) {
+    document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Import fehlgeschlagen");
+    document.getElementById("importStatus").classList.add("msg-error");
+  } finally {
+    importBtn.textContent = "Importieren";
+    importBtn.disabled = false;
+  }
+});
+
+approveBtn.addEventListener("click", async () => {
+  if (!importSourceId) return;
+  const checked = document.querySelectorAll("#importCandidates input:checked");
+  const itemIds = [...checked].map(cb => cb.dataset.idx);
+  approveBtn.disabled = true;
+  try {
+    const data = await importApi({ action: "approve", sourceId: importSourceId, itemIds });
+    const statusEl = document.getElementById("approveStatus");
+    statusEl.textContent = data.message || "Erledigt.";
+    statusEl.classList.remove("hidden");
+    statusEl.classList.add("msg-success");
+    approveBtn.textContent = "Erledigt";
+  } catch {
+    approveBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
