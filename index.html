@@ -2919,6 +2919,9 @@
     deactivateVoiceAttention();
     setPulse("soft");
 
+    // Check login status and show settings icon
+    getToken().catch(() => {});
+
     if (authEmail) authEmail.value = "";
     function clearDemoAndStartReal() {
       if (demoCleared) return;
