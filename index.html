@@ -849,13 +849,27 @@
     }
     @media (max-width:640px){
       .chat-card.foreground{
-        left:12px;
-        right:12px;
+        left:0;
+        right:0;
+        bottom:0;
+        top:auto;
         transform:none;
-        width:auto;
-        min-height:320px;
-        max-height:calc(100vh - 80px);
-        border-radius:20px;
+        width:100%;
+        min-height:50vh;
+        max-height:100vh;
+        height:100vh;
+        border-radius:20px 20px 0 0;
+        position:fixed;
+      }
+      .chat-card.foreground .chat-footer{
+        position:sticky;
+        bottom:0;
+        background:rgba(10,12,19,.95);
+        padding-bottom:env(safe-area-inset-bottom, 8px);
+      }
+      .chat-card.foreground .chat-messages{
+        flex:1;overflow-y:auto;
+        -webkit-overflow-scrolling:touch;
       }
     }
     @media (max-width:1200px){
