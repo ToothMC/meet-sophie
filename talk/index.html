@@ -2348,18 +2348,9 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   postCallTranscript.textContent = transcriptText || t("no_transcript");
 
-  // Style pills: always show so user can switch
-  const reportStyle = apiResult?.output?.report_style || "smart";
+  // No style pills — AI decides the format
   const styleBar = document.getElementById("reportStyleBar");
-  if (styleBar) {
-    styleBar.style.display = "flex";
-    styleBar.querySelectorAll(".reportStylePill").forEach(pill => {
-      const isActive = (reportStyle === "smart" && pill.dataset.style === "thinking")
-        || pill.dataset.style === reportStyle;
-      pill.classList.toggle("active", isActive);
-      pill.disabled = false;
-    });
-  }
+  if (styleBar) styleBar.style.display = "none";
 
   // Store current transcript + session for regeneration
   window._lastReportContext = {
