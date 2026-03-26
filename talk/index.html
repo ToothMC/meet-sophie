@@ -165,6 +165,28 @@ body{
 .mode-indicator[data-mode="brainstorm"]{ color:#f5c842; }
 .mode-indicator[data-mode="meeting"]{ color:#34c47a; }
 .mode-indicator[data-mode="salespitch"]{ color:#ff5252; }
+.research-indicator{
+  display:flex;align-items:center;gap:6px;justify-content:center;
+  margin-bottom:10px;opacity:0;transition:opacity .3s ease;
+  font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.05em;
+}
+.research-indicator.visible{ opacity:1; }
+.research-indicator .ri-icons{
+  display:flex;gap:4px;align-items:center;
+}
+.research-indicator .ri-icon{
+  width:14px;height:14px;opacity:.3;transition:opacity .3s ease;
+}
+.research-indicator .ri-icon.active{
+  opacity:1;animation:riPulse .8s ease-in-out infinite;
+}
+@keyframes riPulse{
+  0%,100%{opacity:.4;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.15)}
+}
+.research-indicator .ri-label{
+  font-size:9px;text-transform:uppercase;letter-spacing:.1em;
+}
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
 
 .mode-bar{
