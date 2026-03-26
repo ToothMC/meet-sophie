@@ -485,7 +485,105 @@ window.sourceAction = async function(action, sourceId) {
   loadSources();
 };
 
-// ── Section 1: KI-Import ──
+// ── Import Tab Switching ──
+function switchImportTab(tab) {
+  document.getElementById("tabPaste").classList.toggle("active", tab === "paste");
+  document.getElementById("tabUpload").classList.toggle("active", tab === "upload");
+  document.getElementById("importTabPaste").classList.toggle("hidden", tab !== "paste");
+  document.getElementById("importTabUpload").classList.toggle("hidden", tab !== "upload");
+}
+window.switchImportTab = switchImportTab;
+
+// ── File Upload (Drag & Drop) ──
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const fileInfo = document.getElementById("fileInfo");
+const uploadBtn = document.getElementById("uploadBtn");
+let selectedFile = null;
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length > 0) handleFileSelect(fileInput.files[0]);
+});
+
+function handleFileSelect(file) {
+  selectedFile = file;
+  const sizeKb = Math.round(file.size / 1024);
+  fileInfo.textContent = `${file.name} (${sizeKb} KB)`;
+  fileInfo.classList.remove("hidden");
+  uploadBtn.disabled = false;
+}
+
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = "Importiere...";
+
+  try {
+    // Read file as base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]); // strip data:...;base64,
+      reader.onerror = reject;
+      reader.readAsDataURL(selectedFile);
+    });
+
+    const opts = {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+      body: JSON.stringify({ fileName: selectedFile.name, fileData: base64 }),
+    };
+    const res = await fetch("/api/ai/import-file", opts);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || "Upload fehlgeschlagen");
+
+    importSourceId = data.sourceId;
+    document.getElementById("importStatus").textContent = data.message || "Datei verarbeitet.";
+    document.getElementById("importStatus").classList.remove("msg-error");
+    document.getElementById("importStatus").classList.add("msg-success");
+
+    // Show candidates
+    const candidates = data.memoryCandidates || [];
+    const container = document.getElementById("importCandidates");
+    if (candidates.length === 0) {
+      container.innerHTML = '<p class="msg">Keine Memory-Kandidaten gefunden.</p>';
+      approveBtn.classList.add("hidden");
+    } else {
+      container.innerHTML = candidates.map((c, i) => `
+        <div class="candidate">
+          <input type="checkbox" checked data-idx="${i}">
+          <span class="c-text">${c.summary || c.content?.slice(0, 100) || "Insight"}</span>
+          <span class="c-type">${c.type || "?"}</span>
+        </div>
+      `).join("");
+      approveBtn.classList.remove("hidden");
+    }
+
+    // Switch to step 2 (approval)
+    document.getElementById("importTabUpload").classList.add("hidden");
+    document.getElementById("importTabPaste").classList.add("hidden");
+    step2.classList.remove("hidden");
+    document.querySelector(".import-tabs").classList.add("hidden");
+  } catch (e) {
+    document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Upload fehlgeschlagen");
+    document.getElementById("importStatus").classList.add("msg-error");
+    document.getElementById("importStatus").classList.remove("hidden");
+    step2.classList.remove("hidden");
+  } finally {
+    uploadBtn.textContent = "Datei importieren";
+    uploadBtn.disabled = false;
+  }
+});
+
+// ── Section 1: KI-Import (Text Paste) ──
 const importPills = document.querySelectorAll("#importPills .pill");
 const step1 = document.getElementById("importStep1");
 const step2 = document.getElementById("importStep2");
