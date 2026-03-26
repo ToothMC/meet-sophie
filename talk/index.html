@@ -1937,17 +1937,41 @@ function getDatePrefix() {
   return `${year}-${month}-${day}`;
 }
 
-// Poll report generation progress from backend
+// Start report generation and poll progress
 async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
+  stopFakeReportLoader();
   inlineReportProgress.style.display = "block";
   inlineReportProgressBar.style.width = "5%";
-
-  // Show status text below progress bar
   const softHint = document.getElementById("softHint");
 
-  const maxAttempts = 60; // 60 * 2s = 2 minutes max
+  // Build transcript text for the report generator
+  const transcriptText = transcriptLog
+    .filter(m => m.text && m.text.trim())
+    .map(m => `[${m.role}]: ${m.text}`)
+    .join("\n");
+
+  // Start report generation (this runs for ~30-60s)
+  const genHeaders = { "Content-Type": "application/json" };
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
+  } catch (_) {}
+
+  // Fire generate-report (don't await — poll instead)
+  const generatePromise = fetch("/api/ai/generate-report", {
+    method: "POST",
+    headers: genHeaders,
+    body: JSON.stringify({
+      session_id: sessionId,
+      transcript_text: transcriptText,
+      session_mode: selectedVoiceMode || null,
+    }),
+  }).catch(e => console.error("[report] generate fetch failed:", e?.message));
+
+  // Poll for progress while generate-report runs
+  const maxAttempts = 90; // 90 * 2s = 3 minutes max
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await new Promise(r => setTimeout(r, 2000));
 
@@ -1956,37 +1980,28 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
       if (!res.ok) continue;
       const data = await res.json();
 
-      // Update progress bar
       const progress = Math.max(5, Math.min(98, data.progress || 0));
       inlineReportProgressBar.style.width = progress + "%";
 
-      // Update status text
       if (softHint && data.detail) {
         softHint.textContent = data.detail;
         softHint.style.display = "block";
       }
 
-      // Done!
       if (data.status === "done" && data.output) {
         inlineReportProgressBar.style.width = "100%";
         if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
-        setTimeout(() => {
-          inlineReportProgress.style.display = "none";
-        }, 500);
+        setTimeout(() => { inlineReportProgress.style.display = "none"; }, 500);
 
-        showPostCallResults({
-          session: { id: sessionId },
-          output: data.output,
-        }, transcriptLog, opts);
+        showPostCallResults({ session: { id: sessionId }, output: data.output }, transcriptLog, opts);
         return;
       }
 
-      // Failed
       if (data.status === "failed") {
         if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
         inlineReportProgress.style.display = "none";
         showPostCallResults({
-          output: { short_summary: data.detail || "Report generation failed", key_insights: [], action_plan: [] }
+          output: { short_summary: data.detail || "Report konnte nicht erstellt werden.", key_insights: [], action_plan: [] }
         }, transcriptLog, opts);
         return;
       }
@@ -1995,11 +2010,11 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
     }
   }
 
-  // Timeout — show what we have
+  // Timeout
   inlineReportProgress.style.display = "none";
   if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
   showPostCallResults({
-    output: { short_summary: "Report generation timed out", key_insights: [], action_plan: [] }
+    output: { short_summary: "Report-Generierung hat zu lange gedauert.", key_insights: [], action_plan: [] }
   }, transcriptLog, opts);
 }
 
