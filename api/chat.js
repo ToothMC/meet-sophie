@@ -104,14 +104,17 @@ async function handleStart(req, res) {
   let recentSessions = [];
   let isPremium = false;
   let plan = null;
+  let importedContext = "";
 
   if (user) {
     try {
-      const [profRes, relRes, subRes, sessRes] = await Promise.all([
+      const [profRes, relRes, subRes, sessRes, importRes] = await Promise.all([
         supabase.from("user_profile").select("first_name,preferred_name,preferred_addressing,preferred_pronoun,preferred_language,notes,occupation,conversation_style,topics_like,topics_avoid").eq("user_id", user.id).maybeSingle(),
-        supabase.from("user_relationship").select("tone_baseline,openness_level,emotional_patterns,last_interaction_summary").eq("user_id", user.id).maybeSingle(),
+        supabase.from("user_relationship").select("tone_baseline,openness_level,emotional_patterns,last_interaction_summary,communication_style,thinking_pattern").eq("user_id", user.id).maybeSingle(),
         supabase.from("user_subscriptions").select("is_active,status,plan").eq("user_id", user.id).maybeSingle(),
         supabase.from("user_sessions").select("session_date,emotional_tone,stress_level,closeness_level,short_summary").eq("user_id", user.id).order("session_date", { ascending: false }).limit(5),
+        // Load imported insights (Zone B + C) from all active sources
+        supabase.from("source_connections").select("id").eq("user_id", user.id).eq("status", "active"),
       ]);
 
       if (profRes.data) {
@@ -134,6 +137,27 @@ async function handleStart(req, res) {
         plan = subRes.data.plan || null;
       }
       if (Array.isArray(sessRes.data)) recentSessions = sessRes.data;
+
+      // Load imported insights from active sources
+      if (importRes.data?.length > 0) {
+        const sourceIds = importRes.data.map(s => s.id);
+        const { data: items } = await supabase
+          .from("source_items")
+          .select("summary, extracted_insights, content_type, zone")
+          .in("source_id", sourceIds)
+          .in("zone", ["B", "C"])
+          .limit(30);
+
+        if (items?.length > 0) {
+          const insights = items
+            .map(i => i.summary || (i.extracted_insights ? JSON.stringify(i.extracted_insights) : null))
+            .filter(Boolean)
+            .slice(0, 20);
+          if (insights.length > 0) {
+            importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users):\n" + insights.join("\n");
+          }
+        }
+      }
     } catch (e) {
       console.warn("Context load error:", e?.message);
     }
