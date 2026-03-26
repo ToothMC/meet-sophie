@@ -577,6 +577,37 @@ async function handleMessage(req, res) {
 
   if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
+  // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news):([^\]]+)\]/);
+  if (toolMatch) {
+    const [, toolType, toolParam] = toolMatch;
+    try {
+      let toolData;
+      if (toolType === "weather") toolData = await getWeather(toolParam.trim());
+      else if (toolType === "search") toolData = await webSearch(toolParam.trim());
+      else if (toolType === "news") toolData = await getNews(toolParam.trim());
+
+      if (toolData) {
+        // Re-query with tool data injected
+        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN]\n${toolData}\n\nAntworte jetzt basierend auf diesen aktuellen Daten. Kein Tool-Tag mehr.` });
+        const adapter = getAdapter(decision.primary.provider);
+        const retryResponse = await Promise.race([
+          adapter.complete({ messages: routerMessages, model: decision.primary.model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
+        ]);
+        rawReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+        // Track retry cost
+        if (user && retryResponse.usage) {
+          trackCost({
+            userId: user.id, provider: retryResponse.provider, model: retryResponse.model,
+            inputTokens: retryResponse.usage.inputTokens, outputTokens: retryResponse.usage.outputTokens,
+            costUsd: retryResponse.usage.costUsd, latencyMs: 0, routingReason: `tool-${toolType}`,
+          }).catch(() => {});
+        }
+      }
+    } catch (e) { console.error(`Tool ${toolType} error:`, e?.message); }
+  }
+
   // Track costs (fire-and-forget)
   if (user) {
     trackCost({
