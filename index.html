@@ -3121,17 +3121,18 @@
             const retryReply          = retryData.reply;
             const retryVoiceOffer     = !!retryData.voice_offer;
             const retryVoiceConfirmed = !!retryData.voice_confirmed;
+            const retryProvider       = retryData.provider ? [retryData.provider] : [];
             turnCount++;
             if (retryVoiceConfirmed) {
               history.push({ role: "assistant", content: retryReply });
-              appendBubble("sophie", retryReply);
+              appendBubble("sophie", retryReply, retryProvider);
               saveChatState();
               goToVoiceFromChat();
               return;
             }
             chatState = retryVoiceOffer ? "voice_offer_pending" : "chat_active";
             history.push({ role: "assistant", content: retryReply });
-            appendBubble("sophie", retryReply);
+            appendBubble("sophie", retryReply, retryProvider);
             maybeActivateVoiceBtn(retryVoiceOffer);
             saveChatState();
             // AUTH NUDGE DISABLED for voice conversion testing
