@@ -517,11 +517,13 @@ async function handleMessage(req, res) {
   const detected_mode = modeMatch ? modeMatch[1].toLowerCase() : null;
   const voice_offer     = !!detected_mode; // backwards compat: mode detection triggers the CTA
   const voice_confirmed = rawReply.includes("[VOICE_CONFIRMED]");
+  const import_hint = rawReply.includes("[IMPORT_HINT]");
   const reply = rawReply
     .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
     .replace(/\s*signal_mode\([^)]*\)\s*/g, "")
     .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
     .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
+    .replace(/\s*\[IMPORT_HINT\]\s*/g, "")
     .trim();
 
   // Increment turn count + link user if just authenticated
