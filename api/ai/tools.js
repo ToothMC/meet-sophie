@@ -86,50 +86,52 @@ export async function getWeather(location) {
   return result.trim();
 }
 
-// ── Web Search: DuckDuckGo Instant Answer (kostenlos, kein API-Key) ──
+// ── Web Search: Bing Search API (primary) → DuckDuckGo (fallback) ──
 
 export async function webSearch(query) {
   if (!query) return 'Keine Suchanfrage angegeben.';
 
-  // DuckDuckGo Instant Answer API
-  const ddgRes = await fetch(
-    `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
-    { signal: AbortSignal.timeout(5000) }
-  );
-  if (!ddgRes.ok) return `Suche nach "${query}" fehlgeschlagen.`;
-  const text = await ddgRes.text();
-  let ddg;
-  try { ddg = JSON.parse(text); } catch { return `Suche nach "${query}" fehlgeschlagen (ungültige Antwort).`; }
-
-  const parts = [];
-
-  // Abstract (Wikipedia-style answer)
-  if (ddg.Abstract) {
-    parts.push(`${ddg.AbstractSource}: ${ddg.Abstract}`);
+  // Primary: Bing Search API (if key is set)
+  const bingKey = process.env.BING_API_KEY;
+  if (bingKey) {
+    try {
+      const bingRes = await fetch(
+        `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=5&mkt=de-DE`,
+        { headers: { 'Ocp-Apim-Subscription-Key': bingKey }, signal: AbortSignal.timeout(5000) }
+      );
+      if (bingRes.ok) {
+        const data = await bingRes.json();
+        const results = (data.webPages?.value || []).slice(0, 5);
+        if (results.length > 0) {
+          const items = results.map(r => `- ${r.name}: ${r.snippet}`);
+          return `Web-Suchergebnisse für "${query}":\n${items.join('\n')}`;
+        }
+      }
+    } catch (e) { console.error('[tools] Bing search error:', e?.message); }
   }
 
-  // Answer (direct answer)
-  if (ddg.Answer) {
-    parts.push(`Antwort: ${ddg.Answer}`);
-  }
-
-  // Related topics
-  if (ddg.RelatedTopics?.length > 0) {
-    const topics = ddg.RelatedTopics
-      .filter(t => t.Text)
-      .slice(0, 5)
-      .map(t => `- ${t.Text}`);
-    if (topics.length > 0) {
-      parts.push(`Verwandte Ergebnisse:\n${topics.join('\n')}`);
+  // Fallback: DuckDuckGo Instant Answer API (kein Key)
+  try {
+    const ddgRes = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (ddgRes.ok) {
+      const text = await ddgRes.text();
+      let ddg;
+      try { ddg = JSON.parse(text); } catch { ddg = {}; }
+      const parts = [];
+      if (ddg.Abstract) parts.push(`${ddg.AbstractSource}: ${ddg.Abstract}`);
+      if (ddg.Answer) parts.push(`Antwort: ${ddg.Answer}`);
+      if (ddg.RelatedTopics?.length > 0) {
+        const topics = ddg.RelatedTopics.filter(t => t.Text).slice(0, 5).map(t => `- ${t.Text}`);
+        if (topics.length > 0) parts.push(`Verwandte Ergebnisse:\n${topics.join('\n')}`);
+      }
+      if (parts.length > 0) return parts.join('\n\n');
     }
-  }
+  } catch (_) {}
 
-  if (parts.length === 0) {
-    // Fallback: try wttr.in style or return no results
-    return `Keine direkten Ergebnisse für "${query}" gefunden. Sophie sollte mit eigenem Wissen antworten.`;
-  }
-
-  return parts.join('\n\n');
+  return `Keine Ergebnisse für "${query}" gefunden.`;
 }
 
 // ── News: Google News RSS (kostenlos, kein API-Key) ──
