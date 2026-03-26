@@ -2068,8 +2068,17 @@
       document.body.appendChild(chatCard);
       chatCard.classList.add("foreground");
       document.body.classList.add("chat-foreground-active");
-      const input = document.getElementById("chatInput");
-      if (input) setTimeout(() => input.focus(), 200);
+      setTimeout(() => {
+        const emailField = document.getElementById("chatAuthEmail");
+        const authSection = document.getElementById("chatAuth");
+        // If auth section is visible, focus email field instead of chat input
+        if (authSection && !authSection.classList.contains("chat-hidden") && emailField) {
+          emailField.focus();
+        } else {
+          const input = document.getElementById("chatInput");
+          if (input) input.focus();
+        }
+      }, 200);
     }
     function closeChatForeground() {
       const chatCard = document.getElementById("sophieChat");
