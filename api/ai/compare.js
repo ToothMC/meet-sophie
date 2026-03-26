@@ -23,9 +23,18 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === 'object' ? body : {};
 
-  const { messages, userId } = body;
+  const { messages, priorAnswer, userId } = body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Missing messages array' });
+  }
+
+  // Build context-aware messages: include prior answer so all providers see it
+  const contextMessages = [...messages];
+  if (priorAnswer) {
+    contextMessages.push({
+      role: 'user',
+      content: `Eine andere KI hat folgende Antwort gegeben:\n\n${priorAnswer}\n\nBeantworte die gleiche Frage. Nutze ALLE verfügbaren Informationen aus dem Gesprächsverlauf. Wenn die vorherige Antwort korrekt ist, bestätige und ergänze. Wenn sie Fehler enthält, korrigiere.`,
+    });
   }
 
   // Query all providers in parallel (8s timeout per provider)
@@ -36,7 +45,7 @@ export default async function handler(req, res) {
       try {
         const adapter = getAdapter(provider);
         const response = await Promise.race([
-          adapter.complete({ messages, model, maxTokens: 1024, temperature: 0.85 }),
+          adapter.complete({ messages: contextMessages, model, maxTokens: 1024, temperature: 0.85 }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), PER_PROVIDER_TIMEOUT)),
         ]);
         response.content = normalizeResponse(response.content, provider);
