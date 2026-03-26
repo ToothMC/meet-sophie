@@ -130,7 +130,7 @@ export async function webSearch(query) {
 
 // ── News: DuckDuckGo News (kostenlos, kein API-Key) ──
 
-async function getNews(topic) {
+export async function getNews(topic) {
   if (!topic) topic = 'world';
 
   // DuckDuckGo news endpoint (HTML scraping alternative: use Instant Answer with news focus)
