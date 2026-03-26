@@ -437,6 +437,7 @@ async function handleMessage(req, res) {
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
+    ...(historyContext ? [{ role: "system", content: historyContext }] : []),
     ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
 
