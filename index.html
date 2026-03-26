@@ -3155,11 +3155,12 @@
         const voiceConfirmed = !!data.voice_confirmed;
         const detectedMode   = data.detected_mode || null;
         const aiProvider     = data.provider ? [data.provider] : [];
+        const secondOpinion  = data.second_opinion || null;
         turnCount++;
 
         if (voiceConfirmed) {
           history.push({ role: "assistant", content: reply });
-          appendBubble("sophie", reply, aiProvider);
+          appendBubble("sophie", reply, aiProvider, secondOpinion);
           saveChatState();
           goToVoiceFromChat();
           return;
@@ -3172,7 +3173,7 @@
         }
 
         history.push({ role: "assistant", content: reply });
-        appendBubble("sophie", reply, aiProvider);
+        appendBubble("sophie", reply, aiProvider, secondOpinion);
         maybeShowActionBar();
 
         // ── Import Hint: show settings link ──
