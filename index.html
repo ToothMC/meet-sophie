@@ -3345,6 +3345,10 @@
       const lastUserMsg = [...history].reverse().find(m => m.role === "user");
       if (!lastUserMsg) return;
 
+      const loggedIn = await requireLogin("Challenge",
+        "🏆 Challenge — Alle KIs beantworten deine Frage unabhängig, reviewen sich gegenseitig und einigen sich auf die beste Antwort. Höherer Verbrauch!");
+      if (!loggedIn) return;
+
       sending = true;
       compareBtn.disabled = true;
       challengeBtn.disabled = true;
