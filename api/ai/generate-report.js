@@ -193,6 +193,7 @@ ${analysesBlock}`;
       .eq('id', session_id);
 
     console.log(`[report] Done for session ${session_id}: ${blocks.length} blocks from ${analyses.length} providers, synthesized by ${synthesisProvider}`);
+    return res.status(200).json({ ok: true, status: 'done', blocks_count: blocks.length, providers: analyses.length });
   } catch (err) {
     console.error(`[report] Fatal error for session ${session_id}:`, err?.message);
     await supabase.from('conversation_outputs')
@@ -202,5 +203,6 @@ ${analysesBlock}`;
         report_status_detail: err?.message || 'Unknown error',
       })
       .eq('session_id', session_id);
+    return res.status(500).json({ error: err?.message || 'Report generation failed' });
   }
 }
