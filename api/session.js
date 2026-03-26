@@ -395,7 +395,7 @@ export default async function handler(req, res) {
         if (insightTexts.length > 0) {
           importedContext = "\n\nIMPORTIERTER KONTEXT:\n" + insightTexts.slice(0, 20).join("\n");
         } else {
-          // Fallback: Zone A raw content
+          // Fallback: build structured overview from Zone A
           const { data: rawItems } = await supabase
             .from("source_items")
             .select("raw_content")
@@ -405,7 +405,31 @@ export default async function handler(req, res) {
 
           const raw = (rawItems || []).map(i => i.raw_content).filter(Boolean).join("\n\n");
           if (raw.length > 0) {
-            importedContext = "\n\nIMPORTIERTER KONTEXT:\n" + raw.slice(0, 4000);
+            const titles = raw.split("\n")
+              .filter(line => line.startsWith("# ") && line !== "# Untitled")
+              .map(line => line.replace("# ", "").trim())
+              .filter(t => t.length > 3);
+
+            const userMsgs = raw.split("\n")
+              .filter(line => line.startsWith("[human]: "))
+              .map(line => line.replace("[human]: ", "").trim())
+              .filter(msg => msg.length > 30 && !msg.match(/^(ja|nein|ok|danke|hi|hallo|gut)/i));
+
+            const parts = [];
+            if (titles.length > 0) {
+              parts.push("GESPRÄCHSTHEMEN (" + titles.length + " Gespräche):\n" + titles.slice(0, 40).map(t => "- " + t).join("\n"));
+            }
+            if (userMsgs.length > 0) {
+              const sampled = [];
+              if (userMsgs.length > 0) sampled.push(userMsgs[0]);
+              if (userMsgs.length > 5) sampled.push(userMsgs[Math.floor(userMsgs.length / 3)]);
+              if (userMsgs.length > 10) sampled.push(userMsgs[Math.floor(userMsgs.length * 2 / 3)]);
+              if (userMsgs.length > 2) sampled.push(userMsgs[userMsgs.length - 1]);
+              parts.push("BEISPIEL-ANFRAGEN DES USERS:\n" + sampled.map(m => "- " + m.slice(0, 150)).join("\n"));
+            }
+            if (parts.length > 0) {
+              importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen):\n" + parts.join("\n\n");
+            }
           }
         }
       }
