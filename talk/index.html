@@ -1586,9 +1586,11 @@ function normalizeActions(items) {
   if (!Array.isArray(items)) return [];
   return items
     .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const title = String(item.label || item.title || "").trim();
-      const detail = String(item.detail || item.text || "").trim();
+      if (!item) return null;
+      if (typeof item === "string") return { title: item, detail: "" };
+      if (typeof item !== "object") return null;
+      const title = String(item.label || item.title || item.task || "").trim();
+      const detail = String(item.detail || item.text || (item.owner ? `Owner: ${item.owner}${item.deadline ? ` | ${item.deadline}` : ''}` : "") || "").trim();
       if (!title && !detail) return null;
       return { title, detail };
     })
