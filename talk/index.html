@@ -2257,8 +2257,38 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
 
-  if (pitchReport) {
-    // Sales Pitch Report — custom layout
+  if (reportBlocks) {
+    // Smart Report — dynamic blocks rendered by AI
+    const titleEl = document.querySelector(".postCallTitle");
+    const subtitleEl = document.querySelector(".postCallSubtitle");
+    const titleBlock = reportBlocks.find(b => b.type === 'title');
+    if (titleEl) titleEl.textContent = titleBlock?.text || sessionTitle || t("report_title");
+    if (subtitleEl) subtitleEl.textContent = titleBlock?.subtitle || '';
+
+    // Hide standard section headings — blocks have their own
+    const headingSummary = document.getElementById("reportHeadingSummary");
+    const headingInsights = document.getElementById("reportHeadingInsights");
+    const headingActions = document.getElementById("reportHeadingActions");
+    if (headingSummary) headingSummary.style.display = "none";
+    if (headingInsights) headingInsights.style.display = "none";
+    if (headingActions) headingActions.style.display = "none";
+
+    // Render all blocks into the summary area
+    const html = renderReportBlocks(reportBlocks);
+    postCallSummary.innerHTML = html || summary;
+    postCallInsights.innerHTML = "";
+    postCallActions.innerHTML = "";
+
+    // Show provider badges
+    const providers = apiResult?.output?.report_providers || [];
+    if (providers.length > 1) {
+      const badge = document.createElement("div");
+      badge.style.cssText = "text-align:center;margin-top:12px;font-size:10px;color:#b0a090;letter-spacing:.3px;";
+      badge.textContent = `Verified by ${providers.length} AIs`;
+      postCallSummary.appendChild(badge);
+    }
+  } else if (pitchReport) {
+    // Sales Pitch Report — custom layout (legacy)
     const titleEl = document.querySelector(".postCallTitle");
     const subtitleEl = document.querySelector(".postCallSubtitle");
     if (titleEl) titleEl.textContent = t("report_title_pitch");
