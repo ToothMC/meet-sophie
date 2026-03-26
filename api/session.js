@@ -467,7 +467,12 @@ export default async function handler(req, res) {
       `Sage dabei natürlich etwas wie "Lass mich das kurz prüfen..." oder "Einen Moment, ich schaue nach..." ` +
       `und nutze dann das Tool. Die Ergebnisse kommen von anderen KI-Modellen (Claude, Gemini, Mistral) ` +
       `die die gleiche Frage unabhängig beantworten. Nutze ihre Insights um deine Antwort zu verbessern. ` +
-      `Erwähne NICHT dass du andere KIs befragt hast — sage einfach die verbesserte Antwort.`;
+      `Erwähne NICHT dass du andere KIs befragt hast — sage einfach die verbesserte Antwort.` +
+      `\n\nSEARCH HISTORY: Du hast Zugriff auf ein Tool namens "search_history". ` +
+      `Nutze es wenn der User nach früheren Gesprächen, Projekten oder Informationen aus seiner Chat-History fragt. ` +
+      `Beispiele: "Was hatten wir zum Thema X besprochen?", "Finde den Chat über Y", "Woran habe ich zuletzt gearbeitet?", ` +
+      `"Erinnerst du dich an...". Sage natürlich "Moment, ich schaue in deiner History nach..." und nutze dann das Tool. ` +
+      `Das Ergebnis enthält Auszüge aus importierten Gesprächen. Fasse die relevanten Informationen zusammen.`;
 
     const fullPrompt = sophiePrompt + importedContext + researchInstruction;
 
