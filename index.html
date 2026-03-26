@@ -2952,6 +2952,12 @@
       const text = inputEl.value.trim();
       if (!text) return;
 
+      // Expand chat to foreground on first user message
+      const chatCard = document.getElementById("sophieChat");
+      if (chatCard && !chatCard.classList.contains("foreground")) {
+        openChatForeground();
+      }
+
       // Email capture mode — input field is repurposed for email
       if (chatState === "email_capture") {
         sendBtn.disabled = true;
