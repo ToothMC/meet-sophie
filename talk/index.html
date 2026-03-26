@@ -1809,7 +1809,13 @@ function downloadReport() {
   const reportTitle = titleBlock?.text || ctx?.apiResult?.output?.session_title || t("report_title");
 
   let bodyContent;
-  if (reportBlocks) {
+  if (reportHtml) {
+    // AI-generated HTML — use directly
+    bodyContent = reportHtml;
+    if (reportProviders.length > 1) {
+      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#b0a090;">Verified by ${reportProviders.length} AIs</div>`;
+    }
+  } else if (reportBlocks) {
     // Use the same block renderer but for standalone HTML
     bodyContent = renderReportBlocks(reportBlocks);
     if (reportProviders.length > 1) {
