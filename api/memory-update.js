@@ -184,30 +184,33 @@ Schreibe in der GLEICHEN Sprache wie das Transcript.`;
     .map(a => `[${a.provider.toUpperCase()}]:\n${JSON.stringify(a.data, null, 2)}`)
     .join('\n\n---\n\n');
 
-  const synthesisPrompt = `Du bist ein Report-Designer. ${analyses.length} KIs haben dasselbe Gespräch analysiert.
-Erstelle den BESTEN Report als JSON-Array von Blöcken.
+  const synthesisPrompt = `Du bist ein Premium Report-Designer für eine hochintelligente KI namens Sophie.
+${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert. Erstelle den BESTEN Report.
 
-REGELN:
-- NUR Informationen die mindestens 2 KIs bestätigen (Confidence-Check)
-- Wähle dynamisch welche Blöcke sinnvoll sind — NICHT alle verwenden
+DESIGN-PRINZIPIEN:
+- Modern, elegant, visuell ansprechend — der User soll merken dass er mit einer intelligenten KI arbeitet
+- NUR Informationen die von mindestens 2 KIs bestätigt werden (Confidence-Check gegen Halluzinationen)
+- Keine starre Vorlage — der Inhalt bestimmt die Form
+- Wenn es Scores gibt → Scorecard mit Zahlen. Wenn nicht → keine erzwingen
+- Wenn es ein kurzes Gespräch war → kurzer Report. Keine künstliche Tiefe
 - Schreibe in der gleichen Sprache wie die Analysen
 
-BLOCK-TYPEN (nutze nur was passt):
-- {"type":"title","text":"...","subtitle":"..."} — Report-Titel
-- {"type":"summary","text":"..."} — Zusammenfassung (immer)
-- {"type":"highlights","items":["..."]} — Besonders wichtige Punkte (große Darstellung)
-- {"type":"insights","items":["..."]} — Erkenntnisse als Liste
-- {"type":"scorecard","items":[{"label":"...","score":0-5,"note":"..."}]} — Nur bei Bewertungen/Pitches
-- {"type":"decisions","items":["..."]} — Nur bei konkreten Beschlüssen
-- {"type":"actions","items":[{"task":"...","owner":"...","deadline":"..."}]} — Nur bei Action Items
-- {"type":"participants","items":["..."]} — Nur wenn Teilnehmer bekannt
-- {"type":"questions","items":["..."]} — Offene Fragen
-- {"type":"quote","text":"...","source":"..."} — Markantes Zitat aus dem Gespräch
-- {"type":"metadata","date":"...","duration":"...","mood":"..."} — Kontextdaten
+VERFÜGBARE BLOCK-TYPEN (nutze NUR was zum Inhalt passt):
+{"type":"title","text":"...","subtitle":"..."} — Titel
+{"type":"metadata","date":"...","duration":"...","mood":"..."} — Kontext-Pills
+{"type":"summary","text":"..."} — Zusammenfassung
+{"type":"highlights","items":["..."]} — Wichtigste Punkte (visuell hervorgehoben)
+{"type":"scorecard","items":[{"label":"...","score":0-5,"note":"..."}]} — Bewertung mit Scores
+{"type":"decisions","items":["..."]} — Getroffene Beschlüsse
+{"type":"actions","items":[{"task":"...","owner":"...","deadline":"..."}]} — Aufgaben
+{"type":"participants","items":["..."]} — Teilnehmer
+{"type":"insights","items":["..."]} — Erkenntnisse
+{"type":"questions","items":["..."]} — Offene Fragen
+{"type":"quote","text":"...","source":"..."} — Markantes Zitat
 
-Antworte NUR mit dem JSON-Array. Keine Erklärung.
+Antworte NUR mit dem JSON-Array.
 
-DIE ANALYSEN:
+DIE ${analyses.length} ANALYSEN:
 
 ${analysesBlock}`;
 
