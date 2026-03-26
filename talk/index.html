@@ -2334,15 +2334,10 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   postCallTranscript.textContent = transcriptText || t("no_transcript");
 
-  // Style-Switcher: show pills and highlight active style
-  const reportStyle = apiResult?.output?.report_style || "thinking";
+  // Style pills: hide for smart reports (AI decides the format)
   const styleBar = document.getElementById("reportStyleBar");
   if (styleBar) {
-    styleBar.style.display = "flex";
-    styleBar.querySelectorAll(".reportStylePill").forEach(pill => {
-      pill.classList.toggle("active", pill.dataset.style === reportStyle);
-      pill.disabled = false;
-    });
+    styleBar.style.display = reportBlocks ? "none" : "flex";
   }
 
   // Store current transcript + session for regeneration
