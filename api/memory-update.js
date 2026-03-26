@@ -125,24 +125,18 @@ const REPORT_PROVIDERS = [
   { provider: 'mistral', model: 'mistral-small-latest' },
 ];
 
-async function generateSmartReport({ transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel }) {
-  const analysisPrompt = `Analysiere dieses Gesprächs-Transcript und extrahiere ALLE relevanten Informationen.
-Antworte als JSON mit folgender Struktur:
-{
-  "title": "kurzer Titel (max 5 Wörter)",
-  "summary": "2-3 Sätze Zusammenfassung",
-  "participants": ["Name1", "Name2"] oder null wenn nicht erkennbar,
-  "date_context": "Datum/Zeit wenn erwähnt" oder null,
-  "key_points": ["Punkt 1", "Punkt 2", ...],
-  "decisions": ["Beschluss 1", ...] oder [],
-  "action_items": [{"task": "...", "owner": "...", "deadline": "..."}] oder [],
-  "scores": [{"label": "...", "score": 0-5, "note": "..."}] oder [],
-  "open_questions": ["Frage 1", ...] oder [],
-  "highlights": ["Besonders wichtiger Punkt", ...] oder [],
-  "emotional_summary": "Stimmung/Ton des Gesprächs",
-  "type_hint": "meeting|pitch|brainstorm|reflection|coaching|analysis|casual"
-}
-Nur Felder füllen die wirklich aus dem Transcript ableitbar sind. KEINE Halluzinationen.
+async function generateSmartReport({ transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel, sessionMode }) {
+  const modeHint = sessionMode ? `\nDer Session-Modus war: "${sessionMode}". Berücksichtige das bei deiner Analyse.` : '';
+  const analysisPrompt = `Analysiere dieses Gesprächs-Transcript. Extrahiere ALLES was relevant ist.
+Keine starre Vorlage — extrahiere was DA ist:
+- Wenn Scores/Bewertungen vorkommen → extrahiere sie mit Zahlen
+- Wenn Teilnehmer erkennbar → nenne sie
+- Wenn Entscheidungen getroffen wurden → liste sie
+- Wenn Action Items besprochen wurden → mit Owner und Deadline
+- Wenn es ein Pitch war → bewerte Kriterien wie Clarity, Value Proposition etc. mit Score 0-5
+- Wenn es ein Meeting war → Agenda, Beschlüsse, Protokoll
+- Wenn es ein kurzes Gespräch war → kurze Zusammenfassung reicht
+Antworte als freies JSON-Objekt. Nutze die Felder die PASSEN. Erfinde NICHTS.${modeHint}
 Schreibe in der GLEICHEN Sprache wie das Transcript.`;
 
   // Step 1: All 4 providers analyze in parallel (8s timeout)
