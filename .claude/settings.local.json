@@ -91,7 +91,10 @@
       "Read(//usr/local/bin/**)",
       "Read(//usr/local/**)",
       "Bash(mdfind -name node -onlyin /usr/local)",
-      "Bash(mdfind -name node -onlyin /opt)"
+      "Bash(mdfind -name node -onlyin /opt)",
+      "Bash(grep -r supabase.co /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js --include=*.ts --include=*.json --include=*.toml)",
+      "Bash(git log:*)",
+      "WebSearch"
     ]
   },
   "hooks": {
