@@ -7,6 +7,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { classify, route } from "../lib/ai/classifier.js";
+import { getAdapter } from "../lib/ai/adapters/index.js";
+import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
+import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 
 const FREE_TURNS_LIMIT = 10;
 const AUTH_NUDGE_AT_TURN = 3;
@@ -249,8 +253,7 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Call OpenAI API
-  const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
+  // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
 
   // Turn-aware routing nudge — injected as last system message so it's fresh in context
@@ -263,7 +266,7 @@ async function handleMessage(req, res) {
     ? "[INTERNAL] Turn 3. If you have not yet emitted a [MODE_DETECTED:xxx] token, you must do so now. Pick the best mode based on everything you've heard."
     : null;
 
-  const openaiMessages = [
+  const routerMessages = [
     { role: "system", content: system_prompt || "" },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
@@ -271,36 +274,75 @@ async function handleMessage(req, res) {
     ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
 
-  let openaiResp;
+  // Determine user tier for routing
+  let userTier = "free";
+  if (user) {
+    const { data: sub } = await supabase.from("user_subscriptions").select("plan,is_active,status").eq("user_id", user.id).maybeSingle();
+    const isPremium = !!(sub?.is_active || sub?.status === "active");
+    if (isPremium) {
+      userTier = sub?.plan === "plus" ? "premium" : "abo";
+    }
+  }
+
+  // Classify and route
+  const ctx = classify({ messages: routerMessages }, { userTier, channel: "text" });
+  const decision = route(ctx);
+
+  // Budget check — degrade if over cap
+  if (user) {
+    const withinBudget = await checkDailyBudget(user.id, ctx.userTier);
+    if (!withinBudget) {
+      decision.primary = { provider: "google", model: "gemini-2.0-flash-lite" };
+      decision.fallback = null;
+      decision.reason = "budget-cap-degradation";
+    }
+  }
+
+  // Execute with fallback
+  let aiResponse;
+  const routerStartMs = Date.now();
   try {
-    openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: openaiModel,
-        max_tokens: 512,
-        messages: openaiMessages,
-        temperature: 0.85,
-      }),
-    });
-  } catch (e) {
-    console.error("OpenAI API fetch error:", e?.message);
-    return res.status(502).json({ error: "OpenAI API unavailable" });
+    const adapter = getAdapter(decision.primary.provider);
+    aiResponse = await Promise.race([
+      adapter.complete({ messages: routerMessages, model: decision.primary.model, maxTokens: 512, temperature: 0.85 }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000)),
+    ]);
+  } catch (primaryErr) {
+    if (decision.fallback) {
+      try {
+        const fallbackAdapter = getAdapter(decision.fallback.provider);
+        aiResponse = await fallbackAdapter.complete({
+          messages: routerMessages, model: decision.fallback.model, maxTokens: 512, temperature: 0.85,
+        });
+        decision.reason += "+fallback";
+      } catch (fallbackErr) {
+        console.error("AI Router: all providers failed", primaryErr?.message, fallbackErr?.message);
+        return res.status(502).json({ error: "AI unavailable" });
+      }
+    } else {
+      console.error("AI Router: primary failed, no fallback", primaryErr?.message);
+      return res.status(502).json({ error: "AI unavailable" });
+    }
   }
 
-  if (!openaiResp.ok) {
-    const errText = await openaiResp.text().catch(() => "");
-    console.error("OpenAI API error:", openaiResp.status, errText.slice(0, 200));
-    return res.status(openaiResp.status).json({ error: "OpenAI API error", detail: errText.slice(0, 200) });
+  // Normalize response
+  const rawReply = normalizeResponse(aiResponse.content || "", aiResponse.provider);
+
+  if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
+
+  // Track costs (fire-and-forget)
+  if (user) {
+    trackCost({
+      userId: user.id,
+      provider: aiResponse.provider,
+      model: aiResponse.model,
+      inputTokens: aiResponse.usage.inputTokens,
+      outputTokens: aiResponse.usage.outputTokens,
+      costUsd: aiResponse.usage.costUsd,
+      latencyMs: Date.now() - routerStartMs,
+      routingReason: decision.reason,
+    }).catch(err => console.error("Cost tracking error:", err?.message));
   }
-
-  const openaiData = await openaiResp.json();
-  const rawReply = openaiData?.choices?.[0]?.message?.content || "";
-
-  if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
   // Detect and strip routing signal tags
   const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/);
@@ -330,7 +372,9 @@ async function handleMessage(req, res) {
     voice_confirmed,
     detected_mode,
     turn_count: session.turn_count + 1,
-    model: openaiModel,
+    model: aiResponse.model,
+    provider: aiResponse.provider,
+    routing_reason: decision.reason,
   });
 }
 

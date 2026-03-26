@@ -29,9 +29,14 @@
     // Build target path with mode
     function buildTarget(base) {
       if (detectedMode && detectedMode !== "talk") {
+        // Meeting mode → dedicated meeting page
+        if (detectedMode === "meeting") {
+          localStorage.removeItem("sophie_session_mode");
+          return "/meeting/";
+        }
         // Map routing modes to session modes for /talk
         const SESSION_MAP = {
-          brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
+          brainstorm: "brainstorm", salespitch: "salespitch",
           explore: "", decide: "", reflect: "", relax: ""
         };
         const sessionMode = SESSION_MAP[detectedMode] !== undefined ? SESSION_MAP[detectedMode] : "";

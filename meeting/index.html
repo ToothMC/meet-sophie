@@ -217,6 +217,107 @@ body{
 .summary-section li .severity-medium{color:#f5c842}
 .summary-section li .severity-low{color:#34d399}
 
+/* ---- FILE UPLOAD ---- */
+.upload-area{
+  margin-top:8px;padding:12px;
+  border:2px dashed rgba(255,255,255,.12);border-radius:10px;
+  text-align:center;cursor:pointer;transition:border-color .2s;
+}
+.upload-area:hover{border-color:rgba(255,255,255,.25)}
+.upload-area input[type="file"]{display:none}
+.upload-area .upload-label{
+  font-size:12px;color:rgba(255,255,255,.4);
+}
+.upload-area .upload-label:hover{color:rgba(255,255,255,.6)}
+.file-list{margin-top:8px}
+.file-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;margin-bottom:4px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:8px;font-size:12px;color:rgba(255,255,255,.6);
+}
+.file-item .file-icon{font-size:14px;flex-shrink:0}
+.file-item .file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-item .file-status{font-size:10px;color:#34c47a}
+.uploading{opacity:.5}
+
+/* ---- HINT MESSAGES ---- */
+.msg.assistant.hint{
+  border-left:3px solid #f5c842;
+  background:rgba(245,200,66,.08);
+  font-size:13px;
+  color:rgba(255,255,255,.8);
+}
+
+/* ---- FOLLOWUP DIFF ---- */
+.diff-section{margin-top:16px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px}
+.diff-section h4{
+  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);margin:0 0 8px;
+}
+.diff-item{
+  font-size:13px;line-height:1.5;padding:4px 0;
+  color:rgba(255,255,255,.75);
+  border-bottom:1px solid rgba(255,255,255,.04);
+  display:flex;align-items:center;gap:8px;
+}
+.diff-item:last-child{border-bottom:none}
+.diff-icon{font-size:14px;flex-shrink:0}
+.diff-icon.done{color:#34d399}
+.diff-icon.open{color:#f5c842}
+.diff-icon.escalated{color:#ff5a5a}
+.diff-icon.new{color:#6cb4ff}
+
+/* ---- MUTE TOGGLE ---- */
+.mute-toggle{
+  padding:6px 10px;font-size:13px;border-radius:8px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.5);transition:all .2s;white-space:nowrap;
+  font-family:inherit;display:none;
+}
+.mute-toggle:hover{background:rgba(255,255,255,.12);color:#fff}
+.mute-toggle.active{
+  background:rgba(52,196,122,.15);border-color:rgba(52,196,122,.3);
+  color:#34c47a;
+}
+.mute-toggle.active .mute-icon::after{content:"🔊"}
+.mute-toggle .mute-icon::after{content:"🔇"}
+
+/* ---- PARTICIPANTS BAR ---- */
+.participants-bar{
+  display:none;align-items:center;gap:6px;
+  padding:6px 16px;font-size:12px;color:rgba(255,255,255,.4);
+  border-bottom:1px solid rgba(255,255,255,.05);
+  overflow-x:auto;white-space:nowrap;
+}
+.participants-bar.visible{display:flex}
+.participant-chip{
+  padding:3px 8px;border-radius:10px;font-size:11px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.6);flex-shrink:0;
+}
+.participant-chip.sophie{
+  background:rgba(52,196,122,.12);border-color:rgba(52,196,122,.2);
+  color:#34c47a;transition:all .3s;
+}
+.participant-chip.sophie.speaking{
+  background:rgba(52,196,122,.25);border-color:rgba(52,196,122,.5);
+  animation:pulse-speak 1.2s infinite;
+}
+@keyframes pulse-speak{0%,100%{box-shadow:0 0 0 0 rgba(52,196,122,.3)}50%{box-shadow:0 0 0 6px rgba(52,196,122,0)}}
+
+/* ---- EXPORT BUTTON ---- */
+.export-bar{
+  display:flex;gap:8px;margin-top:12px;
+}
+.export-btn{
+  padding:8px 14px;font-size:12px;font-weight:600;border-radius:8px;
+  cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);
+  transition:all .2s;
+}
+.export-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+
 /* ---- LOADING ---- */
 .loading-screen{
   flex:1;display:flex;align-items:center;justify-content:center;
@@ -261,6 +362,11 @@ body{
     <label id="lblTitle">Title (optional)</label>
     <input type="text" id="meetingTitle" placeholder="e.g. Q2 Planning" />
 
+    <label id="lblParent">Previous Meeting (optional)</label>
+    <select id="parentMeeting">
+      <option value="">— None —</option>
+    </select>
+
     <button class="btn-primary" id="createBtn">Start Preparation</button>
   </div>
 </div>
@@ -271,8 +377,12 @@ body{
   <div class="topbar">
     <a href="/talk/" class="back" id="backBtn">&larr;</a>
     <span class="title" id="meetingTitleDisplay">Meeting</span>
+    <button class="mute-toggle" id="muteToggle"><span class="mute-icon"></span> Sophie</button>
     <span class="phase-badge" id="phaseBadge" data-phase="prep">PREP</span>
   </div>
+
+  <!-- Participants Bar -->
+  <div class="participants-bar" id="participantsBar"></div>
 
   <!-- Context Panel (PREP phase) -->
   <div class="context-panel" id="contextPanel">
@@ -284,6 +394,14 @@ body{
       <textarea id="ctxParticipants" placeholder="Participants..." rows="2"></textarea>
       <textarea id="ctxGoal" placeholder="Goal of this meeting..." rows="2"></textarea>
       <button class="save-context-btn" id="saveContextBtn">Save Context</button>
+
+      <!-- File Upload -->
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.webp" multiple />
+        <span class="upload-label" id="uploadLabel">📎 Drop files or click to upload</span>
+        <div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:4px" id="uploadHint">TXT, DOCX, PDF, Images</div>
+      </div>
+      <div class="file-list" id="fileList"></div>
     </div>
   </div>
 
@@ -311,13 +429,19 @@ body{
     <h3 id="summaryTitle">Meeting Summary</h3>
     <div class="summary-text" id="summaryText"></div>
     <div id="summaryDetails"></div>
+    <div class="export-bar" id="exportBar">
+      <button class="export-btn" id="downloadProtocolBtn">⬇ Download</button>
+      <button class="export-btn" id="copySummaryBtn">📋 Copy</button>
+      <button class="export-btn" id="shareSummaryBtn">📤 Share</button>
+    </div>
   </div>
 </div>
 
 <!-- Meeting History (list of past meetings) -->
 <div id="historyScreen" class="hidden" style="padding:20px;max-width:680px;margin:0 auto;width:100%">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-    <h2 style="font-size:18px;font-weight:600;margin:0" id="historyTitle">Meetings</h2>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <a href="/" style="color:rgba(255,255,255,.7);text-decoration:none;font-size:14px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);white-space:nowrap">&larr;</a>
+    <h2 style="font-size:18px;font-weight:600;margin:0;flex:1" id="historyTitle">Meetings</h2>
     <button id="newMeetingBtn" style="padding:8px 16px;font-size:13px;font-weight:600;background:#34c47a;color:#000;border:none;border-radius:8px;cursor:pointer;font-family:inherit">+ New</button>
   </div>
   <div id="historyList"></div>
@@ -341,6 +465,12 @@ let chatMessages = []; // { role, content }
 let isLoading = false;
 let liveStartTime = null;
 let liveTimerInterval = null;
+let sophieMuted = true; // Sophie starts muted (passive listener)
+let sophieVoicePc = null;     // WebRTC PeerConnection (same as Talk)
+let sophieVoiceStream = null; // Mic stream
+let sophieVoiceAudio = null;  // Audio element for Sophie's voice
+let isSpeaking = false;
+let isConnecting = false;
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -362,6 +492,8 @@ const ctaPost       = $("ctaPost");
 const ctaClose      = $("ctaClose");
 const phaseCta      = $("phaseCta");
 const liveTimerEl   = $("liveTimer");
+const muteToggle    = $("muteToggle");
+const participantsBar = $("participantsBar");
 
 // ---------------------------------------------------------------------------
 // i18n
@@ -370,7 +502,9 @@ const lang = localStorage.getItem("preferredLanguage") || "en";
 const T = {
   de: {
     newMeeting: "Neues Meeting", setupTitle: "Neues Meeting",
-    lblType: "Meeting-Typ", lblRole: "Sophies Rolle", lblTitle: "Titel (optional)",
+    lblType: "Meeting-Typ", lblRole: "Sophies Rolle", lblTitle: "Titel (optional)", lblParent: "Vorgänger-Meeting (optional)", noParent: "— Keins —",
+    diffTitle: "Vergleich mit letztem Meeting", diffDone: "Erledigt", diffOpen: "Noch offen", diffEscalated: "Eskaliert", diffNew: "Neu",
+    uploadLabel: "📎 Dateien hierher ziehen oder klicken", uploadDone: "Hochgeladen",
     startPrep: "Vorbereitung starten", startMeeting: "Meeting starten \u2192",
     endMeeting: "Meeting beenden \u2192", close: "Abschlie\u00dfen",
     context: "Kontext", agenda: "Agenda...", participants: "Teilnehmer...",
@@ -382,10 +516,16 @@ const T = {
     team: "Team", client: "Kunde", strategy: "Strategie", other: "Sonstige",
     decisions: "Entscheidungen", actions: "Action Items",
     openPoints: "Offene Punkte", risks: "Risiken",
+    sophieMuted: "Sophie ist stumm — sie hört mit, antwortet aber nur wenn du sie ansprichst",
+    sophieActive: "Sophie ist aktiv — sie nimmt am Meeting teil und gibt Hinweise",
+    copied: "Kopiert!", shareTitle: "Meeting Summary",
+    participants: "Teilnehmer...", sophieLabel: "Sophie",
   },
   en: {
     newMeeting: "New Meeting", setupTitle: "New Meeting",
-    lblType: "Meeting Type", lblRole: "Sophie's Role", lblTitle: "Title (optional)",
+    lblType: "Meeting Type", lblRole: "Sophie's Role", lblTitle: "Title (optional)", lblParent: "Previous Meeting (optional)", noParent: "— None —",
+    diffTitle: "Comparison with previous meeting", diffDone: "Done", diffOpen: "Still open", diffEscalated: "Escalated", diffNew: "New",
+    uploadLabel: "📎 Drop files or click to upload", uploadDone: "Uploaded",
     startPrep: "Start Preparation", startMeeting: "Start Meeting \u2192",
     endMeeting: "End Meeting \u2192", close: "Close",
     context: "Context", agenda: "Agenda...", participants: "Participants...",
@@ -397,10 +537,16 @@ const T = {
     team: "Team", client: "Client", strategy: "Strategy", other: "Other",
     decisions: "Decisions", actions: "Action Items",
     openPoints: "Open Points", risks: "Risks",
+    sophieMuted: "Sophie is muted — she listens but only responds when addressed",
+    sophieActive: "Sophie is active — she participates and gives hints",
+    copied: "Copied!", shareTitle: "Meeting Summary",
+    sophieLabel: "Sophie",
   },
   fr: {
     newMeeting: "Nouveau meeting", setupTitle: "Nouveau meeting",
-    lblType: "Type de r\u00e9union", lblRole: "R\u00f4le de Sophie", lblTitle: "Titre (optionnel)",
+    lblType: "Type de r\u00e9union", lblRole: "R\u00f4le de Sophie", lblTitle: "Titre (optionnel)", lblParent: "R\u00e9union pr\u00e9c\u00e9dente (optionnel)", noParent: "\u2014 Aucune \u2014",
+    diffTitle: "Comparaison avec la r\u00e9union pr\u00e9c\u00e9dente", diffDone: "Fait", diffOpen: "Encore ouvert", diffEscalated: "Escalad\u00e9", diffNew: "Nouveau",
+    uploadLabel: "📎 D\u00e9poser des fichiers ou cliquer", uploadDone: "T\u00e9l\u00e9charg\u00e9",
     startPrep: "D\u00e9marrer la pr\u00e9paration", startMeeting: "D\u00e9marrer le meeting \u2192",
     endMeeting: "Terminer le meeting \u2192", close: "Fermer",
     context: "Contexte", agenda: "Ordre du jour...", participants: "Participants...",
@@ -412,6 +558,10 @@ const T = {
     team: "\u00c9quipe", client: "Client", strategy: "Strat\u00e9gie", other: "Autre",
     decisions: "D\u00e9cisions", actions: "Actions",
     openPoints: "Points ouverts", risks: "Risques",
+    sophieMuted: "Sophie est muette \u2014 elle \u00e9coute mais ne r\u00e9pond que si on s'adresse \u00e0 elle",
+    sophieActive: "Sophie est active \u2014 elle participe et donne des indices",
+    copied: "Copi\u00e9 !", shareTitle: "R\u00e9sum\u00e9 du meeting",
+    sophieLabel: "Sophie",
   },
 };
 const t = (key) => (T[lang] || T.en)[key] || (T.en)[key] || key;
@@ -421,6 +571,9 @@ function applyI18n() {
   $("lblType").textContent = t("lblType");
   $("lblRole").textContent = t("lblRole");
   $("lblTitle").textContent = t("lblTitle");
+  $("uploadLabel").textContent = t("uploadLabel");
+  $("lblParent").textContent = t("lblParent");
+  $("parentMeeting").options[0].text = t("noParent");
   $("createBtn").textContent = t("startPrep");
   ctaLive.textContent = t("startMeeting");
   ctaPost.textContent = t("endMeeting");
@@ -522,13 +675,16 @@ async function showHistory() {
     list.innerHTML = meetings.map(m => {
       const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
       const phaseColors = { prep: "#6cb4ff", live: "#ff5a5a", post: "#a78bfa", closed: "rgba(255,255,255,.3)" };
-      return `<a href="/meeting/?id=${m.id}" style="display:block;padding:12px 14px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;text-decoration:none;color:#fff">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:14px;font-weight:500">${m.title || m.meeting_type}</span>
-          <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#fff'};text-transform:uppercase">${m.phase}</span>
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">${date} &middot; ${m.meeting_type}</div>
-      </a>`;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <a href="/meeting/?id=${m.id}" style="flex:1;display:block;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;text-decoration:none;color:#fff">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:14px;font-weight:500">${m.title || m.meeting_type}</span>
+            <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#fff'};text-transform:uppercase">${m.phase}</span>
+          </div>
+          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">${date} &middot; ${m.meeting_type}</div>
+        </a>
+        <button onclick="deleteMeeting('${m.id}',this)" style="padding:8px;font-size:16px;background:none;border:1px solid rgba(255,255,255,.08);border-radius:8px;cursor:pointer;color:rgba(255,255,255,.3);flex-shrink:0" title="${lang === "de" ? "Löschen" : "Delete"}">🗑</button>
+      </div>`;
     }).join("");
   } catch (e) {
     list.innerHTML = `<p style="color:#ff5a5a;font-size:13px">Error: ${e.message}</p>`;
@@ -538,10 +694,26 @@ async function showHistory() {
 // ---------------------------------------------------------------------------
 // Setup / Create
 // ---------------------------------------------------------------------------
-function showSetup() {
+async function showSetup() {
   historyScreen.classList.add("hidden");
   meetingArea.classList.remove("active");
   setupScreen.classList.remove("hidden");
+
+  // Load past meetings for parent selector
+  try {
+    const data = await api("list", null, "GET");
+    const meetings = (data.meetings || []).filter(m => m.phase === "closed" || m.phase === "post");
+    const select = $("parentMeeting");
+    // Keep first "None" option, clear rest
+    while (select.options.length > 1) select.remove(1);
+    meetings.slice(0, 10).forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
+      opt.textContent = `${m.title || m.meeting_type} (${date})`;
+      select.appendChild(opt);
+    });
+  } catch { /* ignore, selector stays empty */ }
 }
 
 async function createMeeting() {
@@ -549,10 +721,12 @@ async function createMeeting() {
   btn.disabled = true;
 
   try {
+    const parentVal = $("parentMeeting").value || null;
     const data = await api("create", {
       meeting_type: $("meetingType").value,
       sophie_role: $("sophieRole").value,
       title: $("meetingTitle").value.trim() || null,
+      parent_meeting_id: parentVal,
     });
 
     meetingId = data.meeting.id;
@@ -592,9 +766,22 @@ async function loadMeeting(id) {
     if (partCtx) $("ctxParticipants").value = partCtx.content;
     if (goalCtx) $("ctxGoal").value = goalCtx.content;
 
+    // Load existing uploaded files
+    const fileContexts = contexts.filter(c => c.context_type === "file");
+    const fileListEl = $("fileList");
+    fileListEl.innerHTML = "";
+    fileContexts.forEach(fc => {
+      const fileName = fc.file_path ? fc.file_path.split("/").pop().replace(/^\d+_/, "") : "File";
+      const div = document.createElement("div");
+      div.className = "file-item";
+      div.innerHTML = `<span class="file-icon">📎</span><span class="file-name">${fileName}</span><span class="file-status">✓</span>`;
+      fileListEl.appendChild(div);
+    });
+
     // Load existing notes as system messages
     const notes = data.notes || [];
     notes.forEach(n => {
+      if (n.note_type === "silent_hint") return; // Don't show hint internals
       appendSystemMsg(`[${n.note_type.toUpperCase()}] ${n.content}`);
     });
 
@@ -634,8 +821,14 @@ function updatePhaseUI(phase) {
   ctaClose.classList.toggle("hidden", phase !== "post");
   phaseCta.classList.toggle("hidden", phase === "closed");
 
-  // Input bar: disabled in closed
+  // Input bar: disabled in closed, placeholder changes per phase
   $("inputBar").classList.toggle("hidden", phase === "closed");
+  const PHASE_PLACEHOLDERS = {
+    de: { prep: "Frage Sophie zur Vorbereitung...", live: "Was passiert gerade im Meeting?", post: "Fragen zur Zusammenfassung..." },
+    en: { prep: "Ask Sophie about preparation...", live: "What's happening in the meeting?", post: "Questions about the summary..." },
+    fr: { prep: "Demande \u00e0 Sophie pour la pr\u00e9paration...", live: "Que se passe-t-il en r\u00e9union ?", post: "Questions sur le r\u00e9sum\u00e9 ?" },
+  };
+  chatInput.placeholder = (PHASE_PLACEHOLDERS[lang] || PHASE_PLACEHOLDERS.en)[phase] || t("typeHere");
 
   // Summary card visibility
   if (phase !== "post" && phase !== "closed") {
@@ -648,6 +841,12 @@ function updatePhaseUI(phase) {
   } else {
     stopLiveTimer();
   }
+
+  // Mute toggle: visible in live + post phases
+  muteToggle.style.display = (phase === "live" || phase === "post") ? "inline-flex" : "none";
+
+  // Participants bar: visible when meeting is loaded
+  updateParticipantsBar();
 }
 
 function startLiveTimer() {
@@ -674,10 +873,35 @@ async function transitionPhase(newPhase) {
     const data = await api("phase", { meeting_id: meetingId, phase: newPhase });
     meetingData = { ...meetingData, ...data.meeting };
     updatePhaseUI(newPhase);
-    appendSystemMsg(lang === "de"
-      ? `Phase gewechselt: ${newPhase.toUpperCase()}`
-      : `Phase changed: ${newPhase.toUpperCase()}`
-    );
+    // Phase info messages
+    const PHASE_INFO = {
+      de: {
+        live: "🟢 LIVE — Schreib mir was im Meeting passiert. Ich höre mit, strukturiere mit und gebe dir Hinweise wenn nötig.",
+        post: "📝 NACHBEREITUNG — Ich erstelle jetzt die Zusammenfassung...",
+        closed: "✅ Meeting abgeschlossen.",
+      },
+      en: {
+        live: "🟢 LIVE — Tell me what's happening in the meeting. I'll listen, structure, and give you hints when needed.",
+        post: "📝 POST — Generating your meeting summary...",
+        closed: "✅ Meeting closed.",
+      },
+      fr: {
+        live: "🟢 LIVE — Dis-moi ce qui se passe en réunion. J'écoute, structure et te donne des indices si nécessaire.",
+        post: "📝 POST — Je génère le résumé...",
+        closed: "✅ Réunion terminée.",
+      },
+    };
+    const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
+    if (phaseInfo) appendSystemMsg(phaseInfo);
+
+    // Disconnect Sophie voice when leaving live phase
+    if (newPhase === "post" || newPhase === "closed") {
+      if (!sophieMuted) {
+        sophieMuted = true;
+        muteToggle.classList.remove("active");
+        disconnectSophieVoice(true);
+      }
+    }
 
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
@@ -693,7 +917,8 @@ async function transitionPhase(newPhase) {
 // ---------------------------------------------------------------------------
 function appendMsg(role, content) {
   const div = document.createElement("div");
-  div.className = `msg ${role}`;
+  const isHint = role === "assistant" && content.trim().startsWith("💡");
+  div.className = `msg ${role}${isHint ? " hint" : ""}`;
   div.textContent = content;
   chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
@@ -721,6 +946,24 @@ function removeTyping() {
   if (el) el.remove();
 }
 
+// Hint throttle state
+const HINT_MIN_INTERVAL = 3 * 60 * 1000; // 3 min
+const HINT_MAX_PER_MEETING = 8;
+let lastHintAt = null;
+let hintCount = 0;
+
+function shouldShowHint() {
+  if (hintCount >= HINT_MAX_PER_MEETING) return false;
+  if (lastHintAt && Date.now() - lastHintAt < HINT_MIN_INTERVAL) return false;
+  return true;
+}
+
+// Check if user is directly addressing Sophie
+function isAddressingSophie(text) {
+  const lower = text.toLowerCase();
+  return /\bsophie\b/.test(lower) || /^@sophie/i.test(lower) || lower.startsWith("hey sophie") || lower.startsWith("sophie,");
+}
+
 async function sendMessage(text, isAutoOpener = false) {
   if (isLoading || !text.trim()) return;
   isLoading = true;
@@ -731,17 +974,56 @@ async function sendMessage(text, isAutoOpener = false) {
   }
   chatMessages.push({ role: "user", content: text });
 
+  // If Sophie is muted in LIVE phase and user is NOT addressing her directly,
+  // just save the note silently (Sophie tracks but doesn't respond)
+  const inLive = meetingData?.phase === "live";
+  if (sophieMuted && inLive && !isAutoOpener && !isAddressingSophie(text)) {
+    // Save as meeting note silently
+    try {
+      await api("note", { meeting_id: meetingId, note_type: "note", content: text });
+    } catch { /* ignore */ }
+    isLoading = false;
+    sendBtn.disabled = false;
+    chatInput.focus();
+    return;
+  }
+
   showTyping();
 
   try {
+    // Add mute state context so Sophie knows her role
+    const muteContext = sophieMuted
+      ? "[SYSTEM: Sophie is muted/passive. Only respond if directly addressed by name.]"
+      : "[SYSTEM: Sophie is unmuted/active participant. Proactively contribute, give hints, track decisions.]";
+
+    const messagesWithContext = [
+      ...chatMessages.slice(0, -1),
+      { role: "user", content: muteContext + "\n" + chatMessages[chatMessages.length - 1].content },
+    ];
+
     const data = await api("message", {
       meeting_id: meetingId,
-      messages: chatMessages,
+      messages: messagesWithContext,
     });
 
     removeTyping();
-    appendMsg("assistant", data.reply);
-    chatMessages.push({ role: "assistant", content: data.reply });
+
+    let reply = data.reply;
+
+    // Handle hint throttle: if reply contains a hint but throttle says no, strip it
+    if (data.hint && reply.includes("\ud83d\udca1")) {
+      if (!shouldShowHint()) {
+        reply = reply.replace(/\ud83d\udca1[^\n]*/g, "").trim();
+      } else {
+        lastHintAt = Date.now();
+        hintCount++;
+      }
+    }
+
+    if (reply) {
+      appendMsg("assistant", reply);
+      chatMessages.push({ role: "assistant", content: reply });
+    }
 
   } catch (e) {
     removeTyping();
@@ -773,6 +1055,7 @@ async function saveContext() {
   try {
     await Promise.all(saves);
     appendSystemMsg(lang === "de" ? "Kontext gespeichert" : "Context saved");
+    updateParticipantsBar();
   } catch (e) {
     alert("Error: " + e.message);
   } finally {
@@ -821,7 +1104,471 @@ function renderSummary(summary) {
     details.appendChild(div);
   });
 
+  // Render follow-up diff if present
+  if (summary.followup_diff) {
+    const diff = summary.followup_diff;
+    const diffDiv = document.createElement("div");
+    diffDiv.className = "diff-section";
+
+    const diffItems = [
+      ...(diff.resolved || []).map(i => ({ icon: "✓", cls: "done", text: typeof i === "string" ? i : i.text, label: t("diffDone") })),
+      ...(diff.still_open || []).map(i => ({ icon: "○", cls: "open", text: typeof i === "string" ? i : i.text, label: t("diffOpen") })),
+      ...(diff.escalated || []).map(i => ({ icon: "!", cls: "escalated", text: typeof i === "string" ? i : i.text, label: t("diffEscalated") })),
+      ...(diff.new_items || []).map(i => ({ icon: "★", cls: "new", text: typeof i === "string" ? i : i.text, label: t("diffNew") })),
+    ];
+
+    if (diffItems.length > 0) {
+      diffDiv.innerHTML = `<h4>${t("diffTitle")}</h4>` + diffItems.map(d =>
+        `<div class="diff-item"><span class="diff-icon ${d.cls}">${d.icon}</span><span>${d.text}</span></div>`
+      ).join("");
+      details.appendChild(diffDiv);
+    }
+  }
+
   chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// File Upload
+// ---------------------------------------------------------------------------
+const FILE_ICONS = {
+  "application/pdf": "📄",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "📝",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "📊",
+  "text/plain": "📃",
+  "image/png": "🖼️", "image/jpeg": "🖼️", "image/webp": "🖼️",
+};
+
+async function uploadFile(file) {
+  if (!meetingId) return;
+
+  // Reject Pages files with helpful message
+  if (file.name.endsWith(".pages")) {
+    const pagesMsg = lang === "de"
+      ? "Pages-Dateien werden nicht unterstützt. Bitte als DOCX oder PDF exportieren."
+      : "Pages files are not supported. Please export as DOCX or PDF.";
+    appendSystemMsg("⚠️ " + pagesMsg);
+    return;
+  }
+
+  const fileList = $("fileList");
+  const itemDiv = document.createElement("div");
+  itemDiv.className = "file-item uploading";
+  itemDiv.innerHTML = `<span class="file-icon">${FILE_ICONS[file.type] || "📎"}</span><span class="file-name">${file.name}</span><span class="file-status">...</span>`;
+  fileList.appendChild(itemDiv);
+
+  try {
+    // 1. Upload to Supabase Storage
+    const path = `${meetingId}/${Date.now()}_${file.name}`;
+    const { error: uploadErr } = await supabase.storage
+      .from("meeting-files")
+      .upload(path, file, { contentType: file.type });
+    if (uploadErr) throw uploadErr;
+
+    // 2. Extract text content for TXT files
+    let content = `[File: ${file.name}]`;
+    if (file.type === "text/plain") {
+      content = await file.text();
+      if (content.length > 8000) content = content.slice(0, 8000) + "\n... (truncated)";
+    }
+
+    // 3. Save as meeting_context
+    await api("context", {
+      meeting_id: meetingId,
+      context_type: "file",
+      content,
+      file_path: path,
+    });
+
+    itemDiv.classList.remove("uploading");
+    itemDiv.querySelector(".file-status").textContent = "✓";
+    appendSystemMsg(`${file.name} ${t("uploadDone").toLowerCase()}`);
+  } catch (e) {
+    itemDiv.classList.remove("uploading");
+    itemDiv.querySelector(".file-status").textContent = "✗";
+    itemDiv.querySelector(".file-status").style.color = "#ff5a5a";
+    console.error("Upload error:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Participants Bar
+// ---------------------------------------------------------------------------
+function updateParticipantsBar() {
+  if (!meetingData) { participantsBar.classList.remove("visible"); return; }
+  participantsBar.classList.add("visible");
+  const participants = ($("ctxParticipants")?.value || "").trim();
+  const names = participants ? participants.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean) : [];
+
+  let html = "";
+  // Sophie chip — always present, shows mute/speaking state
+  const sophieState = isSpeaking ? "\ud83d\udde3\ufe0f" : sophieMuted ? "\ud83d\udd07" : "\ud83d\udd0a";
+  const speakingClass = isSpeaking ? " speaking" : "";
+  html += `<span class="participant-chip sophie${speakingClass}">${sophieState} ${t("sophieLabel")}</span>`;
+  // User participants
+  names.forEach(name => {
+    html += `<span class="participant-chip">${name}</span>`;
+  });
+  if (names.length === 0 && meetingData.phase !== "prep") {
+    html += `<span class="participant-chip" style="opacity:.4">—</span>`;
+  }
+  participantsBar.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Sophie Voice — Uses the SAME Talk-Sophie (WebRTC Realtime API)
+// Unmute = Connect Sophie voice session, Mute = Disconnect
+// ---------------------------------------------------------------------------
+
+async function fetchRealtimeAnswerSdp(offerSdp, clientSecret) {
+  const baseUrl = "https://api.openai.com/v1/realtime";
+  const model = "gpt-realtime";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offerSdp,
+        headers: {
+          Authorization: `Bearer ${clientSecret}`,
+          "Content-Type": "application/sdp",
+        },
+      });
+      if (!res.ok) throw new Error(`Realtime handshake failed (${res.status})`);
+      const sdp = await res.text();
+      if (!sdp || sdp.trim().startsWith("<")) throw new Error("Invalid SDP");
+      return sdp;
+    } catch (e) {
+      if (attempt === 3) throw e;
+      await new Promise(r => setTimeout(r, 600 * attempt));
+    }
+  }
+}
+
+async function connectSophieVoice() {
+  if (isConnecting || sophieVoicePc) return;
+  isConnecting = true;
+  isSpeaking = true;
+  updateParticipantsBar();
+
+  const connectMsg = lang === "de" ? "Sophie wird verbunden..." : lang === "fr" ? "Connexion de Sophie..." : "Connecting Sophie...";
+  appendSystemMsg(connectMsg);
+
+  try {
+    // 1. Get session token from /api/session (same as Talk)
+    const tokenRes = await fetch("/api/session", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Sophie-Session-Mode": "meeting",
+      },
+    });
+    const data = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(data?.error || `HTTP ${tokenRes.status}`);
+
+    // 2. Set up WebRTC (same as Talk)
+    sophieVoicePc = new RTCPeerConnection();
+
+    // Get mic access
+    sophieVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    sophieVoiceStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieVoiceStream));
+
+    // Sophie's audio output
+    sophieVoiceAudio = document.createElement("audio");
+    sophieVoiceAudio.autoplay = true;
+    sophieVoiceAudio.playsInline = true;
+    sophieVoicePc.ontrack = e => {
+      sophieVoiceAudio.srcObject = e.streams[0];
+      isSpeaking = true;
+      updateParticipantsBar();
+    };
+
+    // Create offer
+    const offer = await sophieVoicePc.createOffer();
+    await sophieVoicePc.setLocalDescription(offer);
+
+    // 3. Handshake with OpenAI Realtime (same as Talk)
+    const answerSdp = await fetchRealtimeAnswerSdp(offer.sdp, data.client_secret.value);
+    await sophieVoicePc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+
+    // Connection state monitoring
+    sophieVoicePc.onconnectionstatechange = () => {
+      const state = sophieVoicePc?.connectionState;
+      if (state === "disconnected" || state === "failed" || state === "closed") {
+        disconnectSophieVoice(true);
+      }
+    };
+
+    isConnecting = false;
+    isSpeaking = true;
+    updateParticipantsBar();
+
+    const joinedMsg = lang === "de" ? "Sophie ist jetzt im Meeting." : lang === "fr" ? "Sophie est dans le meeting." : "Sophie joined the meeting.";
+    appendSystemMsg(joinedMsg);
+
+  } catch (e) {
+    console.error("Sophie voice connect error:", e);
+    isConnecting = false;
+    isSpeaking = false;
+    updateParticipantsBar();
+    disconnectSophieVoice(true);
+    const errMsg = lang === "de" ? "Sophie konnte nicht verbunden werden." : "Could not connect Sophie.";
+    appendSystemMsg(errMsg + " " + e.message);
+  }
+}
+
+function disconnectSophieVoice(silent = false) {
+  // Stop mic
+  if (sophieVoiceStream) {
+    sophieVoiceStream.getTracks().forEach(t => t.stop());
+    sophieVoiceStream = null;
+  }
+  // Stop audio
+  if (sophieVoiceAudio) {
+    try { sophieVoiceAudio.srcObject = null; } catch {}
+    sophieVoiceAudio = null;
+  }
+  // Close WebRTC
+  if (sophieVoicePc) {
+    sophieVoicePc.close();
+    sophieVoicePc = null;
+  }
+  isSpeaking = false;
+  isConnecting = false;
+  updateParticipantsBar();
+
+  if (!silent) {
+    const leftMsg = lang === "de" ? "Sophie hat das Meeting verlassen." : lang === "fr" ? "Sophie a quitté le meeting." : "Sophie left the meeting.";
+    appendSystemMsg(leftMsg);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mute/Unmute Sophie (Connect/Disconnect Talk-Sophie)
+// ---------------------------------------------------------------------------
+async function toggleSophieMute() {
+  if (isConnecting) return; // Prevent double-click
+
+  sophieMuted = !sophieMuted;
+  muteToggle.classList.toggle("active", !sophieMuted);
+  updateParticipantsBar();
+
+  if (!sophieMuted) {
+    // UNMUTE → Connect Sophie voice (same as starting Talk)
+    await connectSophieVoice();
+  } else {
+    // MUTE → Disconnect Sophie voice
+    disconnectSophieVoice();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Summary Export (Copy + Share)
+// ---------------------------------------------------------------------------
+function buildSummaryText() {
+  if (!meetingData) return "";
+  const lines = [];
+  lines.push(`# ${meetingData.title || meetingData.meeting_type}`);
+  lines.push(`${new Date(meetingData.created_at).toLocaleDateString()} | ${meetingData.meeting_type}\n`);
+
+  const summaryText = $("summaryText")?.textContent;
+  if (summaryText) lines.push(summaryText + "\n");
+
+  const details = $("summaryDetails");
+  if (details) {
+    details.querySelectorAll(".summary-section").forEach(sec => {
+      const h4 = sec.querySelector("h4");
+      if (h4) lines.push(`## ${h4.textContent}`);
+      sec.querySelectorAll("li").forEach(li => {
+        lines.push(`- ${li.textContent}`);
+      });
+      lines.push("");
+    });
+    details.querySelectorAll(".diff-section .diff-item").forEach(d => {
+      lines.push(`- ${d.textContent.trim()}`);
+    });
+  }
+  return lines.join("\n").trim();
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function getDatePrefix() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function slugify(str) {
+  return str.toLowerCase().replace(/[äÄ]/g,"ae").replace(/[öÖ]/g,"oe").replace(/[üÜ]/g,"ue").replace(/[ß]/g,"ss").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
+}
+
+function downloadProtocol() {
+  if (!meetingData) return;
+  const isDE = lang === "de";
+  const isFR = lang === "fr";
+
+  const title = meetingData.title || meetingData.meeting_type;
+  const dateStr = new Date(meetingData.created_at).toLocaleDateString(
+    isDE ? "de-DE" : isFR ? "fr-FR" : "en-US",
+    { day: "numeric", month: "long", year: "numeric" }
+  );
+  const timeStart = meetingData.started_at ? new Date(meetingData.started_at).toLocaleTimeString(
+    isDE ? "de-DE" : isFR ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" }
+  ) : "—";
+  const timeEnd = meetingData.ended_at ? new Date(meetingData.ended_at).toLocaleTimeString(
+    isDE ? "de-DE" : isFR ? "fr-FR" : "en-US", { hour: "2-digit", minute: "2-digit" }
+  ) : "—";
+
+  // Gather participants
+  const partText = ($("ctxParticipants")?.value || "").trim();
+  const participants = partText ? partText.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean) : [];
+
+  // Gather summary data from DOM
+  const summaryText = ($("summaryText")?.textContent || "").trim();
+  const details = $("summaryDetails");
+
+  const sections = [];
+  if (details) {
+    details.querySelectorAll(".summary-section").forEach(sec => {
+      const h4 = sec.querySelector("h4")?.textContent || "";
+      const items = Array.from(sec.querySelectorAll("li")).map(li => li.textContent.trim());
+      if (items.length > 0) sections.push({ title: h4, items });
+    });
+  }
+
+  // Gather diff items
+  const diffItems = [];
+  if (details) {
+    details.querySelectorAll(".diff-item").forEach(d => {
+      diffItems.push(d.textContent.trim());
+    });
+  }
+
+  // Build protocol HTML — classic meeting protocol layout
+  const protocolLabel = isDE ? "Meeting Protokoll" : isFR ? "Proc\u00e8s-verbal" : "Meeting Protocol";
+  const dateLabel = isDE ? "Datum" : isFR ? "Date" : "Date";
+  const timeLabel = isDE ? "Zeit" : isFR ? "Heure" : "Time";
+  const partLabel = isDE ? "Teilnehmer" : isFR ? "Participants" : "Participants";
+  const typeLabel = isDE ? "Typ" : isFR ? "Type" : "Type";
+  const summaryLabel = isDE ? "Zusammenfassung" : isFR ? "R\u00e9sum\u00e9" : "Summary";
+  const diffLabel = isDE ? "Vergleich mit Vorg\u00e4nger-Meeting" : isFR ? "Comparaison" : "Comparison with previous meeting";
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sophie \u2013 ${escapeHtml(protocolLabel)}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;}
+  h1{font-size:26px;font-weight:700;color:#1a1210;margin:0 0 8px;}
+  .subtitle{font-size:14px;color:#a09080;margin:0 0 32px;}
+  .meta-table{width:100%;border-collapse:collapse;margin:0 0 36px;}
+  .meta-table td{padding:8px 12px;font-size:14px;border-bottom:1px solid #ede8e2;vertical-align:top;}
+  .meta-table td:first-child{font-weight:600;color:#1a1210;width:120px;white-space:nowrap;}
+  .meta-table td:last-child{color:#5a4a40;}
+  .section{margin:0 0 36px;padding-bottom:36px;border-bottom:1px solid #ede8e2;}
+  .section:last-child{border-bottom:none;}
+  .section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 12px;}
+  p{margin:0 0 12px;font-size:16px;line-height:1.8;color:#3a3028;}
+  ul{margin:0;padding-left:20px;}
+  li{margin:0 0 10px;font-size:15px;line-height:1.7;color:#3a3028;}
+  li::marker{color:#c4a882;}
+  .owner{color:#6a8a5a;font-weight:600;}
+  .severity-high{color:#c44;}
+  .severity-medium{color:#c90;}
+  .severity-low{color:#5a8a5a;}
+  .diff-item{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:14px;color:#5a4a40;}
+  .diff-icon{font-size:16px;}
+  .footer{margin-top:48px;font-size:12px;color:#b0a090;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="label">${escapeHtml(protocolLabel)}</p>
+  <h1>${escapeHtml(title)}</h1>
+  <p class="subtitle">Sophie \u2013 ${escapeHtml(protocolLabel)}</p>
+
+  <table class="meta-table">
+    <tr><td>${dateLabel}</td><td>${escapeHtml(dateStr)}</td></tr>
+    <tr><td>${timeLabel}</td><td>${escapeHtml(timeStart)} \u2013 ${escapeHtml(timeEnd)}</td></tr>
+    <tr><td>${typeLabel}</td><td>${escapeHtml(meetingData.meeting_type)}</td></tr>
+    ${participants.length > 0 ? `<tr><td>${partLabel}</td><td>${participants.map(p => escapeHtml(p)).join(", ")}</td></tr>` : ""}
+  </table>
+
+  ${summaryText ? `<div class="section">
+    <p class="section-title">${summaryLabel}</p>
+    <p>${escapeHtml(summaryText)}</p>
+  </div>` : ""}
+
+  ${sections.map(sec => `<div class="section">
+    <p class="section-title">${escapeHtml(sec.title)}</p>
+    <ul>${sec.items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+  </div>`).join("")}
+
+  ${diffItems.length > 0 ? `<div class="section">
+    <p class="section-title">${diffLabel}</p>
+    ${diffItems.map(d => `<div class="diff-item">${escapeHtml(d)}</div>`).join("")}
+  </div>` : ""}
+
+  <div class="footer">${isDE ? "Erstellt mit Sophie" : isFR ? "Cr\u00e9\u00e9 avec Sophie" : "Created with Sophie"} \u00b7 meet-sophie.com</div>
+</div>
+</body>
+</html>`;
+
+  const filename = `${getDatePrefix()}_sophie-meeting-protokoll_${slugify(title)}.html`;
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+
+  // iOS fallback
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isIOS && navigator.share && navigator.canShare) {
+    const file = new File([blob], filename, { type: "text/html" });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: protocolLabel }).catch(() => {});
+      return;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function copySummary() {
+  const text = buildSummaryText();
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = $("copySummaryBtn");
+    const orig = btn.textContent;
+    btn.textContent = `\u2714 ${t("copied")}`;
+    setTimeout(() => btn.textContent = orig, 2000);
+  } catch {
+    // Fallback for older browsers
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+}
+
+async function shareSummary() {
+  const text = buildSummaryText();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: t("shareTitle"), text });
+    } catch { /* user cancelled */ }
+  } else {
+    await copySummary(); // Fallback to copy
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -855,9 +1602,46 @@ ctaPost.addEventListener("click", () => transitionPhase("post"));
 ctaClose.addEventListener("click", () => transitionPhase("closed"));
 
 $("saveContextBtn").addEventListener("click", saveContext);
+muteToggle.addEventListener("click", toggleSophieMute);
+$("downloadProtocolBtn").addEventListener("click", downloadProtocol);
+$("copySummaryBtn").addEventListener("click", copySummary);
+$("shareSummaryBtn").addEventListener("click", shareSummary);
 
 $("contextToggle").addEventListener("click", () => {
   contextPanel.classList.toggle("collapsed");
+});
+
+// Delete meeting
+window.deleteMeeting = async function(id, btn) {
+  const confirmMsg = lang === "de" ? "Meeting wirklich löschen?" : lang === "fr" ? "Supprimer ce meeting ?" : "Delete this meeting?";
+  if (!confirm(confirmMsg)) return;
+  btn.disabled = true;
+  try {
+    await api("delete", { meeting_id: id });
+    btn.closest("div").remove();
+  } catch (e) {
+    alert("Error: " + e.message);
+    btn.disabled = false;
+  }
+};
+
+// File upload handlers
+$("uploadArea").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", (e) => {
+  for (const file of e.target.files) uploadFile(file);
+  e.target.value = "";
+});
+$("uploadArea").addEventListener("dragover", (e) => {
+  e.preventDefault();
+  $("uploadArea").style.borderColor = "rgba(255,255,255,.4)";
+});
+$("uploadArea").addEventListener("dragleave", () => {
+  $("uploadArea").style.borderColor = "";
+});
+$("uploadArea").addEventListener("drop", (e) => {
+  e.preventDefault();
+  $("uploadArea").style.borderColor = "";
+  for (const file of e.dataTransfer.files) uploadFile(file);
 });
 
 $("backBtn").addEventListener("click", (e) => {

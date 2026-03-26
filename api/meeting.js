@@ -11,6 +11,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
 // Auth helpers (shared with chat.js)
@@ -54,6 +55,99 @@ async function requireAuth(req, res) {
   return user;
 }
 
+// ---------------------------------------------------------------------------
+// File content extraction (server-side)
+// ---------------------------------------------------------------------------
+
+async function extractFileContent(supabase, filePath) {
+  // Download file from Supabase Storage
+  const { data: fileData, error: dlError } = await supabase.storage
+    .from("meeting-files")
+    .download(filePath);
+  if (dlError || !fileData) return null;
+
+  const fileName = filePath.split("/").pop().replace(/^\d+_/, "");
+  const ext = fileName.split(".").pop().toLowerCase();
+
+  // TXT: read directly
+  if (ext === "txt") {
+    const text = await fileData.text();
+    return text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text;
+  }
+
+  // PDF / DOCX / PPTX / Images: use OpenAI to extract/describe content
+  if (["pdf", "docx", "pptx", "png", "jpg", "jpeg", "webp"].includes(ext)) {
+    const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
+
+    // Convert to base64 for images
+    if (isImage) {
+      const buffer = await fileData.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          max_tokens: 1500,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: `Describe and extract all text from this image (${fileName}). Be thorough. If it contains a document, table, or chart, extract the data.` },
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+            ],
+          }],
+        }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        return `[Image: ${fileName}]\n${data?.choices?.[0]?.message?.content || ""}`;
+      }
+    }
+
+    // DOCX: extract with mammoth
+    if (ext === "docx") {
+      try {
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        const result = await mammoth.extractRawText({ buffer });
+        const text = (result.value || "").trim();
+        if (text) {
+          return `[DOCX: ${fileName}]\n${text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text}`;
+        }
+      } catch (e) {
+        console.error("DOCX extraction error:", e?.message);
+      }
+      return `[DOCX: ${fileName}] — Could not extract text.`;
+    }
+
+    // PDF: extract readable strings from raw binary
+    if (ext === "pdf") {
+      const buffer = await fileData.arrayBuffer();
+      const textContent = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+      const readable = textContent.match(/\(([^)]+)\)/g);
+      if (readable && readable.length > 5) {
+        const extracted = readable.map(s => s.slice(1, -1)).join(" ").slice(0, 8000);
+        return `[PDF: ${fileName}]\n${extracted}`;
+      }
+      return `[PDF: ${fileName}] — Text extraction limited. Content stored as reference.`;
+    }
+
+    // PPTX: basic reference (full extraction would need separate library)
+    if (ext === "pptx") {
+      return `[PPTX: ${fileName}] — Presentation uploaded for reference.`;
+    }
+
+    return `[Document: ${fileName}] — Uploaded for reference.`;
+  }
+
+  return `[File: ${fileName}]`;
+}
+
 // Phase transition validation
 const VALID_TRANSITIONS = {
   prep: ["live"],
@@ -76,8 +170,21 @@ async function handleCreate(req, res) {
   const meetingType = ["team", "client", "strategy", "other"].includes(body.meeting_type) ? body.meeting_type : "other";
   const sophieRole = ["prepare", "co-think", "document"].includes(body.sophie_role) ? body.sophie_role : "co-think";
   const title = (body.title || "").trim() || null;
+  const parentMeetingId = (body.parent_meeting_id || "").trim() || null;
 
   const supabase = getSupabase();
+
+  // Validate parent_meeting_id if provided
+  if (parentMeetingId) {
+    const { data: parent } = await supabase
+      .from("meetings")
+      .select("id")
+      .eq("id", parentMeetingId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!parent) return res.status(400).json({ error: "Parent meeting not found" });
+  }
+
   const { data, error } = await supabase
     .from("meetings")
     .insert({
@@ -86,8 +193,9 @@ async function handleCreate(req, res) {
       meeting_type: meetingType,
       phase: "prep",
       sophie_role: sophieRole,
+      parent_meeting_id: parentMeetingId,
     })
-    .select("id, phase, meeting_type, sophie_role, created_at")
+    .select("id, phase, meeting_type, sophie_role, parent_meeting_id, created_at")
     .single();
 
   if (error) {
@@ -221,7 +329,7 @@ async function handleContext(req, res) {
     return res.status(400).json({ error: "Missing meeting_id, context_type, or content" });
   }
 
-  if (!["agenda", "participants", "goal", "text_note"].includes(context_type)) {
+  if (!["agenda", "participants", "goal", "text_note", "file", "history_ref"].includes(context_type)) {
     return res.status(400).json({ error: "Invalid context_type" });
   }
 
@@ -236,10 +344,26 @@ async function handleContext(req, res) {
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
+  let finalContent = content.trim();
+
+  // For file uploads: extract text content server-side if not already extracted
+  if (context_type === "file" && body.file_path && finalContent.startsWith("[File:")) {
+    try {
+      const extracted = await extractFileContent(supabase, body.file_path);
+      if (extracted) finalContent = extracted;
+    } catch (e) {
+      console.error("File extraction error:", e?.message);
+      // Keep original placeholder content
+    }
+  }
+
+  const insertData = { meeting_id, context_type, content: finalContent };
+  if (body.file_path) insertData.file_path = body.file_path;
+
   const { data, error } = await supabase
     .from("meeting_context")
-    .insert({ meeting_id, context_type, content: content.trim() })
-    .select("id, context_type, created_at")
+    .insert(insertData)
+    .select("id, context_type, file_path, created_at")
     .single();
 
   if (error) {
@@ -340,6 +464,33 @@ async function handleMessage(req, res) {
   // Build meeting context string
   const contextItems = (contextRes.data || []).map(c => `[${c.context_type.toUpperCase()}] ${c.content}`).join("\n");
   const noteItems = (notesRes.data || []).map(n => `[${n.note_type.toUpperCase()}] ${n.content}`).join("\n");
+
+  // Load parent meeting history context if linked
+  let historyBlock = null;
+  if (meeting.parent_meeting_id) {
+    const { data: parentSummary } = await supabase
+      .from("meeting_summary")
+      .select("short_summary, action_items, open_points, decisions")
+      .eq("meeting_id", meeting.parent_meeting_id)
+      .maybeSingle();
+    if (parentSummary) {
+      const openActions = (parentSummary.action_items || [])
+        .filter(a => !a.done)
+        .map(a => `- ${typeof a === "string" ? a : a.text || JSON.stringify(a)}`)
+        .join("\n");
+      const openPts = (parentSummary.open_points || [])
+        .map(p => `- ${typeof p === "string" ? p : p.text || JSON.stringify(p)}`)
+        .join("\n");
+      historyBlock = [
+        "--- PREVIOUS MEETING ---",
+        parentSummary.short_summary ? `Summary: ${parentSummary.short_summary}` : null,
+        openActions ? `Open Action Items:\n${openActions}` : null,
+        openPts ? `Open Points:\n${openPts}` : null,
+        "--- END PREVIOUS MEETING ---",
+      ].filter(Boolean).join("\n");
+    }
+  }
+
   const meetingContext = [
     meeting.title ? `Meeting: ${meeting.title}` : null,
     `Typ: ${meeting.meeting_type}`,
@@ -347,6 +498,7 @@ async function handleMessage(req, res) {
     `Sophie-Rolle: ${meeting.sophie_role}`,
     contextItems ? `\nKONTEXT:\n${contextItems}` : null,
     noteItems ? `\nBISHERIGE NOTIZEN:\n${noteItems}` : null,
+    historyBlock ? `\n${historyBlock}` : null,
   ].filter(Boolean).join("\n");
 
   // Build system prompt with meeting-specific phase prompt
@@ -408,7 +560,9 @@ async function handleMessage(req, res) {
 
   // Extract structured items from LIVE-phase responses
   let extractedItems = null;
+  let hintData = null;
   if (meeting.phase === "live") {
+    // Extract decisions/actions/risks/open_points JSON
     const jsonMatch = rawReply.match(/\{[\s\S]*"decisions"[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -432,12 +586,28 @@ async function handleMessage(req, res) {
         }
       } catch { /* JSON parse failed, ignore */ }
     }
+
+    // Extract hint JSON from response (silent hint system)
+    const hintMatch = rawReply.match(/\{"hint"\s*:\s*\{[^}]*\}\}/);
+    if (hintMatch) {
+      try {
+        hintData = JSON.parse(hintMatch[0]).hint;
+        // Save hint as meeting_note with type 'silent_hint'
+        const hintText = rawReply.match(/💡\s*([^\n{]+)/)?.[1]?.trim() || hintData.type;
+        await supabase.from("meeting_notes").insert({
+          meeting_id,
+          note_type: "silent_hint",
+          content: JSON.stringify({ type: hintData.type, text: hintText }),
+        });
+      } catch { /* hint parse failed, ignore */ }
+    }
   }
 
-  // Clean reply (strip JSON block if present for display)
+  // Clean reply (strip JSON blocks for display, keep 💡 hint text visible)
   const reply = rawReply
     .replace(/```json[\s\S]*?```/g, "")
     .replace(/\{[\s\S]*"decisions"[\s\S]*\}/g, "")
+    .replace(/\{"hint"\s*:\s*\{[^}]*\}\}/g, "")
     .trim() || rawReply.trim();
 
   return res.status(200).json({
@@ -445,6 +615,7 @@ async function handleMessage(req, res) {
     reply,
     phase: meeting.phase,
     extracted_items: extractedItems,
+    hint: hintData || null,
     model: openaiModel,
   });
 }
@@ -483,7 +654,26 @@ async function handleSummarize(req, res) {
 
   // Build summary prompt
   const contextStr = (contextRes.data || []).map(c => `[${c.context_type}] ${c.content}`).join("\n");
-  const notesStr = (notesRes.data || []).map(n => `[${n.note_type}] ${n.content}`).join("\n");
+  const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
+  const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
+
+  // If there's no content at all, return empty summary — do NOT hallucinate
+  if (!notesStr.trim() && !contextStr.trim()) {
+    const emptySummary = {
+      meeting_id,
+      short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
+      decisions: [],
+      action_items: [],
+      open_points: [],
+      risks: [],
+    };
+    const { data: saved } = await supabase
+      .from("meeting_summary")
+      .upsert(emptySummary, { onConflict: "meeting_id" })
+      .select()
+      .single();
+    return res.status(200).json({ ok: true, summary: saved || emptySummary });
+  }
 
   const summarySystemPrompt = `You are Sophie. Generate a structured meeting summary.
 ${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
@@ -493,16 +683,22 @@ Type: ${meeting.meeting_type}
 ${contextStr ? `\nContext:\n${contextStr}` : ""}
 ${notesStr ? `\nNotes from meeting:\n${notesStr}` : ""}
 
+CRITICAL RULES:
+- ONLY summarize what is EXPLICITLY written in the notes and context above.
+- Do NOT invent, assume, or hallucinate any content.
+- If a category has no items, return an empty array [].
+- If there is very little content, the summary should be very short.
+- NEVER make up decisions, action items, or risks that are not explicitly stated.
+
 Generate a JSON object with this exact schema:
 {
-  "short_summary": "2-3 sentence summary",
+  "short_summary": "2-3 sentence summary of ONLY what was actually discussed",
   "decisions": [{ "text": "...", "owner": "..." }],
   "action_items": [{ "text": "...", "owner": "...", "due": "..." }],
   "open_points": [{ "text": "..." }],
   "risks": [{ "text": "...", "severity": "low|medium|high" }]
 }
 
-Be concise and actionable. Only include items that were actually discussed.
 Return ONLY the JSON object, no other text.`;
 
   let openaiResp;
@@ -540,17 +736,85 @@ Return ONLY the JSON object, no other text.`;
     return res.status(502).json({ error: "Failed to parse summary JSON" });
   }
 
-  // Upsert summary
+  // Generate follow-up diff if parent meeting exists
+  let followupDiff = null;
+  if (meeting.parent_meeting_id) {
+    const { data: parentSummary } = await supabase
+      .from("meeting_summary")
+      .select("action_items, open_points")
+      .eq("meeting_id", meeting.parent_meeting_id)
+      .maybeSingle();
+
+    if (parentSummary) {
+      const diffPrompt = `You are Sophie. Compare the previous meeting's action items and open points with the current meeting notes.
+${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
+
+PREVIOUS MEETING:
+Action Items: ${JSON.stringify(parentSummary.action_items || [])}
+Open Points: ${JSON.stringify(parentSummary.open_points || [])}
+
+CURRENT MEETING NOTES:
+${notesStr}
+
+CURRENT MEETING SUMMARY:
+${JSON.stringify(summary)}
+
+Generate a JSON object with this schema:
+{
+  "resolved": [{ "text": "...", "status": "done" }],
+  "still_open": [{ "text": "...", "status": "open" }],
+  "escalated": [{ "text": "...", "status": "escalated" }],
+  "new_items": [{ "text": "..." }]
+}
+
+Rules:
+- "resolved": items from the previous meeting that were addressed or completed
+- "still_open": items from previous meeting still not resolved
+- "escalated": items that got worse or more urgent
+- "new_items": completely new action items or points from the current meeting
+Return ONLY the JSON object.`;
+
+      try {
+        const diffResp = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
+            max_tokens: 1000,
+            messages: [{ role: "system", content: diffPrompt }],
+            temperature: 0.3,
+            response_format: { type: "json_object" },
+          }),
+        });
+        if (diffResp.ok) {
+          const diffData = await diffResp.json();
+          const diffContent = diffData?.choices?.[0]?.message?.content || "{}";
+          followupDiff = JSON.parse(diffContent);
+        }
+      } catch (e) {
+        console.error("Follow-up diff generation error:", e?.message);
+        // Non-critical, continue without diff
+      }
+    }
+  }
+
+  // Upsert summary (including followup_diff if generated)
+  const upsertData = {
+    meeting_id,
+    short_summary: summary.short_summary || "",
+    decisions: summary.decisions || [],
+    action_items: summary.action_items || [],
+    open_points: summary.open_points || [],
+    risks: summary.risks || [],
+  };
+  if (followupDiff) upsertData.followup_diff = followupDiff;
+
   const { data: saved, error: saveErr } = await supabase
     .from("meeting_summary")
-    .upsert({
-      meeting_id,
-      short_summary: summary.short_summary || "",
-      decisions: summary.decisions || [],
-      action_items: summary.action_items || [],
-      open_points: summary.open_points || [],
-      risks: summary.risks || [],
-    }, { onConflict: "meeting_id" })
+    .upsert(upsertData, { onConflict: "meeting_id" })
     .select()
     .single();
 
@@ -600,6 +864,46 @@ async function handleSummary(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Action: delete — Meeting löschen
+// ---------------------------------------------------------------------------
+
+async function handleDelete(req, res) {
+  if (req.method !== "POST" && req.method !== "DELETE") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const body = parseBody(req);
+  const { meeting_id } = body;
+  if (!meeting_id) return res.status(400).json({ error: "Missing meeting_id" });
+
+  const supabase = getSupabase();
+
+  // Verify ownership
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("id", meeting_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  // Delete meeting (cascades to context, notes, summary via ON DELETE CASCADE)
+  // Children with parent_meeting_id will get SET NULL automatically
+  const { error } = await supabase
+    .from("meetings")
+    .delete()
+    .eq("id", meeting_id);
+
+  if (error) {
+    console.error("Meeting delete error:", error);
+    return res.status(500).json({ error: "Failed to delete meeting" });
+  }
+
+  return res.status(200).json({ ok: true });
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
@@ -615,6 +919,7 @@ export default async function handler(req, res) {
     case "message":   return handleMessage(req, res);
     case "summarize": return handleSummarize(req, res);
     case "summary":   return handleSummary(req, res);
+    case "delete":    return handleDelete(req, res);
     default:
       return res.status(400).json({ error: "Missing or invalid ?action. Use: create | get | list | phase | context | note | message | summarize | summary" });
   }
