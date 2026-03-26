@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sophie Report Demo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f5f0ea; color:#2a2420; min-height:100vh; display:flex; justify-content:center; padding:24px 16px; }
+  .wrap { max-width:480px; width:100%; }
+  .postCallTitle { font-size:22px; font-weight:700; color:#2a2420; margin-bottom:4px; }
+  .postCallSubtitle { font-size:13px; color:#a09080; margin-bottom:20px; }
+
+  .reportStyleBar { display:flex; gap:6px; justify-content:center; margin:0 0 16px; flex-wrap:wrap; }
+  .reportStylePill { padding:5px 12px; border-radius:16px; border:1px solid #d4ccc4; background:transparent; color:#7a6e60; font-size:12px; font-weight:500; cursor:pointer; transition:all .2s; }
+  .reportStylePill.active { background:#2a2420; color:#f5f0ea; border-color:#2a2420; }
+  .reportStylePill.recommended::after { content:" \u2605"; font-size:10px; color:#b89a5a; }
+
+  .reportModeBar { display:flex; gap:0; justify-content:center; margin:0 0 20px; border-bottom:1px solid #ede8e2; }
+  .reportModeBtn { flex:1; padding:10px 0; border:none; background:none; font-size:13px; font-weight:600; color:#b0a090; cursor:pointer; border-bottom:2px solid transparent; }
+  .reportModeBtn.active { color:#2a2420; border-bottom-color:#c4a882; }
+
+  .reportCard { background:#fff; border-radius:20px; padding:24px 20px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+  .report-section { margin-top:20px; padding-top:20px; border-top:1px solid #f0ebe4; }
+  .report-section:first-child { margin-top:0; padding-top:0; border-top:none; }
+  .report-heading { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#b0a090; margin-bottom:10px; }
+  .report-summary-text { font-size:15px; line-height:1.7; color:#3a3028; }
+  .report-insight-list { list-style:none; padding:0; }
+  .report-insight-list li { padding:6px 0 6px 16px; position:relative; font-size:14px; line-height:1.6; color:#3a3028; }
+  .report-insight-list li::before { content:"\u2022"; position:absolute; left:0; color:#c4a882; font-weight:bold; }
+  .report-action-item { margin-bottom:12px; }
+  .report-action-title { font-size:14px; font-weight:600; color:#2a2420; }
+  .report-action-detail { font-size:13px; color:#7a6e60; margin-top:2px; }
+  .open-questions { list-style:none; padding:0; }
+  .open-questions li { padding:4px 0 4px 16px; position:relative; font-size:13px; line-height:1.5; color:#7a6e60; }
+  .open-questions li::before { content:"?"; position:absolute; left:0; color:#b89a5a; font-weight:bold; }
+
+  .export { display:flex; gap:8px; margin-top:20px; justify-content:center; }
+  .export-btn { padding:8px 16px; border-radius:12px; border:1px solid #d4ccc4; background:#fff; font-size:12px; font-weight:600; color:#7a6e60; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .export-btn.primary { background:#2a2420; color:#f5f0ea; border-color:#2a2420; }
+
+  /* Score-Card styles */
+  .scorecard-item { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .scorecard-label { font-size:13px; color:#3a3028; min-width:120px; }
+  .scorecard-bar { flex:1; height:8px; background:#ede8e2; border-radius:4px; overflow:hidden; }
+  .scorecard-fill { height:100%; border-radius:4px; transition:width .3s; }
+  .scorecard-score { font-size:12px; font-weight:700; min-width:30px; text-align:right; }
+
+  /* Meeting styles */
+  .decision-item { padding:6px 0 6px 16px; position:relative; font-size:14px; line-height:1.5; }
+  .decision-item::before { content:"\u2713"; position:absolute; left:0; color:#4a8c5c; font-weight:bold; }
+
+  .view { display:none; }
+  .view.active { display:block; }
+  .demo-label { text-align:center; font-size:11px; color:#b0a090; margin-top:16px; letter-spacing:.1em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h3 class="postCallTitle">Your Thinking Report</h3>
+  <p class="postCallSubtitle">Produktstrategie 2026</p>
+
+  <div class="reportStyleBar">
+    <button class="reportStylePill active recommended" data-style="thinking" onclick="showStyle('thinking')">Thinking</button>
+    <button class="reportStylePill" data-style="scorecard" onclick="showStyle('scorecard')">Score-Card</button>
+    <button class="reportStylePill" data-style="meeting" onclick="showStyle('meeting')">Meeting</button>
+    <button class="reportStylePill" data-style="quick" onclick="showStyle('quick')">Quick</button>
+  </div>
+
+  <!-- THINKING REPORT -->
+  <div id="view-thinking" class="view active">
+    <div class="reportCard">
+      <section class="report-section" style="margin-top:0;padding-top:0;border-top:none;">
+        <h4 class="report-heading">Zusammenfassung</h4>
+        <p class="report-summary-text">Du hast mit Sophie die nächsten Schritte für Sophie als Produkt besprochen. Kernthemen: Pricing-Modell (4-Tier vs. Zwischenstufe), Feature-Priorisierung und die Frage ob Voice-First im Marketing stärker betont werden sollte.</p>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading">Wichtige Erkenntnisse</h4>
+        <ul class="report-insight-list">
+          <li>Der Sprung von Free (0) zu Assistant (9) ist zu groß — eine Lite-Stufe bei 4 könnte die Conversion deutlich verbessern.</li>
+          <li>Voice-First ist das stärkste Differenzierungsmerkmal gegenüber ChatGPT und Claude — sollte prominenter im Marketing sein.</li>
+          <li>Die Meeting-Paywall fehlt komplett — User können Premium-Features ohne Abo nutzen. Muss vor dem Launch gefixt werden.</li>
+        </ul>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading">Nächste Schritte</h4>
+        <div class="report-action-item"><div class="report-action-title">Pricing-Zwischenstufe evaluieren</div><div class="report-action-detail">Lite-Tier bei 4/Monat mit 5 Min Voice testen. A/B gegen aktuelles Modell.</div></div>
+        <div class="report-action-item"><div class="report-action-title">Meeting-Paywall implementieren</div><div class="report-action-detail">api/meeting.js: Subscription-Check vor Session-Start. Ohne Abo Redirect zu /pricing.</div></div>
+        <div class="report-action-item"><div class="report-action-title">Voice-Demo auf Landing Page</div><div class="report-action-detail">"Hör dir an wie Sophie klingt" Button mit 30s Audio-Preview.</div></div>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading">Offene Fragen</h4>
+        <ul class="open-questions">
+          <li>Soll der Relax-Mode ein eigenes Tier bekommen oder Teil von Friend sein?</li>
+          <li>Wie viel kostet die OpenAI Realtime API pro Minute im Durchschnitt?</li>
+          <li>Wann ist der beste Zeitpunkt für den Public Launch?</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <!-- SCORE-CARD -->
+  <div id="view-scorecard" class="view">
+    <div class="reportCard">
+      <section class="report-section" style="margin-top:0;padding-top:0;border-top:none;">
+        <h4 class="report-heading">Scorecard</h4>
+        <div class="scorecard-item"><span class="scorecard-label">Clarity</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:80%;background:#4a8c5c"></div></div><span class="scorecard-score" style="color:#4a8c5c">4/5</span></div>
+        <div class="scorecard-item"><span class="scorecard-label">Problem Sharpness</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:70%;background:#b89a5a"></div></div><span class="scorecard-score" style="color:#b89a5a">3.5/5</span></div>
+        <div class="scorecard-item"><span class="scorecard-label">Value Proposition</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:90%;background:#4a8c5c"></div></div><span class="scorecard-score" style="color:#4a8c5c">4.5/5</span></div>
+        <div class="scorecard-item"><span class="scorecard-label">Differentiation</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:80%;background:#4a8c5c"></div></div><span class="scorecard-score" style="color:#4a8c5c">4/5</span></div>
+        <div class="scorecard-item"><span class="scorecard-label">Credibility</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:60%;background:#b89a5a"></div></div><span class="scorecard-score" style="color:#b89a5a">3/5</span></div>
+        <div class="scorecard-item"><span class="scorecard-label">Audience Fit</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:70%;background:#b89a5a"></div></div><span class="scorecard-score" style="color:#b89a5a">3.5/5</span></div>
+        <div class="scorecard-item"><span class="scorecard-label">Persuasiveness</span><div class="scorecard-bar"><div class="scorecard-fill" style="width:80%;background:#4a8c5c"></div></div><span class="scorecard-score" style="color:#4a8c5c">4/5</span></div>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading" style="color:#4a8c5c">Stärken</h4>
+        <ul class="report-insight-list">
+          <li>Voice-First Differenzierung klar kommuniziert</li>
+          <li>Value Proposition "Erst denken, dann handeln" ist einprägsam</li>
+          <li>Klare Zielgruppe: Gründer und Management</li>
+        </ul>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading" style="color:#b85a4a">Schwächen</h4>
+        <ul class="report-insight-list">
+          <li>Pricing-Argumentation noch nicht überzeugend genug</li>
+          <li>Fehlende Case Studies / Social Proof</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <!-- MEETING SUMMARY -->
+  <div id="view-meeting" class="view">
+    <div class="reportCard">
+      <section class="report-section" style="margin-top:0;padding-top:0;border-top:none;">
+        <h4 class="report-heading">Agenda</h4>
+        <ul class="report-insight-list">
+          <li>Pricing-Modell Review</li>
+          <li>Feature-Priorisierung Q2</li>
+          <li>Go-to-Market Timeline</li>
+        </ul>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading">Beschlüsse</h4>
+        <div class="decision-item">Lite-Tier bei 4/Monat wird als A/B Test aufgesetzt</div>
+        <div class="decision-item">Meeting-Paywall hat höchste Priorität vor Launch</div>
+        <div class="decision-item">Voice-Demo wird auf Landing Page integriert</div>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading">Action Items</h4>
+        <div class="report-action-item"><div class="report-action-title">Lite-Tier Pricing designen</div><div class="report-action-detail">Owner: Michael | Deadline: KW 14</div></div>
+        <div class="report-action-item"><div class="report-action-title">Meeting-Paywall Fix</div><div class="report-action-detail">Owner: Dev | Deadline: Vor Launch</div></div>
+        <div class="report-action-item"><div class="report-action-title">Voice-Demo aufnehmen</div><div class="report-action-detail">Owner: Michael | Deadline: KW 15</div></div>
+      </section>
+      <section class="report-section">
+        <h4 class="report-heading">Offene Themen</h4>
+        <ul class="open-questions">
+          <li>Relax-Mode Tier-Zuordnung klären</li>
+          <li>OpenAI Realtime API Kosten analysieren</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <!-- QUICK SUMMARY -->
+  <div id="view-quick" class="view">
+    <div class="reportCard">
+      <section class="report-section" style="margin-top:0;padding-top:0;border-top:none;">
+        <h4 class="report-heading">Quick Summary</h4>
+        <ul class="report-insight-list">
+          <li>Pricing: Lite-Tier bei 4/Monat evaluieren um Free-to-Paid Conversion zu verbessern</li>
+          <li>Voice-First stärker im Marketing betonen — ist das Hauptunterscheidungsmerkmal</li>
+          <li>Meeting-Paywall Bug hat höchste Priorität vor Launch</li>
+          <li>Voice-Demo auf Landing Page bringt potentiell die meisten Signups</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <div class="export">
+    <button class="export-btn">Copy</button>
+    <button class="export-btn">Share</button>
+    <button class="export-btn primary">Download</button>
+  </div>
+  <div class="demo-label">Report Demo</div>
+</div>
+
+<script>
+function showStyle(style) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + style).classList.add('active');
+  document.querySelectorAll('.reportStylePill').forEach(p => p.classList.toggle('active', p.dataset.style === style));
+
+  const titles = { thinking: 'Your Thinking Report', scorecard: 'Sales Pitch Score-Card', meeting: 'Meeting Summary', quick: 'Quick Summary' };
+  document.querySelector('.postCallTitle').textContent = titles[style];
+}
+</script>
+</body>
+</html>
