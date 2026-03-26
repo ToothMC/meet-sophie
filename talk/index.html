@@ -2774,6 +2774,7 @@ function attachChannel(ch) {
         try {
           const args = JSON.parse(msg.arguments || "{}");
           console.log(`[${runId}] [research] deep_research called:`, args.question?.slice(0, 80));
+          showResearchIndicator();
 
           // Build messages from conversation log for the compare endpoint
           const researchMessages = [
