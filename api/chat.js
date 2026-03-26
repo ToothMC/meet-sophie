@@ -460,6 +460,14 @@ async function handleMessage(req, res) {
 
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
+    // Inject hard onboarding nudge for first session turns
+    const isFirst = (!profile.first_name || profile.first_name.trim() === "");
+    if (isFirst && turnNumber === 1) {
+      routerMessages.push({ role: "system", content: "[CRITICAL] This is a FIRST SESSION. After responding to the user, you MUST end with: 'Übrigens — wie soll ich dich nennen?' Do NOT skip this." });
+    } else if (isFirst && turnNumber === 2) {
+      routerMessages.push({ role: "system", content: "[CRITICAL] The user should have given their name. Use it once. Then ask: 'Nutzt du schon eine andere KI — ChatGPT, Claude oder so?' Do NOT skip this." });
+    }
+
     const openaiAdapter = getAdapter("openai");
     const aiResp = await openaiAdapter.complete({
       messages: routerMessages, model: "gpt-4o-mini", maxTokens: 1024, temperature: 0.85,
