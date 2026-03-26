@@ -76,7 +76,22 @@
       "Read(//Users/michaelhammer/**)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type d \\\\\\(-name *report* -o -name *protocol* -o -name *download* \\\\\\))",
       "Bash(grep -r download /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)",
-      "Bash(grep -r \"PDF\\\\|report\\\\|Report\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)"
+      "Bash(grep -r \"PDF\\\\|report\\\\|Report\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)",
+      "Bash(unzip -l files.zip)",
+      "Bash(unzip -o files.zip -d /tmp/sophie-files)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name *.env* -o -name .env.example)",
+      "Bash(xargs ls:*)",
+      "Bash(wc -l /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(while read:*)",
+      "Bash(do git:*)",
+      "Bash(done)",
+      "Bash(git show:*)",
+      "Bash(ls tsconfig*)",
+      "Bash(ls *.json)",
+      "Read(//usr/local/bin/**)",
+      "Read(//usr/local/**)",
+      "Bash(mdfind -name node -onlyin /usr/local)",
+      "Bash(mdfind -name node -onlyin /opt)"
     ]
   },
   "hooks": {
