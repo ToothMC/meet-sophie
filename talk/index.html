@@ -2734,17 +2734,19 @@ function attachChannel(ch) {
           ];
 
           // Call compare endpoint (queries all providers in parallel)
-          const token = sessionToken;
-          const headers = { "Content-Type": "application/json" };
-          if (token) headers["Authorization"] = "Bearer " + token;
+          const researchHeaders = { "Content-Type": "application/json" };
+          try {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (authSession?.access_token) researchHeaders["Authorization"] = "Bearer " + authSession.access_token;
+          } catch (_) {}
 
           const compareRes = await fetch("/api/ai/compare", {
             method: "POST",
-            headers,
+            headers: researchHeaders,
             body: JSON.stringify({
               messages: researchMessages,
               priorAnswer: null,
-              userId: userId || null,
+              userId: null,
             }),
           });
 
