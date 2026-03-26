@@ -103,7 +103,8 @@
       "Bash(curl -s \"https://api.duckduckgo.com/?q=Consense+GmbH&format=json&no_html=1\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''Abstract:'''', d.get\\(''''Abstract'''',''''''''\\)[:200]\\); print\\(''''Answer:'''', d.get\\(''''Answer'''',''''''''\\)\\); print\\(''''Topics:'''', len\\(d.get\\(''''RelatedTopics'''',[]\\)\\)\\)\")",
       "Bash(curl -s \"https://html.duckduckgo.com/html/?q=Consense+GmbH\")",
-      "Bash(curl -s -A \"Mozilla/5.0\" \"https://html.duckduckgo.com/html/?q=Consense+GmbH\")"
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://html.duckduckgo.com/html/?q=Consense+GmbH\")",
+      "Bash(curl -s \"https://meet-sophie-git-feat-multi-ai-router-michaels-projects-674b8d24.vercel.app/api/ai/tools\" -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"tool\"\"\"\":\"\"\"\"search\"\"\"\",\"\"\"\"params\"\"\"\":{\"\"\"\"query\"\"\"\":\"\"\"\"Consense GmbH Aachen\"\"\"\"}}')"
     ]
   },
   "hooks": {
