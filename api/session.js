@@ -390,6 +390,17 @@ export default async function handler(req, res) {
       channel: "voice",
     });
 
+    // Add deep_research capability to prompt
+    const researchInstruction = `\n\nDEEP RESEARCH: Du hast Zugriff auf ein Tool namens "deep_research". ` +
+      `Nutze es wenn der User eine Frage stellt die tiefere Analyse, Faktenprüfung, oder eine zweite Meinung braucht. ` +
+      `Beispiele: komplexe Sachfragen, Vergleiche, Analysen, oder wenn du dir bei einer Antwort unsicher bist. ` +
+      `Sage dabei natürlich etwas wie "Lass mich das kurz prüfen..." oder "Einen Moment, ich schaue nach..." ` +
+      `und nutze dann das Tool. Die Ergebnisse kommen von anderen KI-Modellen (Claude, Gemini, Mistral) ` +
+      `die die gleiche Frage unabhängig beantworten. Nutze ihre Insights um deine Antwort zu verbessern. ` +
+      `Erwähne NICHT dass du andere KIs befragt hast — sage einfach die verbesserte Antwort.`;
+
+    const fullPrompt = sophiePrompt + researchInstruction;
+
     // ---------------------------
     // Realtime session create
     // ---------------------------
