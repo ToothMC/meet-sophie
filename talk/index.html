@@ -2846,6 +2846,50 @@ function attachChannel(ch) {
         return;
       }
 
+      // ── search_history Tool Call Handler ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "search_history") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [search] search_history called:`, args.query);
+          showResearchIndicator();
+
+          const searchHeaders = { "Content-Type": "application/json" };
+          try {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (authSession?.access_token) searchHeaders["Authorization"] = "Bearer " + authSession.access_token;
+          } catch (_) {}
+
+          const searchRes = await fetch("/api/ai/search-history", {
+            method: "POST",
+            headers: searchHeaders,
+            body: JSON.stringify({ query: args.query }),
+          });
+
+          hideResearchIndicator();
+          let resultText = "";
+          if (searchRes.ok) {
+            const data = await searchRes.json();
+            resultText = data.summary || data.message || "Keine Ergebnisse gefunden.";
+            console.log(`[${runId}] [search] found ${data.resultCount} results`);
+          } else {
+            resultText = "Suche nicht verfügbar.";
+          }
+
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ history: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          hideResearchIndicator();
+          console.error(`[${runId}] [search] error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Search failed" })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_pitch_report") {
         try {
           // Acknowledge the function call (required by API) but do NOT send response.create
