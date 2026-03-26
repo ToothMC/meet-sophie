@@ -42,36 +42,62 @@ export default async function handler(req, res) {
   const ext = fileName.split('.').pop().toLowerCase();
   const detectedSource = source || detectSource(fileName, ext);
 
-  // Parse file based on extension
+  // Parse file based on extension + detected source
   let parsedContent = '';
   let fileType = ext;
 
   try {
-    if (ext === 'zip') {
-      const parsed = await parseChatGPTExport(buffer, 'zip');
+    if (ext === 'zip' || ext === 'dms') {
+      // Try both parsers — Claude ZIP has different structure than ChatGPT
+      let parsed = [];
+
+      if (detectedSource === 'claude') {
+        parsed = await parseClaudeExport(buffer, 'zip');
+      } else {
+        // Try ChatGPT parser first
+        try {
+          parsed = await parseChatGPTExport(buffer, 'zip');
+        } catch {
+          // If ChatGPT parser fails, try Claude parser (ZIP might be from Claude)
+          parsed = await parseClaudeExport(buffer, 'zip');
+        }
+      }
+
       parsedContent = parsed.map(p => {
         const parts = [];
-        if (p.title) parts.push(`# ${p.title}`);
-        if (p.lastMessage) parts.push(p.lastMessage);
+        if (p.title && p.title !== 'Untitled') parts.push(`# ${p.title}`);
+        if (p.content) parts.push(p.content);
+        else if (p.lastMessage) parts.push(p.lastMessage);
         if (p.sections) parts.push(Object.entries(p.sections).map(([k, v]) => `${k}: ${v}`).join('\n'));
         return parts.join('\n');
-      }).join('\n\n---\n\n');
+      }).filter(t => t.trim().length > 10).join('\n\n---\n\n');
     } else if (ext === 'json') {
       const jsonStr = buffer.toString('utf-8');
-      const parsed = await parseChatGPTExport(jsonStr, 'json');
+      // Try Claude JSON format first, then ChatGPT
+      let parsed = [];
+      try {
+        const data = JSON.parse(jsonStr);
+        if (Array.isArray(data) && data[0]?.chat_messages) {
+          parsed = await parseClaudeExport(jsonStr, 'json');
+        } else {
+          parsed = await parseChatGPTExport(jsonStr, 'json');
+        }
+      } catch {
+        parsed = await parseChatGPTExport(jsonStr, 'json');
+      }
       parsedContent = parsed.map(p => {
         const parts = [];
-        if (p.title) parts.push(`# ${p.title}`);
-        if (p.lastMessage) parts.push(p.lastMessage);
+        if (p.title && p.title !== 'Untitled') parts.push(`# ${p.title}`);
+        if (p.content) parts.push(p.content);
+        else if (p.lastMessage) parts.push(p.lastMessage);
         return parts.join('\n');
-      }).join('\n\n---\n\n');
+      }).filter(t => t.trim().length > 10).join('\n\n---\n\n');
     } else if (ext === 'docx') {
       const parsed = await parseDocxDocument(buffer);
       parsedContent = parsed.content;
     } else if (ext === 'txt' || ext === 'md') {
       parsedContent = buffer.toString('utf-8');
     } else {
-      // Try as plain text
       parsedContent = buffer.toString('utf-8');
     }
   } catch (err) {
