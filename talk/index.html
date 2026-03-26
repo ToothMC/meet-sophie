@@ -2721,6 +2721,66 @@ function attachChannel(ch) {
         return;
       }
 
+      // ── deep_research Tool Call Handler ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "deep_research") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [research] deep_research called:`, args.question?.slice(0, 80));
+
+          // Build messages from conversation log for the compare endpoint
+          const researchMessages = [
+            ...convoLog.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text })),
+            { role: "user", content: args.question + (args.context ? "\n\nKontext: " + args.context : "") },
+          ];
+
+          // Call compare endpoint (queries all providers in parallel)
+          const token = sessionToken;
+          const headers = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = "Bearer " + token;
+
+          const compareRes = await fetch("/api/ai/compare", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              messages: researchMessages,
+              priorAnswer: null,
+              userId: userId || null,
+            }),
+          });
+
+          let resultText = "";
+          if (compareRes.ok) {
+            const data = await compareRes.json();
+            // Build a concise summary of all provider answers
+            const parts = [];
+            if (data.fastest) {
+              parts.push(`[Schnellste Antwort — ${data.fastest.provider}]:\n${data.fastest.content}`);
+            }
+            for (const other of (data.others || [])) {
+              parts.push(`[${other.provider}]:\n${other.content}`);
+            }
+            resultText = parts.join("\n\n---\n\n");
+            console.log(`[${runId}] [research] got ${data.providerCount} provider answers`);
+          } else {
+            resultText = "Recherche nicht verfügbar — antworte mit deinem eigenen Wissen.";
+            console.log(`[${runId}] [research] compare failed:`, compareRes.status);
+          }
+
+          // Return result to Sophie — she'll incorporate it into her spoken response
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ research: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          console.error(`[${runId}] [research] error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Research failed" })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_pitch_report") {
         try {
           // Acknowledge the function call (required by API) but do NOT send response.create
