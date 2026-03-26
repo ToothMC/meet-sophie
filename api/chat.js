@@ -422,14 +422,12 @@ async function handleMessage(req, res) {
   // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
 
-  // Turn-aware routing nudge — injected as last system message so it's fresh in context
-  // Fires on turns 1–3 to help Sophie identify the user's intent and suggest a mode
-  const voiceNudge = turnNumber === 1
-    ? "[INTERNAL] Turn 1. If the user's intent is already clear (especially if a session mode is pre-selected), end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is unclear, ask ONE clarifying question."
-    : turnNumber === 2
-    ? "[INTERNAL] Turn 2. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
-    : turnNumber === 3
-    ? "[INTERNAL] Turn 3. If you have not yet emitted a [MODE_DETECTED:xxx] token, you must do so now. Pick the best mode based on everything you've heard."
+  // Turn-aware routing nudge — injected as system message
+  // Fires on turns 4–5 to give Sophie time for natural conversation first
+  const voiceNudge = turnNumber === 4
+    ? "[INTERNAL] Turn 4. If the user's intent is clear by now, end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is still unclear, continue the conversation naturally."
+    : turnNumber === 5
+    ? "[INTERNAL] Turn 5. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
     : null;
 
   const routerMessages = [
