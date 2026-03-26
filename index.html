@@ -1966,6 +1966,19 @@
     const AUTH_NUDGE_AT = 50; // TEST: raised to skip auth nudge during voice conversion testing
     let currentLang = localStorage.getItem("preferredLanguage") || "en";
 
+    // Update login link based on auth state
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const loginLink = document.getElementById("login-link");
+        if (loginLink && session?.user) {
+          loginLink.textContent = session.user.email?.split("@")[0] || "Mein Konto";
+          loginLink.href = "/settings/";
+          loginLink.title = session.user.email;
+        }
+      } catch {}
+    })();
+
     const UX_FLAGS_KEY = "sophie_ux_flags_v1";
     function readUxFlags() {
       try {
