@@ -416,7 +416,7 @@ export default async function handler(req, res) {
         modalities: ["audio", "text"],
         temperature: 0.85,
         speed: 1.0,
-        instructions: sophiePrompt,
+        instructions: fullPrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
         input_audio_format: "pcm16",
         turn_detection: {
