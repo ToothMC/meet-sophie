@@ -237,6 +237,11 @@ async function handleStart(req, res) {
   });
 
   // Append imported context to system prompt
+  if (importedContext) {
+    console.log("[chat] imported context loaded:", importedContext.length, "chars");
+  } else {
+    console.log("[chat] no imported context found for user:", user?.id?.slice(0, 8) || "anon");
+  }
   const fullSystemPrompt = importedContext
     ? systemPrompt + importedContext
     : systemPrompt;
