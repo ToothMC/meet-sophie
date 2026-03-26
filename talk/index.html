@@ -2817,12 +2817,14 @@ function attachChannel(ch) {
             console.log(`[${runId}] [research] compare failed:`, compareRes.status);
           }
 
+          hideResearchIndicator();
           // Return result to Sophie — she'll incorporate it into her spoken response
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ research: resultText })
           }});
           dcSend({ type: "response.create" });
         } catch (e) {
+          hideResearchIndicator();
           console.error(`[${runId}] [research] error:`, e);
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Research failed" })
