@@ -3423,11 +3423,14 @@
         const token = await getToken();
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
+        // Get last assistant answer as context
+        const lastAssistantChallenge = [...history].reverse().find(m => m.role === "assistant");
         const res = await fetch("/api/ai/challenge", {
           method: "POST",
           headers,
           body: JSON.stringify({
             messages: history.slice(-20),
+            priorAnswer: lastAssistantChallenge?.content || null,
             userId: window.__sophieUserId || null,
           }),
         });
