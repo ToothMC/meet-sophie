@@ -408,6 +408,156 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
   };
 }
 
+// ---------------------------------------------------------------------------
+// Meeting Summary generator
+// ---------------------------------------------------------------------------
+async function generateMeetingSummary({ transcriptText, openAiKey, model }) {
+  const system = `You create a structured MEETING SUMMARY from a conversation transcript.
+Extract: what was discussed, what was decided, action items with owners, and open topics.
+Structure the output clearly. Write in the SAME language as the transcript.`;
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      session_title: { type: "string" },
+      short_summary: { type: "string" },
+      agenda_points: { type: "array", items: { type: "string" } },
+      decisions: { type: "array", items: { type: "string" } },
+      action_items: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            task: { type: "string" },
+            owner: { type: "string" },
+            deadline: { type: "string" },
+          },
+          required: ["task", "owner", "deadline"],
+        },
+      },
+      open_topics: { type: "array", items: { type: "string" } },
+      next_steps: { type: "string" },
+    },
+    required: ["session_title", "short_summary", "agenda_points", "decisions", "action_items", "open_topics", "next_steps"],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model, input: [{ role: "system", content: system }, { role: "user", content: `Transcript:\n${transcriptText}` }],
+      temperature: 0.3, text: { format: { type: "json_schema", name: "sophie_meeting_summary_v1", strict: true, schema } }, truncation: "auto",
+    }),
+  });
+
+  if (!r.ok) throw new Error(`Meeting summary error ${r.status}`);
+  const out = await r.json();
+  const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+  const parsed = JSON.parse(String(text || "").trim());
+
+  return {
+    session_title: parsed.session_title || "Meeting",
+    short_summary: parsed.short_summary || "",
+    structured_summary: { summary: parsed.short_summary || "", emotional_tone: "neutral", stress_level: null, closeness_level: null },
+    key_insights: [
+      ...(parsed.agenda_points || []).map(a => ({ type: "agenda", text: a })),
+      ...(parsed.decisions || []).map(d => ({ type: "decision", text: d })),
+    ],
+    action_plan: (parsed.action_items || []).map(a => ({
+      label: `${a.task}${a.deadline !== "none" ? ` (${a.deadline})` : ""}`,
+      detail: a.owner !== "none" ? `Owner: ${a.owner}` : "",
+    })),
+    open_questions: parsed.open_topics || [],
+    meeting_data: parsed,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Quick Summary generator
+// ---------------------------------------------------------------------------
+async function generateQuickSummary({ transcriptText, openAiKey, model }) {
+  const system = `Create a QUICK SUMMARY of this conversation in 3-5 bullet points.
+Be extremely concise. Each bullet should be one short sentence capturing a key point.
+Write in the SAME language as the transcript.`;
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      session_title: { type: "string" },
+      bullets: { type: "array", items: { type: "string" } },
+    },
+    required: ["session_title", "bullets"],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model, input: [{ role: "system", content: system }, { role: "user", content: `Transcript:\n${transcriptText}` }],
+      temperature: 0.3, text: { format: { type: "json_schema", name: "sophie_quick_summary_v1", strict: true, schema } }, truncation: "auto",
+    }),
+  });
+
+  if (!r.ok) throw new Error(`Quick summary error ${r.status}`);
+  const out = await r.json();
+  const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+  const parsed = JSON.parse(String(text || "").trim());
+
+  return {
+    session_title: parsed.session_title || "Session",
+    short_summary: (parsed.bullets || []).join(" "),
+    structured_summary: { summary: (parsed.bullets || []).join(" "), emotional_tone: "neutral", stress_level: null, closeness_level: null },
+    key_insights: (parsed.bullets || []).map(b => ({ type: "bullet", text: b })),
+    action_plan: [],
+    open_questions: [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Style recommendation — AI picks the best report style for this transcript
+// ---------------------------------------------------------------------------
+async function recommendReportStyle({ transcriptText, openAiKey, model }) {
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model, input: [
+        { role: "system", content: "Analyze this transcript and recommend the best report style. Options: thinking (deep analysis), scorecard (evaluation with scores), meeting (meeting summary with action items), quick (3-5 bullet points). Return ONLY the style name." },
+        { role: "user", content: transcriptText.slice(0, 2000) },
+      ],
+      temperature: 0.1, max_output_tokens: 20,
+    }),
+  });
+  if (!r.ok) return "thinking";
+  const out = await r.json();
+  const text = (out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "thinking").trim().toLowerCase();
+  if (["thinking", "scorecard", "meeting", "quick"].includes(text)) return text;
+  if (text.includes("score")) return "scorecard";
+  if (text.includes("meeting")) return "meeting";
+  if (text.includes("quick")) return "quick";
+  return "thinking";
+}
+
+// ---------------------------------------------------------------------------
+// Report generator dispatcher — picks the right generator based on style
+// ---------------------------------------------------------------------------
+async function generateReport({ style, transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel, openAiKey, model }) {
+  switch (style) {
+    case "scorecard":
+      return generateSalesPitchReport({ transcriptText, openAiKey, model });
+    case "meeting":
+      return generateMeetingSummary({ transcriptText, openAiKey, model });
+    case "quick":
+      return generateQuickSummary({ transcriptText, openAiKey, model });
+    case "thinking":
+    default:
+      return generateConversationOutput({ transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel, openAiKey, model });
+  }
+}
+
 /**
  * POST /api/memory-update
  * Body: {
