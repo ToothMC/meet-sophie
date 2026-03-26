@@ -239,23 +239,44 @@ main{max-width:520px;margin:0 auto;padding:12px}
       <span class="s-sub">Bring deine KI-History mit</span>
     </div>
     <div class="section-body">
-      <p class="msg">W&auml;hle deine bisherige KI &mdash; Sophie generiert einen Extraktions-Prompt zum Kopieren.</p>
-      <div class="pill-row" id="importPills">
-        <div class="pill" data-source="chatgpt">ChatGPT</div>
-        <div class="pill" data-source="claude">Claude</div>
-        <div class="pill" data-source="gemini">Gemini</div>
+      <div class="import-tabs">
+        <button class="import-tab active" id="tabPaste" onclick="switchImportTab('paste')">Text einf&uuml;gen</button>
+        <button class="import-tab" id="tabUpload" onclick="switchImportTab('upload')">Datei hochladen</button>
       </div>
-      <div id="importStep1" class="hidden">
-        <p class="msg">1. Kopiere diesen Prompt und f&uuml;ge ihn in deine andere KI ein:</p>
-        <div class="prompt-box">
-          <textarea class="ta ta-readonly" id="importPrompt" readonly></textarea>
-          <button class="copy-btn" id="copyPromptBtn">Kopieren</button>
+
+      <!-- Tab: Text Paste -->
+      <div id="importTabPaste">
+        <p class="msg">W&auml;hle deine bisherige KI &mdash; Sophie generiert einen Extraktions-Prompt zum Kopieren.</p>
+        <div class="pill-row" id="importPills">
+          <div class="pill" data-source="chatgpt">ChatGPT</div>
+          <div class="pill" data-source="claude">Claude</div>
+          <div class="pill" data-source="gemini">Gemini</div>
         </div>
-        <p class="msg">2. F&uuml;ge die Antwort hier ein:</p>
-        <textarea class="ta" id="importPaste" placeholder="Antwort hier einf&uuml;gen..."></textarea>
-        <div style="margin-top:8px">
-          <button class="btn btn-primary" id="importBtn" disabled>Importieren</button>
+        <div id="importStep1" class="hidden">
+          <p class="msg">1. Kopiere diesen Prompt und f&uuml;ge ihn in deine andere KI ein:</p>
+          <div class="prompt-box">
+            <textarea class="ta ta-readonly" id="importPrompt" readonly></textarea>
+            <button class="copy-btn" id="copyPromptBtn">Kopieren</button>
+          </div>
+          <p class="msg">2. F&uuml;ge die Antwort hier ein:</p>
+          <textarea class="ta" id="importPaste" placeholder="Antwort hier einf&uuml;gen..."></textarea>
+          <div style="margin-top:8px">
+            <button class="btn btn-primary" id="importBtn" disabled>Importieren</button>
+          </div>
         </div>
+      </div>
+
+      <!-- Tab: File Upload -->
+      <div id="importTabUpload" class="hidden">
+        <p class="msg">Lade einen Export deiner bisherigen KI hoch. Unterst&uuml;tzte Formate:</p>
+        <div class="drop-zone" id="dropZone">
+          <div class="dz-icon">&#128194;</div>
+          <div>Datei hierher ziehen oder klicken</div>
+          <div class="dz-formats">.zip &middot; .json &middot; .txt &middot; .docx</div>
+          <input type="file" id="fileInput" accept=".zip,.json,.txt,.md,.docx">
+          <div class="dz-file hidden" id="fileInfo"></div>
+        </div>
+        <button class="btn btn-primary" id="uploadBtn" disabled>Datei importieren</button>
       </div>
       <div id="importStep2" class="hidden">
         <p class="msg msg-success" id="importStatus"></p>
