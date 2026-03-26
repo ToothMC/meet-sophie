@@ -2941,6 +2941,11 @@ function attachChannel(ch) {
         if (final && final !== last) {
           convoLog.push({ role: "assistant", text: final });
           lastAssistantFinal = final;
+
+          // Show settings link toast if Sophie mentions import/Einstellungen
+          if (final.match(/einstellung|settings|importier|import.*daten/i)) {
+            showImportToast();
+          }
         }
 
         partialAssistant = "";
