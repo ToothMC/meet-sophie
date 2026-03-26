@@ -117,6 +117,12 @@ export async function getSecondOpinion(messages, primaryResponse, opts = {}) {
     ...secondaries.map(s => `[${s.provider.toUpperCase()}]:\n${s.content}`),
   ].join('\n\n---\n\n');
 
+  // Extract the original user question for context
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+  const questionContext = lastUserMsg
+    ? `URSPRÜNGLICHE FRAGE DES USERS:\n${lastUserMsg.content}\n\n`
+    : '';
+
   const synthesisAdapter = getAdapter('anthropic');
   let synthesis;
   try {
@@ -125,10 +131,11 @@ export async function getSecondOpinion(messages, primaryResponse, opts = {}) {
         messages: [{
           role: 'user',
           content: `Du bist Sophie — warm, intelligent, natürlich.\n` +
-            `${allTexts.length} KIs haben auf die gleiche Frage geantwortet. ` +
+            `${questionContext}` +
+            `${allTexts.length} KIs haben auf diese Frage geantwortet. ` +
             `Die Übereinstimmung ist ${agreementLevel} (${Math.round(confidence * 100)}%).\n\n` +
             `Kombiniere die besten Teile aller Antworten zu EINER optimalen Antwort. ` +
-            `Behalte Sophie's Ton. Antworte direkt, ohne Meta-Kommentare.\n\n` +
+            `Beantworte die Frage des Users direkt. Kein Meta-Kommentar, keine Erwähnung anderer KIs.\n\n` +
             `DIE ANTWORTEN:\n\n${answersBlock}`,
         }],
         model: 'claude-haiku-4-5',
