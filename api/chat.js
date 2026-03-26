@@ -338,6 +338,87 @@ async function handleMessage(req, res) {
     }
   }
 
+  // Check if user is asking about history — search imported data if so
+  let historyContext = "";
+  if (user) {
+    const lastUserMsg = messages[messages.length - 1]?.content?.toLowerCase() || "";
+    const historyPatterns = [
+      /find|such|finde|zeig|show|letzt|last|chat|gespräch|conversation|verlauf|history/,
+      /was (war|haben|hatten|wurde)/,
+      /woran (hab|arbeit)/,
+      /erinnerst.*du.*dich/,
+      /weißt.*du.*noch/,
+      /projekt|project/,
+    ];
+    const wantsHistory = historyPatterns.some(p => p.test(lastUserMsg));
+
+    if (wantsHistory) {
+      try {
+        // Extract search terms from user message (skip stop words)
+        const stopWords = new Set(["was","war","ich","du","wir","der","die","das","ein","eine","mit","und","oder","von","zu","in","auf","an","für","über","nach","wie","wo","wann","hab","habe","haben","hatten","wurde","finde","zeig","such","mir","mal","bitte","den","dem","denn","noch","dich","sich","es","ist","sind","hat","nicht","auch","nur","schon","kann","kannst","mein","meine","meinen","letzten","letzte"]);
+        const searchTerms = lastUserMsg
+          .replace(/[^\wäöüß\s]/gi, "")
+          .split(/\s+/)
+          .filter(t => t.length > 2 && !stopWords.has(t))
+          .slice(0, 5)
+          .join(" ");
+
+        if (searchTerms.length > 2) {
+          const supabaseUrl = process.env.SUPABASE_URL;
+          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const searchSupabase = createClient(supabaseUrl, serviceKey);
+
+          // Get active sources
+          const { data: sources } = await searchSupabase
+            .from("source_connections")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("status", "active");
+
+          if (sources?.length > 0) {
+            const sourceIds = sources.map(s => s.id);
+            const { data: rawItems } = await searchSupabase
+              .from("source_items")
+              .select("raw_content")
+              .in("source_id", sourceIds)
+              .eq("zone", "A");
+
+            if (rawItems?.length > 0) {
+              const terms = searchTerms.toLowerCase().split(/\s+/);
+              const matches = [];
+
+              for (const item of rawItems) {
+                if (!item.raw_content) continue;
+                const convos = item.raw_content.split(/(?=^# )/m).filter(c => c.trim());
+                for (const conv of convos) {
+                  const lower = conv.toLowerCase();
+                  const matchCount = terms.filter(t => lower.includes(t)).length;
+                  if (matchCount > 0) {
+                    const titleMatch = conv.match(/^# (.+)/);
+                    const title = titleMatch ? titleMatch[1].trim() : null;
+                    if (title && title !== "Untitled") {
+                      matches.push({ title, content: conv.slice(0, 600), relevance: matchCount });
+                    }
+                  }
+                }
+              }
+
+              matches.sort((a, b) => b.relevance - a.relevance);
+              const top = matches.slice(0, 3);
+              if (top.length > 0) {
+                historyContext = "\n\n[SUCHERGEBNIS AUS IMPORTIERTEN GESPRÄCHEN — nutze diese Informationen für deine Antwort]:\n" +
+                  top.map(m => `Gespräch "${m.title}":\n${m.content}`).join("\n\n---\n\n");
+                console.log(`[chat] history search: "${searchTerms}" → ${top.length} results`);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[chat] history search error:", e?.message);
+      }
+    }
+  }
+
   // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
 
