@@ -2558,13 +2558,45 @@
     });
     function show(el) { el.classList.remove("chat-hidden"); }
     function hide(el) { el.classList.add("chat-hidden"); }
-    function appendBubble(role, text) {
+    // Provider logo URLs (small, public CDN favicons)
+    const PROVIDER_ICONS = {
+      openai:    "https://cdn.simpleicons.org/openai/ffffff",
+      anthropic: "https://cdn.simpleicons.org/anthropic/ffffff",
+      google:    "https://cdn.simpleicons.org/google/ffffff",
+      mistral:   "https://cdn.simpleicons.org/mistral/ffffff",
+    };
+    const PROVIDER_LABELS = {
+      openai: "GPT", anthropic: "Claude", google: "Gemini", mistral: "Mistral",
+    };
+
+    function appendBubble(role, text, providers) {
       const wrap   = document.createElement("div");
       wrap.className = `chat-msg ${role}`;
       const bubble = document.createElement("div");
       bubble.className = "chat-msg-bubble";
       bubble.textContent = text;
       wrap.appendChild(bubble);
+
+      // Show provider badge(s) for Sophie's responses
+      if (role === "sophie" && providers && providers.length > 0) {
+        const badgeWrap = document.createElement("div");
+        badgeWrap.className = "chat-provider-badges";
+        for (const p of providers) {
+          const badge = document.createElement("span");
+          badge.className = "chat-provider-badge";
+          const icon = PROVIDER_ICONS[p];
+          if (icon) {
+            const img = document.createElement("img");
+            img.src = icon;
+            img.alt = p;
+            badge.appendChild(img);
+          }
+          badge.appendChild(document.createTextNode(PROVIDER_LABELS[p] || p));
+          badgeWrap.appendChild(badge);
+        }
+        wrap.appendChild(badgeWrap);
+      }
+
       messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return bubble;
