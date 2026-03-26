@@ -452,45 +452,27 @@ async function handleMessage(req, res) {
 
   // Realtime tools: detect if user needs live data (weather, news, search)
   const lastMsg = messages[messages.length - 1]?.content?.toLowerCase() || "";
-  const weatherPatterns = /wetter|weather|temperatur|regen|rain|sonnig|sunny|grad|forecast|vorhersage/;
-  const newsPatterns = /news|nachrichten|schlagzeilen|headlines|aktuell.*passiert|was.*los.*welt/;
-  const searchPatterns = /aktuell.*preis|current.*price|wieviel.*kostet|wie.*teuer|börse|stock|kurs|exchange.*rate|wechselkurs/;
+  const weatherMatch = /wetter|weather|temperatur|regen|rain|sonnig|sunny|grad|forecast|vorhersage/.test(lastMsg);
+  const newsMatch = /news|nachrichten|schlagzeilen|headlines|aktuell.*passiert|was.*los.*welt/.test(lastMsg);
+  const searchMatch = /aktuell.*preis|current.*price|wieviel.*kostet|wie.*teuer|börse|stock|kurs|exchange.*rate|wechselkurs/.test(lastMsg);
 
-  if (weatherPatterns.test(lastMsg)) {
+  if (weatherMatch) {
     try {
-      const locationMatch = lastMsg.match(/(?:in|für|at|for)\s+([a-zäöüß\s]+?)(?:\?|$|\.|,)/i);
-      const location = locationMatch?.[1]?.trim() || "Berlin";
-      const { default: toolHandler } = await import("./ai/tools.js");
-      const toolReq = { method: "POST", body: { tool: "weather", params: { location } } };
-      const toolResult = await new Promise(resolve => {
-        toolHandler(toolReq, { status: () => ({ json: resolve }) });
-      });
-      if (toolResult.result) {
-        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Wetterdaten:\n${toolResult.result}\n\nNutze diese Daten in deiner Antwort.` });
-      }
+      const locMatch = lastMsg.match(/(?:in|für|at|for)\s+([a-zäöüß\s]+?)(?:\?|$|\.|,)/i);
+      const location = locMatch?.[1]?.trim() || "Berlin";
+      const weatherData = await getWeather(location);
+      routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Wetterdaten:\n${weatherData}\n\nNutze diese Daten in deiner Antwort.` });
     } catch (e) { console.error("Weather tool error:", e?.message); }
-  } else if (newsPatterns.test(lastMsg)) {
+  } else if (newsMatch) {
     try {
       const topic = lastMsg.replace(/news|nachrichten|was.*los|aktuell/gi, "").trim() || "world";
-      const { default: toolHandler } = await import("./ai/tools.js");
-      const toolReq = { method: "POST", body: { tool: "news", params: { topic } } };
-      const toolResult = await new Promise(resolve => {
-        toolHandler(toolReq, { status: () => ({ json: resolve }) });
-      });
-      if (toolResult.result) {
-        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Nachrichten:\n${toolResult.result}\n\nNutze diese Daten in deiner Antwort.` });
-      }
+      const newsData = await getNews(topic);
+      routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Nachrichten:\n${newsData}\n\nNutze diese Daten in deiner Antwort.` });
     } catch (e) { console.error("News tool error:", e?.message); }
-  } else if (searchPatterns.test(lastMsg)) {
+  } else if (searchMatch) {
     try {
-      const { default: toolHandler } = await import("./ai/tools.js");
-      const toolReq = { method: "POST", body: { tool: "search", params: { query: lastMsg } } };
-      const toolResult = await new Promise(resolve => {
-        toolHandler(toolReq, { status: () => ({ json: resolve }) });
-      });
-      if (toolResult.result) {
-        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Web-Suche:\n${toolResult.result}\n\nNutze diese Daten in deiner Antwort.` });
-      }
+      const searchData = await webSearch(lastMsg);
+      routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Web-Suche:\n${searchData}\n\nNutze diese Daten in deiner Antwort.` });
     } catch (e) { console.error("Search tool error:", e?.message); }
   }
 
