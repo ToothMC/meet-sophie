@@ -2675,16 +2675,17 @@
       openai: "GPT", anthropic: "Claude", google: "Gemini", mistral: "Mistral",
     };
 
-    function appendBubble(role, text, providers) {
+    function appendBubble(role, text, providers, secondOpinion) {
       const wrap   = document.createElement("div");
       wrap.className = `chat-msg ${role}`;
+      if (role === "sophie" && secondOpinion) wrap.classList.add("verified");
       const bubble = document.createElement("div");
       bubble.className = "chat-msg-bubble";
       bubble.textContent = text;
       wrap.appendChild(bubble);
 
       // Show provider icon(s) for Sophie's responses
-      if (role === "sophie" && providers && providers.length > 0) {
+      if (role === "sophie" && providers && providers.length > 0 && !secondOpinion) {
         const badgeWrap = document.createElement("div");
         badgeWrap.className = "chat-provider-badges";
         for (const p of providers) {
@@ -2699,6 +2700,30 @@
           }
         }
         wrap.appendChild(badgeWrap);
+      }
+
+      // Show verified badge for second opinion responses
+      if (role === "sophie" && secondOpinion && secondOpinion.providers) {
+        const badge = document.createElement("div");
+        badge.className = "chat-verified-badge";
+        const txt = document.createElement("span");
+        txt.textContent = "Verified by";
+        badge.appendChild(txt);
+        for (const p of secondOpinion.providers) {
+          const icon = PROVIDER_ICONS[p];
+          if (icon) {
+            const img = document.createElement("img");
+            img.src = icon;
+            img.alt = PROVIDER_LABELS[p] || p;
+            img.title = PROVIDER_LABELS[p] || p;
+            img.className = "chat-provider-icon";
+            badge.appendChild(img);
+          }
+        }
+        const conf = document.createElement("span");
+        conf.textContent = `· Confidence ${Math.round((secondOpinion.confidence || 0) * 100)}%`;
+        badge.appendChild(conf);
+        wrap.appendChild(badge);
       }
 
       messagesEl.appendChild(wrap);
