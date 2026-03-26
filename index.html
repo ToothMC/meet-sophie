@@ -3449,7 +3449,7 @@
         const data = await res.json();
 
         // Show final synthesized answer with all provider icons
-        history.push({ role: "assistant", content: data.finalAnswer });
+        // NOTE: Don't push to history — challenge results are separate from conversation
         appendBubble("sophie", data.finalAnswer, data.providers || []);
 
         // Show meta info
