@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { getAdapter } from "../lib/ai/adapters/index.js";
+import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 
 function cleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
