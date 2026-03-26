@@ -1800,8 +1800,9 @@ function downloadReport() {
   const topicSlug = lastReportExport.topicSlug || "session";
   const transcript = (postCallTranscript.textContent || "").trim();
 
-  // Smart Report: export the rendered blocks as proper HTML
+  // Smart Report: export the AI-generated HTML directly
   const ctx = window._lastReportContext;
+  const reportHtml = ctx?.apiResult?.output?.report_html;
   const reportBlocks = ctx?.apiResult?.output?.report_blocks;
   const reportProviders = ctx?.apiResult?.output?.report_providers || [];
   const titleBlock = reportBlocks?.find(b => b.type === 'title');
