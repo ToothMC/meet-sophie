@@ -3052,6 +3052,7 @@
       if (chatState !== "voice_transitioning") chatState = "chat_active";
       saveChatState();
       show(typingEl);
+      startPulse();
       messagesEl.scrollTop = messagesEl.scrollHeight;
       try {
         const data = await callChat("message", {
