@@ -3213,6 +3213,7 @@
         }
       } finally {
         sending = false;
+        stopPulse();
         if (!sessionEnded) sendBtn.disabled = false;
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
