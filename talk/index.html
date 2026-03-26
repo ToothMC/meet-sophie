@@ -2146,9 +2146,102 @@ function renderSalesPitchReportHtml(report) {
   return html;
 }
 
+// Dynamic block renderer for smart reports
+function renderReportBlocks(blocks) {
+  if (!blocks || !Array.isArray(blocks)) return null;
+  const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const scoreColor = (s) => s >= 4 ? "#4a8c5c" : s >= 3 ? "#b89a5a" : "#b85a4a";
+
+  return blocks.map(block => {
+    switch (block.type) {
+      case 'title':
+        return ''; // handled by panel title
+
+      case 'summary':
+        return `<section class="report-section" style="margin-top:0;padding-top:0;border-top:none;">
+          <p class="report-summary-text">${esc(block.text)}</p></section>`;
+
+      case 'highlights':
+        return `<section class="report-section">
+          <h4 class="report-heading" style="color:#c4a882;">Highlights</h4>
+          ${(block.items||[]).map(h => `<div style="padding:10px 14px;margin-bottom:8px;background:rgba(196,168,130,0.08);border-left:3px solid #c4a882;border-radius:0 12px 12px 0;font-size:14px;line-height:1.6;color:#2a2420;">${esc(h)}</div>`).join('')}
+          </section>`;
+
+      case 'insights':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'Erkenntnisse':_uiLang==='fr'?'Points cl\u00e9s':'Key Insights'}</h4>
+          <ul class="report-insight-list">${(block.items||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+          </section>`;
+
+      case 'scorecard':
+        return `<section class="report-section">
+          <h4 class="report-heading">Scorecard</h4>
+          <div style="background:#faf8f5;border-radius:16px;padding:16px 18px;">
+          ${(block.items||[]).map(s => `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:13px;color:#3a3028;min-width:120px;">${esc(s.label)}</span>
+            <div style="flex:1;height:8px;background:#ede8e2;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:${(s.score/5)*100}%;background:${scoreColor(s.score)};border-radius:4px;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;min-width:30px;text-align:right;color:${scoreColor(s.score)}">${s.score}/5</span>
+          </div>
+          ${s.note ? `<div style="font-size:11px;color:#7a6e60;margin:-6px 0 8px 130px;">${esc(s.note)}</div>` : ''}`).join('')}
+          </div></section>`;
+
+      case 'decisions':
+        return `<section class="report-section">
+          <h4 class="report-heading" style="color:#4a8c5c;">${_uiLang==='de'?'Beschl\u00fcsse':'Decisions'}</h4>
+          ${(block.items||[]).map(d => `<div style="padding:4px 0 4px 20px;position:relative;font-size:14px;line-height:1.5;"><span style="position:absolute;left:0;color:#4a8c5c;font-weight:bold;">\u2713</span>${esc(d)}</div>`).join('')}
+          </section>`;
+
+      case 'actions':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'N\u00e4chste Schritte':'Action Items'}</h4>
+          ${(block.items||[]).map(a => {
+            const task = typeof a === 'string' ? a : a.task;
+            const meta = typeof a === 'object' && a.owner ? `<div style="font-size:12px;color:#7a6e60;margin-top:2px;">${a.owner}${a.deadline && a.deadline !== 'none' ? ` | ${a.deadline}` : ''}</div>` : '';
+            return `<div class="report-action-item"><div class="report-action-title" style="font-weight:600;color:#2a2420;">${esc(task)}</div>${meta}</div>`;
+          }).join('')}
+          </section>`;
+
+      case 'participants':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'Teilnehmer':'Participants'}</h4>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${(block.items||[]).map(p => `<span style="padding:4px 12px;border-radius:12px;background:rgba(42,36,32,0.06);font-size:13px;color:#3a3028;">${esc(p)}</span>`).join('')}
+          </div></section>`;
+
+      case 'questions':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'Offene Fragen':'Open Questions'}</h4>
+          <ul style="list-style:none;padding:0;">${(block.items||[]).map(q => `<li style="padding:4px 0 4px 16px;position:relative;font-size:13px;line-height:1.5;color:#7a6e60;"><span style="position:absolute;left:0;color:#b89a5a;font-weight:bold;">?</span>${esc(q)}</li>`).join('')}</ul>
+          </section>`;
+
+      case 'quote':
+        return `<section class="report-section">
+          <blockquote style="margin:0;padding:12px 18px;background:rgba(196,168,130,0.06);border-left:3px solid #c4a882;border-radius:0 12px 12px 0;font-style:italic;font-size:14px;line-height:1.6;color:#3a3028;">
+          "${esc(block.text)}"${block.source ? `<div style="font-size:11px;color:#a09080;margin-top:6px;">— ${esc(block.source)}</div>` : ''}
+          </blockquote></section>`;
+
+      case 'metadata':
+        const parts = [];
+        if (block.date) parts.push(block.date);
+        if (block.duration) parts.push(block.duration);
+        if (block.mood) parts.push(block.mood);
+        if (parts.length === 0) return '';
+        return `<div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;">
+          ${parts.map(p => `<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:rgba(42,36,32,0.05);color:#7a6e60;">${esc(p)}</span>`).join('')}
+          </div>`;
+
+      default:
+        return '';
+    }
+  }).filter(Boolean).join('');
+}
+
 function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   const triggeredByLimit = !!opts.triggeredByLimit;
   const pitchReport = apiResult?.output?.sales_pitch_report || null;
+  const reportBlocks = apiResult?.output?.report_blocks || null;
 
   const summary =
     apiResult?.output?.short_summary ||
