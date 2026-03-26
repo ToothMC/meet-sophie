@@ -3337,6 +3337,9 @@
           }),
         });
         hide(typingEl);
+        stopPulse();
+        // Remove status bubble
+        if (statusBubble && statusBubble.parentElement) statusBubble.parentElement.remove();
         if (!res.ok) throw new Error("Compare failed");
         const data = await res.json();
 
