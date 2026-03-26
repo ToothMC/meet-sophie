@@ -379,6 +379,38 @@ body{
   margin-inline:auto;
 }
 
+.reportStyleBar{
+  display:flex;
+  gap:6px;
+  justify-content:center;
+  margin:0 0 16px;
+  flex-wrap:wrap;
+}
+.reportStylePill{
+  padding:5px 12px;
+  border-radius:16px;
+  border:1px solid #d4ccc4;
+  background:transparent;
+  color:#7a6e60;
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all .2s;
+}
+.reportStylePill.active{
+  background:#2a2420;
+  color:#f5f0ea;
+  border-color:#2a2420;
+}
+.reportStylePill.recommended::after{
+  content:" \u2605";
+  font-size:10px;
+  color:#b89a5a;
+}
+.reportStylePill:disabled{
+  opacity:.5;
+  cursor:wait;
+}
 .reportModeBar{
   display:flex;
   gap:0;
