@@ -230,7 +230,7 @@ async function handleStart(req, res) {
     mode,
     free_turns_limit: FREE_TURNS_LIMIT,
     auth_nudge_at_turn: AUTH_NUDGE_AT_TURN,
-    system_prompt: systemPrompt,
+    system_prompt: fullSystemPrompt,
   });
 }
 
