@@ -1459,15 +1459,29 @@ ${transcriptText}
     }
 
     let conversationOutput;
+    const explicitStyle = body.reportStyle || null;
+    const openAiKey = process.env.OPENAI_API_KEY;
+    const outputModel = process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini";
     try {
-      // Smart Report: all 4 AIs analyze, Claude synthesizes
-      conversationOutput = await generateSmartReport({
-        transcriptText,
-        fallbackSummary: sessSummary,
-        emotionalTone: clean(ss.emotional_tone),
-        stressLevel: ss.stress_level,
-        closenessLevel: ss.closeness_level,
-      });
+      if (explicitStyle === "scorecard" || sessionMode === "salespitch") {
+        // Sales Pitch → dedicated scorecard generator (proven, with proper scores)
+        conversationOutput = await generateSalesPitchReport({ transcriptText, openAiKey, model: outputModel });
+      } else if (explicitStyle === "meeting" || sessionMode === "meeting") {
+        conversationOutput = await generateMeetingSummary({ transcriptText, openAiKey, model: outputModel });
+      } else if (explicitStyle === "quick") {
+        conversationOutput = await generateQuickSummary({ transcriptText, openAiKey, model: outputModel });
+      } else if (explicitStyle === "thinking") {
+        conversationOutput = await generateConversationOutput({ transcriptText, fallbackSummary: sessSummary, emotionalTone: clean(ss.emotional_tone), stressLevel: ss.stress_level, closenessLevel: ss.closeness_level, openAiKey, model: outputModel });
+      } else {
+        // Default: Smart Report (multi-AI synthesis with dynamic blocks)
+        conversationOutput = await generateSmartReport({
+          transcriptText,
+          fallbackSummary: sessSummary,
+          emotionalTone: clean(ss.emotional_tone),
+          stressLevel: ss.stress_level,
+          closenessLevel: ss.closeness_level,
+        });
+      }
     } catch (e) {
       console.error("conversation output generation failed:", e?.message || e);
       conversationOutput = {
