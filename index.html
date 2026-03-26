@@ -3237,11 +3237,29 @@
       }
     }
 
+    // ── Login gate for Compare/Challenge ──
+    async function requireLogin(featureName, featureDesc) {
+      const token = await getToken();
+      if (token) return true;
+      // Show login prompt inside chat
+      const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+      const loginMsg = featureDesc + "\n\n🔒 Diese Funktion ist nur nach dem Einloggen verfügbar.";
+      appendBubble("sophie", loginMsg);
+      // Show auth section
+      show(authEl);
+      authEl.scrollIntoView({ behavior: "smooth" });
+      return false;
+    }
+
     // ── Compare Mode: all providers in parallel ──
     compareBtn.addEventListener("click", async () => {
       if (sending || history.length === 0) return;
       const lastUserMsg = [...history].reverse().find(m => m.role === "user");
       if (!lastUserMsg) return;
+
+      const loggedIn = await requireLogin("Vergleiche",
+        "⚡ Vergleiche — Deine Frage wird gleichzeitig an alle 4 KIs geschickt. Du siehst die schnellste Antwort und die Unterschiede der anderen.");
+      if (!loggedIn) return;
 
       sending = true;
       compareBtn.disabled = true;
