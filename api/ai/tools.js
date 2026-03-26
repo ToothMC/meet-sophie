@@ -134,10 +134,34 @@ export async function webSearch(query) {
   return `Keine Ergebnisse für "${query}" gefunden.`;
 }
 
-// ── News: Google News RSS (kostenlos, kein API-Key) ──
+// ── News: Bing News API (primary) → Google News RSS (fallback) ──
 
 export async function getNews(topic) {
   if (!topic) topic = 'world';
+
+  // Primary: Bing News API (if key is set)
+  const bingKey = process.env.BING_API_KEY;
+  if (bingKey) {
+    try {
+      const bingRes = await fetch(
+        `https://api.bing.microsoft.com/v7.0/news/search?q=${encodeURIComponent(topic)}&count=8&mkt=de-DE`,
+        { headers: { 'Ocp-Apim-Subscription-Key': bingKey }, signal: AbortSignal.timeout(5000) }
+      );
+      if (bingRes.ok) {
+        const data = await bingRes.json();
+        const articles = (data.value || []).slice(0, 8);
+        if (articles.length > 0) {
+          const items = articles.map(a => {
+            const date = a.datePublished ? new Date(a.datePublished).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            return `- ${a.name}${a.provider?.[0]?.name ? ` (${a.provider[0].name})` : ''}${date ? ` — ${date}` : ''}`;
+          });
+          return `Aktuelle Nachrichten${topic !== 'world' ? ` zu "${topic}"` : ''}:\n${items.join('\n')}`;
+        }
+      }
+    } catch (e) { console.error('[tools] Bing news error:', e?.message); }
+  }
+
+  // Fallback: Google News RSS
 
   // Google News RSS feed — reliable, free, no key needed
   const lang = 'de';
