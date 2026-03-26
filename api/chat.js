@@ -460,8 +460,8 @@ async function handleMessage(req, res) {
 
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
-    // Inject hard onboarding nudge for first session turns
-    const isFirst = (!profile.first_name || profile.first_name.trim() === "");
+    // Inject hard onboarding nudge — anonymous = always first session
+    const isFirst = true;
     if (isFirst && turnNumber === 1) {
       routerMessages.push({ role: "system", content: "[CRITICAL] This is a FIRST SESSION. After responding to the user, you MUST end with: 'Übrigens — wie soll ich dich nennen?' Do NOT skip this." });
     } else if (isFirst && turnNumber === 2) {
