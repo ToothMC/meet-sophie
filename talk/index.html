@@ -2271,7 +2271,7 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
 
-  if (reportBlocks) {
+  if (reportBlocks && Array.isArray(reportBlocks) && reportBlocks.length > 0) {
     // Smart Report — dynamic blocks rendered by AI
     const titleEl = document.querySelector(".postCallTitle");
     const subtitleEl = document.querySelector(".postCallSubtitle");
