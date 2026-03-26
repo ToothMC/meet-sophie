@@ -3914,17 +3914,15 @@ if (!hasRealConversation) {
     const transcriptSnapshot = [...convoLog];
 
     const memoryResult = await sendMemoryUpdate(durationSeconds);
-    stopFakeReportLoader();
 
-    if (memoryResult?.output || memoryResult?.session) {
-      showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
-    } else if (transcriptSnapshot.length) {
+    // Start async report polling with progress bar
+    const sessionId = memoryResult?.session?.id;
+    if (sessionId) {
+      await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
+    } else {
+      stopFakeReportLoader();
       showPostCallResults({
-        output: {
-          short_summary: t("no_summary"),
-          key_insights: [],
-          action_plan: []
-        }
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
       }, transcriptSnapshot, { triggeredByLimit });
     }
 
