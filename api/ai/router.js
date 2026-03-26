@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   if (userId) {
     const withinBudget = await checkDailyBudget(userId, ctx.userTier);
     if (!withinBudget) {
-      decision.primary = { provider: 'google', model: 'gemini-2.0-flash-lite' };
+      decision.primary = { provider: 'google', model: 'gemini-2.5-flash-lite' };
       decision.fallback = null;
       decision.reason = 'budget-cap-degradation';
     }
