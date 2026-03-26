@@ -130,9 +130,12 @@ export default async function handler(req, res) {
 
 function detectSource(fileName, ext) {
   const name = fileName.toLowerCase();
-  if (name.includes('chatgpt') || name.includes('conversations')) return 'chatgpt';
+  if (name.includes('chatgpt') || name.includes('conversations.json')) return 'chatgpt';
   if (name.includes('claude')) return 'claude';
+  // Claude exports: "data-YYYY-MM-DD-HH-MM-SS-batch-NNNN.zip"
+  if (name.match(/^data-\d{4}-\d{2}-\d{2}.*batch.*\.zip$/)) return 'claude';
   if (name.includes('gemini') || name.includes('takeout')) return 'gemini';
-  if (ext === 'zip' || ext === 'json') return 'chatgpt'; // Default for exports
+  if (ext === 'dms') return 'claude'; // Claude .dms exports
+  if (ext === 'zip' || ext === 'json') return 'file'; // Don't assume — let parser detect
   return 'file';
 }
