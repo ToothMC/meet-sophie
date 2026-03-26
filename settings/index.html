@@ -648,6 +648,11 @@ importBtn.addEventListener("click", async () => {
 
     step1.classList.add("hidden");
     step2.classList.remove("hidden");
+
+    // Auto-open Source Ledger and refresh
+    const sourcesSection2 = document.getElementById("sectionSources");
+    if (sourcesSection2.classList.contains("collapsed")) sourcesSection2.classList.remove("collapsed");
+    loadSources();
   } catch (e) {
     document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Import fehlgeschlagen");
     document.getElementById("importStatus").classList.add("msg-error");
