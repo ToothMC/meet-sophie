@@ -6,5 +6,11 @@
       "permanent": true
     }
   ],
+  "crons": [
+    {
+      "path": "/api/ai/health",
+      "schedule": "* * * * *"
+    }
+  ],
   "ignoreCommand": "git log -1 --pretty=%B | grep -qE '^auto: save'"
 }
