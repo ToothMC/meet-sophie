@@ -7,6 +7,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { classify, route } from "../lib/ai/classifier.js";
+import { getAdapter } from "../lib/ai/adapters/index.js";
+import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
+import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 
 const FREE_TURNS_LIMIT = 10;
 const AUTH_NUDGE_AT_TURN = 3;
