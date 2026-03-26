@@ -1039,6 +1039,58 @@
     }
     .chat-report p{margin:0 0 6px;font-size:13px;color:var(--muted)}
     .chat-report a{font-size:13px;color:#8eb2ff;text-decoration:none}
+    .chat-action-bar{
+      display:flex;gap:4px;padding:0 8px 4px;flex-shrink:0;
+    }
+    .chat-action-bar button{
+      flex:1;padding:4px 6px;border-radius:8px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      color:rgba(255,255,255,.45);font-size:9px;font-weight:600;
+      cursor:pointer;font-family:inherit;
+      transition:all .15s;
+    }
+    .chat-action-bar button:hover{
+      background:rgba(142,178,255,.12);
+      border-color:rgba(142,178,255,.25);
+      color:rgba(200,216,255,.8);
+    }
+    .chat-action-bar button:disabled{opacity:.3;cursor:default}
+    .chat-action-bar .challenge-btn{
+      border-color:rgba(255,178,100,.15);
+      color:rgba(255,200,140,.45);
+    }
+    .chat-action-bar .challenge-btn:hover{
+      background:rgba(255,178,100,.12);
+      border-color:rgba(255,178,100,.3);
+      color:rgba(255,210,160,.8);
+    }
+    .chat-compare-result{
+      margin:0 4px;padding:6px 8px;border-radius:10px;
+      background:rgba(142,178,255,.06);
+      border:1px solid rgba(142,178,255,.12);
+      font-size:10px;line-height:1.4;color:rgba(255,255,255,.6);
+    }
+    .chat-compare-result .compare-header{
+      font-weight:600;color:rgba(200,216,255,.8);margin-bottom:4px;
+      display:flex;align-items:center;gap:4px;
+    }
+    .chat-compare-result .compare-provider{
+      display:flex;align-items:center;gap:3px;margin-top:3px;
+      padding:3px 0;border-top:1px solid rgba(255,255,255,.05);
+    }
+    .chat-compare-result .compare-provider img{
+      width:10px;height:10px;opacity:.5;
+    }
+    .chat-compare-result .compare-provider .provider-label{
+      font-weight:600;min-width:45px;
+    }
+    .chat-compare-result .compare-diff{
+      color:rgba(255,255,255,.4);font-style:italic;
+    }
+    .chat-compare-cost{
+      margin-top:4px;font-size:8px;color:rgba(255,255,255,.25);
+    }
     .chat-footer{
       display:flex;align-items:flex-end;gap:7px;
       padding:7px 8px 8px;
