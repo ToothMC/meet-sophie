@@ -2686,6 +2686,39 @@ function attachChannel(ch) {
             },
             required: ["query"]
           }
+        }, {
+          type: "function",
+          name: "get_weather",
+          description: "Get current weather and 3-day forecast for a location. Use when the user asks about weather, temperature, rain, or outdoor conditions.",
+          parameters: {
+            type: "object",
+            properties: {
+              location: { type: "string", description: "City name or location (e.g. 'Berlin', 'New York', 'München')" }
+            },
+            required: ["location"]
+          }
+        }, {
+          type: "function",
+          name: "web_search",
+          description: "Search the web for current information, facts, prices, or any real-time data. Use when the user asks about something that requires up-to-date information beyond your training data.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "The search query" }
+            },
+            required: ["query"]
+          }
+        }, {
+          type: "function",
+          name: "get_news",
+          description: "Get current news about a topic. Use when the user asks about recent events, current affairs, or news headlines.",
+          parameters: {
+            type: "object",
+            properties: {
+              topic: { type: "string", description: "The news topic to search for (e.g. 'Tech', 'Politik', 'Sport')" }
+            },
+            required: ["topic"]
+          }
         }];
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
