@@ -92,10 +92,13 @@ export async function webSearch(query) {
 
   // DuckDuckGo Instant Answer API
   const ddgRes = await fetch(
-    `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
+    `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+    { signal: AbortSignal.timeout(5000) }
   );
   if (!ddgRes.ok) return `Suche nach "${query}" fehlgeschlagen.`;
-  const ddg = await ddgRes.json();
+  const text = await ddgRes.text();
+  let ddg;
+  try { ddg = JSON.parse(text); } catch { return `Suche nach "${query}" fehlgeschlagen (ungültige Antwort).`; }
 
   const parts = [];
 
