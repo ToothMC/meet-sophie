@@ -472,7 +472,17 @@ export default async function handler(req, res) {
       `Nutze es wenn der User nach früheren Gesprächen, Projekten oder Informationen aus seiner Chat-History fragt. ` +
       `Beispiele: "Was hatten wir zum Thema X besprochen?", "Finde den Chat über Y", "Woran habe ich zuletzt gearbeitet?", ` +
       `"Erinnerst du dich an...". Sage natürlich "Moment, ich schaue in deiner History nach..." und nutze dann das Tool. ` +
-      `Das Ergebnis enthält Auszüge aus importierten Gesprächen. Fasse die relevanten Informationen zusammen.`;
+      `Das Ergebnis enthält Auszüge aus importierten Gesprächen. Fasse die relevanten Informationen zusammen.` +
+      `\n\nWETTER: Du hast ein Tool namens "get_weather". ` +
+      `Nutze es wenn der User nach dem Wetter, der Temperatur, Regen, oder Outdoor-Bedingungen fragt. ` +
+      `Sage "Moment, ich schaue nach dem Wetter..." und nutze dann das Tool. ` +
+      `Das Ergebnis enthält aktuelle Wetterdaten und eine 3-Tage-Vorhersage.` +
+      `\n\nWEB-SUCHE: Du hast ein Tool namens "web_search". ` +
+      `Nutze es für aktuelle Fakten, Preise, Ereignisse oder alles was aktueller ist als dein Trainingsdaten-Cutoff. ` +
+      `Sage "Lass mich das kurz nachschauen..." und nutze dann das Tool.` +
+      `\n\nNACHRICHTEN: Du hast ein Tool namens "get_news". ` +
+      `Nutze es wenn der User nach aktuellen Nachrichten, News-Headlines oder Neuigkeiten fragt. ` +
+      `Sage "Ich prüfe die aktuellen Nachrichten..." und nutze dann das Tool.`;
 
     const fullPrompt = sophiePrompt + importedContext + researchInstruction;
 
