@@ -159,7 +159,27 @@ export async function webSearch(query) {
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // Primary: Bing News API (if key is set)
+  // Primary: Google Custom Search for News (if keys are set)
+  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const googleCx = process.env.GOOGLE_SEARCH_CX;
+  if (googleKey && googleCx) {
+    try {
+      const gRes = await fetch(
+        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(topic + ' news')}&num=8&lr=lang_de&sort=date`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (gRes.ok) {
+        const data = await gRes.json();
+        const results = (data.items || []).slice(0, 8);
+        if (results.length > 0) {
+          const items = results.map(r => `- ${r.title}${r.displayLink ? ` (${r.displayLink})` : ''}`);
+          return `Aktuelle Nachrichten zu "${topic}":\n${items.join('\n')}`;
+        }
+      }
+    } catch (e) { console.error('[tools] Google news error:', e?.message); }
+  }
+
+  // Secondary: Bing News API (if key is set)
   const bingKey = process.env.BING_API_KEY;
   if (bingKey) {
     try {
