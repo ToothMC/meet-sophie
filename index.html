@@ -2947,16 +2947,18 @@
       inputEl.value = "";
     }
 
-    async function sendMessage() {
-      if (sending || sessionEnded) return;
-      const text = inputEl.value.trim();
-      if (!text) return;
-
-      // Expand chat to foreground on first user message
+    // Expand chat on input focus
+    inputEl.addEventListener("focus", () => {
       const chatCard = document.getElementById("sophieChat");
       if (chatCard && !chatCard.classList.contains("foreground")) {
         openChatForeground();
       }
+    });
+
+    async function sendMessage() {
+      if (sending || sessionEnded) return;
+      const text = inputEl.value.trim();
+      if (!text) return;
 
       // Email capture mode — input field is repurposed for email
       if (chatState === "email_capture") {
