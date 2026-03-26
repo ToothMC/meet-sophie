@@ -3412,8 +3412,9 @@
       sending = true;
       compareBtn.disabled = true;
       challengeBtn.disabled = true;
+      startPulse();
       show(typingEl);
-      appendBubble("sophie", "🏆 Challenge läuft — alle KIs diskutieren...\n(3 Runden, kann 15-20s dauern)");
+      const challengeStatus = appendBubble("sophie", "🏆 Challenge läuft — alle KIs diskutieren...\n(3 Runden, kann 15-20s dauern)");
 
       try {
         const token = await getToken();
@@ -3428,6 +3429,8 @@
           }),
         });
         hide(typingEl);
+        stopPulse();
+        if (challengeStatus && challengeStatus.parentElement) challengeStatus.parentElement.remove();
         if (!res.ok) throw new Error("Challenge failed");
         const data = await res.json();
 
