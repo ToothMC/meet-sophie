@@ -573,13 +573,18 @@ async function handleMessage(req, res) {
 
   // Second Opinion: auto-trigger for high-risk requests (authenticated users only)
   let secondOpinionMeta = null;
-  if (user && shouldTriggerSecondOpinion(ctx)) {
+  const soShouldTrigger = user && shouldTriggerSecondOpinion(ctx);
+  console.log(`[SecondOpinion] risk=${ctx.risk} tier=${ctx.userTier} trigger=${soShouldTrigger}`);
+  if (soShouldTrigger) {
     try {
+      console.log(`[SecondOpinion] Starting — primary=${aiResponse.provider}/${aiResponse.model}`);
+      const soStart = Date.now();
       const soResult = await getSecondOpinion(
         routerMessages,
         { content: rawReply, provider: aiResponse.provider, model: aiResponse.model },
         { userId: user.id },
       );
+      console.log(`[SecondOpinion] Done in ${Date.now() - soStart}ms — confidence=${soResult.confidence} agreement=${soResult.agreementLevel} synthesized=${soResult.synthesized} providers=${soResult.providers.join(',')}`);
       secondOpinionMeta = {
         confidence: soResult.confidence,
         agreementLevel: soResult.agreementLevel,
