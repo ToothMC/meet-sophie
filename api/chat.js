@@ -449,6 +449,50 @@ async function handleMessage(req, res) {
     ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
 
+  // Realtime tools: detect if user needs live data (weather, news, search)
+  const lastMsg = messages[messages.length - 1]?.content?.toLowerCase() || "";
+  const weatherPatterns = /wetter|weather|temperatur|regen|rain|sonnig|sunny|grad|forecast|vorhersage/;
+  const newsPatterns = /news|nachrichten|schlagzeilen|headlines|aktuell.*passiert|was.*los.*welt/;
+  const searchPatterns = /aktuell.*preis|current.*price|wieviel.*kostet|wie.*teuer|börse|stock|kurs|exchange.*rate|wechselkurs/;
+
+  if (weatherPatterns.test(lastMsg)) {
+    try {
+      const locationMatch = lastMsg.match(/(?:in|für|at|for)\s+([a-zäöüß\s]+?)(?:\?|$|\.|,)/i);
+      const location = locationMatch?.[1]?.trim() || "Berlin";
+      const { default: toolHandler } = await import("./ai/tools.js");
+      const toolReq = { method: "POST", body: { tool: "weather", params: { location } } };
+      const toolResult = await new Promise(resolve => {
+        toolHandler(toolReq, { status: () => ({ json: resolve }) });
+      });
+      if (toolResult.result) {
+        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Wetterdaten:\n${toolResult.result}\n\nNutze diese Daten in deiner Antwort.` });
+      }
+    } catch (e) { console.error("Weather tool error:", e?.message); }
+  } else if (newsPatterns.test(lastMsg)) {
+    try {
+      const topic = lastMsg.replace(/news|nachrichten|was.*los|aktuell/gi, "").trim() || "world";
+      const { default: toolHandler } = await import("./ai/tools.js");
+      const toolReq = { method: "POST", body: { tool: "news", params: { topic } } };
+      const toolResult = await new Promise(resolve => {
+        toolHandler(toolReq, { status: () => ({ json: resolve }) });
+      });
+      if (toolResult.result) {
+        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Aktuelle Nachrichten:\n${toolResult.result}\n\nNutze diese Daten in deiner Antwort.` });
+      }
+    } catch (e) { console.error("News tool error:", e?.message); }
+  } else if (searchPatterns.test(lastMsg)) {
+    try {
+      const { default: toolHandler } = await import("./ai/tools.js");
+      const toolReq = { method: "POST", body: { tool: "search", params: { query: lastMsg } } };
+      const toolResult = await new Promise(resolve => {
+        toolHandler(toolReq, { status: () => ({ json: resolve }) });
+      });
+      if (toolResult.result) {
+        routerMessages.push({ role: "system", content: `[ECHTZEIT-DATEN] Web-Suche:\n${toolResult.result}\n\nNutze diese Daten in deiner Antwort.` });
+      }
+    } catch (e) { console.error("Search tool error:", e?.message); }
+  }
+
   // Determine user tier for routing
   let userTier = "free";
   if (user) {
