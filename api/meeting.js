@@ -890,19 +890,7 @@ Return ONLY the JSON object.`;
           report_progress: 0,
         }, { onConflict: "session_id" });
 
-        // Fire generate-report async (don't await — frontend will poll)
-        const reportUrl = `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : ''}/api/ai/generate-report`;
-        fetch(reportUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session_id: session.id,
-            transcript_text: fullTranscript,
-            session_mode: "meeting",
-          }),
-        }).catch(e => console.error("[meeting-report] async generate-report failed:", e?.message));
-
-        console.log(`[meeting-summarize] HTML report triggered for session=${session.id}`);
+        console.log(`[meeting-summarize] report session created: ${session.id}, frontend will trigger generate-report`);
       }
     }
   } catch (e) {
