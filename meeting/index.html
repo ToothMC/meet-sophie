@@ -937,6 +937,11 @@ function stopLiveTimer() {
 // Phase transitions
 // ---------------------------------------------------------------------------
 async function transitionPhase(newPhase) {
+  // Guard: skip if already in this phase
+  if (meetingData?.phase === newPhase) {
+    console.log(`[meeting] skipping transition — already in phase "${newPhase}"`);
+    return;
+  }
   try {
     const data = await api("phase", { meeting_id: meetingId, phase: newPhase });
     meetingData = { ...meetingData, ...data.meeting };
