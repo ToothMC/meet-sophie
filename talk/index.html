@@ -4111,6 +4111,55 @@ copyReportBtn?.addEventListener("click", copyReport);
 shareReportBtn?.addEventListener("click", shareReport);
 downloadReportBtn?.addEventListener("click", downloadReport);
 
+// Save current report HTML as template for this session mode
+saveTemplateBtn?.addEventListener("click", async () => {
+  const ctx = window._lastReportContext;
+  const html = ctx?.apiResult?.output?.report_html;
+  if (!html) return;
+
+  const span = saveTemplateBtn.querySelector("span");
+  const origText = span?.textContent;
+  try {
+    saveTemplateBtn.disabled = true;
+    const headers = { "Content-Type": "application/json" };
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.access_token) headers["Authorization"] = "Bearer " + s.access_token;
+    } catch (_) {}
+
+    const res = await fetch("/api/settings?action=save-report-template", {
+      method: "POST", headers,
+      body: JSON.stringify({ mode: selectedVoiceMode || "default", report_html: html }),
+    });
+    if (res.ok) {
+      if (span) span.textContent = "Saved!";
+      saveTemplateBtn.style.color = "#4a8c5c";
+      setTimeout(() => { if (span) span.textContent = origText; saveTemplateBtn.style.color = ""; }, 2000);
+    }
+  } catch (e) {
+    console.error("[save-template]", e?.message);
+  } finally {
+    saveTemplateBtn.disabled = false;
+  }
+});
+
+// Regenerate report with fresh AI generation
+regenerateReportBtn?.addEventListener("click", async () => {
+  const ctx = window._lastReportContext;
+  if (!ctx?.sessionId || !ctx?.transcriptLog) return;
+
+  regenerateReportBtn.disabled = true;
+  const span = regenerateReportBtn.querySelector("span");
+  if (span) span.textContent = "Generating...";
+
+  // Hide current report, show progress bar
+  hidePostCallResults();
+  await pollReportProgress(ctx.sessionId, ctx.transcriptLog);
+
+  regenerateReportBtn.disabled = false;
+  if (span) span.textContent = "Regenerate";
+});
+
 // NOTE: do NOT add startBtn.addEventListener("click", startVoice) here.
 // The mobile path sets startBtn.onclick = startVoice (line below),
 // and desktop auto-calls startVoice() directly.
