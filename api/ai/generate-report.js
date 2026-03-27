@@ -143,17 +143,23 @@ DESIGN-REGELN:
 - NUR Fakten verwenden die mindestens 2 KIs bestätigen
 - Der INHALT bestimmt die FORM:
   → Routenplanung? Zeige die Route visuell als Timeline/Stationen mit Pfeilen, Distanzen, Fahrzeiten
-  → Sales Pitch? Score-Card mit farbigen Balken (grün ≥4, gelb ≥3, rot <3), Overall Score
+  → Sales Pitch? Score-Card mit farbigen Balken, Overall Score
   → Meeting? Protokoll mit Agenda, Beschlüssen (✓), Action Items mit Owner
   → Brainstorm? Ideen-Cluster, Favoriten hervorgehoben
   → Kurzes Gespräch? Kompakte Zusammenfassung, keine erzwungene Tiefe
   → Entscheidung? Pro/Contra visuell gegenübergestellt
+  → Design-/Stil-Diskussion? Setze die besprochenen Designwünsche DIREKT im Report um!
 - KEINE starre Vorlage — jeder Report ist einzigartig, passend zum Inhalt
 - Nutze moderne CSS: border-radius, subtle shadows, gradient accents, pill badges
-- Farbpalette: #2a2420 (dark), #c4a882 (gold accent), #4a8c5c (green/positive), #b85a4a (red/negative), #f5f0ea (background)
+- FARBPALETTE: Leite die Farben aus dem INHALT des Gesprächs ab!
+  → Wenn der User über Farben/Design/Layout gesprochen hat: nutze GENAU diese Wünsche
+  → Wenn das Gespräch Business/professionell ist: seriöse, neutrale Farben (schwarz, weiß, grau)
+  → Wenn nichts spezifisches erwähnt wurde: verwende #1a1210 (dark), #c4a882 (gold accent), #4a8c5c (green), #b85a4a (red), #f5f0ea (bg)
 - Schriftart: system font stack (wird vom Parent vererbt)
 - Responsive: max-width 100%, keine festen Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
+
+WICHTIG: Wenn im Gespräch EXPLIZIT über Designwünsche gesprochen wurde (z.B. "schwarz-weiß", "minimalistisch", "DIN A4"), dann ist das die HÖCHSTE PRIORITÄT. Der Report MUSS diese Wünsche widerspiegeln.
 
 KONSISTENZ bei wiederholten Session-Typen:
 - Sales Pitch: IMMER diese 8 Kriterien mit Score 0-5: Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Handling, Persuasiveness
