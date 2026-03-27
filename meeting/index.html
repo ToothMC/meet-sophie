@@ -1955,7 +1955,9 @@ function handleVoiceTranscriptEvent(msg) {
 
   // Response complete — save Sophie's text
   if (msg?.type === "response.done") {
-    const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+    // Strip Sophie's internal JSON tags (structured meeting data) from transcript
+    let final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+    final = final.replace(/\s*\{["']?(?:decisions|actions|risks|open_points)["']?\s*:[\s\S]*$/i, "").trim();
     const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
     if (final && final !== last) {
       voiceTranscript.push({ role: "assistant", text: final });
