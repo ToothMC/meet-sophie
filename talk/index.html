@@ -1834,13 +1834,13 @@ function downloadReport() {
     // AI-generated HTML — use directly
     bodyContent = reportHtml;
     if (reportProviders.length > 1) {
-      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#b0a090;">Verified by ${reportProviders.length} AIs</div>`;
+      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#999;">Verified by ${reportProviders.length} AIs</div>`;
     }
   } else if (reportBlocks) {
     // Use the same block renderer but for standalone HTML
     bodyContent = renderReportBlocks(reportBlocks);
     if (reportProviders.length > 1) {
-      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#b0a090;">Verified by ${reportProviders.length} AIs</div>`;
+      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#999;">Verified by ${reportProviders.length} AIs</div>`;
     }
   } else {
     // Legacy: read from DOM
