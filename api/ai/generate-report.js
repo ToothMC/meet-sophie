@@ -1,8 +1,8 @@
 // api/ai/generate-report.js — Smart Report Generator
-// All 4 AIs analyze, Claude generates the final HTML report directly.
-// No JSON blocks, no templates — pure HTML creativity.
+// Uses system templates as defaults, user templates override.
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
+import { DEFAULT_TEMPLATES } from '../../lib/report-templates.js';
 
 export const config = { maxDuration: 120 };
 
