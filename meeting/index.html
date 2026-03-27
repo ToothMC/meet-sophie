@@ -1541,15 +1541,39 @@ async function connectSophieVoice() {
   appendSystemMsg(connectMsg);
 
   try {
-    // 1. Get session token from /api/session (same as Talk)
+    // 1. Get fresh auth token
+    let authToken = accessToken;
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.access_token) authToken = authSession.access_token;
+    } catch (_) {}
+
+    if (!authToken) throw new Error("Not authenticated — please reload and login");
+
+    // 2. Get session token from /api/session (same as Talk)
+    console.log("[meeting-voice] Calling /api/session...");
     const tokenRes = await fetch("/api/session", {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${authToken}`,
         "X-Sophie-Session-Mode": "meeting",
       },
     });
     const data = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(data?.error || `HTTP ${tokenRes.status}`);
+    console.log("[meeting-voice] Session response:", tokenRes.status, data?.error || "OK");
+
+    if (tokenRes.status === 429) {
+      // Session lock — wait and retry once
+      appendSystemMsg(lang === "de" ? "Sophie ist noch beschäftigt, versuche erneut..." : "Sophie is busy, retrying...");
+      await new Promise(r => setTimeout(r, 3000));
+      const retry = await fetch("/api/session", {
+        headers: { Authorization: `Bearer ${authToken}`, "X-Sophie-Session-Mode": "meeting" },
+      });
+      const retryData = await retry.json();
+      if (!retry.ok) throw new Error(retryData?.error || retryData?.message || `HTTP ${retry.status}`);
+      Object.assign(data, retryData);
+    } else if (!tokenRes.ok) {
+      throw new Error(data?.error || data?.message || `HTTP ${tokenRes.status}`);
+    }
 
     // 2. Set up WebRTC (same as Talk)
     sophieVoicePc = new RTCPeerConnection();
