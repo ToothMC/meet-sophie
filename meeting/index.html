@@ -1592,9 +1592,9 @@ async function startLocalRecording() {
 
     localRecorder.onstop = () => {
       if (chunks.length > 0) {
-        const blob = new Blob(chunks, { type: "audio/webm" });
+        const blob = new Blob(chunks, { type: localRecorder.mimeType || "audio/webm" });
         localAudioChunks.push({ blob, partIndex: currentPart });
-        console.log(`[meeting-rec] Part ${currentPart} saved: ${(blob.size / 1024).toFixed(0)}KB`);
+        console.log(`[meeting-rec] Part ${currentPart} saved: ${(blob.size / 1024).toFixed(0)}KB (${blob.type})`);
       }
     };
 
@@ -1635,15 +1635,17 @@ async function transcribeLocalAudio() {
     if (blob.size < 5000) continue; // Skip tiny fragments
 
     try {
-      // Convert blob to base64 in chunks (btoa crashes on large arrays)
-      const arrayBuffer = await blob.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = "";
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-      }
-      const base64 = btoa(binary);
+      // Convert blob to base64 via FileReader (safe on all platforms, no stack overflow)
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result; // "data:audio/webm;base64,XXXX..."
+          const b64 = dataUrl.split(",")[1];
+          resolve(b64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
       const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("webm") ? "webm" : "wav";
 
       const headers = { "Content-Type": "application/json" };
@@ -1652,7 +1654,15 @@ async function transcribeLocalAudio() {
         if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
       } catch (_) {}
 
-      console.log(`[meeting-rec] Sending part ${partIndex}: ${(blob.size / 1024).toFixed(0)}KB as base64`);
+      const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+      console.log(`[meeting-rec] Sending part ${partIndex}: ${sizeMB}MB as base64 (${ext})`);
+      appendSystemMsg(`📤 Sende Aufnahme ${partIndex + 1} (${sizeMB}MB)...`);
+
+      if (blob.size > 24 * 1024 * 1024) {
+        console.warn(`[meeting-rec] Part ${partIndex} too large (${sizeMB}MB), skipping`);
+        appendSystemMsg(`⚠️ Aufnahme ${partIndex + 1} zu groß (${sizeMB}MB), übersprungen`);
+        continue;
+      }
 
       const res = await fetch("/api/ai/transcribe", {
         method: "POST",
