@@ -1532,7 +1532,14 @@ async function startLocalRecording() {
       localRecorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
 
-    localRecorder = new MediaRecorder(localRecorderStream, { mimeType: "audio/webm;codecs=opus" });
+    // Pick supported mimeType (Safari doesn't support webm)
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "";
+    localRecorder = new MediaRecorder(localRecorderStream, mimeType ? { mimeType } : {});
+    console.log(`[meeting-rec] Using mimeType: ${localRecorder.mimeType}`);
     const currentPart = localPartIndex;
     let chunks = [];
 
@@ -1584,8 +1591,9 @@ async function transcribeLocalAudio() {
     if (blob.size < 5000) continue; // Skip tiny fragments
 
     try {
+      const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("webm") ? "webm" : "wav";
       const formData = new FormData();
-      formData.append("file", blob, `meeting-part-${partIndex}.webm`);
+      formData.append("file", blob, `meeting-part-${partIndex}.${ext}`);
       formData.append("model", "whisper-1");
       formData.append("language", lang === "de" ? "de" : lang === "fr" ? "fr" : "en");
 
@@ -2135,13 +2143,15 @@ function autoResize() {
 
 ctaLive.addEventListener("click", async () => {
   // Start mic recording INSIDE user gesture (required for iOS)
+  // MUST await before transitioning — mic permission dialog is async
   try {
     await startLocalRecording();
     console.log("[meeting] Local recording started from user gesture");
   } catch (e) {
     console.error("[meeting] Failed to start recording:", e.message);
+    // Continue anyway — meeting can still work with chat + Sophie voice
   }
-  transitionPhase("live");
+  await transitionPhase("live");
 });
 ctaPost.addEventListener("click", () => transitionPhase("post"));
 ctaClose.addEventListener("click", async () => {
