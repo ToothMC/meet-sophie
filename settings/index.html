@@ -438,23 +438,19 @@ async function loadAccount() {
   emailEl.textContent = user.email || "—";
   if (user.email) avatar.textContent = user.email[0].toUpperCase();
 
-  // Load profile name
+  // Load profile + subscription via API
   try {
-    const { data: profile } = await supabase
-      .from("user_profile").select("preferred_name, first_name").eq("user_id", user.id).maybeSingle();
+    const accountRes = await fetch("/api/settings?action=account", {
+      headers: { Authorization: "Bearer " + session.access_token },
+    });
+    const accountData = await accountRes.json();
+    const profile = accountData?.profile;
+    const sub = accountData?.subscription;
+
     if (profile?.preferred_name || profile?.first_name) {
       nameEl.textContent = profile.preferred_name || profile.first_name;
       avatar.textContent = (profile.preferred_name || profile.first_name)[0].toUpperCase();
     }
-  } catch {}
-
-  // Load subscription via API (service role key, not RLS-limited)
-  try {
-    const subRes = await fetch("/api/settings?action=account", {
-      headers: { Authorization: "Bearer " + session.access_token },
-    });
-    const subData = await subRes.json();
-    const sub = subData?.subscription || null;
     const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
     if (sub?.plan) {
       planEl.textContent = sub.plan + (active ? "" : " (inaktiv)");
