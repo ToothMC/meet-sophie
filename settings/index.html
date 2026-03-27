@@ -544,7 +544,7 @@ async function loadReports() {
   } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
 }
 
-async function openReportDetail(sessionId) {
+async function openReportDetail(sessionId, source = 'talk') {
   const overlay = document.getElementById("reportDetailOverlay");
   const titleEl = document.getElementById("reportDetailTitle");
   const contentEl = document.getElementById("reportDetailContent");
@@ -552,10 +552,34 @@ async function openReportDetail(sessionId) {
   titleEl.textContent = "Laden...";
   contentEl.innerHTML = '<p class="msg">Laden...</p>';
   try {
-    const data = await api("report-detail&session_id=" + sessionId);
+    const data = await api("report-detail&session_id=" + sessionId + "&source=" + source);
     _reportDetailData = data;
     titleEl.textContent = data.title || "Report";
-    contentEl.innerHTML = data.report_html || '<p class="msg">Kein HTML-Report vorhanden.</p>';
+
+    if (data.source === 'meeting') {
+      // Render meeting summary as structured HTML
+      let html = '';
+      if (data.short_summary) html += `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
+      if (data.decisions?.length) {
+        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Beschlüsse</h4>`;
+        html += data.decisions.map(d => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${d.text || d}${d.owner ? ` <span style="color:#22c55e;font-weight:500">→ ${d.owner}</span>` : ''}</div>`).join('') + '</div>';
+      }
+      if (data.action_items?.length) {
+        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Action Items</h4>`;
+        html += data.action_items.map(a => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${a.text || a}${a.owner ? ` <span style="color:#22c55e;font-weight:500">→ ${a.owner}</span>` : ''}${a.due ? ` <span style="color:#a09080;font-size:11px">bis ${a.due}</span>` : ''}</div>`).join('') + '</div>';
+      }
+      if (data.open_points?.length) {
+        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Offene Punkte</h4>`;
+        html += data.open_points.map(p => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${p.text || p}</div>`).join('') + '</div>';
+      }
+      if (data.risks?.length) {
+        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Risiken</h4>`;
+        html += data.risks.map(r => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${r.text || r}${r.severity ? ` <span style="color:${r.severity === 'high' ? '#ef4444' : r.severity === 'medium' ? '#eab308' : '#22c55e'};font-size:11px">${r.severity}</span>` : ''}</div>`).join('') + '</div>';
+      }
+      contentEl.innerHTML = html || '<p class="msg">Keine Details vorhanden.</p>';
+    } else {
+      contentEl.innerHTML = data.report_html || '<p class="msg">Kein HTML-Report vorhanden.</p>';
+    }
   } catch (e) {
     titleEl.textContent = "Fehler";
     contentEl.innerHTML = '<p class="msg">Report konnte nicht geladen werden.</p>';
