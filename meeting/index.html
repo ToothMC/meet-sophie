@@ -915,6 +915,13 @@ function updatePhaseUI(phase) {
 
   // Participants bar: visible when meeting is loaded
   updateParticipantsBar();
+
+  // Focus: agenda field in prep, chat input in live
+  if (phase === "prep") {
+    setTimeout(() => $("ctxAgenda")?.focus(), 100);
+  } else if (phase === "live") {
+    setTimeout(() => chatInput?.focus(), 100);
+  }
 }
 
 function startLiveTimer() {
