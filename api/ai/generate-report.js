@@ -35,14 +35,13 @@ export default async function handler(req, res) {
     const analysisPrompt = `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
 ${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.`;
 
-    const analyses = [];
-    for (let i = 0; i < REPORT_PROVIDERS.length; i++) {
-      const { provider, model } = REPORT_PROVIDERS[i];
-      await supabase.from('conversation_outputs')
-        .update({ report_progress: 10 + Math.round((i / 4) * 50), report_status_detail: `Analysiere mit ${provider}...` })
-        .eq('session_id', session_id);
+    // Run all 4 analyses in parallel for speed
+    await supabase.from('conversation_outputs')
+      .update({ report_progress: 10, report_status_detail: 'Analysiere mit 4 KIs parallel...' })
+      .eq('session_id', session_id);
 
-      try {
+    const analysisResults = await Promise.allSettled(
+      REPORT_PROVIDERS.map(async ({ provider, model }) => {
         const adapter = getAdapter(provider);
         const response = await adapter.complete({
           messages: [
@@ -51,11 +50,17 @@ ${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.`;
           ],
           model, maxTokens: 2048, temperature: 0.2,
         });
-        if (response.content) analyses.push({ provider, text: response.content });
-      } catch (e) {
-        console.error(`[report] ${provider} failed:`, e?.message);
-      }
-    }
+        return { provider, text: response.content };
+      })
+    );
+
+    const analyses = analysisResults
+      .filter(r => r.status === 'fulfilled' && r.value.text)
+      .map(r => r.value);
+
+    analysisResults
+      .filter(r => r.status === 'rejected')
+      .forEach(r => console.error(`[report] provider failed:`, r.reason?.message));
 
     if (analyses.length === 0) {
       await supabase.from('conversation_outputs')
