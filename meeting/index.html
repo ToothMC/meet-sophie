@@ -707,37 +707,55 @@ async function showHistory() {
 // ---------------------------------------------------------------------------
 // Setup / Create
 // ---------------------------------------------------------------------------
+let selectedMeetingType = "team";
+let selectedParentId = null;
+
 async function showSetup() {
   historyScreen.classList.add("hidden");
   meetingArea.classList.remove("active");
   setupScreen.classList.remove("hidden");
 
-  // Load past meetings for parent selector
+  // Type pills click handler
+  $("meetingTypePills").onclick = (e) => {
+    const pill = e.target.closest(".type-pill");
+    if (!pill) return;
+    $("meetingTypePills").querySelectorAll(".type-pill").forEach(p => p.classList.remove("active"));
+    pill.classList.add("active");
+    selectedMeetingType = pill.dataset.value;
+  };
+
+  // Load past meetings for parent selector as pill buttons
+  const parentList = $("parentMeetingList");
   try {
     const data = await api("list", null, "GET");
     const meetings = (data.meetings || []).filter(m => m.phase === "closed" || m.phase === "post");
-    const select = $("parentMeeting");
-    // Keep first "None" option, clear rest
-    while (select.options.length > 1) select.remove(1);
-    meetings.slice(0, 10).forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
-      opt.textContent = `${m.title || m.meeting_type} (${date})`;
-      select.appendChild(opt);
-    });
-  } catch { /* ignore, selector stays empty */ }
-
-  // When selecting a parent meeting, always update the title
-  $("parentMeeting").addEventListener("change", function() {
-    const titleInput = $("meetingTitle");
-    if (this.value && this.selectedOptions[0]) {
-      const parentTitle = this.selectedOptions[0].textContent.replace(/\s*\([^)]*\)\s*$/, '').trim();
-      titleInput.value = parentTitle;
+    if (!meetings.length) {
+      parentList.innerHTML = `<div style="font-size:12px;color:#a09080;padding:4px 0">${lang === "de" ? "Noch keine abgeschlossenen Meetings" : "No completed meetings yet"}</div>`;
     } else {
-      titleInput.value = "";
+      parentList.innerHTML = meetings.slice(0, 8).map(m => {
+        const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
+        return `<button type="button" class="parent-pill" data-id="${m.id}" data-title="${(m.title || m.meeting_type).replace(/"/g, '&quot;')}">${m.title || m.meeting_type} <span style="color:#a09080;font-size:11px">${date}</span></button>`;
+      }).join("");
     }
-  });
+  } catch {
+    parentList.innerHTML = `<div style="font-size:12px;color:#a09080">—</div>`;
+  }
+
+  // Parent pill click → select + prefill title
+  parentList.onclick = (e) => {
+    const pill = e.target.closest(".parent-pill");
+    if (!pill) return;
+    const wasActive = pill.classList.contains("active");
+    parentList.querySelectorAll(".parent-pill").forEach(p => p.classList.remove("active"));
+    if (wasActive) {
+      selectedParentId = null;
+      $("meetingTitle").value = "";
+    } else {
+      pill.classList.add("active");
+      selectedParentId = pill.dataset.id;
+      $("meetingTitle").value = pill.dataset.title;
+    }
+  };
 }
 
 async function createMeeting() {
