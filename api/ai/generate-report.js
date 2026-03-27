@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         .from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
       if (sess?.user_id) {
         const { data: profile } = await supabase
-          .from('user_profile').select('report_templates').eq('id', sess.user_id).maybeSingle();
+          .from('user_profile').select('report_templates').eq('user_id', sess.user_id).maybeSingle();
         const templates = profile?.report_templates || {};
         // Try mode-specific template first, then fall back to 'default'
         savedTemplate = templates[session_mode || 'default'] || templates['default'] || null;
