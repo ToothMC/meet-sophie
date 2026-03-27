@@ -854,7 +854,63 @@ Return ONLY the JSON object.`;
     await supabase.from("meetings").update({ title: autoTitle }).eq("id", meeting_id);
   }
 
-  return res.status(200).json({ ok: true, summary: saved });
+  // -----------------------------------------------------------------------
+  // Trigger HTML Report via generate-report pipeline (same as Talk mode)
+  // -----------------------------------------------------------------------
+  let reportSessionId = null;
+  try {
+    // Build FULL transcript (context + notes + chat) for the report pipeline
+    const fullTranscriptParts = [];
+    if (meeting.title) fullTranscriptParts.push(`Meeting: ${meeting.title}`);
+    if (meeting.meeting_type) fullTranscriptParts.push(`Typ: ${meeting.meeting_type}`);
+    if (contextStr.trim()) fullTranscriptParts.push(`\nKontext:\n${contextStr}`);
+    if (chatTranscript.trim()) fullTranscriptParts.push(`\nGespräch:\n${chatTranscript}`);
+    if (notesStr.trim()) fullTranscriptParts.push(`\nNotizen:\n${notesStr}`);
+    const fullTranscript = fullTranscriptParts.join("\n");
+
+    if (fullTranscript.trim().length > 50) {
+      // Create a user_session so generate-report can link to it
+      const { data: session } = await supabase.from("user_sessions").insert({
+        user_id: user.id,
+        session_mode: "meeting",
+        status: "ended",
+        title: meeting.title || "Meeting",
+      }).select("id").single();
+
+      if (session?.id) {
+        reportSessionId = session.id;
+
+        // Link meeting to session
+        await supabase.from("meetings").update({ session_id: session.id }).eq("id", meeting_id);
+
+        // Create conversation_outputs row for report tracking
+        await supabase.from("conversation_outputs").upsert({
+          session_id: session.id,
+          report_status: "pending",
+          report_progress: 0,
+        }, { onConflict: "session_id" });
+
+        // Fire generate-report async (don't await — frontend will poll)
+        const reportUrl = `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : ''}/api/ai/generate-report`;
+        fetch(reportUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: session.id,
+            transcript_text: fullTranscript,
+            session_mode: "meeting",
+          }),
+        }).catch(e => console.error("[meeting-report] async generate-report failed:", e?.message));
+
+        console.log(`[meeting-summarize] HTML report triggered for session=${session.id}`);
+      }
+    }
+  } catch (e) {
+    console.error("[meeting-summarize] report trigger error:", e?.message);
+    // Non-critical — summary was already saved
+  }
+
+  return res.status(200).json({ ok: true, summary: saved, report_session_id: reportSessionId });
 }
 
 // ---------------------------------------------------------------------------

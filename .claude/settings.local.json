@@ -109,7 +109,8 @@
       "Bash(pandoc /Users/michaelhammer/Desktop/meeting_report_template_elegant_dina4.docx -o /tmp/docx_content.md)",
       "Read(//tmp/**)",
       "Bash(gh api:*)",
-      "Bash(ls /Users/michaelhammer/.claude/projects/*/memory/)"
+      "Bash(ls /Users/michaelhammer/.claude/projects/*/memory/)",
+      "Bash(grep -A 30 \"conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {
