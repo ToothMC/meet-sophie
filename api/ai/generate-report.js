@@ -70,38 +70,70 @@ ${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.`;
     }
 
     // Step 2: Load user's saved template (if any)
-    let templateHint = '';
+    let savedTemplate = null;
     try {
       const { data: sess } = await supabase
         .from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
       if (sess?.user_id) {
         const { data: profile } = await supabase
           .from('user_profile').select('report_templates').eq('id', sess.user_id).maybeSingle();
-        const tpl = profile?.report_templates?.[session_mode || 'default'];
-        if (tpl) {
-          templateHint = `\n\nWICHTIG — LAYOUT-VORLAGE DES USERS:
-Der User hat folgendes Layout als seine bevorzugte Vorlage gespeichert.
-Verwende ein ÄHNLICHES Layout, ähnliche Struktur und Design-Elemente — aber passe den INHALT an das aktuelle Gespräch an.
-Kopiere NICHT 1:1, sondern nutze es als Inspiration für Struktur, Farben und Aufbau.
-
-VORLAGE-HTML:
-${tpl.slice(0, 3000)}`;
-        }
+        savedTemplate = profile?.report_templates?.[session_mode || 'default'] || null;
       }
     } catch (e) {
       console.error('[report] template load failed:', e?.message);
     }
 
-    // Step 3: Claude generates the final HTML report
+    const hasTemplate = !!savedTemplate;
+
+    // Step 3: Generate the final HTML report
     await supabase.from('conversation_outputs')
-      .update({ report_progress: 70, report_status_detail: `Erstelle Report aus ${analyses.length} Analysen...` })
+      .update({
+        report_progress: 70,
+        report_status_detail: hasTemplate
+          ? `Fülle Template mit ${analyses.length} Analysen...`
+          : `Erstelle Report aus ${analyses.length} Analysen...`,
+      })
       .eq('session_id', session_id);
 
     const analysesBlock = analyses
       .map(a => `[${a.provider.toUpperCase()}]:\n${a.text}`)
       .join('\n\n---\n\n');
 
-    const htmlPrompt = `Du bist ein Premium Report-Designer für Sophie, eine hochintelligente KI.
+    let htmlPrompt;
+    let synthProviders;
+
+    if (hasTemplate) {
+      // ── FAST PATH: Template exists → cheap model fills in content ──
+      htmlPrompt = `Du füllst ein bestehendes Report-Template mit neuem Inhalt.
+
+Der User hat dieses HTML-Layout als Vorlage gespeichert. Behalte die EXAKTE Struktur, CSS-Styles, Farben und Design-Elemente bei.
+Ersetze NUR den Textinhalt mit den Fakten aus den Analysen unten.
+
+REGELN:
+- Behalte ALLE HTML-Tags, CSS-Klassen, Styles und Struktur des Templates EXAKT bei
+- NUR Fakten verwenden die mindestens 2 KIs bestätigen
+- Wenn das Template Sektionen hat die für den neuen Inhalt nicht passen, entferne sie
+- Wenn neue Sektionen nötig sind, erstelle sie IM SELBEN Stil wie das Template
+- Schreibe in der gleichen Sprache wie die Analysen
+- Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
+
+TEMPLATE:
+${savedTemplate.slice(0, 4000)}
+
+DIE ${analyses.length} ANALYSEN:
+
+${analysesBlock}`;
+
+      // Cheap+fast models first since this is just content injection
+      synthProviders = [
+        { provider: 'openai', model: 'gpt-4o-mini' },
+        { provider: 'google', model: 'gemini-2.5-flash' },
+        { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+      ];
+
+    } else {
+      // ── CREATIVE PATH: No template → Claude designs from scratch ──
+      htmlPrompt = `Du bist ein Premium Report-Designer für Sophie, eine hochintelligente KI.
 ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
 
 Erstelle einen REPORT als reines HTML (nur den <body> Inhalt, kein <html>/<head>).
@@ -128,22 +160,27 @@ KONSISTENZ bei wiederholten Session-Typen:
 - Meeting: IMMER Agenda → Beschlüsse → Action Items → Offene Punkte
 
 Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
-${templateHint}
 
 DIE ${analyses.length} ANALYSEN:
 
 ${analysesBlock}`;
 
+      // Creative task needs strong model first
+      synthProviders = [
+        { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+        { provider: 'openai', model: 'gpt-4o-mini' },
+      ];
+    }
+
+    const maxTokens = hasTemplate ? 2000 : 4000;
+
     let reportHtml = null;
-    for (const synth of [
-      { provider: 'anthropic', model: 'claude-sonnet-4-6' },
-      { provider: 'openai', model: 'gpt-4o-mini' },
-    ]) {
+    for (const synth of synthProviders) {
       try {
         const adapter = getAdapter(synth.provider);
         const response = await adapter.complete({
           messages: [{ role: 'user', content: htmlPrompt }],
-          model: synth.model, maxTokens: 4000, temperature: 0.4,
+          model: synth.model, maxTokens, temperature: hasTemplate ? 0.2 : 0.4,
         });
         const text = (response.content || '').trim();
         // Strip markdown code fences if present
@@ -154,6 +191,8 @@ ${analysesBlock}`;
         console.error(`[report] HTML generation with ${synth.provider} failed:`, e?.message);
       }
     }
+
+    console.log(`[report] ${hasTemplate ? 'TEMPLATE' : 'CREATIVE'} path — ${synthProviders[0].provider}/${synthProviders[0].model}, maxTokens=${maxTokens}`);
 
     if (!reportHtml) {
       // Last resort fallback
