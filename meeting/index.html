@@ -1635,22 +1635,27 @@ async function transcribeLocalAudio() {
     if (blob.size < 5000) continue; // Skip tiny fragments
 
     try {
+      // Convert blob to base64 for JSON transport (avoids multipart issues on Vercel)
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
       const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("webm") ? "webm" : "wav";
-      const formData = new FormData();
-      formData.append("file", blob, `meeting-part-${partIndex}.${ext}`);
-      formData.append("model", "whisper-1");
-      formData.append("language", lang === "de" ? "de" : lang === "fr" ? "fr" : "en");
 
-      const headers = {};
+      const headers = { "Content-Type": "application/json" };
       try {
         const { data: { session: authSession } } = await supabase.auth.getSession();
         if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
       } catch (_) {}
 
+      console.log(`[meeting-rec] Sending part ${partIndex}: ${(blob.size / 1024).toFixed(0)}KB as base64`);
+
       const res = await fetch("/api/ai/transcribe", {
         method: "POST",
         headers,
-        body: formData,
+        body: JSON.stringify({
+          audio_base64: base64,
+          filename: `meeting-part-${partIndex}.${ext}`,
+          language: lang === "de" ? "de" : lang === "fr" ? "fr" : "en",
+        }),
       });
 
       if (res.ok) {
@@ -1658,10 +1663,16 @@ async function transcribeLocalAudio() {
         if (data.text?.trim()) {
           transcripts.push({ partIndex, text: data.text.trim() });
           console.log(`[meeting-rec] Part ${partIndex} transcribed: ${data.text.slice(0, 80)}...`);
+          appendSystemMsg(`✅ Aufnahme ${partIndex + 1} transkribiert`);
         }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error(`[meeting-rec] Transcribe ${partIndex} failed:`, res.status, err);
+        appendSystemMsg(`⚠️ Transkription fehlgeschlagen: ${err.error || res.status}`);
       }
     } catch (e) {
       console.error(`[meeting-rec] Transcribe part ${partIndex} failed:`, e.message);
+      appendSystemMsg(`⚠️ Transkription Fehler: ${e.message}`);
     }
   }
 

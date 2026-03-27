@@ -1,12 +1,12 @@
 // api/ai/transcribe.js — Whisper transcription for meeting audio recordings
+// Accepts JSON { audio_base64, filename, language } instead of multipart
 import { createClient } from '@supabase/supabase-js';
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 60, api: { bodyParser: { sizeLimit: '25mb' } } };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Auth check
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Missing auth token' });
 
@@ -15,115 +15,88 @@ export default async function handler(req, res) {
   if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
 
   try {
-    // Forward the multipart form data to OpenAI Whisper
-    const contentType = req.headers['content-type'] || '';
-    if (!contentType.includes('multipart/form-data')) {
-      return res.status(400).json({ error: 'Expected multipart/form-data' });
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+
+    const { audio_base64, filename, language } = body;
+    if (!audio_base64) return res.status(400).json({ error: 'Missing audio_base64' });
+
+    const audioBuffer = Buffer.from(audio_base64, 'base64');
+    if (audioBuffer.length < 1000) return res.status(400).json({ error: 'Audio too short' });
+
+    console.log(`[transcribe] ${user.id}: ${(audioBuffer.length / 1024).toFixed(0)}KB, file=${filename || 'audio.webm'}`);
+
+    // Build multipart form for OpenAI Whisper
+    const boundary = '----WhisperBoundary' + Date.now();
+    const fname = filename || 'audio.webm';
+    const mimeType = fname.endsWith('.mp4') ? 'audio/mp4' : 'audio/webm';
+
+    const parts = [];
+    // File part
+    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fname}"\r\nContent-Type: ${mimeType}\r\n\r\n`);
+    parts.push(audioBuffer);
+    parts.push('\r\n');
+    // Model part
+    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n`);
+    // Language part
+    if (language) {
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`);
+    }
+    parts.push(`--${boundary}--\r\n`);
+
+    const multipartBody = Buffer.concat(parts.map(p => typeof p === 'string' ? Buffer.from(p) : p));
+
+    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body: multipartBody,
+    });
+
+    if (!whisperRes.ok) {
+      const errText = await whisperRes.text();
+      console.error('[transcribe] Whisper error:', whisperRes.status, errText);
+      return res.status(whisperRes.status).json({ error: 'Transcription failed', detail: errText });
     }
 
-    // Parse multipart using raw body
-    const { default: Busboy } = await import('busboy');
+    const result = await whisperRes.json();
+    console.log(`[transcribe] OK: ${(result.text || '').slice(0, 100)}...`);
 
-    return new Promise((resolve) => {
-      const bb = Busboy({ headers: req.headers });
-      const fields = {};
-      let fileBuffer = null;
-      let fileName = 'audio.webm';
+    // Deduct usage
+    const estimatedSeconds = Math.ceil(audioBuffer.length / 16000);
+    try {
+      const { data: usage } = await supabase
+        .from('user_usage')
+        .select('free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      bb.on('file', (name, file, info) => {
-        fileName = info.filename || 'audio.webm';
-        const chunks = [];
-        file.on('data', (d) => chunks.push(d));
-        file.on('end', () => { fileBuffer = Buffer.concat(chunks); });
-      });
+      if (usage) {
+        const freeRemaining = Math.max(0, (usage.free_seconds_total || 0) - (usage.free_seconds_used || 0));
+        const updates = { updated_at: new Date().toISOString() };
+        let toDeduct = estimatedSeconds;
 
-      bb.on('field', (name, val) => { fields[name] = val; });
-
-      bb.on('close', async () => {
-        if (!fileBuffer || fileBuffer.length < 1000) {
-          res.status(400).json({ error: 'Audio too short or missing' });
-          return resolve();
+        if (freeRemaining > 0) {
+          const fromFree = Math.min(toDeduct, freeRemaining);
+          updates.free_seconds_used = (usage.free_seconds_used || 0) + fromFree;
+          toDeduct -= fromFree;
+        }
+        if (toDeduct > 0) {
+          updates.paid_seconds_used = (usage.paid_seconds_used || 0) + toDeduct;
         }
 
-        try {
-          // Build FormData for OpenAI
-          const FormData = (await import('form-data')).default;
-          const form = new FormData();
-          form.append('file', fileBuffer, { filename: fileName, contentType: 'audio/webm' });
-          form.append('model', fields.model || 'whisper-1');
-          if (fields.language) form.append('language', fields.language);
+        await supabase.from('user_usage').update(updates).eq('user_id', user.id);
+        console.log(`[transcribe] Usage: ~${estimatedSeconds}s deducted`);
+      }
+    } catch (ue) {
+      console.error('[transcribe] Usage error:', ue.message);
+    }
 
-          const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-              ...form.getHeaders(),
-            },
-            body: form.getBuffer(),
-          });
-
-          if (!whisperRes.ok) {
-            const errText = await whisperRes.text();
-            console.error('[transcribe] Whisper error:', whisperRes.status, errText);
-            res.status(whisperRes.status).json({ error: 'Transcription failed' });
-            return resolve();
-          }
-
-          const result = await whisperRes.json();
-          console.log(`[transcribe] OK: ${(result.text || '').slice(0, 80)}...`);
-
-          // Deduct usage: estimate audio duration from file size
-          // ~16KB/s for webm opus, ~32KB/s for mp4 → conservative estimate
-          const estimatedSeconds = Math.ceil(fileBuffer.length / 16000);
-          try {
-            // Deduct transcription time from user's usage (same as voice seconds)
-            const { data: usage } = await supabase
-              .from('user_usage')
-              .select('free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (usage) {
-              const freeRemaining = Math.max(0, (usage.free_seconds_total || 0) - (usage.free_seconds_used || 0));
-              const paidRemaining = Math.max(0, (usage.paid_seconds_total || 0) - (usage.paid_seconds_used || 0));
-
-              const updates = { updated_at: new Date().toISOString() };
-              let toDeduct = estimatedSeconds;
-
-              if (freeRemaining > 0) {
-                const fromFree = Math.min(toDeduct, freeRemaining);
-                updates.free_seconds_used = (usage.free_seconds_used || 0) + fromFree;
-                toDeduct -= fromFree;
-              }
-              if (toDeduct > 0 && paidRemaining > 0) {
-                const fromPaid = Math.min(toDeduct, paidRemaining);
-                updates.paid_seconds_used = (usage.paid_seconds_used || 0) + fromPaid;
-                toDeduct -= fromPaid;
-              }
-              if (toDeduct > 0 && (usage.topup_seconds_balance || 0) > 0) {
-                updates.topup_seconds_balance = Math.max(0, (usage.topup_seconds_balance || 0) - toDeduct);
-              }
-
-              await supabase.from('user_usage').update(updates).eq('user_id', user.id);
-              console.log(`[transcribe] Usage deducted: ~${estimatedSeconds}s for ${(fileBuffer.length / 1024).toFixed(0)}KB audio`);
-            }
-          } catch (usageErr) {
-            console.error('[transcribe] Usage deduction failed:', usageErr.message);
-          }
-
-          res.status(200).json({ text: result.text || '', seconds_used: estimatedSeconds });
-          resolve();
-        } catch (e) {
-          console.error('[transcribe] Error:', e.message);
-          res.status(500).json({ error: e.message });
-          resolve();
-        }
-      });
-
-      req.pipe(bb);
-    });
+    return res.status(200).json({ text: result.text || '', seconds_used: estimatedSeconds });
   } catch (e) {
-    console.error('[transcribe] Handler error:', e.message);
+    console.error('[transcribe] Error:', e.message);
     return res.status(500).json({ error: e.message });
   }
 }
