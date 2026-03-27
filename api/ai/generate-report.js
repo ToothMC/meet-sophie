@@ -133,18 +133,53 @@ ${analysesBlock}`;
 
     } else {
       // ── CREATIVE PATH: No template → AI designs from scratch with full creative freedom ──
-      htmlPrompt = `Du bist ein Premium Report-Designer.
+      // Detect if conversation was about design/layout/templates
+      const designKeywords = /vorlage|template|layout|design|branding|protokoll|format|din.?a4|schwarz.?wei|farb|schrift|typografi/i;
+      const isDesignConversation = analyses.some(a => designKeywords.test(a.text));
+
+      if (isDesignConversation) {
+        // DESIGN-MODE: User discussed how a report/document should look
+        // → Create an EXAMPLE document in that exact design, with placeholder content
+        htmlPrompt = `Du bist ein HTML-Template-Designer.
+
+Der User hat in einem Gespräch beschrieben, wie ein Dokument/Report aussehen soll.
+${analyses.length} KIs haben die Designwünsche unabhängig analysiert.
+
+DEINE AUFGABE:
+Erstelle ein FERTIGES BEISPIEL-DOKUMENT als HTML das GENAU so aussieht wie der User es beschrieben hat.
+- Verwende realistische Platzhalter-Inhalte (Beispiel-Meeting, Beispiel-Protokoll, etc.) um das Layout zu demonstrieren
+- Das Ergebnis soll ein gebrauchsfertiges Template sein, KEIN Report über die Anforderungen
+- Setze JEDE genannte Designanforderung 1:1 um: Farben, Schriften, Struktur, Format
+
+BEISPIEL:
+User sagt "schwarz-weiß, Meeting-Protokoll, DIN A4, professionell"
+→ Du erstellst ein komplettes Meeting-Protokoll in schwarz-weiß mit Beispiel-Agenda, Beispiel-Beschlüssen, Beispiel-Action-Items. Es sieht aus wie ein echtes Dokument, nicht wie eine Zusammenfassung eines Gesprächs.
+
+VERBOTEN:
+- Keine Meta-Informationen ("der User wünscht sich...", "Anforderungen:", "Bestätigt von X KIs")
+- Kein Report ÜBER das Gespräch
+- Keine Analyse-Labels, keine KI-Badges
+
+TECHNISCH:
+- Reines HTML (nur <body> Inhalt, kein <html>/<head>)
+- Inline CSS
+- Schriftart: system font stack
+- Responsive: max-width 100%, keine festen Pixel-Breiten
+- Sprache: gleich wie die Analysen
+
+Antworte NUR mit dem HTML.
+
+DIE DESIGN-ANFORDERUNGEN AUS ${analyses.length} ANALYSEN:
+
+${analysesBlock}`;
+      } else {
+        // CONTENT-MODE: Normal conversation → summarize content as report
+        htmlPrompt = `Du bist ein Report-Designer.
 ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
 
 Erstelle einen REPORT als reines HTML (nur den <body> Inhalt, kein <html>/<head>).
 
-WICHTIGSTE REGEL — UMSETZEN, NICHT BESCHREIBEN:
-Wenn im Gespräch über Design, Layout, Farben, Formate oder Vorlagen gesprochen wurde:
-→ ERSTELLE den Report DIREKT in diesem Design. WENDE die besprochenen Designwünsche AN.
-→ Berichte NICHT über die Designwünsche. Der Report IST das Ergebnis, nicht eine Zusammenfassung der Anforderungen.
-→ Beispiel: User sagt "schwarz-weiß, DIN A4, Meeting-Protokoll" → Der Report IST ein schwarz-weißes Meeting-Protokoll, nicht ein Report ÜBER diese Anforderung.
-
-DU HAST VÖLLIGE KREATIVE FREIHEIT. Keine vorgegebenen Farben, keine vorgegebene Struktur. Du gestaltest basierend auf dem Gesprächsinhalt.
+Du hast völlige kreative Freiheit beim Design. Keine vorgegebenen Farben, keine vorgegebene Struktur. Gestalte passend zum Inhalt.
 
 REGELN:
 - NUR Fakten verwenden die mindestens 2 KIs bestätigen
@@ -153,7 +188,7 @@ REGELN:
 - Schriftart: system font stack
 - Responsive: max-width 100%, keine festen Pixel-Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
-- Bringe KEIN eigenes Branding mit. Starte neutral und gestalte NUR basierend auf dem Gespräch.
+- Bringe KEIN eigenes Branding mit. Starte neutral.
 
 FORM-IDEEN (nur Inspiration):
 - Routenplanung → Timeline/Stationen
@@ -168,6 +203,7 @@ Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
 DIE ${analyses.length} ANALYSEN:
 
 ${analysesBlock}`;
+      }
 
       // Creative task needs strong model first
       synthProviders = [
