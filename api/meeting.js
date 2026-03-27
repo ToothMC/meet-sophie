@@ -666,7 +666,8 @@ async function handleSummarize(req, res) {
 
   // Build summary prompt
   const contextStr = (contextRes.data || []).map(c => `[${c.context_type}] ${c.content}`).join("\n");
-  const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
+  // Exclude chat_message and silent_hint — chat is a private side-channel, NEVER in reports
+  const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint" && n.note_type !== "chat_message");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
   // Voice transcript ONLY — sent from frontend (SpeechRecognition + Sophie DataChannel)
