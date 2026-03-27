@@ -603,11 +603,14 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Clean reply (strip JSON blocks for display, keep 💡 hint text visible)
+  // Clean reply (strip JSON blocks, mode tokens, keep 💡 hint text visible)
   const reply = rawReply
     .replace(/```json[\s\S]*?```/g, "")
     .replace(/\{[\s\S]*"decisions"[\s\S]*\}/g, "")
     .replace(/\{"hint"\s*:\s*\{[^}]*\}\}/g, "")
+    .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
+    .replace(/\s*\[SYSTEM:[^\]]*\]\s*/g, "")
+    .replace(/\s*\[SESSION_END\]\s*/g, "")
     .trim() || rawReply.trim();
 
   return res.status(200).json({
