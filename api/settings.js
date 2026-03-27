@@ -53,24 +53,24 @@ export default async function handler(req, res) {
 
   // ── GET: Reports list ──
   if (action === 'reports' && req.method === 'GET') {
+    // Get user's sessions first, then their reports
+    const { data: sessions } = await supabase
+      .from('user_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('has_output', true)
+      .order('started_at', { ascending: false })
+      .limit(50);
+
+    if (!sessions?.length) return res.status(200).json({ reports: [] });
+
+    const sessionIds = sessions.map(s => s.id);
     const { data } = await supabase
       .from('conversation_outputs')
       .select('session_id, title, report_status, report_style, created_at')
-      .eq('user_id', user.id)
+      .in('session_id', sessionIds)
       .not('report_html', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    // Enrich with session mode
-    if (data?.length) {
-      const sessionIds = data.map(r => r.session_id).filter(Boolean);
-      const { data: sessions } = await supabase
-        .from('user_sessions')
-        .select('id, session_mode')
-        .in('id', sessionIds);
-      const modeMap = Object.fromEntries((sessions || []).map(s => [s.id, s.session_mode]));
-      for (const r of data) r.session_mode = modeMap[r.session_id] || null;
-    }
+      .order('created_at', { ascending: false });
 
     return res.status(200).json({ reports: data || [] });
   }
@@ -80,11 +80,19 @@ export default async function handler(req, res) {
     const sessionId = req.query?.session_id;
     if (!sessionId) return res.status(400).json({ error: 'Missing session_id' });
 
+    // Verify ownership via user_sessions
+    const { data: session } = await supabase
+      .from('user_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!session) return res.status(404).json({ error: 'Report not found' });
+
     const { data } = await supabase
       .from('conversation_outputs')
       .select('session_id, title, report_html, report_providers, report_status, created_at')
       .eq('session_id', sessionId)
-      .eq('user_id', user.id)
       .maybeSingle();
 
     if (!data) return res.status(404).json({ error: 'Report not found' });
