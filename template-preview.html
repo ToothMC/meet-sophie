@@ -34,7 +34,7 @@
 
 <script>
 function show(id) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['talk','meeting','scorecard'][i] === id));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['talk','meeting','scorecard','brainstorm'][i] === id));
   document.querySelectorAll('.preview-frame').forEach(f => f.classList.toggle('active', f.id === id));
 }
 </script>
