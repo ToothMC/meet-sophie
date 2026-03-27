@@ -302,6 +302,32 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
+  <!-- Section: Reports -->
+  <div class="section collapsed" id="sectionReports">
+    <div class="section-toggle" onclick="toggleSection('sectionReports')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Reports</span>
+      <span class="s-sub">Deine bisherigen Reports</span>
+    </div>
+    <div class="section-body">
+      <div id="reportsList"><p class="msg">Laden...</p></div>
+      <!-- Report detail modal -->
+      <div id="reportDetailOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.85);overflow-y:auto;padding:20px">
+        <div style="max-width:600px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 id="reportDetailTitle" style="font-size:15px;color:#fff;margin:0"></h3>
+            <button onclick="closeReportDetail()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer">&times;</button>
+          </div>
+          <div id="reportDetailContent" style="background:#1a1b20;border-radius:12px;padding:16px;overflow:hidden"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-secondary btn-sm" onclick="copyReportDetail()">Kopieren</button>
+            <button class="btn btn-secondary btn-sm" onclick="saveReportAsTemplate()">Als Vorlage speichern</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Section 3: Kosten -->
   <div class="section" id="sectionCosts">
     <div class="section-toggle" onclick="toggleSection('sectionCosts')">
