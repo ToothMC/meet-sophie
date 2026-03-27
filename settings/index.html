@@ -516,6 +516,37 @@ async function saveReportAsTemplate() {
 }
 window.saveReportAsTemplate = saveReportAsTemplate;
 
+// ── Section: Meine Vorlagen ──
+const MODE_LABELS = { default: "Standard Report", brainstorm: "Brainstorm", salespitch: "Sales Pitch", meeting: "Meeting" };
+
+async function loadTemplates() {
+  const list = document.getElementById("templatesList");
+  try {
+    const data = await api("templates");
+    if (!data.templates?.length) {
+      list.innerHTML = '<p class="msg">Noch keine Vorlagen gespeichert. Erstelle einen Report und klicke "Als Vorlage speichern".</p>';
+      return;
+    }
+    list.innerHTML = data.templates.map(t => `<div class="card" style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:#fff">${MODE_LABELS[t.mode] || t.mode}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${t.preview || 'Vorlage gespeichert'}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:2px">${Math.round(t.length / 1000)}k Zeichen</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.mode}')">Entfernen</button>
+    </div>`).join("");
+  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+async function deleteTemplate(mode) {
+  if (!confirm("Vorlage für '" + (MODE_LABELS[mode] || mode) + "' wirklich entfernen?")) return;
+  try {
+    await api("delete-template", { mode }, "POST");
+    loadTemplates();
+  } catch (e) { alert("Fehler: " + e?.message); }
+}
+window.deleteTemplate = deleteTemplate;
+
 async function deleteReport() {
   if (!_reportDetailData?.session_id) return;
   if (!confirm("Report wirklich löschen? Das kann nicht rückgängig gemacht werden.")) return;
