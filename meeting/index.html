@@ -1078,7 +1078,8 @@ async function sendMessage(text, isAutoOpener = false) {
   } finally {
     isLoading = false;
     sendBtn.disabled = false;
-    chatInput.focus();
+    // Only auto-focus chat input during live phase; in prep, agenda field is more relevant
+    if (meetingData?.phase === "live") chatInput.focus();
   }
 }
 
