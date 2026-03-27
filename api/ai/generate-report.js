@@ -33,7 +33,13 @@ export default async function handler(req, res) {
 
     // Step 1: All 4 AIs analyze the transcript
     const analysisPrompt = `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
-${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.`;
+${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
+
+WICHTIG: Beginne deine Antwort mit GENAU EINER dieser Zeilen:
+[TYPE:DESIGN] — wenn das Gespräch hauptsächlich darum geht, wie ein Dokument/Report/Template aussehen soll (Layout, Farben, Format, Stil)
+[TYPE:CONTENT] — wenn es ein normales Gespräch ist (Meeting, Brainstorm, Beratung, Diskussion, etc.)
+
+Danach folgt deine Analyse.`;
 
     // Run all 4 analyses in parallel for speed
     await supabase.from('conversation_outputs')
