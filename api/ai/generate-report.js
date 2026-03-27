@@ -31,8 +31,31 @@ export default async function handler(req, res) {
   try {
     const modeHint = session_mode ? `Session-Modus: "${session_mode}".` : '';
 
-    // Step 1: All 4 AIs analyze the transcript
-    const analysisPrompt = `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
+    // Step 0: Load user's saved template FIRST (determines the whole flow)
+    let savedTemplate = null;
+    try {
+      const { data: sess } = await supabase
+        .from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+      if (sess?.user_id) {
+        const { data: profile } = await supabase
+          .from('user_profile').select('report_templates').eq('id', sess.user_id).maybeSingle();
+        const templates = profile?.report_templates || {};
+        // Try mode-specific template first, then fall back to 'default'
+        savedTemplate = templates[session_mode || 'default'] || templates['default'] || null;
+      }
+    } catch (e) {
+      console.error('[report] template load failed:', e?.message);
+    }
+
+    const hasTemplate = !!savedTemplate;
+    console.log(`[report] ${session_id} — hasTemplate=${hasTemplate}, mode=${session_mode || 'default'}, templateLength=${savedTemplate?.length || 0}`);
+
+    // Step 1: All 4 AIs analyze the transcript (content only, no design classification if template exists)
+    const analysisPrompt = hasTemplate
+      ? `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
+${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
+Fokussiere dich NUR auf den INHALT — Fakten, Entscheidungen, Ergebnisse, Action Items. Ignoriere Design-Diskussionen.`
+      : `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
 ${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
 
 WICHTIG: Beginne deine Antwort mit GENAU EINER dieser Zeilen:
@@ -43,7 +66,7 @@ Danach folgt deine Analyse.`;
 
     // Run all 4 analyses in parallel for speed
     await supabase.from('conversation_outputs')
-      .update({ report_progress: 10, report_status_detail: 'Analysiere mit 4 KIs parallel...' })
+      .update({ report_progress: 10, report_status_detail: hasTemplate ? 'Analysiere Inhalt...' : 'Analysiere mit 4 KIs parallel...' })
       .eq('session_id', session_id);
 
     const analysisResults = await Promise.allSettled(
@@ -74,22 +97,6 @@ Danach folgt deine Analyse.`;
         .eq('session_id', session_id);
       return res.status(500).json({ error: 'No providers available' });
     }
-
-    // Step 2: Load user's saved template (if any)
-    let savedTemplate = null;
-    try {
-      const { data: sess } = await supabase
-        .from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
-      if (sess?.user_id) {
-        const { data: profile } = await supabase
-          .from('user_profile').select('report_templates').eq('id', sess.user_id).maybeSingle();
-        savedTemplate = profile?.report_templates?.[session_mode || 'default'] || null;
-      }
-    } catch (e) {
-      console.error('[report] template load failed:', e?.message);
-    }
-
-    const hasTemplate = !!savedTemplate;
 
     // Step 3: Generate the final HTML report
     await supabase.from('conversation_outputs')

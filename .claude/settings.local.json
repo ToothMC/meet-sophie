@@ -107,7 +107,8 @@
       "Bash(curl -s \"https://meet-sophie-git-feat-multi-ai-router-michaels-projects-674b8d24.vercel.app/api/ai/tools\" -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"tool\"\"\"\":\"\"\"\"search\"\"\"\",\"\"\"\"params\"\"\"\":{\"\"\"\"query\"\"\"\":\"\"\"\"Consense GmbH Aachen\"\"\"\"}}')",
       "Bash(business-style\", the report will reflect that instead of defaulting to gold.:*)",
       "Bash(pandoc /Users/michaelhammer/Desktop/meeting_report_template_elegant_dina4.docx -o /tmp/docx_content.md)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(gh api:*)"
     ]
   },
   "hooks": {
