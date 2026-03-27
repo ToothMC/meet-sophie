@@ -497,7 +497,7 @@ window.copyReportDetail = copyReportDetail;
 async function saveReportAsTemplate() {
   if (!_reportDetailData?.report_html) return;
   try {
-    await api("save-report-template", "POST", { mode: "default", report_html: _reportDetailData.report_html });
+    await api("save-report-template", { mode: "default", report_html: _reportDetailData.report_html }, "POST");
     alert("Als Vorlage gespeichert!");
   } catch (e) { alert("Fehler: " + e?.message); }
 }
