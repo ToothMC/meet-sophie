@@ -417,6 +417,7 @@ function toggleSection(id) {
   // Load data on first open
   if (id === "sectionSources" && !document.getElementById(id).classList.contains("collapsed")) loadSources();
   if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
+  if (id === "sectionTemplates" && !document.getElementById(id).classList.contains("collapsed")) loadTemplates();
 }
 window.toggleSection = toggleSection;
 
