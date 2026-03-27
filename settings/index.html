@@ -457,9 +457,15 @@ async function loadAccount() {
       planEl.textContent = sub.plan + (active ? "" : " (inaktiv)");
       planEl.className = "badge " + (active ? "badge-active" : "badge-decoupled");
       planEl.style.display = "";
+    } else {
+      planEl.textContent = "Free";
+      planEl.className = "badge badge-decoupled";
+      planEl.style.display = "";
     }
+    // Show manage button for active subscribers, pricing link for others
+    manageBtn.style.display = "";
     if (active) {
-      manageBtn.style.display = "";
+      manageBtn.textContent = "Abo verwalten";
       manageBtn.onclick = async () => {
         manageBtn.disabled = true;
         try {
@@ -472,8 +478,11 @@ async function loadAccount() {
         } catch (e) { alert("Fehler: " + e?.message); }
         manageBtn.disabled = false;
       };
+    } else {
+      manageBtn.textContent = "Plan wählen";
+      manageBtn.onclick = () => { window.location.href = "/pricing"; };
     }
-  } catch {}
+  } catch (e) { console.error("[account] sub load failed:", e); }
 }
 
 // Logout
