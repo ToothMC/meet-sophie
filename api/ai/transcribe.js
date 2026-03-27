@@ -71,7 +71,47 @@ export default async function handler(req, res) {
 
           const result = await whisperRes.json();
           console.log(`[transcribe] OK: ${(result.text || '').slice(0, 80)}...`);
-          res.status(200).json({ text: result.text || '' });
+
+          // Deduct usage: estimate audio duration from file size
+          // ~16KB/s for webm opus, ~32KB/s for mp4 → conservative estimate
+          const estimatedSeconds = Math.ceil(fileBuffer.length / 16000);
+          try {
+            // Deduct transcription time from user's usage (same as voice seconds)
+            const { data: usage } = await supabase
+              .from('user_usage')
+              .select('free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (usage) {
+              const freeRemaining = Math.max(0, (usage.free_seconds_total || 0) - (usage.free_seconds_used || 0));
+              const paidRemaining = Math.max(0, (usage.paid_seconds_total || 0) - (usage.paid_seconds_used || 0));
+
+              const updates = { updated_at: new Date().toISOString() };
+              let toDeduct = estimatedSeconds;
+
+              if (freeRemaining > 0) {
+                const fromFree = Math.min(toDeduct, freeRemaining);
+                updates.free_seconds_used = (usage.free_seconds_used || 0) + fromFree;
+                toDeduct -= fromFree;
+              }
+              if (toDeduct > 0 && paidRemaining > 0) {
+                const fromPaid = Math.min(toDeduct, paidRemaining);
+                updates.paid_seconds_used = (usage.paid_seconds_used || 0) + fromPaid;
+                toDeduct -= fromPaid;
+              }
+              if (toDeduct > 0 && (usage.topup_seconds_balance || 0) > 0) {
+                updates.topup_seconds_balance = Math.max(0, (usage.topup_seconds_balance || 0) - toDeduct);
+              }
+
+              await supabase.from('user_usage').update(updates).eq('user_id', user.id);
+              console.log(`[transcribe] Usage deducted: ~${estimatedSeconds}s for ${(fileBuffer.length / 1024).toFixed(0)}KB audio`);
+            }
+          } catch (usageErr) {
+            console.error('[transcribe] Usage deduction failed:', usageErr.message);
+          }
+
+          res.status(200).json({ text: result.text || '', seconds_used: estimatedSeconds });
           resolve();
         } catch (e) {
           console.error('[transcribe] Error:', e.message);
