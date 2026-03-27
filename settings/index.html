@@ -533,22 +533,39 @@ async function loadReports() {
   try {
     const data = await api("reports");
     if (!data.reports?.length) { list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return; }
-    list.innerHTML = data.reports.map(r => {
-      const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
-      const source = r.source || 'talk';
-      const sourceBadge = source === 'meeting'
-        ? '<span class="badge badge-decoupled">Meeting</span>'
-        : (r.report_style ? `<span class="badge badge-active">${r.report_style}</span>` : '');
-      return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
-            <div style="font-size:11px;color:#a09080;margin-top:2px">${date}</div>
+
+    // Group by category
+    const groups = { meeting: [], salespitch: [], brainstorm: [], talk: [] };
+    const groupLabels = { meeting: "Meeting", salespitch: "Sales Pitch", brainstorm: "Brainstorming", talk: "Gespräche" };
+    for (const r of data.reports) {
+      const cat = r.source === 'meeting' ? 'meeting'
+        : (r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
+        : r.report_style === 'brainstorm' ? 'brainstorm'
+        : 'talk';
+      groups[cat].push(r);
+    }
+
+    let html = '';
+    for (const [cat, reports] of Object.entries(groups)) {
+      if (!reports.length) continue;
+      html += `<div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin-bottom:8px">${groupLabels[cat]} (${reports.length})</div>`;
+      html += reports.slice(0, 5).map(r => {
+        const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+        const source = r.source || 'talk';
+        return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
+            </div>
+            <div style="font-size:11px;color:#a09080">${date}</div>
           </div>
-          ${sourceBadge}
-        </div>
-      </div>`;
-    }).join("");
+        </div>`;
+      }).join('');
+      if (reports.length > 5) html += `<div style="font-size:11px;color:#a09080;text-align:center;padding:4px">+ ${reports.length - 5} weitere</div>`;
+      html += '</div>';
+    }
+    list.innerHTML = html;
   } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
 }
 
