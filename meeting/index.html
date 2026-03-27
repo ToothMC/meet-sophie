@@ -1117,20 +1117,15 @@ async function generateSummary() {
   appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
 
   try {
-    // Build full transcript: voice (primary) + chat (secondary)
+    // Voice transcript ONLY — chat is NOT part of the report
     const voiceText = voiceTranscript
       .filter(m => m.text && m.text.trim())
       .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.text}`)
       .join("\n");
-    const chatText = chatMessages
-      .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
-      .join("\n");
-    // Voice transcript is primary, chat is fallback
-    const fullChatTranscript = [voiceText, chatText].filter(Boolean).join("\n");
 
-    console.log(`[meeting] transcript: voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
+    console.log(`[meeting] voice transcript: ${voiceTranscript.length} messages`);
 
-    const data = await api("summarize", { meeting_id: meetingId, chat_transcript: fullChatTranscript });
+    const data = await api("summarize", { meeting_id: meetingId, chat_transcript: voiceText });
     renderSummary(data.summary);
 
     // If backend created a report session, trigger generate-report from frontend + poll
