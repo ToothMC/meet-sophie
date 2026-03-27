@@ -713,14 +713,14 @@ async function showSetup() {
     });
   } catch { /* ignore, selector stays empty */ }
 
-  // When selecting a parent meeting, pre-fill the title
+  // When selecting a parent meeting, always update the title
   $("parentMeeting").addEventListener("change", function() {
     const titleInput = $("meetingTitle");
     if (this.value && this.selectedOptions[0]) {
       const parentTitle = this.selectedOptions[0].textContent.replace(/\s*\([^)]*\)\s*$/, '').trim();
-      if (!titleInput.value.trim()) {
-        titleInput.value = parentTitle;
-      }
+      titleInput.value = parentTitle;
+    } else {
+      titleInput.value = "";
     }
   });
 }
