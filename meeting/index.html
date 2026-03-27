@@ -717,6 +717,17 @@ async function showSetup() {
       select.appendChild(opt);
     });
   } catch { /* ignore, selector stays empty */ }
+
+  // When selecting a parent meeting, pre-fill the title
+  $("parentMeeting").addEventListener("change", function() {
+    const titleInput = $("meetingTitle");
+    if (this.value && this.selectedOptions[0]) {
+      const parentTitle = this.selectedOptions[0].textContent.replace(/\s*\([^)]*\)\s*$/, '').trim();
+      if (!titleInput.value.trim()) {
+        titleInput.value = parentTitle;
+      }
+    }
+  });
 }
 
 async function createMeeting() {
