@@ -17,6 +17,18 @@ export default async function handler(req, res) {
 
   const action = req.query?.action || '';
 
+  // ── GET: Account (profile + subscription) ──
+  if (action === 'account' && req.method === 'GET') {
+    const [profRes, subRes] = await Promise.all([
+      supabase.from('user_profile').select('preferred_name, first_name').eq('user_id', user.id).maybeSingle(),
+      supabase.from('user_subscriptions').select('is_active, status, plan').eq('user_id', user.id).maybeSingle(),
+    ]);
+    return res.status(200).json({
+      profile: profRes.data || null,
+      subscription: subRes.data || null,
+    });
+  }
+
   // ── GET: Sources ──
   if (action === 'sources' && req.method === 'GET') {
     const sources = await listSources(user.id);
