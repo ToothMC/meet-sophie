@@ -2252,15 +2252,8 @@ function captureLocation() {
 }
 
 ctaLive.addEventListener("click", async () => {
-  // 1. Get mic permission ONCE upfront — grants permission for both SpeechRecognition AND Sophie voice
-  try {
-    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (e) {
-    appendSystemMsg("⚠️ Mikrofon nicht verfügbar: " + e.message);
-    return; // Can't start meeting without mic
-  }
-
-  // 2. Start SpeechRecognition — mic permission already granted, NO second dialog
+  // ONLY SpeechRecognition here — one permission dialog
+  // getUserMedia for Sophie voice happens later in connectSophieVoice (separate user click)
   startSpeechRecognition();
   appendSystemMsg("🎙️ Spracherkennung aktiv");
 
