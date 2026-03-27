@@ -584,10 +584,7 @@ function applyI18n() {
   $("newMeetingBtn").textContent = "+ " + t("newMeeting");
   $("summaryTitle").textContent = t("summary");
   // Role options
-  const roleSelect = $("sophieRole");
-  roleSelect.options[0].text = t("coThink");
-  roleSelect.options[1].text = t("prepare");
-  roleSelect.options[2].text = t("document");
+  // Role selector removed — Sophie is always co-think
   // Type options
   const typeSelect = $("meetingType");
   typeSelect.options[0].text = t("team");
