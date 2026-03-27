@@ -170,7 +170,7 @@ export default async function handler(req, res) {
       const templates = profile?.report_templates || {};
       delete templates[mode];
 
-      await supabase.from('user_profile').update({ report_templates: templates }).eq('id', user.id);
+      await supabase.from('user_profile').update({ report_templates: templates }).eq('user_id', user.id);
       return res.status(200).json({ ok: true, deleted: mode });
     }
 
