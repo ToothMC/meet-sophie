@@ -403,6 +403,7 @@ function toggleSection(id) {
   document.getElementById(id).classList.toggle("collapsed");
   // Load data on first open
   if (id === "sectionSources" && !document.getElementById(id).classList.contains("collapsed")) loadSources();
+  if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
 }
 window.toggleSection = toggleSection;
 
