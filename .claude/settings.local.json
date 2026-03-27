@@ -108,7 +108,8 @@
       "Bash(business-style\", the report will reflect that instead of defaulting to gold.:*)",
       "Bash(pandoc /Users/michaelhammer/Desktop/meeting_report_template_elegant_dina4.docx -o /tmp/docx_content.md)",
       "Read(//tmp/**)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(ls /Users/michaelhammer/.claude/projects/*/memory/)"
     ]
   },
   "hooks": {
