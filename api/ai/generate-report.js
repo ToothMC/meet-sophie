@@ -138,19 +138,24 @@ ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
 
 Erstelle einen REPORT als reines HTML (nur den <body> Inhalt, kein <html>/<head>).
 
-DU HAST VÖLLIGE KREATIVE FREIHEIT beim Design. Es gibt KEINE vorgegebenen Farben, KEINE vorgegebene Struktur, KEIN vorgegebenes Layout. Du entscheidest alles basierend auf dem Gesprächsinhalt.
+WICHTIGSTE REGEL — UMSETZEN, NICHT BESCHREIBEN:
+Wenn im Gespräch über Design, Layout, Farben, Formate oder Vorlagen gesprochen wurde:
+→ ERSTELLE den Report DIREKT in diesem Design. WENDE die besprochenen Designwünsche AN.
+→ Berichte NICHT über die Designwünsche. Der Report IST das Ergebnis, nicht eine Zusammenfassung der Anforderungen.
+→ Beispiel: User sagt "schwarz-weiß, DIN A4, Meeting-Protokoll" → Der Report IST ein schwarz-weißes Meeting-Protokoll, nicht ein Report ÜBER diese Anforderung.
+
+DU HAST VÖLLIGE KREATIVE FREIHEIT. Keine vorgegebenen Farben, keine vorgegebene Struktur. Du gestaltest basierend auf dem Gesprächsinhalt.
 
 REGELN:
 - NUR Fakten verwenden die mindestens 2 KIs bestätigen
 - Der INHALT bestimmt ALLES — Form, Farben, Layout, Struktur
-- Lies das Gespräch genau: wenn der User Designwünsche äußert (Farben, Stil, Format), setze diese 1:1 um
 - Nutze moderne CSS (inline styles)
 - Schriftart: system font stack
 - Responsive: max-width 100%, keine festen Pixel-Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
-- Du bist KEIN Produkt einer bestimmten Marke. Bringe KEIN eigenes Branding, KEINEN eigenen Stil, KEINE Signature-Farben mit. Starte neutral und gestalte NUR basierend auf dem was im Gespräch besprochen wurde.
+- Bringe KEIN eigenes Branding mit. Starte neutral und gestalte NUR basierend auf dem Gespräch.
 
-FORM-IDEEN (nicht vorgeschrieben, nur Inspiration):
+FORM-IDEEN (nur Inspiration):
 - Routenplanung → Timeline/Stationen
 - Sales Pitch → Score-Card mit Balken
 - Meeting → Protokoll mit Beschlüssen + Action Items
