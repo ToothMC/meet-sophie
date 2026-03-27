@@ -763,12 +763,11 @@ async function createMeeting() {
   btn.disabled = true;
 
   try {
-    const parentVal = $("parentMeeting").value || null;
     const data = await api("create", {
-      meeting_type: $("meetingType").value,
+      meeting_type: selectedMeetingType,
       sophie_role: "co-think",
       title: $("meetingTitle").value.trim() || null,
-      parent_meeting_id: parentVal,
+      parent_meeting_id: selectedParentId,
     });
 
     meetingId = data.meeting.id;
