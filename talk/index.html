@@ -2458,6 +2458,10 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   postCallTranscript.textContent = transcriptText || t("no_transcript");
 
+  // Show/hide template + regenerate buttons (only for smart HTML reports)
+  if (saveTemplateBtn) saveTemplateBtn.style.display = reportHtml ? "" : "none";
+  if (regenerateReportBtn) regenerateReportBtn.style.display = reportHtml ? "" : "none";
+
   // No style pills — AI decides the format
   const styleBar = document.getElementById("reportStyleBar");
   if (styleBar) styleBar.style.display = "none";
