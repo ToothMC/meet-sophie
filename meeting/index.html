@@ -350,20 +350,20 @@ body{
     </div>
 
     <label id="lblType">Meeting Type</label>
-    <select id="meetingType">
-      <option value="team">Team</option>
-      <option value="client">Client</option>
-      <option value="strategy">Strategy</option>
-      <option value="other">Other</option>
-    </select>
+    <div id="meetingTypePills" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+      <button type="button" class="type-pill active" data-value="team">Team</button>
+      <button type="button" class="type-pill" data-value="client">Client</button>
+      <button type="button" class="type-pill" data-value="strategy">Strategy</button>
+      <button type="button" class="type-pill" data-value="other">Other</button>
+    </div>
 
     <label id="lblTitle">Title (optional)</label>
     <input type="text" id="meetingTitle" placeholder="e.g. Q2 Planning" />
 
     <label id="lblParent">Previous Meeting (optional)</label>
-    <select id="parentMeeting">
-      <option value="">— None —</option>
-    </select>
+    <div id="parentMeetingList" style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:13px;color:#a09080;padding:8px 0">Laden...</div>
+    </div>
 
     <button class="btn-primary" id="createBtn">Start Preparation</button>
   </div>
