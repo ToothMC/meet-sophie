@@ -503,6 +503,17 @@ async function saveReportAsTemplate() {
 }
 window.saveReportAsTemplate = saveReportAsTemplate;
 
+async function deleteReport() {
+  if (!_reportDetailData?.session_id) return;
+  if (!confirm("Report wirklich löschen? Das kann nicht rückgängig gemacht werden.")) return;
+  try {
+    await api("delete-report", "POST", { session_id: _reportDetailData.session_id });
+    closeReportDetail();
+    loadReports();
+  } catch (e) { alert("Fehler: " + e?.message); }
+}
+window.deleteReport = deleteReport;
+
 // ── Section 4: Provider-Status ──
 async function loadHealth() {
   const grid = document.getElementById("healthGrid");
