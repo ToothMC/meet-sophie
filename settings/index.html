@@ -547,9 +547,15 @@ async function loadReports() {
     let html = '';
     for (const [cat, reports] of Object.entries(groups)) {
       if (!reports.length) continue;
-      html += `<div style="margin-bottom:16px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin-bottom:8px">${groupLabels[cat]} (${reports.length})</div>`;
-      html += reports.slice(0, 5).map(r => {
+      const groupId = 'reportGroup_' + cat;
+      html += `<div style="margin-bottom:8px;border:1px solid #ede8e2;border-radius:12px;overflow:hidden">
+        <div onclick="document.getElementById('${groupId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;background:#fff">
+          <span style="font-size:10px;color:#c4a882;transition:transform .2s">&#9660;</span>
+          <span style="font-size:12px;font-weight:600;color:#2a2420;flex:1">${groupLabels[cat]}</span>
+          <span style="font-size:11px;color:#a09080">${reports.length}</span>
+        </div>
+        <div id="${groupId}" class="hidden" style="padding:0 14px 12px">`;
+      html += reports.slice(0, 10).map(r => {
         const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
         const source = r.source || 'talk';
         return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
@@ -561,8 +567,8 @@ async function loadReports() {
           </div>
         </div>`;
       }).join('');
-      if (reports.length > 5) html += `<div style="font-size:11px;color:#a09080;text-align:center;padding:4px">+ ${reports.length - 5} weitere</div>`;
-      html += '</div>';
+      if (reports.length > 10) html += `<div style="font-size:11px;color:#a09080;text-align:center;padding:4px">+ ${reports.length - 10} weitere</div>`;
+      html += '</div></div>';
     }
     list.innerHTML = html;
   } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
