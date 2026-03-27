@@ -139,9 +139,13 @@ ${analysesBlock}`;
 
     } else {
       // ── CREATIVE PATH: No template → AI designs from scratch with full creative freedom ──
-      // Detect if conversation was about design/layout/templates
-      const designKeywords = /vorlage|template|layout|design|branding|protokoll|format|din.?a4|schwarz.?wei|farb|schrift|typografi/i;
-      const isDesignConversation = analyses.some(a => designKeywords.test(a.text));
+      // AIs classify the conversation type via [TYPE:DESIGN] or [TYPE:CONTENT] prefix
+      const designVotes = analyses.filter(a => /^\[TYPE:DESIGN\]/i.test(a.text.trim())).length;
+      const isDesignConversation = designVotes >= 2; // majority of AIs agree
+      // Strip the type prefix from analyses for the report prompt
+      for (const a of analyses) {
+        a.text = a.text.replace(/^\[TYPE:(DESIGN|CONTENT)\]\s*/i, '').trim();
+      }
 
       if (isDesignConversation) {
         // DESIGN-MODE: User discussed how a report/document should look
