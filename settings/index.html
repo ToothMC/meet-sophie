@@ -123,7 +123,7 @@ main{max-width:520px;margin:0 auto;padding:12px}
 .cost-total{
   font-size:20px;font-weight:700;margin-bottom:4px;
 }
-.cost-count{font-size:11px;color:rgba(255,255,255,.35);margin-bottom:12px}
+.cost-count{font-size:11px;color:#a09080;margin-bottom:12px}
 
 /* Source pills */
 .pill-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
@@ -160,7 +160,7 @@ main{max-width:520px;margin:0 auto;padding:12px}
 .drop-zone{
   border:2px dashed rgba(255,255,255,.12);border-radius:12px;
   padding:20px;text-align:center;margin:12px 0;
-  color:rgba(255,255,255,.35);font-size:12px;
+  color:#a09080;font-size:12px;
   cursor:pointer;transition:all .2s;
 }
 .drop-zone:hover,.drop-zone.dragover{
@@ -459,7 +459,7 @@ async function loadReports() {
         <div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:#fff">${r.title || 'Report'}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${date}</div>
+            <div style="font-size:11px;color:#a09080;margin-top:2px">${date}</div>
           </div>
           ${modeBadge}
         </div>
@@ -543,7 +543,7 @@ async function loadTemplates() {
             <span style="font-size:13px;font-weight:600;color:#fff">${label}</span>
             ${badge}
           </div>
-          <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px">${t.preview ? t.preview.slice(0, 80) + '…' : 'Vorlage aktiv'}</div>
+          <div style="font-size:11px;color:#a09080;margin-top:4px">${t.preview ? t.preview.slice(0, 80) + '…' : 'Vorlage aktiv'}</div>
         </div>
         ${action}
       </div>`;
