@@ -1906,7 +1906,7 @@ function downloadReport() {
 </body>
 </html>`;
 
-  const filename = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
+  const filename = `${datePrefix}_sophie-report_${topicSlug}.html`;
   const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
 
   // iOS Safari: blob downloads via a.click() often silently fail.
