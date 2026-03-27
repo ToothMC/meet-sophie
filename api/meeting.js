@@ -686,7 +686,7 @@ async function handleSummarize(req, res) {
     chatTranscript = (chatData || []).map(m => m.content).join("\n").trim();
   }
 
-  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, chatDB=${dbTranscript.length}, chatClient=${(body.chat_transcript||"").length}`);
+  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, transcript=${chatTranscript.length}, fromClient=${!!clientTranscript}`);
 
   // If there's no content at all, return empty summary — do NOT hallucinate
   if (!notesStr.trim() && !contextStr.trim() && !chatTranscript.trim()) {
