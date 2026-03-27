@@ -142,6 +142,29 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, mode: templateMode });
     }
 
+    // Delete a report
+    if (action === 'delete-report') {
+      const { session_id: delSessionId } = body;
+      if (!delSessionId) return res.status(400).json({ error: 'Missing session_id' });
+
+      // Verify ownership
+      const { data: sess } = await supabase
+        .from('user_sessions').select('id').eq('id', delSessionId).eq('user_id', user.id).maybeSingle();
+      if (!sess) return res.status(404).json({ error: 'Session not found' });
+
+      // Clear report fields (keep the conversation_outputs row for potential other data)
+      await supabase.from('conversation_outputs')
+        .update({
+          report_html: null, report_status: null, report_progress: null,
+          report_status_detail: null, report_providers: null, report_style: null,
+        })
+        .eq('session_id', delSessionId);
+
+      await supabase.from('user_sessions').update({ has_output: false }).eq('id', delSessionId);
+
+      return res.status(200).json({ ok: true, action: 'report_deleted' });
+    }
+
     const { sourceId } = body;
     if (!sourceId) return res.status(400).json({ error: 'Missing sourceId' });
 
