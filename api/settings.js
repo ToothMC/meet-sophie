@@ -166,7 +166,7 @@ export default async function handler(req, res) {
       if (!mode) return res.status(400).json({ error: 'Missing mode' });
 
       const { data: profile } = await supabase
-        .from('user_profile').select('report_templates').eq('id', user.id).maybeSingle();
+        .from('user_profile').select('report_templates').eq('user_id', user.id).maybeSingle();
       const templates = profile?.report_templates || {};
       delete templates[mode];
 
