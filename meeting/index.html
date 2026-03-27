@@ -1185,7 +1185,7 @@ async function generateSummary() {
         .join("\n");
     }
 
-    console.log(`[meeting] transcript sources: local=${localTranscripts.length} parts, voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
+    console.log(`[meeting] transcript sources: speech=${speechTranscript.length} segments, voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
 
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
     renderSummary(data.summary);
