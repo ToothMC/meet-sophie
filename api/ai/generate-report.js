@@ -33,6 +33,108 @@ export default async function handler(req, res) {
     const todayDate = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const dateInstruction = `Das heutige Datum ist ${todayDate}. Wandle ALLE relativen Zeitangaben (z.B. "nächste Woche", "morgen", "in 2 Tagen", "nächsten Dienstag") in konkrete Daten im Format TT.MM.JJJJ um.`;
 
+    // ══════════════════════════════════════════════════════════════════
+    // MEETING DIRECT PATH — Skip 4-AI pipeline, single AI + transcript
+    // Meetings have clear transcripts. Multi-AI consensus adds errors.
+    // ══════════════════════════════════════════════════════════════════
+    if (session_mode === 'meeting') {
+      console.log(`[report] ${session_id} — MEETING DIRECT PATH (single AI)`);
+
+      await supabase.from('conversation_outputs')
+        .update({ report_progress: 30, report_status_detail: 'Erstelle Meeting-Protokoll...' })
+        .eq('session_id', session_id);
+
+      // Load template
+      let meetingTemplate = null;
+      try {
+        const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+        if (sess?.user_id) {
+          const { data: profile } = await supabase.from('user_profile').select('report_templates').eq('user_id', sess.user_id).maybeSingle();
+          const userTemplates = profile?.report_templates || {};
+          meetingTemplate = userTemplates['meeting'] || userTemplates['default'] || null;
+        }
+      } catch (_) {}
+      if (!meetingTemplate) {
+        const { DEFAULT_TEMPLATES: DT } = await import('../../lib/report-templates.js');
+        meetingTemplate = DT?.meeting || DT?.default || null;
+      }
+
+      const meetingPrompt = `Du erstellst ein Meeting-Protokoll aus einem Voice-Transcript.
+${dateInstruction}
+
+${meetingTemplate ? `TEMPLATE (Design beibehalten, nur Textinhalte ersetzen):
+${meetingTemplate.slice(0, 8000)}
+
+` : ''}TRANSCRIPT:
+${transcript_text}
+
+REGELN:
+1. Protokoll/Erstellt von: IMMER "Sophie"
+2. NUR Informationen verwenden die WÖRTLICH im Transcript stehen
+3. KLAR UNTERSCHEIDEN:
+   - Metadaten DIESES Meetings (Datum, Ort, Uhrzeit) — nur wenn explizit über DIESES Meeting gesagt
+   - Infos über ZUKÜNFTIGE Termine → gehören in Action Items oder "Nächster Termin", NICHT in den Header
+   - "Nächstes Meeting am Mittwoch 15 Uhr in Nikosia" → Action Item, NICHT Uhrzeit/Ort dieses Meetings
+4. Wenn eine Info nicht im Transcript vorkommt → Sektion KOMPLETT ENTFERNEN (nicht "[Name]" oder "—")
+5. Teilnehmer: NUR namentlich Genannte. Unbekannte → Sektion entfernen
+6. Uhrzeit: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
+7. Ort: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
+8. NIEMALS erfinden: keine Namen, Uhrzeiten, Orte, Rollen, Fristen
+9. Leere Sektionen (keine Beschlüsse, keine Action Items) → KOMPLETT ENTFERNEN
+10. Das vollständige Gesprächsprotokoll (wörtliches Transcript) MUSS als letzte Sektion enthalten sein
+
+${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit HTML (inline CSS, system font stack, responsive). Professionelles Meeting-Protokoll-Design.'}`;
+
+      // Use strong model — Claude first, GPT-4o fallback
+      const meetingSynthProviders = [
+        { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+        { provider: 'openai', model: 'gpt-4o' },
+      ];
+
+      let reportHtml = null;
+      for (const synth of meetingSynthProviders) {
+        try {
+          const adapter = getAdapter(synth.provider);
+          const response = await adapter.complete({
+            messages: [{ role: 'user', content: meetingPrompt }],
+            model: synth.model, maxTokens: 6000, temperature: 0.15,
+          });
+          const text = (response.content || '').trim();
+          reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
+          if (reportHtml.length > 100) {
+            console.log(`[report] ${session_id} — meeting report via ${synth.provider} (${reportHtml.length} chars)`);
+            break;
+          }
+          reportHtml = null;
+        } catch (e) {
+          console.error(`[report] meeting ${synth.provider} failed:`, e?.message);
+        }
+      }
+
+      if (reportHtml) {
+        const titleMatch = reportHtml.match(/<(?:h1|h2)[^>]*>([^<]+)/i);
+        const title = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Meeting Report';
+        await supabase.from('conversation_outputs').update({
+          report_html: reportHtml,
+          report_status: 'done',
+          report_progress: 100,
+          report_title: title,
+          report_providers: ['meeting-direct'],
+          report_status_detail: null,
+        }).eq('session_id', session_id);
+      } else {
+        await supabase.from('conversation_outputs').update({
+          report_status: 'failed', report_progress: 100,
+          report_status_detail: 'Meeting-Report Generation fehlgeschlagen',
+        }).eq('session_id', session_id);
+      }
+      return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // STANDARD PATH — 4-AI parallel analysis + synthesis (Talk, Brainstorm, etc.)
+    // ══════════════════════════════════════════════════════════════════
+
     // Step 0: Load template — User template > System template
     const mode = session_mode || 'default';
     let savedTemplate = null;
@@ -62,21 +164,39 @@ export default async function handler(req, res) {
     console.log(`[report] ${session_id} — template=${templateSource}, mode=${mode}, len=${savedTemplate?.length || 0}`);
 
     // Step 1: All 4 AIs analyze the transcript (content only, no design classification if template exists)
+    const structuredAnalysisInstructions = `Analysiere dieses Gespräch STRUKTURIERT. ${dateInstruction}
+${modeHint}
+
+Antworte in der Sprache des Transcripts mit EXAKT diesen Sektionen:
+
+TITEL: [1 Satz — worum ging es]
+TEILNEHMER: [Nur Namen die EXPLIZIT im Gespräch genannt werden. Wenn keine Namen fallen: "Nicht genannt"]
+BESPROCHENE THEMEN:
+- [Thema 1]: [Was dazu gesagt wurde]
+- [Thema 2]: [Was dazu gesagt wurde]
+BESCHLÜSSE:
+- [Nur wenn explizit beschlossen/entschieden wurde, mit exaktem Wortlaut]
+ACTION ITEMS:
+- [Aufgabe] → [Verantwortlicher, nur wenn genannt] → [Frist, nur wenn genannt]
+NÄCHSTES MEETING: [Datum, Uhrzeit, Ort — NUR wenn explizit genannt. Sonst: "Nicht vereinbart"]
+OFFENE PUNKTE:
+- [Themen die offen blieben]
+
+KRITISCHE REGELN:
+- Schreibe NUR was WÖRTLICH gesagt wurde. Erfinde NICHTS.
+- Unterscheide klar: Infos über DIESES Meeting vs. Infos über ZUKÜNFTIGE Meetings/Termine
+- "Nächstes Meeting am Mittwoch 15 Uhr" ist NICHT die Uhrzeit dieses Meetings — es ist ein zukünftiger Termin
+- Wenn etwas nicht gesagt wurde, schreibe "Nicht genannt" — NIEMALS erfinden
+- Keine Interpretation, keine Annahmen, keine Schlussfolgerungen`;
+
     const analysisPrompt = hasTemplate
-      ? `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
-${modeHint} ${dateInstruction}
-Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
-Fokussiere dich NUR auf den INHALT — Fakten, Entscheidungen, Ergebnisse, Action Items, genannte Personen, Termine, Orte.
-Ignoriere Design-Diskussionen. Erfinde KEINE Namen, Zeiten oder Orte die nicht explizit genannt werden.`
-      : `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
-${modeHint} ${dateInstruction}
-Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
+      ? structuredAnalysisInstructions
+      : `${structuredAnalysisInstructions}
 
-WICHTIG: Beginne deine Antwort mit GENAU EINER dieser Zeilen:
-[TYPE:DESIGN] — wenn das Gespräch hauptsächlich darum geht, wie ein Dokument/Report/Template aussehen soll (Layout, Farben, Format, Stil)
-[TYPE:CONTENT] — wenn es ein normales Gespräch ist (Meeting, Brainstorm, Beratung, Diskussion, etc.)
-
-Danach folgt deine Analyse.`;
+ZUSÄTZLICH: Beginne deine Antwort mit GENAU EINER dieser Zeilen:
+[TYPE:DESIGN] — wenn das Gespräch hauptsächlich darum geht, wie ein Dokument/Report/Template aussehen soll
+[TYPE:CONTENT] — wenn es ein normales Gespräch ist (Meeting, Brainstorm, Beratung, etc.)
+Danach folgt deine strukturierte Analyse.`;
 
     // Run all 4 analyses in parallel for speed
     await supabase.from('conversation_outputs')
@@ -146,14 +266,20 @@ AUFGABE:
 5. Sprache: gleich wie die Analysen
 6. "Protokoll" ist IMMER "Sophie" (die KI-Assistentin die das Meeting protokolliert hat)
 
+KRITISCH — ZUORDNUNG:
+- Die Analysen haben eine klare Struktur (TITEL, TEILNEHMER, BESCHLÜSSE, NÄCHSTES MEETING, etc.)
+- "NÄCHSTES MEETING" Infos (Datum, Uhrzeit, Ort) sind NICHT die Metadaten dieses Meetings!
+  → Sie gehören in die Action Items oder einen eigenen Abschnitt "Nächster Termin"
+- "Uhrzeit" im Template-Header: NUR verwenden wenn die Analysen eine Uhrzeit für DIESES Meeting nennen
+- "Ort" im Template-Header: NUR verwenden wenn die Analysen einen Ort für DIESES Meeting nennen
+
 KRITISCH — NICHT HALLUZINIEREN:
 - Wenn eine Information NICHT in den Analysen steht, ENTFERNE die Sektion komplett aus dem HTML
 - KEINE erfundenen Namen, Uhrzeiten, Orte, Rollen oder Fristen
 - Wenn keine Teilnehmer namentlich genannt werden: Sektion "Teilnehmer" ENTFERNEN
-- Wenn keine Uhrzeit genannt wird: "Uhrzeit" Feld ENTFERNEN
+- Wenn keine Uhrzeit für DIESES Meeting genannt wird: "Uhrzeit" Feld ENTFERNEN
 - Wenn keine Beschlüsse gefasst wurden: "Beschlüsse" Sektion ENTFERNEN
 - Wenn keine Action Items existieren: "Action Items" Sektion ENTFERNEN
-- Wenn keine Risiken genannt wurden: "Risiken" Sektion ENTFERNEN
 - NIEMALS Platzhalter wie [Name], [Rolle], [00:00], — oder "Nicht spezifiziert" im Output
 - Lieber eine Sektion weglassen als sie mit erfundenen Daten füllen
 
