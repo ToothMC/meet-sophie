@@ -604,11 +604,12 @@ function applyI18n() {
   // Role options
   // Role selector removed — Sophie is always co-think
   // Type options
-  const typeSelect = $("meetingType");
-  typeSelect.options[0].text = t("team");
-  typeSelect.options[1].text = t("client");
-  typeSelect.options[2].text = t("strategy");
-  typeSelect.options[3].text = t("other");
+  // Meeting type pills i18n
+  const typePills = $("meetingTypePills")?.querySelectorAll(".type-pill");
+  if (typePills) {
+    const types = ["team", "client", "strategy", "other"];
+    typePills.forEach((p, i) => { if (types[i]) p.textContent = t(types[i]); });
+  }
 }
 
 // ---------------------------------------------------------------------------
