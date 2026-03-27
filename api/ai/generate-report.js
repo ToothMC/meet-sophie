@@ -113,20 +113,25 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
 
       if (reportHtml) {
         const titleMatch = reportHtml.match(/<(?:h1|h2)[^>]*>([^<]+)/i);
-        const title = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Meeting Report';
-        await supabase.from('conversation_outputs').update({
+        const reportTitle = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Meeting Report';
+        const { error: saveErr } = await supabase.from('conversation_outputs').update({
           report_html: reportHtml,
           report_status: 'done',
           report_progress: 100,
-          report_title: title,
+          title: reportTitle,
           report_providers: ['meeting-direct'],
           report_status_detail: null,
         }).eq('session_id', session_id);
+        if (saveErr) console.error(`[report] meeting DB save failed:`, saveErr.message);
+
+        await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
+        console.log(`[report] Meeting done: ${session_id} — ${reportHtml.length} chars HTML`);
       } else {
-        await supabase.from('conversation_outputs').update({
+        const { error: failErr } = await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
           report_status_detail: 'Meeting-Report Generation fehlgeschlagen',
         }).eq('session_id', session_id);
+        if (failErr) console.error(`[report] meeting DB fail-update failed:`, failErr.message);
       }
       return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
     }
