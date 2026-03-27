@@ -117,23 +117,33 @@ Danach folgt deine Analyse.`;
 
     if (hasTemplate) {
       // ── FAST PATH: Template exists → cheap model fills in content ──
+      // Pass full template (up to 8000 chars to stay within context limits)
+      const templateHtml = savedTemplate.length > 8000 ? savedTemplate.slice(0, 8000) : savedTemplate;
+
       htmlPrompt = `Du füllst ein bestehendes Report-Template mit neuem Inhalt.
 
-Der User hat dieses HTML-Layout als Vorlage gespeichert. Behalte die EXAKTE Struktur, CSS-Styles, Farben und Design-Elemente bei.
-Ersetze NUR den Textinhalt mit den Fakten aus den Analysen unten.
+Der User hat dieses HTML-Layout als SEINE Vorlage gespeichert. Das Design ist HEILIG — ändere es NICHT.
 
-REGELN:
-- Behalte ALLE HTML-Tags, CSS-Klassen, Styles und Struktur des Templates EXAKT bei
-- NUR Fakten verwenden die mindestens 2 KIs bestätigen
-- Wenn das Template Sektionen hat die für den neuen Inhalt nicht passen, entferne sie
-- Wenn neue Sektionen nötig sind, erstelle sie IM SELBEN Stil wie das Template
-- Schreibe in der gleichen Sprache wie die Analysen
-- Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
+AUFGABE:
+1. Behalte die EXAKTE HTML-Struktur, ALLE CSS-Styles, Farben, Schriften und Design-Elemente bei
+2. Ersetze NUR die Textinhalte (Platzhalter, Beispiel-Texte) mit den echten Fakten aus den Analysen
+3. Passe die Anzahl der Sektionen/Zeilen an den tatsächlichen Inhalt an (mehr oder weniger Rows je nach Bedarf)
+4. Neue Sektionen: im EXAKT SELBEN Stil wie bestehende Sektionen im Template
+5. Sprache: gleich wie die Analysen
 
-TEMPLATE:
-${savedTemplate.slice(0, 4000)}
+VERBOTEN:
+- Design ändern
+- Farben ändern
+- Schriften ändern
+- Layout-Struktur ändern
+- Eigene Design-Elemente hinzufügen
 
-DIE ${analyses.length} ANALYSEN:
+Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
+
+DAS TEMPLATE DES USERS:
+${templateHtml}
+
+DIE ${analyses.length} ANALYSEN (NUR INHALT):
 
 ${analysesBlock}`;
 
