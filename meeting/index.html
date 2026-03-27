@@ -836,6 +836,15 @@ async function createMeeting() {
 // Load meeting
 // ---------------------------------------------------------------------------
 async function loadMeeting(id) {
+  // Reset all transcript state from previous meetings
+  speechTranscript.length = 0;
+  voiceTranscript.length = 0;
+  chatMessages.length = 0;
+  userTranscriptBuffer.clear();
+  partialAssistant = "";
+  lastAssistantFinal = "";
+  audioChunks = [];
+
   setupScreen.classList.add("hidden");
   historyScreen.classList.add("hidden");
   meetingArea.classList.add("active");
