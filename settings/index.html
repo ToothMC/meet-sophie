@@ -72,7 +72,7 @@ main{max-width:520px;margin:0 auto;padding:12px}
   padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;
   cursor:pointer;font-family:inherit;border:none;transition:all .15s;
 }
-.btn-primary{background:#2a2420;color:#fff}
+.btn-primary{background:#2a2420;color:#2a2420}
 .btn-primary:hover{opacity:.85}
 .btn-secondary{
   background:rgba(0,0,0,.04);border:1px solid #ede8e2;
@@ -154,7 +154,7 @@ main{max-width:520px;margin:0 auto;padding:12px}
   background:rgba(0,0,0,.05);border:1px solid rgba(255,255,255,.15);
   color:#7a6a5a;cursor:pointer;font-family:inherit;
 }
-.prompt-box .copy-btn:hover{color:#fff}
+.prompt-box .copy-btn:hover{color:#2a2420}
 
 /* File upload drop zone */
 .drop-zone{
@@ -316,7 +316,7 @@ main{max-width:520px;margin:0 auto;padding:12px}
       <div id="reportDetailOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.85);overflow-y:auto;padding:20px">
         <div style="max-width:600px;margin:0 auto">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3 id="reportDetailTitle" style="font-size:15px;color:#fff;margin:0"></h3>
+            <h3 id="reportDetailTitle" style="font-size:15px;color:#2a2420;margin:0"></h3>
             <button onclick="closeReportDetail()" style="background:none;border:none;color:#a09080;font-size:20px;cursor:pointer">&times;</button>
           </div>
           <div id="reportDetailContent" style="background:#fff;border-radius:12px;padding:16px;overflow:hidden;color:#1a1a1a"></div>
@@ -458,7 +458,7 @@ async function loadReports() {
       return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id}')">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:#fff">${r.title || 'Report'}</div>
+            <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
             <div style="font-size:11px;color:#a09080;margin-top:2px">${date}</div>
           </div>
           ${modeBadge}
@@ -540,7 +540,7 @@ async function loadTemplates() {
       return `<div class="card" style="display:flex;align-items:center;gap:10px;">
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:13px;font-weight:600;color:#fff">${label}</span>
+            <span style="font-size:13px;font-weight:600;color:#2a2420">${label}</span>
             ${badge}
           </div>
           <div style="font-size:11px;color:#a09080;margin-top:4px">${t.preview ? t.preview.slice(0, 80) + '…' : 'Vorlage aktiv'}</div>
