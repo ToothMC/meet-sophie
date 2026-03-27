@@ -31,24 +31,33 @@ export default async function handler(req, res) {
   try {
     const modeHint = session_mode ? `Session-Modus: "${session_mode}".` : '';
 
-    // Step 0: Load user's saved template FIRST (determines the whole flow)
+    // Step 0: Load template — User template > System template
+    const mode = session_mode || 'default';
     let savedTemplate = null;
+    let templateSource = 'none';
     try {
       const { data: sess } = await supabase
         .from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
       if (sess?.user_id) {
         const { data: profile } = await supabase
           .from('user_profile').select('report_templates').eq('user_id', sess.user_id).maybeSingle();
-        const templates = profile?.report_templates || {};
-        // Try mode-specific template first, then fall back to 'default'
-        savedTemplate = templates[session_mode || 'default'] || templates['default'] || null;
+        const userTemplates = profile?.report_templates || {};
+        // User template for this mode? Then for 'default'?
+        if (userTemplates[mode]) { savedTemplate = userTemplates[mode]; templateSource = 'user'; }
+        else if (userTemplates['default']) { savedTemplate = userTemplates['default']; templateSource = 'user-default'; }
       }
     } catch (e) {
-      console.error('[report] template load failed:', e?.message);
+      console.error('[report] user template load failed:', e?.message);
+    }
+
+    // Fall back to system template if no user template
+    if (!savedTemplate) {
+      savedTemplate = DEFAULT_TEMPLATES[mode] || DEFAULT_TEMPLATES['default'] || null;
+      if (savedTemplate) templateSource = 'system';
     }
 
     const hasTemplate = !!savedTemplate;
-    console.log(`[report] ${session_id} — hasTemplate=${hasTemplate}, mode=${session_mode || 'default'}, templateLength=${savedTemplate?.length || 0}`);
+    console.log(`[report] ${session_id} — template=${templateSource}, mode=${mode}, len=${savedTemplate?.length || 0}`);
 
     // Step 1: All 4 AIs analyze the transcript (content only, no design classification if template exists)
     const analysisPrompt = hasTemplate
