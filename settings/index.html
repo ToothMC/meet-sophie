@@ -232,6 +232,24 @@ main{max-width:520px;margin:0 auto;padding:12px}
 
 <main id="mainContent" class="hidden">
 
+  <!-- Section: Account -->
+  <div class="section" id="sectionAccount">
+    <div class="section-body" style="padding-top:16px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#c4a882,#a08060);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff" id="accountAvatar">?</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:600;color:#2a2420" id="accountName">—</div>
+          <div style="font-size:12px;color:#a09080" id="accountEmail">—</div>
+        </div>
+        <span class="badge badge-active" id="accountPlan" style="display:none">—</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" id="manageSubBtn" style="display:none">Abo verwalten</button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn2">Abmelden</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Section 1: KI-Import -->
   <div class="section" id="sectionImport">
     <div class="section-toggle" onclick="toggleSection('sectionImport')">
