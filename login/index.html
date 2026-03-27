@@ -247,8 +247,13 @@
       if (session?.user) handleSuccessfulAuth();
     });
 
+    // Pre-fill email from last successful login
+    const emailInput = document.getElementById("email");
+    const savedEmail = localStorage.getItem("sophie_login_email");
+    if (savedEmail && emailInput) emailInput.value = savedEmail;
+
     btn.onclick = async () => {
-      const email = document.getElementById("email").value.trim();
+      const email = emailInput.value.trim();
       if (!email) return setStatus(t.empty, true);
 
       setStatus(t.sending);
@@ -264,6 +269,9 @@
       btn.disabled = false;
 
       if (error) return setStatus(error.message, true);
+
+      // Remember email for next visit
+      localStorage.setItem("sophie_login_email", email);
       setStatus(t.sent);
     };
   </script>
