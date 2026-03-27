@@ -1858,11 +1858,11 @@ function downloadProtocol() {
     <ul>${sec.items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
   </div>`).join("")}
 
-  ${chatMessages.length > 0 ? `<div class="section">
+  ${voiceTranscript.length > 0 ? `<div class="section">
     <p class="section-title">${isDE ? "Vollständiges Gesprächsprotokoll" : isFR ? "Transcription complète" : "Full Transcript"}</p>
-    ${chatMessages.map(m => `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.7;${m.role === "user" ? "background:#f0ede8;color:#2c2420;" : "background:#fff;border:1px solid #ede8e2;color:#5a4a40;"}">
+    ${voiceTranscript.map(m => `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.7;${m.role === "user" ? "background:#f0ede8;color:#2c2420;" : "background:#fff;border:1px solid #ede8e2;color:#5a4a40;"}">
       <strong style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:${m.role === "user" ? "#1a1210" : "#c4a882"}">${m.role === "user" ? "User" : "Sophie"}</strong><br>
-      ${escapeHtml(m.content)}
+      ${escapeHtml(m.text)}
     </div>`).join("")}
   </div>` : ""}
 
