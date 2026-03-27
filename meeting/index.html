@@ -517,13 +517,12 @@ let userTranscriptBuffer = new Map();
 let partialAssistant = "";
 let lastAssistantFinal = "";
 
-// Shared mic stream (one permission, shared between recording + Sophie voice)
+// Shared mic stream (for Sophie voice)
 let sharedMicStream = null;
 
-// Local audio recording (always-on during live phase)
-let localRecorder = null;
-let localAudioChunks = [];    // Array of { blob, partIndex }
-let localPartIndex = 0;       // Increments each time recording pauses/resumes
+// Browser Speech Recognition (always-on during live, pauses during Sophie voice)
+let speechRecognition = null;
+let speechTranscript = [];  // Array of strings — everything spoken (without Sophie)
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -1000,9 +999,9 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Disconnect Sophie voice + stop recording when leaving live phase
+    // Disconnect Sophie voice + stop speech recognition when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
-      stopLocalRecording();
+      stopSpeechRecognition();
       stopRecStatusUpdates();
       if (!sophieMuted) {
         sophieMuted = true;
@@ -1158,16 +1157,12 @@ async function generateSummary() {
   appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
 
   try {
-    // Step 1: Transcribe local audio recordings (the always-on parts)
-    console.log(`[meeting] generateSummary: ${localAudioChunks.length} audio chunks, ${voiceTranscript.length} voice msgs, ${chatMessages.length} chat msgs`);
+    // Step 1: Speech recognition transcript (already text, no upload needed)
+    const localText = speechTranscript.join(" ");
+    console.log(`[meeting] generateSummary: speech=${speechTranscript.length} segments, voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
     appendSystemMsg(lang === "de"
-      ? `Verarbeite ${localAudioChunks.length} Aufnahme(n), ${voiceTranscript.length} Voice-Nachrichten...`
-      : `Processing ${localAudioChunks.length} recording(s), ${voiceTranscript.length} voice messages...`);
-    const localTranscripts = await transcribeLocalAudio();
-    const localText = localTranscripts
-      .sort((a, b) => a.partIndex - b.partIndex)
-      .map(t => t.text)
-      .join("\n\n");
+      ? `Verarbeite ${speechTranscript.length} Sprachsegmente, ${voiceTranscript.length} Voice-Nachrichten...`
+      : `Processing ${speechTranscript.length} speech segments, ${voiceTranscript.length} voice messages...`);
 
     // Step 2: Sophie voice transcript (from DataChannel during unmute)
     const voiceText = voiceTranscript
@@ -1551,11 +1546,11 @@ function startRecStatusUpdates() {
   el.style.display = "block";
 
   recStatusInterval = setInterval(() => {
-    const recState = localRecorder ? localRecorder.state : "none";
-    const chunks = localAudioChunks.length;
+    const srActive = speechRecognition ? "aktiv" : "aus";
+    const segments = speechTranscript.length;
     const voiceMsgs = voiceTranscript.length;
-    const dcState = sophieVoiceDc ? sophieVoiceDc.readyState : "none";
-    txt.textContent = `Aufnahme: ${recState} | Parts: ${chunks} | Voice: ${voiceMsgs} msgs | DC: ${dcState}`;
+    const dcState = sophieVoiceDc ? sophieVoiceDc.readyState : "—";
+    txt.textContent = `Sprache: ${srActive} | Segmente: ${segments} | Sophie: ${voiceMsgs} msgs | DC: ${dcState}`;
   }, 2000);
 }
 
@@ -1564,135 +1559,84 @@ function stopRecStatusUpdates() {
 }
 
 // ---------------------------------------------------------------------------
-// Local Audio Recording (always-on during live, pauses during Sophie voice)
+// Browser Speech Recognition (always-on during live, pauses during Sophie voice)
+// Free, no server, no upload, instant text
 // ---------------------------------------------------------------------------
-async function startLocalRecording() {
-  try {
-    if (localRecorder && localRecorder.state === "recording") return;
+function startSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn("[meeting-speech] SpeechRecognition not supported");
+    appendSystemMsg("⚠️ Spracherkennung wird von diesem Browser nicht unterstützt");
+    return;
+  }
 
-    // Get shared mic stream (one permission for everything)
-    if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
-      sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }
+  if (speechRecognition) return; // Already running
 
-    // Pick supported mimeType (Safari doesn't support webm)
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      ? "audio/webm;codecs=opus"
-      : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "";
-    localRecorder = new MediaRecorder(sharedMicStream, mimeType ? { mimeType } : {});
-    console.log(`[meeting-rec] Using mimeType: ${localRecorder.mimeType}`);
-    const currentPart = localPartIndex;
-    let chunks = [];
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.continuous = true;
+  speechRecognition.interimResults = false;
+  speechRecognition.lang = lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US";
 
-    localRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-
-    localRecorder.onstop = () => {
-      if (chunks.length > 0) {
-        const blob = new Blob(chunks, { type: localRecorder.mimeType || "audio/webm" });
-        localAudioChunks.push({ blob, partIndex: currentPart });
-        console.log(`[meeting-rec] Part ${currentPart} saved: ${(blob.size / 1024).toFixed(0)}KB (${blob.type})`);
+  speechRecognition.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        const text = event.results[i][0].transcript.trim();
+        if (text) {
+          speechTranscript.push(text);
+          console.log(`[meeting-speech] "${text.slice(0, 80)}"`);
+        }
       }
-    };
+    }
+  };
 
-    localRecorder.start(10000); // Collect data every 10s
-    console.log(`[meeting-rec] Recording started (part ${localPartIndex})`);
+  speechRecognition.onerror = (event) => {
+    // "no-speech" is normal, just restart
+    if (event.error === "no-speech" || event.error === "aborted") return;
+    console.error("[meeting-speech] Error:", event.error);
+  };
+
+  // Auto-restart when it stops (browser stops after silence)
+  speechRecognition.onend = () => {
+    // Only restart if we're still in live phase and not in Sophie voice mode
+    if (meetingData?.phase === "live" && sophieMuted && speechRecognition) {
+      try { speechRecognition.start(); } catch (_) {}
+    }
+  };
+
+  try {
+    speechRecognition.start();
+    console.log("[meeting-speech] Started");
   } catch (e) {
-    console.error("[meeting-rec] Failed to start:", e.message);
+    console.error("[meeting-speech] Start failed:", e.message);
   }
 }
 
-function pauseLocalRecording() {
-  if (localRecorder && localRecorder.state === "recording") {
-    localRecorder.stop();
-    localPartIndex++;
-    console.log(`[meeting-rec] Paused (switching to Sophie voice)`);
+function pauseSpeechRecognition() {
+  if (speechRecognition) {
+    try { speechRecognition.stop(); } catch (_) {}
+    console.log("[meeting-speech] Paused (Sophie voice active)");
   }
 }
 
-function stopLocalRecording() {
-  if (localRecorder && localRecorder.state === "recording") {
-    localRecorder.stop();
+function resumeSpeechRecognition() {
+  if (speechRecognition) {
+    try { speechRecognition.start(); } catch (_) {}
+    console.log("[meeting-speech] Resumed");
   }
-  // Kill shared mic stream only when meeting fully ends (not when pausing for Sophie)
+}
+
+function stopSpeechRecognition() {
+  if (speechRecognition) {
+    speechRecognition.onend = null; // Prevent auto-restart
+    try { speechRecognition.stop(); } catch (_) {}
+    speechRecognition = null;
+    console.log(`[meeting-speech] Stopped. ${speechTranscript.length} segments captured.`);
+  }
+  // Kill shared mic stream
   if (sharedMicStream) {
     sharedMicStream.getTracks().forEach(t => t.stop());
     sharedMicStream = null;
   }
-  console.log(`[meeting-rec] Stopped. ${localAudioChunks.length} parts recorded.`);
-}
-
-async function transcribeLocalAudio() {
-  if (localAudioChunks.length === 0) return [];
-
-  const transcripts = [];
-  appendSystemMsg(lang === "de" ? "Transkribiere Aufnahme..." : "Transcribing recording...");
-
-  for (const { blob, partIndex } of localAudioChunks) {
-    if (blob.size < 5000) continue; // Skip tiny fragments
-
-    try {
-      // Convert blob to base64 via FileReader (safe on all platforms, no stack overflow)
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const dataUrl = reader.result; // "data:audio/webm;base64,XXXX..."
-          const b64 = dataUrl.split(",")[1];
-          resolve(b64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      const ext = blob.type.includes("mp4") ? "mp4" : blob.type.includes("webm") ? "webm" : "wav";
-
-      const headers = { "Content-Type": "application/json" };
-      try {
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
-      } catch (_) {}
-
-      const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
-      console.log(`[meeting-rec] Sending part ${partIndex}: ${sizeMB}MB as base64 (${ext})`);
-      appendSystemMsg(`📤 Sende Aufnahme ${partIndex + 1} (${sizeMB}MB)...`);
-
-      if (blob.size > 24 * 1024 * 1024) {
-        console.warn(`[meeting-rec] Part ${partIndex} too large (${sizeMB}MB), skipping`);
-        appendSystemMsg(`⚠️ Aufnahme ${partIndex + 1} zu groß (${sizeMB}MB), übersprungen`);
-        continue;
-      }
-
-      const res = await fetch("/api/ai/transcribe", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          audio_base64: base64,
-          filename: `meeting-part-${partIndex}.${ext}`,
-          language: lang === "de" ? "de" : lang === "fr" ? "fr" : "en",
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.text?.trim()) {
-          transcripts.push({ partIndex, text: data.text.trim() });
-          console.log(`[meeting-rec] Part ${partIndex} transcribed: ${data.text.slice(0, 80)}...`);
-          appendSystemMsg(`✅ Aufnahme ${partIndex + 1} transkribiert`);
-        }
-      } else {
-        const err = await res.json().catch(() => ({}));
-        console.error(`[meeting-rec] Transcribe ${partIndex} failed:`, res.status, err);
-        appendSystemMsg(`⚠️ Transkription fehlgeschlagen: ${err.error || res.status}`);
-      }
-    } catch (e) {
-      console.error(`[meeting-rec] Transcribe part ${partIndex} failed:`, e.message);
-      appendSystemMsg(`⚠️ Transkription Fehler: ${e.message}`);
-    }
-  }
-
-  return transcripts;
 }
 
 // ---------------------------------------------------------------------------
@@ -1977,13 +1921,13 @@ async function toggleSophieMute() {
   updateParticipantsBar();
 
   if (!sophieMuted) {
-    // UNMUTE → Pause local recording, connect Sophie voice
-    pauseLocalRecording();
+    // UNMUTE → Pause speech recognition, connect Sophie voice
+    pauseSpeechRecognition();
     await connectSophieVoice();
   } else {
-    // MUTE → Disconnect Sophie voice, resume local recording
+    // MUTE → Disconnect Sophie voice, resume speech recognition
     disconnectSophieVoice();
-    startLocalRecording();
+    resumeSpeechRecognition();
   }
 }
 
@@ -2158,8 +2102,12 @@ function downloadProtocol() {
     <ul>${sec.items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
   </div>`).join("")}
 
-  ${voiceTranscript.length > 0 ? `<div class="section">
+  ${(speechTranscript.length > 0 || voiceTranscript.length > 0) ? `<div class="section">
     <p class="section-title">${isDE ? "Vollständiges Gesprächsprotokoll" : isFR ? "Transcription complète" : "Full Transcript"}</p>
+    ${speechTranscript.length > 0 ? `<div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.8;background:#f0ede8;color:#2c2420;">
+      <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;display:block;margin-bottom:6px">${isDE ? "Meeting-Gespräch" : "Meeting Conversation"}</strong>
+      ${escapeHtml(speechTranscript.join(" "))}
+    </div>` : ""}
     ${voiceTranscript.map(m => `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.7;${m.role === "user" ? "background:#f0ede8;color:#2c2420;" : "background:#fff;border:1px solid #ede8e2;color:#5a4a40;"}">
       <strong style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:${m.role === "user" ? "#1a1210" : "#c4a882"}">${m.role === "user" ? "User" : "Sophie"}</strong><br>
       ${escapeHtml(m.text)}
@@ -2279,13 +2227,15 @@ function captureLocation() {
 ctaLive.addEventListener("click", async () => {
   // Start mic recording INSIDE user gesture (required for iOS)
   // MUST await before transitioning — mic permission dialog is async
+  // Start speech recognition (no mic permission needed — browser handles it)
+  startSpeechRecognition();
+  appendSystemMsg("🎙️ Spracherkennung aktiv");
+
+  // Get mic stream for Sophie voice (will be needed when unmuting)
   try {
-    await startLocalRecording();
-    console.log("[meeting] Local recording started from user gesture");
-    appendSystemMsg("🔴 Aufnahme gestartet");
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    console.error("[meeting] Failed to start recording:", e.message);
-    appendSystemMsg("⚠️ Aufnahme konnte nicht gestartet werden: " + e.message);
+    console.warn("[meeting] Mic access failed (needed for Sophie voice):", e.message);
   }
   startRecStatusUpdates();
   captureLocation(); // fire-and-forget
