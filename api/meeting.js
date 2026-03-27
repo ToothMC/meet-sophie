@@ -660,8 +660,17 @@ async function handleSummarize(req, res) {
   const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
+  // Also load chat transcript as content source
+  const { data: chatData } = await supabase
+    .from("meeting_notes")
+    .select("content, created_at")
+    .eq("meeting_id", meeting_id)
+    .eq("note_type", "chat_message")
+    .order("created_at");
+  const chatTranscript = (chatData || []).map(m => m.content).join("\n");
+
   // If there's no content at all, return empty summary — do NOT hallucinate
-  if (!notesStr.trim() && !contextStr.trim()) {
+  if (!notesStr.trim() && !contextStr.trim() && !chatTranscript.trim()) {
     const emptySummary = {
       meeting_id,
       short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
