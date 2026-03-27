@@ -428,6 +428,79 @@ function icon(provider) {
   return ICONS[provider] ? `<img src="${ICONS[provider]}" style="width:14px;height:14px;opacity:.6">` : "";
 }
 
+// ── Section: Reports ──
+let _reportDetailData = null;
+
+async function loadReports() {
+  const list = document.getElementById("reportsList");
+  try {
+    const data = await api("reports");
+    if (!data.reports?.length) { list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return; }
+    list.innerHTML = data.reports.map(r => {
+      const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
+      const modeBadge = r.report_style ? `<span class="badge badge-active">${r.report_style}</span>` : '';
+      return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id}')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:#fff">${r.title || 'Report'}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${date}</div>
+          </div>
+          ${modeBadge}
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+async function openReportDetail(sessionId) {
+  const overlay = document.getElementById("reportDetailOverlay");
+  const titleEl = document.getElementById("reportDetailTitle");
+  const contentEl = document.getElementById("reportDetailContent");
+  overlay.style.display = "block";
+  titleEl.textContent = "Laden...";
+  contentEl.innerHTML = '<p class="msg">Laden...</p>';
+  try {
+    const data = await api("report-detail&session_id=" + sessionId);
+    _reportDetailData = data;
+    titleEl.textContent = data.title || "Report";
+    contentEl.innerHTML = data.report_html || '<p class="msg">Kein HTML-Report vorhanden.</p>';
+  } catch (e) {
+    titleEl.textContent = "Fehler";
+    contentEl.innerHTML = '<p class="msg">Report konnte nicht geladen werden.</p>';
+  }
+}
+window.openReportDetail = openReportDetail;
+
+function closeReportDetail() {
+  document.getElementById("reportDetailOverlay").style.display = "none";
+  _reportDetailData = null;
+}
+window.closeReportDetail = closeReportDetail;
+
+async function copyReportDetail() {
+  if (!_reportDetailData?.report_html) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = _reportDetailData.report_html;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      "text/html": new Blob([_reportDetailData.report_html], { type: "text/html" }),
+      "text/plain": new Blob([tmp.textContent], { type: "text/plain" }),
+    })]);
+  } catch (_) {
+    await navigator.clipboard.writeText(tmp.textContent);
+  }
+}
+window.copyReportDetail = copyReportDetail;
+
+async function saveReportAsTemplate() {
+  if (!_reportDetailData?.report_html) return;
+  try {
+    await api("save-report-template", "POST", { mode: "default", report_html: _reportDetailData.report_html });
+    alert("Als Vorlage gespeichert!");
+  } catch (e) { alert("Fehler: " + e?.message); }
+}
+window.saveReportAsTemplate = saveReportAsTemplate;
+
 // ── Section 4: Provider-Status ──
 async function loadHealth() {
   const grid = document.getElementById("healthGrid");
