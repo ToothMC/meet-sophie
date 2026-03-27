@@ -1753,6 +1753,7 @@ async function connectSophieVoice() {
       headers: {
         Authorization: `Bearer ${authToken}`,
         "X-Sophie-Session-Mode": "meeting",
+        "X-Sophie-Meeting-Id": meetingId || "",
       },
     });
     const data = await tokenRes.json();
@@ -1763,7 +1764,7 @@ async function connectSophieVoice() {
       appendSystemMsg(lang === "de" ? "Sophie ist noch beschäftigt, versuche erneut..." : "Sophie is busy, retrying...");
       await new Promise(r => setTimeout(r, 3000));
       const retry = await fetch("/api/session", {
-        headers: { Authorization: `Bearer ${authToken}`, "X-Sophie-Session-Mode": "meeting" },
+        headers: { Authorization: `Bearer ${authToken}`, "X-Sophie-Session-Mode": "meeting", "X-Sophie-Meeting-Id": meetingId || "" },
       });
       const retryData = await retry.json();
       if (!retry.ok) throw new Error(retryData?.error || retryData?.message || `HTTP ${retry.status}`);

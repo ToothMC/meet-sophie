@@ -51,6 +51,7 @@ export default async function handler(req, res) {
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
     const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
+    const meetingId = String(req.headers["x-sophie-meeting-id"] || "").trim() || null;
 
     // ---------------------------
     // Session ending config
@@ -437,10 +438,70 @@ export default async function handler(req, res) {
       console.warn("Import context load error:", e?.message);
     }
 
+    // ── Meeting Context: Load previous meeting's decisions, actions, open points ──
+    let meetingContext = null;
+    if (sessionMode === "meeting" && meetingId) {
+      try {
+        // Load current meeting to find parent
+        const { data: mtg } = await supabase.from("meetings")
+          .select("title, meeting_type, parent_meeting_id")
+          .eq("id", meetingId).maybeSingle();
+
+        const contextParts = [];
+        if (mtg?.title) contextParts.push(`Aktuelles Meeting: ${mtg.title}`);
+
+        // Load meeting_context entries (agenda, goals, etc.)
+        const { data: ctxRows } = await supabase.from("meeting_context")
+          .select("context_type, content").eq("meeting_id", meetingId);
+        if (ctxRows?.length) {
+          contextParts.push("\nVorbereitung:");
+          ctxRows.forEach(c => contextParts.push(`[${c.context_type}] ${c.content}`));
+        }
+
+        // Load parent meeting's structured data (decisions, actions, open points)
+        if (mtg?.parent_meeting_id) {
+          const { data: parentSummary } = await supabase.from("meeting_summary")
+            .select("short_summary, decisions, action_items, open_points")
+            .eq("meeting_id", mtg.parent_meeting_id).maybeSingle();
+
+          if (parentSummary) {
+            contextParts.push("\n── VORHERIGES MEETING ──");
+            if (parentSummary.short_summary) contextParts.push(`Zusammenfassung: ${parentSummary.short_summary}`);
+
+            const decisions = parentSummary.decisions || [];
+            if (decisions.length > 0) {
+              contextParts.push("\nBESCHLÜSSE (bereits entschieden — bei Widerspruch darauf hinweisen!):");
+              decisions.forEach(d => contextParts.push(`• ${d.text}${d.owner ? ` (${d.owner})` : ""}`));
+            }
+
+            const actions = parentSummary.action_items || [];
+            const openActions = actions.filter(a => !a.status || a.status === "open");
+            if (openActions.length > 0) {
+              contextParts.push("\nOFFENE ACTION ITEMS (Status nachfragen!):");
+              openActions.forEach(a => contextParts.push(`• ${a.text}${a.owner ? ` → ${a.owner}` : ""}${a.due ? ` (Frist: ${a.due})` : ""}`));
+            }
+
+            const openPoints = parentSummary.open_points || [];
+            if (openPoints.length > 0) {
+              contextParts.push("\nUNGELÖSTE FRAGEN (ansprechen wenn relevant):");
+              openPoints.forEach(o => contextParts.push(`• ${o.text}`));
+            }
+            contextParts.push("── ENDE VORHERIGES MEETING ──");
+          }
+        }
+
+        if (contextParts.length > 0) meetingContext = contextParts.join("\n");
+        console.log(`[session] Meeting context loaded: ${meetingContext?.length || 0} chars`);
+      } catch (e) {
+        console.warn("[session] Meeting context load error:", e?.message);
+      }
+    }
+
     const sophiePrompt = buildSophiePrompt({
       tier,
       sessionMode,
       meetingPhase: sessionMode === "meeting" ? "live" : null,
+      meetingContext,
       isFirstSession,
       hasHandover: hasHandoverContext,
       handoverContext: hasHandoverContext ? handover : null,

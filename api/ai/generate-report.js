@@ -117,6 +117,10 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
       }
 
       if (reportHtml) {
+        await supabase.from('conversation_outputs')
+          .update({ report_progress: 80, report_status_detail: 'Extrahiere Beschlüsse & Action Items...' })
+          .eq('session_id', session_id);
+
         const titleMatch = reportHtml.match(/<(?:h1|h2)[^>]*>([^<]+)/i);
         const reportTitle = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Meeting Report';
         const { error: saveErr } = await supabase.from('conversation_outputs').update({
@@ -131,6 +135,63 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
 
         await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
         console.log(`[report] Meeting done: ${session_id} — ${reportHtml.length} chars HTML`);
+
+        // ── Extract structured data from report for Decision/Action/Open logs ──
+        // Quick cheap call with GPT-4o-mini to parse the HTML report into JSON
+        try {
+          const extractAdapter = getAdapter('openai');
+          const extractResp = await extractAdapter.complete({
+            messages: [{ role: 'user', content: `Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.
+${dateInstruction}
+
+HTML-REPORT:
+${reportHtml.slice(0, 10000)}
+
+Antworte NUR mit JSON in exakt diesem Format:
+{
+  "short_summary": "1-2 Sätze Zusammenfassung",
+  "decisions": [{"text": "...", "owner": "..."}],
+  "action_items": [{"text": "...", "owner": "...", "due": "...", "status": "open"}],
+  "open_points": [{"text": "..."}]
+}
+
+REGELN:
+- NUR was im Report steht — nichts erfinden
+- "owner" nur wenn namentlich zugeordnet, sonst ""
+- "due" nur wenn Datum/Frist genannt, sonst ""
+- Wenn eine Kategorie leer ist: leeres Array []
+- status ist immer "open" (wird später aktualisiert)` }],
+            model: 'gpt-4o-mini', maxTokens: 1500, temperature: 0.1,
+          });
+          const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
+          const structured = JSON.parse(jsonText);
+
+          // Find meeting_id linked to this session
+          const { data: meetingRow } = await supabase.from('meetings')
+            .select('id').eq('session_id', session_id).maybeSingle();
+
+          if (meetingRow?.id) {
+            const { error: sumErr } = await supabase.from('meeting_summary').upsert({
+              meeting_id: meetingRow.id,
+              short_summary: structured.short_summary || reportTitle,
+              decisions: structured.decisions || [],
+              action_items: structured.action_items || [],
+              open_points: structured.open_points || [],
+              risks: [],
+            }, { onConflict: 'meeting_id' });
+            if (sumErr) console.error(`[report] structured data save failed:`, sumErr.message);
+            else console.log(`[report] Structured data saved: ${(structured.decisions||[]).length} decisions, ${(structured.action_items||[]).length} actions, ${(structured.open_points||[]).length} open`);
+
+            // Also update meeting title if empty
+            const { data: mtg } = await supabase.from('meetings').select('title').eq('id', meetingRow.id).maybeSingle();
+            if (mtg && !mtg.title && structured.short_summary) {
+              await supabase.from('meetings').update({ title: structured.short_summary.slice(0, 60) }).eq('id', meetingRow.id);
+            }
+          }
+        } catch (extractErr) {
+          console.error(`[report] structured extraction failed (non-critical):`, extractErr?.message);
+          // Non-critical — report is already saved, structured data is a bonus
+        }
       } else {
         const { error: failErr } = await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
