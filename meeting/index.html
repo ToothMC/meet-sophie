@@ -1749,10 +1749,10 @@ async function connectSophieVoice() {
       } catch (_) {}
     };
 
-    // Clone shared mic stream for Sophie (avoids double permission + track conflicts)
+    // Get mic stream for Sophie voice (separate from SpeechRecognition which manages its own mic)
+    // Only requested here when user actually unmutes Sophie — avoids double permission dialog
     if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
-      // Only request if truly needed (shouldn't happen if recording started first)
-      console.warn("[meeting-voice] sharedMicStream unavailable, requesting new one");
+      console.log("[meeting-voice] Requesting mic for Sophie voice...");
       sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
     const sophieStream = sharedMicStream.clone();
@@ -1863,8 +1863,15 @@ function disconnectSophieVoice(silent = false) {
     }
   }
 
-  // Don't kill mic stream — it's shared with local recording
+  // Kill Sophie's cloned stream + the shared mic (will be re-requested on next unmute)
+  if (sophieVoiceStream) {
+    try { sophieVoiceStream.getTracks().forEach(t => t.stop()); } catch {}
+  }
   sophieVoiceStream = null;
+  if (sharedMicStream) {
+    sharedMicStream.getTracks().forEach(t => t.stop());
+    sharedMicStream = null;
+  }
   // Stop audio
   if (sophieVoiceAudio) {
     try { sophieVoiceAudio.srcObject = null; } catch {}
@@ -2225,18 +2232,11 @@ function captureLocation() {
 }
 
 ctaLive.addEventListener("click", async () => {
-  // Start mic recording INSIDE user gesture (required for iOS)
-  // MUST await before transitioning — mic permission dialog is async
-  // Start speech recognition (no mic permission needed — browser handles it)
+  // Start browser SpeechRecognition — it manages its own mic permission internally
+  // NO getUserMedia here — Sophie voice gets its own mic stream only when unmuted
   startSpeechRecognition();
   appendSystemMsg("🎙️ Spracherkennung aktiv");
 
-  // Get mic stream for Sophie voice (will be needed when unmuting)
-  try {
-    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (e) {
-    console.warn("[meeting] Mic access failed (needed for Sophie voice):", e.message);
-  }
   startRecStatusUpdates();
   captureLocation(); // fire-and-forget
   await transitionPhase("live");
