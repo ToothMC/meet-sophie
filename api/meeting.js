@@ -694,145 +694,18 @@ async function handleSummarize(req, res) {
     return res.status(200).json({ ok: true, summary: saved || emptySummary });
   }
 
-  const todayDate = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const summarySystemPrompt = `You are Sophie. Generate a structured meeting summary.
-${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
-Das heutige Datum ist ${todayDate}. Wandle ALLE relativen Zeitangaben (z.B. "nächste Woche", "morgen", "in 2 Tagen", "nächsten Dienstag") in konkrete Daten im Format TT.MM.JJJJ um.
-
-Meeting: ${meeting.title || "Untitled"}
-Type: ${meeting.meeting_type}
-${contextStr ? `\nContext:\n${contextStr}` : ""}
-${notesStr ? `\nNotes from meeting:\n${notesStr}` : ""}
-${voiceTranscript ? `\nVoice transcript (what was actually spoken):\n${voiceTranscript}` : ""}
-
-CRITICAL RULES:
-- ONLY summarize what is EXPLICITLY written in the notes and context above.
-- Do NOT invent, assume, or hallucinate any content.
-- If a category has no items, return an empty array [].
-- If there is very little content, the summary should be very short.
-- NEVER make up decisions, action items, or risks that are not explicitly stated.
-
-Generate a JSON object with this exact schema:
-{
-  "short_summary": "2-3 sentence summary of ONLY what was actually discussed",
-  "decisions": [{ "text": "...", "owner": "..." }],
-  "action_items": [{ "text": "...", "owner": "...", "due": "..." }],
-  "open_points": [{ "text": "..." }],
-  "risks": [{ "text": "...", "severity": "low|medium|high" }]
-}
-
-Return ONLY the JSON object, no other text.`;
-
-  let openaiResp;
-  try {
-    openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
-        max_tokens: 1500,
-        messages: [{ role: "system", content: summarySystemPrompt }],
-        temperature: 0.3,
-        response_format: { type: "json_object" },
-      }),
-    });
-  } catch (e) {
-    console.error("OpenAI API error:", e?.message);
-    return res.status(502).json({ error: "OpenAI API unavailable" });
-  }
-
-  if (!openaiResp.ok) {
-    return res.status(openaiResp.status).json({ error: "OpenAI API error" });
-  }
-
-  const data = await openaiResp.json();
-  const rawContent = data?.choices?.[0]?.message?.content || "{}";
-
-  let summary;
-  try {
-    summary = JSON.parse(rawContent);
-  } catch {
-    return res.status(502).json({ error: "Failed to parse summary JSON" });
-  }
-
-  // Generate follow-up diff if parent meeting exists
-  let followupDiff = null;
-  if (meeting.parent_meeting_id) {
-    const { data: parentSummary } = await supabase
-      .from("meeting_summary")
-      .select("action_items, open_points")
-      .eq("meeting_id", meeting.parent_meeting_id)
-      .maybeSingle();
-
-    if (parentSummary) {
-      const diffPrompt = `You are Sophie. Compare the previous meeting's action items and open points with the current meeting notes.
-${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
-
-PREVIOUS MEETING:
-Action Items: ${JSON.stringify(parentSummary.action_items || [])}
-Open Points: ${JSON.stringify(parentSummary.open_points || [])}
-
-CURRENT MEETING NOTES:
-${notesStr}
-
-CURRENT MEETING SUMMARY:
-${JSON.stringify(summary)}
-
-Generate a JSON object with this schema:
-{
-  "resolved": [{ "text": "...", "status": "done" }],
-  "still_open": [{ "text": "...", "status": "open" }],
-  "escalated": [{ "text": "...", "status": "escalated" }],
-  "new_items": [{ "text": "..." }]
-}
-
-Rules:
-- "resolved": items from the previous meeting that were addressed or completed
-- "still_open": items from previous meeting still not resolved
-- "escalated": items that got worse or more urgent
-- "new_items": completely new action items or points from the current meeting
-Return ONLY the JSON object.`;
-
-      try {
-        const diffResp = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
-            max_tokens: 1000,
-            messages: [{ role: "system", content: diffPrompt }],
-            temperature: 0.3,
-            response_format: { type: "json_object" },
-          }),
-        });
-        if (diffResp.ok) {
-          const diffData = await diffResp.json();
-          const diffContent = diffData?.choices?.[0]?.message?.content || "{}";
-          followupDiff = JSON.parse(diffContent);
-        }
-      } catch (e) {
-        console.error("Follow-up diff generation error:", e?.message);
-        // Non-critical, continue without diff
-      }
-    }
-  }
-
-  // Upsert summary (including followup_diff if generated)
+  // -----------------------------------------------------------------------
+  // No GPT-4o summary — Claude report is the single source of truth.
+  // Save minimal placeholder to meeting_summary for DB compatibility.
+  // -----------------------------------------------------------------------
   const upsertData = {
     meeting_id,
-    short_summary: summary.short_summary || "",
-    decisions: summary.decisions || [],
-    action_items: summary.action_items || [],
-    open_points: summary.open_points || [],
-    risks: summary.risks || [],
+    short_summary: "",
+    decisions: [],
+    action_items: [],
+    open_points: [],
+    risks: [],
   };
-  if (followupDiff) upsertData.followup_diff = followupDiff;
 
   const { data: saved, error: saveErr } = await supabase
     .from("meeting_summary")
@@ -843,12 +716,6 @@ Return ONLY the JSON object.`;
   if (saveErr) {
     console.error("Summary save error:", saveErr);
     return res.status(500).json({ error: "Failed to save summary" });
-  }
-
-  // Auto-generate title if missing
-  if (!meeting.title && summary.short_summary) {
-    const autoTitle = summary.short_summary.slice(0, 60).replace(/\.+$/, "").trim();
-    await supabase.from("meetings").update({ title: autoTitle }).eq("id", meeting_id);
   }
 
   // -----------------------------------------------------------------------
@@ -962,11 +829,17 @@ async function handleDelete(req, res) {
   // Verify ownership
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id")
+    .select("id, session_id")
     .eq("id", meeting_id)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  // If meeting has a linked report session, clean up report data first
+  if (meeting.session_id) {
+    await supabase.from("conversation_outputs").delete().eq("session_id", meeting.session_id);
+    await supabase.from("user_sessions").delete().eq("id", meeting.session_id);
+  }
 
   // Delete meeting (cascades to context, notes, summary via ON DELETE CASCADE)
   // Children with parent_meeting_id will get SET NULL automatically

@@ -209,30 +209,12 @@ body{
 .phase-cta .cta-post{background:#ef4444;color:#fff}
 .phase-cta .cta-close{background:rgba(0,0,0,.06);color:#2a2420;border:1px solid #ede8e2}
 
-/* ---- SUMMARY CARD ---- */
-.summary-card{
+/* ---- REPORT CARD ---- */
+.report-card{
   margin:16px;padding:20px;
   background:#fff;border:1px solid #ede8e2;
   border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.04);
 }
-.summary-card h3{font-size:16px;font-weight:600;margin:0 0 12px;color:#2a2420}
-.summary-card .summary-text{font-size:14px;line-height:1.6;color:#5a4a40;margin-bottom:16px}
-.summary-section{margin-bottom:14px}
-.summary-section h4{
-  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:#a09080;margin:0 0 6px;
-}
-.summary-section ul{margin:0;padding:0;list-style:none}
-.summary-section li{
-  font-size:13px;line-height:1.5;padding:4px 0;
-  color:#3a3028;
-  border-bottom:1px solid #f0ece6;
-}
-.summary-section li:last-child{border-bottom:none}
-.summary-section li .owner{color:#34c47a;font-weight:500}
-.summary-section li .severity-high{color:#ef4444}
-.summary-section li .severity-medium{color:#eab308}
-.summary-section li .severity-low{color:#22c55e}
 
 /* ---- FILE UPLOAD ---- */
 .upload-area{
@@ -442,35 +424,24 @@ body{
     <button class="cta-close hidden" id="ctaClose">Close</button>
   </div>
 
-  <!-- Summary Card (POST phase) -->
-  <div class="summary-card hidden" id="summaryCard">
-    <h3 id="summaryTitle">Meeting Summary</h3>
-    <div class="summary-text" id="summaryText"></div>
-    <div id="summaryDetails"></div>
-    <div class="export-bar" id="exportBar">
-      <button class="export-btn" id="downloadProtocolBtn">⬇ Download</button>
-      <button class="export-btn" id="copySummaryBtn">📋 Copy</button>
-      <button class="export-btn" id="shareSummaryBtn">📤 Share</button>
+  <!-- Report Card (POST phase) — single source, no separate summary -->
+  <div class="report-card hidden" id="summaryCard">
+    <div id="reportProgress" style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;margin-bottom:10px" id="reportTitle">Erstelle Sitzungsprotokoll...</div>
+      <div style="height:6px;background:#e5e7eb;border-radius:6px;overflow:hidden">
+        <div id="reportProgressBar" style="height:100%;background:linear-gradient(90deg,#c4a882,#8B7355);width:5%;transition:width .6s ease;border-radius:6px"></div>
+      </div>
+      <div style="font-size:12px;color:#a09080;margin-top:8px" id="reportProgressLabel">Daten werden aufbereitet...</div>
     </div>
-
-    <!-- HTML Report (generated via 4-AI pipeline like Talk) -->
-    <div id="reportSection" class="hidden" style="margin-top:16px">
-      <div id="reportProgress" style="display:none;margin-bottom:12px">
-        <div style="font-size:13px;color:#666;margin-bottom:6px" id="reportProgressLabel">Erstelle Report...</div>
-        <div style="height:4px;background:#e5e7eb;border-radius:4px;overflow:hidden">
-          <div id="reportProgressBar" style="height:100%;background:linear-gradient(90deg,#c4a882,#8B7355);width:5%;transition:width .5s ease;border-radius:4px"></div>
-        </div>
-      </div>
-      <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
-        <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
-      </div>
-      <div id="reportActions" class="hidden" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="export-btn" id="reportDownloadBtn">⬇ Protokoll</button>
-        <button class="export-btn" id="reportDownloadFullBtn">⬇ + Transcript</button>
-        <button class="export-btn" id="reportCopyBtn">📋 Kopieren</button>
-        <button class="export-btn" id="reportTemplateBtn">💾 Als Vorlage</button>
-        <button class="export-btn" id="reportRegenerateBtn">🔄 Neu generieren</button>
-      </div>
+    <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
+      <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
+    </div>
+    <div id="reportActions" class="hidden" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="export-btn" id="reportPrintBtn">🖨 PDF Export</button>
+      <button class="export-btn" id="reportDownloadFullBtn">⬇ + Transcript</button>
+      <button class="export-btn" id="reportCopyBtn">📋 Kopieren</button>
+      <button class="export-btn" id="reportTemplateBtn">💾 Als Vorlage</button>
+      <button class="export-btn" id="reportRegenerateBtn">🔄 Neu generieren</button>
     </div>
   </div>
 </div>
@@ -639,7 +610,7 @@ function applyI18n() {
   sendBtn.textContent = t("send");
   $("historyTitle").textContent = t("meetings");
   $("newMeetingBtn").textContent = "+ " + t("newMeeting");
-  $("summaryTitle").textContent = t("summary");
+  // summaryTitle removed — report card has its own title
   // Role options
   // Role selector removed — Sophie is always co-think
   // Type options
@@ -1212,32 +1183,27 @@ async function generateSummary() {
     if (voiceText.trim()) allParts.push(`[Sophie Voice Session]\n${voiceText}`);
 
     let transcriptToSend = allParts.join("\n\n---\n\n");
-    // NO chat fallback — only voice content goes into the report
-
-    // ── VISIBLE TRANSCRIPT DEBUG ──────────────────────────────
-    // Show exactly what will be sent to the backend
     console.log(`[meeting] TRANSCRIPT TO SEND:\n${transcriptToSend}`);
-    appendSystemMsg(`📊 Quellen: Speech=${speechTranscript.length} Segmente, Voice=${voiceTranscript.length} Nachrichten`);
+    appendSystemMsg(`📊 ${speechTranscript.length} Audio-Segmente, ${voiceTranscript.length} Voice-Nachrichten`);
 
-    // Show full transcript in chat so user can verify
-    if (transcriptToSend.trim()) {
-      const previewLines = transcriptToSend.split("\n").slice(0, 20);
-      const preview = previewLines.join("\n") + (transcriptToSend.split("\n").length > 20 ? "\n..." : "");
-      appendSystemMsg(`📝 Transcript-Inhalt:\n${preview}`);
-    } else {
-      appendSystemMsg("⚠️ KEIN TRANSCRIPT — Report wird leer sein!");
+    if (!transcriptToSend.trim()) {
+      appendSystemMsg("⚠️ Kein Transcript vorhanden — Report kann nicht erstellt werden.");
+      return;
     }
-    // ──────────────────────────────────────────────────────────
+
+    // Show report card with progress bar immediately
+    $("summaryCard").classList.remove("hidden");
 
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
-    renderSummary(data.summary);
+    // No renderSummary — report card IS the primary output now
 
-    // If backend created a report session, trigger generate-report from frontend + poll
     if (data.report_session_id) {
       triggerAndPollMeetingReport(data.report_session_id, data.report_transcript || "");
+    } else {
+      appendSystemMsg("⚠️ Report-Session konnte nicht erstellt werden.");
     }
   } catch (e) {
-    appendSystemMsg("Summary error: " + e.message);
+    appendSystemMsg("Report error: " + e.message);
   }
 }
 
@@ -1272,17 +1238,12 @@ async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
 
 async function pollMeetingReport(sessionId) {
   meetingReportSessionId = sessionId;
-  const reportSection = $("reportSection");
   const reportProgress = $("reportProgress");
   const reportProgressBar = $("reportProgressBar");
   const reportProgressLabel = $("reportProgressLabel");
-  const reportPreview = $("reportPreview");
-  const reportActions = $("reportActions");
+  const reportTitle = $("reportTitle");
+  const isDE = lang === "de";
 
-  if (!reportSection) return;
-
-  reportSection.classList.remove("hidden");
-  reportProgress.style.display = "block";
   reportProgressBar.style.width = "5%";
 
   const maxAttempts = 90;
@@ -1302,11 +1263,24 @@ async function pollMeetingReport(sessionId) {
 
       const progress = Math.max(5, Math.min(98, data.progress || 0));
       reportProgressBar.style.width = progress + "%";
-      if (data.detail) reportProgressLabel.textContent = data.detail;
+
+      // Descriptive progress labels
+      if (data.detail) {
+        reportProgressLabel.textContent = data.detail;
+      } else if (progress < 20) {
+        reportProgressLabel.textContent = isDE ? "Transcript wird analysiert..." : "Analyzing transcript...";
+      } else if (progress < 50) {
+        reportProgressLabel.textContent = isDE ? "Protokoll wird erstellt..." : "Generating report...";
+      } else if (progress < 85) {
+        reportProgressLabel.textContent = isDE ? "Formatierung & Qualitätsprüfung..." : "Formatting & quality check...";
+      } else {
+        reportProgressLabel.textContent = isDE ? "Fast fertig..." : "Almost done...";
+      }
 
       if (data.status === "done" && data.report_html) {
         reportProgressBar.style.width = "100%";
-        setTimeout(() => { reportProgress.style.display = "none"; }, 500);
+        reportProgressLabel.textContent = isDE ? "Fertig!" : "Done!";
+        setTimeout(() => { reportProgress.style.display = "none"; }, 800);
 
         meetingReportHtml = data.report_html;
         showMeetingReport(data.report_html);
@@ -1314,8 +1288,10 @@ async function pollMeetingReport(sessionId) {
       }
 
       if (data.status === "failed") {
-        reportProgress.style.display = "none";
-        reportProgressLabel.textContent = data.detail || "Report fehlgeschlagen";
+        reportTitle.textContent = isDE ? "Protokoll fehlgeschlagen" : "Report failed";
+        reportProgressLabel.textContent = data.detail || (isDE ? "Bitte erneut versuchen." : "Please try again.");
+        reportProgressBar.style.background = "#ef4444";
+        reportProgressBar.style.width = "100%";
         return;
       }
     } catch (e) {
@@ -1323,7 +1299,8 @@ async function pollMeetingReport(sessionId) {
     }
   }
 
-  reportProgress.style.display = "none";
+  reportTitle.textContent = isDE ? "Zeitüberschreitung" : "Timeout";
+  reportProgressLabel.textContent = isDE ? "Protokoll konnte nicht erstellt werden." : "Report generation timed out.";
 }
 
 function showMeetingReport(html) {
@@ -1350,7 +1327,6 @@ function showMeetingReport(html) {
 
   // Helper: strip full transcript section from HTML for official export
   function stripTranscriptSection(rawHtml) {
-    // Remove <div data-section="full-transcript">...</div> (greedy, outermost)
     return rawHtml.replace(/<div\s+data-section="full-transcript"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
   }
 
@@ -1364,12 +1340,31 @@ function showMeetingReport(html) {
   }
 
   // Wire up report action buttons
-  // Official protocol — WITHOUT full transcript
-  $("reportDownloadBtn").onclick = () => {
-    downloadHtmlFile(stripTranscriptSection(html), "protokoll");
+  // PDF Export — opens print dialog (official protocol without transcript)
+  $("reportPrintBtn").onclick = () => {
+    // Write clean HTML (no transcript) into iframe, then print
+    const cleanHtml = stripTranscriptSection(html);
+    const printFrame = reportFrame;
+    const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+    printDoc.open();
+    printDoc.write(cleanHtml);
+    printDoc.close();
+    setTimeout(() => {
+      printFrame.contentWindow.focus();
+      printFrame.contentWindow.print();
+      // Restore full HTML after printing
+      setTimeout(() => {
+        printDoc.open();
+        printDoc.write(html);
+        printDoc.close();
+        setTimeout(() => {
+          try { printFrame.style.height = printDoc.documentElement.scrollHeight + "px"; } catch(_) {}
+        }, 300);
+      }, 500);
+    }, 300);
   };
 
-  // Full version — WITH transcript (for internal review)
+  // Full version download — WITH transcript (for internal review)
   $("reportDownloadFullBtn").onclick = () => {
     downloadHtmlFile(html, "protokoll-full");
   };
@@ -1457,56 +1452,7 @@ function showMeetingReport(html) {
   };
 }
 
-function renderSummary(summary) {
-  summaryCard.classList.remove("hidden");
-  $("summaryText").textContent = summary.short_summary || "";
-
-  const details = $("summaryDetails");
-  details.innerHTML = "";
-
-  const sections = [
-    { key: "decisions", label: t("decisions"), items: summary.decisions || [] },
-    { key: "action_items", label: t("actions"), items: summary.action_items || [] },
-    { key: "open_points", label: t("openPoints"), items: summary.open_points || [] },
-    { key: "risks", label: t("risks"), items: summary.risks || [] },
-  ];
-
-  sections.forEach(sec => {
-    if (sec.items.length === 0) return;
-    const div = document.createElement("div");
-    div.className = "summary-section";
-    div.innerHTML = `<h4>${sec.label}</h4><ul>${sec.items.map(item => {
-      const text = typeof item === "string" ? item : item.text || JSON.stringify(item);
-      const owner = item.owner ? ` <span class="owner">\u2014 ${item.owner}</span>` : "";
-      const severity = item.severity ? ` <span class="severity-${item.severity}">[${item.severity}]</span>` : "";
-      return `<li>${text}${owner}${severity}</li>`;
-    }).join("")}</ul>`;
-    details.appendChild(div);
-  });
-
-  // Render follow-up diff if present
-  if (summary.followup_diff) {
-    const diff = summary.followup_diff;
-    const diffDiv = document.createElement("div");
-    diffDiv.className = "diff-section";
-
-    const diffItems = [
-      ...(diff.resolved || []).map(i => ({ icon: "✓", cls: "done", text: typeof i === "string" ? i : i.text, label: t("diffDone") })),
-      ...(diff.still_open || []).map(i => ({ icon: "○", cls: "open", text: typeof i === "string" ? i : i.text, label: t("diffOpen") })),
-      ...(diff.escalated || []).map(i => ({ icon: "!", cls: "escalated", text: typeof i === "string" ? i : i.text, label: t("diffEscalated") })),
-      ...(diff.new_items || []).map(i => ({ icon: "★", cls: "new", text: typeof i === "string" ? i : i.text, label: t("diffNew") })),
-    ];
-
-    if (diffItems.length > 0) {
-      diffDiv.innerHTML = `<h4>${t("diffTitle")}</h4>` + diffItems.map(d =>
-        `<div class="diff-item"><span class="diff-icon ${d.cls}">${d.icon}</span><span>${d.text}</span></div>`
-      ).join("");
-      details.appendChild(diffDiv);
-    }
-  }
-
-  chatArea.scrollTop = chatArea.scrollHeight;
-}
+// renderSummary removed — report card is the single output now
 
 // ---------------------------------------------------------------------------
 // File Upload
@@ -2366,9 +2312,7 @@ ctaClose.addEventListener("click", async () => {
 
 $("saveContextBtn").addEventListener("click", saveContext);
 muteToggle.addEventListener("click", toggleSophieMute);
-$("downloadProtocolBtn").addEventListener("click", downloadProtocol);
-$("copySummaryBtn").addEventListener("click", copySummary);
-$("shareSummaryBtn").addEventListener("click", shareSummary);
+// Old summary export buttons removed — report card handles all exports now
 
 $("contextToggle").addEventListener("click", () => {
   contextPanel.classList.toggle("collapsed");
