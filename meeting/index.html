@@ -511,6 +511,12 @@ let userTranscriptBuffer = new Map();
 let partialAssistant = "";
 let lastAssistantFinal = "";
 
+// Local audio recording (always-on during live phase)
+let localRecorder = null;
+let localRecorderStream = null;
+let localAudioChunks = [];    // Array of { blob, partIndex }
+let localPartIndex = 0;       // Increments each time recording pauses/resumes
+
 // ---------------------------------------------------------------------------
 // DOM refs
 // ---------------------------------------------------------------------------
@@ -974,8 +980,14 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Disconnect Sophie voice when leaving live phase
+    // Start local recording when entering live phase
+    if (newPhase === "live") {
+      startLocalRecording();
+    }
+
+    // Disconnect Sophie voice + stop recording when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
+      stopLocalRecording();
       if (!sophieMuted) {
         sophieMuted = true;
         muteToggle.classList.remove("active");
@@ -983,7 +995,7 @@ async function transitionPhase(newPhase) {
       }
     }
 
-    // Auto-summarize when entering post phase
+    // Auto-summarize when entering post phase (includes local transcription)
     if (newPhase === "post") {
       await generateSummary();
     }
@@ -1130,22 +1142,35 @@ async function generateSummary() {
   appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
 
   try {
-    // Voice transcript preferred — fall back to chat if voice is empty
+    // Step 1: Transcribe local audio recordings (the always-on parts)
+    const localTranscripts = await transcribeLocalAudio();
+    const localText = localTranscripts
+      .sort((a, b) => a.partIndex - b.partIndex)
+      .map(t => t.text)
+      .join("\n\n");
+
+    // Step 2: Sophie voice transcript (from DataChannel during unmute)
     const voiceText = voiceTranscript
       .filter(m => m.text && m.text.trim())
       .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.text}`)
       .join("\n");
 
-    let transcriptToSend = voiceText;
+    // Step 3: Combine all sources — local audio + Sophie voice + chat fallback
+    const allParts = [];
+    if (localText.trim()) allParts.push(`[Aufnahme — Gesprächsinhalt]\n${localText}`);
+    if (voiceText.trim()) allParts.push(`[Sophie Voice Session]\n${voiceText}`);
+
+    let transcriptToSend = allParts.join("\n\n---\n\n");
+
+    // Last resort: chat messages as fallback
     if (!transcriptToSend.trim() && chatMessages.length > 0) {
-      console.log(`[meeting] voice transcript empty, falling back to chat messages (${chatMessages.length})`);
-      transcriptToSend = "[CHAT FALLBACK — voice transcript unavailable]\n" +
-        chatMessages
-          .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
-          .join("\n");
+      console.log(`[meeting] No audio/voice, falling back to chat (${chatMessages.length} msgs)`);
+      transcriptToSend = chatMessages
+        .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
+        .join("\n");
     }
 
-    console.log(`[meeting] transcript: voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs, using=${voiceText.trim() ? "voice" : "chat-fallback"}`);
+    console.log(`[meeting] transcript sources: local=${localTranscripts.length} parts, voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
 
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
     renderSummary(data.summary);
@@ -1494,6 +1519,103 @@ function updateParticipantsBar() {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Local Audio Recording (always-on during live, pauses during Sophie voice)
+// ---------------------------------------------------------------------------
+async function startLocalRecording() {
+  try {
+    if (localRecorder && localRecorder.state === "recording") return;
+
+    // Reuse existing stream or get new one
+    if (!localRecorderStream || localRecorderStream.getTracks().some(t => t.readyState === "ended")) {
+      localRecorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+
+    localRecorder = new MediaRecorder(localRecorderStream, { mimeType: "audio/webm;codecs=opus" });
+    const currentPart = localPartIndex;
+    let chunks = [];
+
+    localRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    localRecorder.onstop = () => {
+      if (chunks.length > 0) {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        localAudioChunks.push({ blob, partIndex: currentPart });
+        console.log(`[meeting-rec] Part ${currentPart} saved: ${(blob.size / 1024).toFixed(0)}KB`);
+      }
+    };
+
+    localRecorder.start(10000); // Collect data every 10s
+    console.log(`[meeting-rec] Recording started (part ${localPartIndex})`);
+  } catch (e) {
+    console.error("[meeting-rec] Failed to start:", e.message);
+  }
+}
+
+function pauseLocalRecording() {
+  if (localRecorder && localRecorder.state === "recording") {
+    localRecorder.stop();
+    localPartIndex++;
+    console.log(`[meeting-rec] Paused (switching to Sophie voice)`);
+  }
+}
+
+function stopLocalRecording() {
+  if (localRecorder && localRecorder.state === "recording") {
+    localRecorder.stop();
+  }
+  if (localRecorderStream) {
+    localRecorderStream.getTracks().forEach(t => t.stop());
+    localRecorderStream = null;
+  }
+  console.log(`[meeting-rec] Stopped. ${localAudioChunks.length} parts recorded.`);
+}
+
+async function transcribeLocalAudio() {
+  if (localAudioChunks.length === 0) return [];
+
+  const transcripts = [];
+  appendSystemMsg(lang === "de" ? "Transkribiere Aufnahme..." : "Transcribing recording...");
+
+  for (const { blob, partIndex } of localAudioChunks) {
+    if (blob.size < 5000) continue; // Skip tiny fragments
+
+    try {
+      const formData = new FormData();
+      formData.append("file", blob, `meeting-part-${partIndex}.webm`);
+      formData.append("model", "whisper-1");
+      formData.append("language", lang === "de" ? "de" : lang === "fr" ? "fr" : "en");
+
+      const headers = {};
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+      } catch (_) {}
+
+      const res = await fetch("/api/ai/transcribe", {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text?.trim()) {
+          transcripts.push({ partIndex, text: data.text.trim() });
+          console.log(`[meeting-rec] Part ${partIndex} transcribed: ${data.text.slice(0, 80)}...`);
+        }
+      }
+    } catch (e) {
+      console.error(`[meeting-rec] Transcribe part ${partIndex} failed:`, e.message);
+    }
+  }
+
+  return transcripts;
+}
+
+// ---------------------------------------------------------------------------
 // Sophie Voice — Uses the SAME Talk-Sophie (WebRTC Realtime API)
 // Unmute = Connect Sophie voice session, Mute = Disconnect
 // ---------------------------------------------------------------------------
@@ -1732,11 +1854,13 @@ async function toggleSophieMute() {
   updateParticipantsBar();
 
   if (!sophieMuted) {
-    // UNMUTE → Connect Sophie voice (same as starting Talk)
+    // UNMUTE → Pause local recording, connect Sophie voice
+    pauseLocalRecording();
     await connectSophieVoice();
   } else {
-    // MUTE → Disconnect Sophie voice
+    // MUTE → Disconnect Sophie voice, resume local recording
     disconnectSophieVoice();
+    startLocalRecording();
   }
 }
 
