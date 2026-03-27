@@ -112,21 +112,31 @@ export default async function handler(req, res) {
     return res.status(200).json({ mode, template_html: templates[mode] || null });
   }
 
-  // ── GET: All templates overview ──
+  // ── GET: All templates overview (system + user) ──
   if (action === 'templates' && req.method === 'GET') {
+    // Import system defaults dynamically
+    const { DEFAULT_TEMPLATES } = await import('../lib/report-templates.js');
+
     const { data } = await supabase
       .from('user_profile')
       .select('report_templates')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .maybeSingle();
 
-    const templates = data?.report_templates || {};
-    // Return mode names + preview (first 200 chars of HTML)
-    const list = Object.entries(templates).map(([mode, html]) => ({
-      mode,
-      preview: html ? html.replace(/<[^>]*>/g, '').slice(0, 150).trim() : '',
-      length: html?.length || 0,
-    }));
+    const userTemplates = data?.report_templates || {};
+    const allModes = new Set([...Object.keys(DEFAULT_TEMPLATES), ...Object.keys(userTemplates)]);
+
+    const list = [];
+    for (const mode of allModes) {
+      const isUserCustom = !!userTemplates[mode];
+      const html = isUserCustom ? userTemplates[mode] : DEFAULT_TEMPLATES[mode];
+      list.push({
+        mode,
+        type: isUserCustom ? 'user' : 'system',
+        preview: html ? html.replace(/<[^>]*>/g, '').slice(0, 150).trim() : '',
+        length: html?.length || 0,
+      });
+    }
     return res.status(200).json({ templates: list });
   }
 
