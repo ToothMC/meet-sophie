@@ -650,7 +650,8 @@ async function initAuth() {
   if (urlMeetingId) {
     await loadMeeting(urlMeetingId);
   } else {
-    await showHistory();
+    // Go directly to setup (new meeting) — history accessible via back button
+    await showSetup();
   }
 }
 
