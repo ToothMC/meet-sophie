@@ -69,7 +69,30 @@ ${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.`;
       return res.status(500).json({ error: 'No providers available' });
     }
 
-    // Step 2: Claude generates the final HTML report
+    // Step 2: Load user's saved template (if any)
+    let templateHint = '';
+    try {
+      const { data: sess } = await supabase
+        .from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+      if (sess?.user_id) {
+        const { data: profile } = await supabase
+          .from('user_profile').select('report_templates').eq('id', sess.user_id).maybeSingle();
+        const tpl = profile?.report_templates?.[session_mode || 'default'];
+        if (tpl) {
+          templateHint = `\n\nWICHTIG — LAYOUT-VORLAGE DES USERS:
+Der User hat folgendes Layout als seine bevorzugte Vorlage gespeichert.
+Verwende ein ÄHNLICHES Layout, ähnliche Struktur und Design-Elemente — aber passe den INHALT an das aktuelle Gespräch an.
+Kopiere NICHT 1:1, sondern nutze es als Inspiration für Struktur, Farben und Aufbau.
+
+VORLAGE-HTML:
+${tpl.slice(0, 3000)}`;
+        }
+      }
+    } catch (e) {
+      console.error('[report] template load failed:', e?.message);
+    }
+
+    // Step 3: Claude generates the final HTML report
     await supabase.from('conversation_outputs')
       .update({ report_progress: 70, report_status_detail: `Erstelle Report aus ${analyses.length} Analysen...` })
       .eq('session_id', session_id);
