@@ -743,10 +743,10 @@ async function showHistory() {
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <a href="/meeting/?id=${m.id}" style="flex:1;display:block;padding:12px 14px;background:#fff;border:1px solid #ede8e2;border-radius:10px;text-decoration:none;color:#2a2420;box-shadow:0 1px 4px rgba(0,0,0,.04)">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:14px;font-weight:500">${displayTitle}</span>
-            <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#999'};text-transform:uppercase">${m.phase}</span>
+            <span style="font-size:14px;font-weight:500">${escapeHtml(displayTitle)}</span>
+            <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#999'};text-transform:uppercase">${escapeHtml(m.phase)}</span>
           </div>
-          <div style="font-size:12px;color:#a09080;margin-top:4px">${date} &middot; ${m.meeting_type}</div>
+          <div style="font-size:12px;color:#a09080;margin-top:4px">${escapeHtml(date)} &middot; ${escapeHtml(m.meeting_type)}</div>
         </a>
         <button onclick="deleteMeeting('${m.id}',this)" style="padding:8px;font-size:16px;background:none;border:1px solid #ede8e2;border-radius:8px;cursor:pointer;color:#b0a090;flex-shrink:0" title="${lang === "de" ? "Löschen" : "Delete"}">🗑</button>
       </div>`;
@@ -1556,6 +1556,8 @@ function startRecStatusUpdates() {
 
 function stopRecStatusUpdates() {
   if (recStatusInterval) { clearInterval(recStatusInterval); recStatusInterval = null; }
+  const el = $("recordingStatus");
+  if (el) { el.classList.add("hidden"); el.style.display = "none"; }
 }
 
 // ---------------------------------------------------------------------------
@@ -1774,6 +1776,7 @@ async function connectSophieVoice() {
     await sophieVoicePc.setLocalDescription(offer);
 
     // 3. Handshake with OpenAI Realtime (same as Talk)
+    if (!data?.client_secret?.value) throw new Error("No client_secret received from session API");
     const answerSdp = await fetchRealtimeAnswerSdp(offer.sdp, data.client_secret.value);
     await sophieVoicePc.setRemoteDescription({ type: "answer", sdp: answerSdp });
 
@@ -2241,7 +2244,7 @@ ctaLive.addEventListener("click", async () => {
   captureLocation(); // fire-and-forget
   await transitionPhase("live");
 });
-ctaPost.addEventListener("click", () => transitionPhase("post"));
+ctaPost.addEventListener("click", async () => { await transitionPhase("post"); });
 ctaClose.addEventListener("click", async () => {
   await transitionPhase("closed");
   // Navigate back to home after closing
