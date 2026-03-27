@@ -2324,7 +2324,8 @@ ctaLive.addEventListener("click", async () => {
   await startAudioRecording();
 
   startRecStatusUpdates();
-  captureLocation(); // fire-and-forget
+  // No captureLocation() — avoid second permission dialog.
+  // Meeting location only appears in report if explicitly said in transcript.
   await transitionPhase("live");
 });
 ctaPost.addEventListener("click", async () => { await transitionPhase("post"); });
