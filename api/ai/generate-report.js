@@ -4,7 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 120 };
 
 const REPORT_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
