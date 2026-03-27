@@ -128,6 +128,7 @@ KONSISTENZ bei wiederholten Session-Typen:
 - Meeting: IMMER Agenda → Beschlüsse → Action Items → Offene Punkte
 
 Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
+${templateHint}
 
 DIE ${analyses.length} ANALYSEN:
 
