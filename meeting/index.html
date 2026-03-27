@@ -1012,6 +1012,25 @@ async function transitionPhase(newPhase) {
 
     // Auto-summarize when entering post phase (includes local transcription)
     if (newPhase === "post") {
+      // TEST MODE: ?test=voice injects fake voice data to test the full report pipeline
+      if (new URLSearchParams(window.location.search).has("test")) {
+        console.log("[TEST] Injecting fake voice transcript data");
+        appendSystemMsg("🧪 TEST-MODUS: Fake Voice-Daten injiziert");
+        speechTranscript.push(
+          "Wir müssen die Markteinführung von MeetSophie besprechen.",
+          "Der Launch soll nächste Woche Dienstag stattfinden.",
+          "LinkedIn ist der wichtigste Kanal für uns.",
+          "Maike übernimmt die Content-Erstellung.",
+        );
+        voiceTranscript.push(
+          { role: "user", text: "Sophie, was denkst du welcher Social Media Kanal am besten für ein B2B SaaS Produkt geeignet ist?" },
+          { role: "assistant", text: "Für ein B2B SaaS Produkt wie MeetSophie empfehle ich LinkedIn als primären Kanal. Die Zielgruppe ist dort am aktivsten. Twitter/X eignet sich gut als Zweitkanal für Thought Leadership. YouTube für Produktdemos und Tutorials." },
+          { role: "user", text: "Gut, dann nehmen wir LinkedIn. Kannst du das als Beschluss festhalten?" },
+          { role: "assistant", text: "Festgehalten. Beschluss: LinkedIn wird als primärer Kanal für die Markteinführung von MeetSophie gewählt. Soll ich auch einen Zeitplan vorschlagen?" },
+          { role: "user", text: "Ja bitte, und der Launch soll nächste Woche Dienstag sein." },
+          { role: "assistant", text: "Verstanden. Ich schlage folgenden Zeitplan vor: Montag Content-Vorbereitung, Dienstag Launch-Post auf LinkedIn, Mittwoch Follow-up Engagement. Maike könnte die Content-Erstellung übernehmen." },
+        );
+      }
       await generateSummary();
     }
   } catch (e) {
