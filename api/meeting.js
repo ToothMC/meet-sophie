@@ -669,16 +669,22 @@ async function handleSummarize(req, res) {
   const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
-  // Chat transcript: from DB notes OR from client fallback
-  const { data: chatData } = await supabase
-    .from("meeting_notes")
-    .select("content, created_at")
-    .eq("meeting_id", meeting_id)
-    .eq("note_type", "chat_message")
-    .order("created_at");
-  const dbTranscript = (chatData || []).map(m => m.content).join("\n");
-  // Use client transcript as fallback if DB has nothing
-  const chatTranscript = dbTranscript.trim() || (body.chat_transcript || "").trim();
+  // Chat transcript: client-sent transcript (voice or chat-fallback) takes priority over DB
+  const clientTranscript = (body.chat_transcript || "").trim();
+  let chatTranscript;
+  if (clientTranscript) {
+    // Client sends voice transcript (preferred) or chat-fallback — always use it when present
+    chatTranscript = clientTranscript;
+  } else {
+    // Fallback: read chat_message notes from DB
+    const { data: chatData } = await supabase
+      .from("meeting_notes")
+      .select("content, created_at")
+      .eq("meeting_id", meeting_id)
+      .eq("note_type", "chat_message")
+      .order("created_at");
+    chatTranscript = (chatData || []).map(m => m.content).join("\n").trim();
+  }
 
   console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, chatDB=${dbTranscript.length}, chatClient=${(body.chat_transcript||"").length}`);
 
