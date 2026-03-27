@@ -2467,6 +2467,23 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   if (saveTemplateBtn) saveTemplateBtn.style.display = reportHtml ? "" : "none";
   if (regenerateReportBtn) regenerateReportBtn.style.display = reportHtml ? "" : "none";
 
+  // Show save-template hint for first-time reports (no template saved yet)
+  if (reportHtml && saveTemplateBtn) {
+    const hintId = "saveTemplateHint";
+    if (!document.getElementById(hintId)) {
+      const hint = document.createElement("div");
+      hint.id = hintId;
+      hint.style.cssText = "text-align:center;padding:10px 16px;margin-top:8px;font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;";
+      const hintText = _uiLang === "de"
+        ? 'Gefällt dir das Layout? Speichere es als Vorlage — zukünftige Reports nutzen dann dein Design.'
+        : _uiLang === "fr"
+        ? 'Tu aimes ce design ? Sauvegarde-le comme modèle pour tes futurs rapports.'
+        : 'Like this layout? Save it as a template — future reports will use your design.';
+      hint.textContent = hintText;
+      saveTemplateBtn.closest(".report-export")?.appendChild(hint);
+    }
+  }
+
   // No style pills — AI decides the format
   const styleBar = document.getElementById("reportStyleBar");
   if (styleBar) styleBar.style.display = "none";
