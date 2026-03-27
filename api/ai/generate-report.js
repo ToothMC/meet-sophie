@@ -239,7 +239,7 @@ ${analysesBlock}`;
       ];
     }
 
-    const maxTokens = hasTemplate ? 2000 : 4000;
+    const maxTokens = hasTemplate ? 4000 : 4000;
 
     let reportHtml = null;
     for (const synth of synthProviders) {
