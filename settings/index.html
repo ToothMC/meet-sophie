@@ -507,7 +507,7 @@ async function deleteReport() {
   if (!_reportDetailData?.session_id) return;
   if (!confirm("Report wirklich löschen? Das kann nicht rückgängig gemacht werden.")) return;
   try {
-    await api("delete-report", "POST", { session_id: _reportDetailData.session_id });
+    await api("delete-report", { session_id: _reportDetailData.session_id }, "POST");
     closeReportDetail();
     loadReports();
   } catch (e) { alert("Fehler: " + e?.message); }
