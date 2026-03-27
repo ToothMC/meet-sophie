@@ -728,7 +728,7 @@ async function createMeeting() {
     const parentVal = $("parentMeeting").value || null;
     const data = await api("create", {
       meeting_type: $("meetingType").value,
-      sophie_role: $("sophieRole").value,
+      sophie_role: "co-think",
       title: $("meetingTitle").value.trim() || null,
       parent_meeting_id: parentVal,
     });
