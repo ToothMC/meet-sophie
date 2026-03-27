@@ -422,12 +422,67 @@ if (!session?.user) {
   mainContent.classList.remove("hidden");
   loadHealth();
   loadCosts();
+  loadAccount();
+}
+
+// ── Account Section ──
+async function loadAccount() {
+  const user = session.user;
+  const avatar = document.getElementById("accountAvatar");
+  const nameEl = document.getElementById("accountName");
+  const emailEl = document.getElementById("accountEmail");
+  const planEl = document.getElementById("accountPlan");
+  const manageBtn = document.getElementById("manageSubBtn");
+
+  // Email + avatar initial
+  emailEl.textContent = user.email || "—";
+  if (user.email) avatar.textContent = user.email[0].toUpperCase();
+
+  // Load profile name
+  try {
+    const { data: profile } = await supabase
+      .from("user_profile").select("preferred_name, first_name").eq("user_id", user.id).maybeSingle();
+    if (profile?.preferred_name || profile?.first_name) {
+      nameEl.textContent = profile.preferred_name || profile.first_name;
+      avatar.textContent = (profile.preferred_name || profile.first_name)[0].toUpperCase();
+    }
+  } catch {}
+
+  // Load subscription
+  try {
+    const { data: sub } = await supabase
+      .from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle();
+    const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
+    if (sub?.plan) {
+      planEl.textContent = sub.plan + (active ? "" : " (inaktiv)");
+      planEl.className = "badge " + (active ? "badge-active" : "badge-decoupled");
+      planEl.style.display = "";
+    }
+    if (active) {
+      manageBtn.style.display = "";
+      manageBtn.onclick = async () => {
+        manageBtn.disabled = true;
+        try {
+          const res = await fetch("/api/billing?action=portal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+          });
+          const data = await res.json();
+          if (data.url) window.location.href = data.url;
+        } catch (e) { alert("Fehler: " + e?.message); }
+        manageBtn.disabled = false;
+      };
+    }
+  } catch {}
 }
 
 // Logout
-document.getElementById("logoutBtn").onclick = async () => {
+const logoutAction = async () => {
   await supabase.auth.signOut();
   window.location.href = "/login";
+};
+document.getElementById("logoutBtn").onclick = logoutAction;
+document.getElementById("logoutBtn2").onclick = logoutAction;
 };
 
 // ── Helpers ──
