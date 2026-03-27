@@ -989,19 +989,9 @@ async function sendMessage(text, isAutoOpener = false) {
   showTyping();
 
   try {
-    // Add mute state context so Sophie knows her role
-    const muteContext = sophieMuted
-      ? "[SYSTEM: Sophie is muted/passive. Only respond if directly addressed by name.]"
-      : "[SYSTEM: Sophie is unmuted/active participant. Proactively contribute, give hints, track decisions.]";
-
-    const messagesWithContext = [
-      ...chatMessages.slice(0, -1),
-      { role: "user", content: muteContext + "\n" + chatMessages[chatMessages.length - 1].content },
-    ];
-
     const data = await api("message", {
       meeting_id: meetingId,
-      messages: messagesWithContext,
+      messages: chatMessages,
     });
 
     removeTyping();
