@@ -1466,8 +1466,13 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   if (_shareSpan) _shareSpan.textContent = t("share");
   const _dlSpan = document.querySelector("#downloadReportBtn span");
   if (_dlSpan) _dlSpan.textContent = t("download");
-  const _exportTitle = document.querySelector(".report-export-title");
-  if (_exportTitle) _exportTitle.textContent = t("export_label");
+  const _exportTitles = document.querySelectorAll(".report-export-title");
+  if (_exportTitles[0]) _exportTitles[0].textContent = t("export_label");
+  if (_exportTitles[1]) _exportTitles[1].textContent = _uiLang === "de" ? "Layout" : _uiLang === "fr" ? "Mise en page" : "Layout";
+  const _saveTemplateSpan = document.querySelector("#saveTemplateBtn span");
+  if (_saveTemplateSpan) _saveTemplateSpan.textContent = _uiLang === "de" ? "Als Vorlage" : _uiLang === "fr" ? "Sauvegarder" : "Save Template";
+  const _regenSpan = document.querySelector("#regenerateReportBtn span");
+  if (_regenSpan) _regenSpan.textContent = _uiLang === "de" ? "Neu generieren" : _uiLang === "fr" ? "Régénérer" : "Regenerate";
   // CTA title
   const _ctaTitle = document.getElementById("postCallCtaTitle");
   if (_ctaTitle) _ctaTitle.textContent = t("continue_sophie");
