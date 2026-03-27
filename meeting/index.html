@@ -974,15 +974,6 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Auto-connect Sophie voice when entering live phase
-    if (newPhase === "live") {
-      if (sophieMuted) {
-        sophieMuted = false;
-        muteToggle.classList.add("active");
-        connectSophieVoice();
-      }
-    }
-
     // Disconnect Sophie voice when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
       if (!sophieMuted) {
