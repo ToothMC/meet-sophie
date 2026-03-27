@@ -30,6 +30,8 @@ export default async function handler(req, res) {
 
   try {
     const modeHint = session_mode ? `Session-Modus: "${session_mode}".` : '';
+    const todayDate = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dateInstruction = `Das heutige Datum ist ${todayDate}. Wandle ALLE relativen Zeitangaben (z.B. "nächste Woche", "morgen", "in 2 Tagen", "nächsten Dienstag") in konkrete Daten im Format TT.MM.JJJJ um.`;
 
     // Step 0: Load template — User template > System template
     const mode = session_mode || 'default';
@@ -62,10 +64,12 @@ export default async function handler(req, res) {
     // Step 1: All 4 AIs analyze the transcript (content only, no design classification if template exists)
     const analysisPrompt = hasTemplate
       ? `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
-${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
+${modeHint} ${dateInstruction}
+Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
 Fokussiere dich NUR auf den INHALT — Fakten, Entscheidungen, Ergebnisse, Action Items. Ignoriere Design-Diskussionen.`
       : `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
-${modeHint} Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
+${modeHint} ${dateInstruction}
+Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
 
 WICHTIG: Beginne deine Antwort mit GENAU EINER dieser Zeilen:
 [TYPE:DESIGN] — wenn das Gespräch hauptsächlich darum geht, wie ein Dokument/Report/Template aussehen soll (Layout, Farben, Format, Stil)
@@ -212,6 +216,7 @@ ${analysesBlock}`;
         // CONTENT-MODE: Normal conversation → summarize content as report
         htmlPrompt = `Du bist ein Report-Designer.
 ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
+${dateInstruction}
 
 Erstelle einen REPORT als reines HTML (nur den <body> Inhalt, kein <html>/<head>).
 

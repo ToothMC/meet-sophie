@@ -460,7 +460,7 @@ body{
         <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
       </div>
       <div id="reportActions" class="hidden" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="export-btn" id="reportDownloadBtn">⬇ Report PDF</button>
+        <button class="export-btn" id="reportDownloadBtn">⬇ Report</button>
         <button class="export-btn" id="reportCopyBtn">📋 Kopieren</button>
         <button class="export-btn" id="reportTemplateBtn">💾 Als Vorlage</button>
         <button class="export-btn" id="reportRegenerateBtn">🔄 Neu generieren</button>
@@ -718,13 +718,25 @@ async function showHistory() {
       return;
     }
 
+    // Clean up titles: remove _XX suffixes and add date for disambiguation
+    function cleanMeetingTitle(m) {
+      let title = m.title || m.meeting_type;
+      // Remove _XX numeric suffix (e.g. "Markteinführung_10" → "Markteinführung")
+      title = title.replace(/_\d+$/, '');
+      // Add date suffix for clarity
+      const d = new Date(m.created_at);
+      const dateStr = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.`;
+      return `${title} (${dateStr})`;
+    }
+
     list.innerHTML = meetings.map(m => {
       const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
       const phaseColors = { prep: "#3b82f6", live: "#ef4444", post: "#8b5cf6", closed: "#999" };
+      const displayTitle = cleanMeetingTitle(m);
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <a href="/meeting/?id=${m.id}" style="flex:1;display:block;padding:12px 14px;background:#fff;border:1px solid #ede8e2;border-radius:10px;text-decoration:none;color:#2a2420;box-shadow:0 1px 4px rgba(0,0,0,.04)">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:14px;font-weight:500">${m.title || m.meeting_type}</span>
+            <span style="font-size:14px;font-weight:500">${displayTitle}</span>
             <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#999'};text-transform:uppercase">${m.phase}</span>
           </div>
           <div style="font-size:12px;color:#a09080;margin-top:4px">${date} &middot; ${m.meeting_type}</div>
@@ -2141,6 +2153,27 @@ function autoResize() {
   chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
 }
 
+// Geolocation: fire-and-forget when meeting goes live
+function captureLocation() {
+  if (!navigator.geolocation || !meetingId) return;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const { latitude, longitude } = pos.coords;
+      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${lang}`);
+      const geo = await resp.json();
+      const city = geo.address?.city || geo.address?.town || geo.address?.village || '';
+      const country = geo.address?.country || '';
+      const locationStr = [city, country].filter(Boolean).join(', ') || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+      await api("context", { meeting_id: meetingId, context_type: "location", content: locationStr });
+      console.log("[meeting] Location captured:", locationStr);
+    } catch (e) {
+      console.warn("[meeting] Reverse geocoding failed:", e.message);
+    }
+  }, (err) => {
+    console.log("[meeting] Geolocation not available:", err.message);
+  }, { timeout: 10000, maximumAge: 300000 });
+}
+
 ctaLive.addEventListener("click", async () => {
   // Start mic recording INSIDE user gesture (required for iOS)
   // MUST await before transitioning — mic permission dialog is async
@@ -2151,6 +2184,7 @@ ctaLive.addEventListener("click", async () => {
     console.error("[meeting] Failed to start recording:", e.message);
     // Continue anyway — meeting can still work with chat + Sophie voice
   }
+  captureLocation(); // fire-and-forget
   await transitionPhase("live");
 });
 ctaPost.addEventListener("click", () => transitionPhase("post"));

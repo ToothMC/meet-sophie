@@ -334,8 +334,8 @@ main{max-width:520px;margin:0 auto;padding:12px}
       <div id="reportDetailOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.85);overflow-y:auto;padding:20px">
         <div style="max-width:600px;margin:0 auto">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3 id="reportDetailTitle" style="font-size:15px;color:#2a2420;margin:0"></h3>
-            <button onclick="closeReportDetail()" style="background:none;border:none;color:#a09080;font-size:20px;cursor:pointer">&times;</button>
+            <h3 id="reportDetailTitle" style="font-size:15px;color:#fff;margin:0"></h3>
+            <button onclick="closeReportDetail()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">&times;</button>
           </div>
           <div id="reportDetailContent" style="background:#fff;border-radius:12px;padding:16px;overflow:hidden;color:#1a1a1a"></div>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -558,10 +558,15 @@ async function loadReports() {
       html += reports.slice(0, 10).map(r => {
         const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
         const source = r.source || 'talk';
+        // Clean title: remove _XX suffix, add date
+        let displayTitle = (r.title || 'Report').replace(/_\d+$/, '');
+        const d = new Date(r.created_at);
+        const dateShort = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.`;
+        displayTitle = `${displayTitle} (${dateShort})`;
         return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="flex:1">
-              <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
+              <div style="font-size:13px;font-weight:600;color:#2a2420">${displayTitle}</div>
             </div>
             <div style="font-size:11px;color:#a09080">${date}</div>
           </div>
@@ -607,8 +612,26 @@ async function openReportDetail(sessionId, source = 'talk') {
         html += data.risks.map(r => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${r.text || r}${r.severity ? ` <span style="color:${r.severity === 'high' ? '#ef4444' : r.severity === 'medium' ? '#eab308' : '#22c55e'};font-size:11px">${r.severity}</span>` : ''}</div>`).join('') + '</div>';
       }
       contentEl.innerHTML = html || '<p class="msg">Keine Details vorhanden.</p>';
+    } else if (data.report_html) {
+      // Render HTML report in iframe for proper isolation
+      contentEl.innerHTML = '<iframe id="settingsReportFrame" style="width:100%;border:none;min-height:500px;background:#fff;border-radius:8px" sandbox="allow-same-origin"></iframe>';
+      const iframe = document.getElementById("settingsReportFrame");
+      iframe.addEventListener("load", () => {
+        const doc = iframe.contentDocument;
+        doc.open();
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}</style></head><body>${data.report_html}</body></html>`);
+        doc.close();
+        // Auto-resize iframe to content
+        setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 200);
+      });
+      // Trigger load
+      const doc = iframe.contentDocument;
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}</style></head><body>${data.report_html}</body></html>`);
+      doc.close();
+      setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 300);
     } else {
-      contentEl.innerHTML = data.report_html || '<p class="msg">Kein HTML-Report vorhanden.</p>';
+      contentEl.innerHTML = '<p class="msg">Kein HTML-Report vorhanden.</p>';
     }
   } catch (e) {
     titleEl.textContent = "Fehler";

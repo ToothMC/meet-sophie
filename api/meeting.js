@@ -329,7 +329,7 @@ async function handleContext(req, res) {
     return res.status(400).json({ error: "Missing meeting_id, context_type, or content" });
   }
 
-  if (!["agenda", "participants", "goal", "text_note", "file", "history_ref"].includes(context_type)) {
+  if (!["agenda", "participants", "goal", "text_note", "file", "history_ref", "location"].includes(context_type)) {
     return res.status(400).json({ error: "Invalid context_type" });
   }
 
@@ -706,8 +706,10 @@ async function handleSummarize(req, res) {
     return res.status(200).json({ ok: true, summary: saved || emptySummary });
   }
 
+  const todayDate = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const summarySystemPrompt = `You are Sophie. Generate a structured meeting summary.
 ${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
+Das heutige Datum ist ${todayDate}. Wandle ALLE relativen Zeitangaben (z.B. "nächste Woche", "morgen", "in 2 Tagen", "nächsten Dienstag") in konkrete Daten im Format TT.MM.JJJJ um.
 
 Meeting: ${meeting.title || "Untitled"}
 Type: ${meeting.meeting_type}
