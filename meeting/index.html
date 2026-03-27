@@ -1589,11 +1589,14 @@ function startSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     console.warn("[meeting-speech] SpeechRecognition not supported");
-    appendSystemMsg("⚠️ Spracherkennung wird von diesem Browser nicht unterstützt");
+    appendSystemMsg("⚠️ SpeechRecognition API nicht verfügbar in diesem Browser!");
+    appendSystemMsg("ℹ️ Browser: " + navigator.userAgent.slice(0, 80));
     return;
   }
 
   if (speechRecognition) return; // Already running
+
+  appendSystemMsg("🔧 SpeechRecognition API gefunden, starte...");
 
   speechRecognition = new SpeechRecognition();
   speechRecognition.continuous = true;
@@ -1606,6 +1609,7 @@ function startSpeechRecognition() {
         const text = event.results[i][0].transcript.trim();
         if (text) {
           speechTranscript.push(text);
+          appendSystemMsg(`🎤 [${speechTranscript.length}] ${text.slice(0, 100)}`);
           console.log(`[meeting-speech] "${text.slice(0, 80)}"`);
         }
       }
@@ -1613,8 +1617,8 @@ function startSpeechRecognition() {
   };
 
   speechRecognition.onerror = (event) => {
-    // "no-speech" is normal, just restart
-    if (event.error === "no-speech" || event.error === "aborted") return;
+    // Show ALL errors visibly
+    appendSystemMsg(`⚠️ Speech Error: ${event.error}`);
     console.error("[meeting-speech] Error:", event.error);
   };
 
@@ -1628,8 +1632,10 @@ function startSpeechRecognition() {
 
   try {
     speechRecognition.start();
+    appendSystemMsg("✅ Spracherkennung gestartet — sprich jetzt");
     console.log("[meeting-speech] Started");
   } catch (e) {
+    appendSystemMsg(`❌ Speech Start fehlgeschlagen: ${e.message}`);
     console.error("[meeting-speech] Start failed:", e.message);
   }
 }
