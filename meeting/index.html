@@ -504,6 +504,7 @@ let sophieVoiceAudio = null;  // Audio element for Sophie's voice
 let sophieVoiceDc = null;     // DataChannel for transcript
 let isSpeaking = false;
 let isConnecting = false;
+let sophieVoiceStartTime = null;  // Track when Sophie voice connected
 
 // Voice transcript state (same as Talk)
 let voiceTranscript = [];  // { role: "user"|"assistant", text: "..." }
@@ -1772,6 +1773,7 @@ async function connectSophieVoice() {
     isSpeaking = true;
     updateParticipantsBar();
 
+    sophieVoiceStartTime = Date.now();
     const joinedMsg = lang === "de" ? "Sophie ist jetzt im Meeting." : lang === "fr" ? "Sophie est dans le meeting." : "Sophie joined the meeting.";
     appendSystemMsg(joinedMsg);
 
@@ -1835,6 +1837,16 @@ function handleVoiceTranscriptEvent(msg) {
 }
 
 function disconnectSophieVoice(silent = false) {
+  // Report usage for Sophie voice session
+  if (sophieVoiceStartTime) {
+    const secondsUsed = Math.ceil((Date.now() - sophieVoiceStartTime) / 1000);
+    sophieVoiceStartTime = null;
+    if (secondsUsed > 0) {
+      console.log(`[meeting-voice] Session ended: ${secondsUsed}s used`);
+      reportMeetingVoiceUsage(secondsUsed);
+    }
+  }
+
   // Stop mic
   if (sophieVoiceStream) {
     sophieVoiceStream.getTracks().forEach(t => t.stop());
@@ -1861,6 +1873,27 @@ function disconnectSophieVoice(silent = false) {
   if (!silent) {
     const leftMsg = lang === "de" ? "Sophie hat das Meeting verlassen." : lang === "fr" ? "Sophie a quitté le meeting." : "Sophie left the meeting.";
     appendSystemMsg(leftMsg);
+  }
+}
+
+async function reportMeetingVoiceUsage(seconds) {
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token) return;
+
+    const res = await fetch("/api/user?action=usage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authSession.access_token}`,
+      },
+      body: JSON.stringify({ seconds_used: seconds }),
+      keepalive: true,
+    });
+    const data = await res.json().catch(() => null);
+    console.log(`[meeting-voice] Usage reported: ${seconds}s`, res.status, data);
+  } catch (e) {
+    console.error("[meeting-voice] Usage report failed:", e.message);
   }
 }
 
