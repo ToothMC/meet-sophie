@@ -980,10 +980,7 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Start local recording when entering live phase
-    if (newPhase === "live") {
-      startLocalRecording();
-    }
+    // Recording is started in the ctaLive click handler (user gesture for iOS)
 
     // Disconnect Sophie voice + stop recording when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
@@ -1143,6 +1140,10 @@ async function generateSummary() {
 
   try {
     // Step 1: Transcribe local audio recordings (the always-on parts)
+    console.log(`[meeting] generateSummary: ${localAudioChunks.length} audio chunks, ${voiceTranscript.length} voice msgs, ${chatMessages.length} chat msgs`);
+    appendSystemMsg(lang === "de"
+      ? `Verarbeite ${localAudioChunks.length} Aufnahme(n), ${voiceTranscript.length} Voice-Nachrichten...`
+      : `Processing ${localAudioChunks.length} recording(s), ${voiceTranscript.length} voice messages...`);
     const localTranscripts = await transcribeLocalAudio();
     const localText = localTranscripts
       .sort((a, b) => a.partIndex - b.partIndex)
@@ -2132,7 +2133,16 @@ function autoResize() {
   chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
 }
 
-ctaLive.addEventListener("click", () => transitionPhase("live"));
+ctaLive.addEventListener("click", async () => {
+  // Start mic recording INSIDE user gesture (required for iOS)
+  try {
+    await startLocalRecording();
+    console.log("[meeting] Local recording started from user gesture");
+  } catch (e) {
+    console.error("[meeting] Failed to start recording:", e.message);
+  }
+  transitionPhase("live");
+});
 ctaPost.addEventListener("click", () => transitionPhase("post"));
 ctaClose.addEventListener("click", async () => {
   await transitionPhase("closed");
