@@ -517,9 +517,11 @@ let userTranscriptBuffer = new Map();
 let partialAssistant = "";
 let lastAssistantFinal = "";
 
+// Shared mic stream (one permission, shared between recording + Sophie voice)
+let sharedMicStream = null;
+
 // Local audio recording (always-on during live phase)
 let localRecorder = null;
-let localRecorderStream = null;
 let localAudioChunks = [];    // Array of { blob, partIndex }
 let localPartIndex = 0;       // Increments each time recording pauses/resumes
 
@@ -1568,9 +1570,9 @@ async function startLocalRecording() {
   try {
     if (localRecorder && localRecorder.state === "recording") return;
 
-    // Reuse existing stream or get new one
-    if (!localRecorderStream || localRecorderStream.getTracks().some(t => t.readyState === "ended")) {
-      localRecorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Get shared mic stream (one permission for everything)
+    if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
+      sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
 
     // Pick supported mimeType (Safari doesn't support webm)
@@ -1579,7 +1581,7 @@ async function startLocalRecording() {
       : MediaRecorder.isTypeSupported("audio/mp4")
         ? "audio/mp4"
         : "";
-    localRecorder = new MediaRecorder(localRecorderStream, mimeType ? { mimeType } : {});
+    localRecorder = new MediaRecorder(sharedMicStream, mimeType ? { mimeType } : {});
     console.log(`[meeting-rec] Using mimeType: ${localRecorder.mimeType}`);
     const currentPart = localPartIndex;
     let chunks = [];
@@ -1615,9 +1617,10 @@ function stopLocalRecording() {
   if (localRecorder && localRecorder.state === "recording") {
     localRecorder.stop();
   }
-  if (localRecorderStream) {
-    localRecorderStream.getTracks().forEach(t => t.stop());
-    localRecorderStream = null;
+  // Kill shared mic stream only when meeting fully ends (not when pausing for Sophie)
+  if (sharedMicStream) {
+    sharedMicStream.getTracks().forEach(t => t.stop());
+    sharedMicStream = null;
   }
   console.log(`[meeting-rec] Stopped. ${localAudioChunks.length} parts recorded.`);
 }
@@ -1775,9 +1778,12 @@ async function connectSophieVoice() {
       } catch (_) {}
     };
 
-    // Get mic access
-    sophieVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    sophieVoiceStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieVoiceStream));
+    // Use shared mic stream (already granted during recording start)
+    if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
+      sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+    sophieVoiceStream = sharedMicStream;
+    sharedMicStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sharedMicStream));
 
     // Sophie's audio output
     sophieVoiceAudio = document.createElement("audio");
@@ -1883,11 +1889,8 @@ function disconnectSophieVoice(silent = false) {
     }
   }
 
-  // Stop mic
-  if (sophieVoiceStream) {
-    sophieVoiceStream.getTracks().forEach(t => t.stop());
-    sophieVoiceStream = null;
-  }
+  // Don't kill mic stream — it's shared with local recording
+  sophieVoiceStream = null;
   // Stop audio
   if (sophieVoiceAudio) {
     try { sophieVoiceAudio.srcObject = null; } catch {}
