@@ -899,7 +899,21 @@ Return ONLY the JSON object.`;
     // Non-critical — summary was already saved
   }
 
-  return res.status(200).json({ ok: true, summary: saved, report_session_id: reportSessionId });
+  // Build full transcript for frontend to pass to generate-report
+  const fullTranscriptParts2 = [];
+  if (meeting.title) fullTranscriptParts2.push(`Meeting: ${meeting.title}`);
+  if (meeting.meeting_type) fullTranscriptParts2.push(`Typ: ${meeting.meeting_type}`);
+  if (meeting.started_at) fullTranscriptParts2.push(`Datum: ${new Date(meeting.started_at).toLocaleString("de-DE")}`);
+  if (contextStr.trim()) fullTranscriptParts2.push(`\nKontext:\n${contextStr}`);
+  if (chatTranscript.trim()) fullTranscriptParts2.push(`\nVollständiges Gespräch:\n${chatTranscript}`);
+  if (notesStr.trim()) fullTranscriptParts2.push(`\nNotizen & Entscheidungen:\n${notesStr}`);
+
+  return res.status(200).json({
+    ok: true,
+    summary: saved,
+    report_session_id: reportSessionId,
+    report_transcript: fullTranscriptParts2.join("\n"),
+  });
 }
 
 // ---------------------------------------------------------------------------

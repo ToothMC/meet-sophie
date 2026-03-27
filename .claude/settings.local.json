@@ -110,7 +110,8 @@
       "Read(//tmp/**)",
       "Bash(gh api:*)",
       "Bash(ls /Users/michaelhammer/.claude/projects/*/memory/)",
-      "Bash(grep -A 30 \"conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(grep -A 30 \"conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_logs"
     ]
   },
   "hooks": {

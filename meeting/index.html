@@ -1119,7 +1119,7 @@ async function generateSummary() {
 
     // If backend created a report session, trigger generate-report from frontend + poll
     if (data.report_session_id) {
-      triggerAndPollMeetingReport(data.report_session_id);
+      triggerAndPollMeetingReport(data.report_session_id, data.report_transcript || "");
     }
   } catch (e) {
     appendSystemMsg("Summary error: " + e.message);
@@ -1130,17 +1130,11 @@ async function generateSummary() {
 let meetingReportSessionId = null;
 let meetingReportHtml = null;
 
-async function triggerAndPollMeetingReport(sessionId) {
-  // Build full transcript from chat messages
-  const chatTranscript = chatMessages
+async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
+  // Use the full transcript from backend (includes context, notes, chat, metadata)
+  const fullTranscript = backendTranscript || chatMessages
     .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
     .join("\n");
-
-  const fullParts = [];
-  if (meetingData?.title) fullParts.push(`Meeting: ${meetingData.title}`);
-  if (meetingData?.meeting_type) fullParts.push(`Typ: ${meetingData.meeting_type}`);
-  if (chatTranscript.trim()) fullParts.push(`\nGespräch:\n${chatTranscript}`);
-  const fullTranscript = fullParts.join("\n");
 
   // Fire generate-report (don't await — poll instead)
   const headers = { "Content-Type": "application/json" };
