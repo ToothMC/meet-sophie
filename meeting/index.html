@@ -1342,26 +1342,16 @@ function showMeetingReport(html) {
   // Wire up report action buttons
   // PDF Export — opens print dialog (official protocol without transcript)
   $("reportPrintBtn").onclick = () => {
-    // Write clean HTML (no transcript) into iframe, then print
+    // Open clean HTML (no transcript) in new window for printing
+    // Cannot use iframe.print() due to sandbox restrictions
     const cleanHtml = stripTranscriptSection(html);
-    const printFrame = reportFrame;
-    const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
-    printDoc.open();
-    printDoc.write(cleanHtml);
-    printDoc.close();
-    setTimeout(() => {
-      printFrame.contentWindow.focus();
-      printFrame.contentWindow.print();
-      // Restore full HTML after printing
-      setTimeout(() => {
-        printDoc.open();
-        printDoc.write(html);
-        printDoc.close();
-        setTimeout(() => {
-          try { printFrame.style.height = printDoc.documentElement.scrollHeight + "px"; } catch(_) {}
-        }, 300);
-      }, 500);
-    }, 300);
+    const printWin = window.open("", "_blank");
+    if (!printWin) { alert(lang === "de" ? "Popup-Blocker aktiv — bitte erlauben." : "Popup blocked — please allow popups."); return; }
+    printWin.document.write(cleanHtml);
+    printWin.document.close();
+    printWin.onload = () => { printWin.focus(); printWin.print(); };
+    // Fallback if onload doesn't fire (already loaded)
+    setTimeout(() => { try { printWin.focus(); printWin.print(); } catch(_) {} }, 500);
   };
 
   // Full version download — WITH transcript (for internal review)
