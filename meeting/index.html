@@ -1116,9 +1116,183 @@ async function generateSummary() {
       .join("\n");
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: chatTranscript });
     renderSummary(data.summary);
+
+    // If backend triggered HTML report generation, poll for it
+    if (data.report_session_id) {
+      pollMeetingReport(data.report_session_id);
+    }
   } catch (e) {
     appendSystemMsg("Summary error: " + e.message);
   }
+}
+
+// Poll for HTML report (same pipeline as Talk mode)
+let meetingReportSessionId = null;
+let meetingReportHtml = null;
+
+async function pollMeetingReport(sessionId) {
+  meetingReportSessionId = sessionId;
+  const reportSection = $("reportSection");
+  const reportProgress = $("reportProgress");
+  const reportProgressBar = $("reportProgressBar");
+  const reportProgressLabel = $("reportProgressLabel");
+  const reportPreview = $("reportPreview");
+  const reportActions = $("reportActions");
+
+  if (!reportSection) return;
+
+  reportSection.classList.remove("hidden");
+  reportProgress.style.display = "block";
+  reportProgressBar.style.width = "5%";
+
+  const maxAttempts = 90;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise(r => setTimeout(r, 2000));
+
+    try {
+      const headers = {};
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+      } catch (_) {}
+
+      const res = await fetch(`/api/ai/report-status?session_id=${sessionId}`, { headers });
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      const progress = Math.max(5, Math.min(98, data.progress || 0));
+      reportProgressBar.style.width = progress + "%";
+      if (data.detail) reportProgressLabel.textContent = data.detail;
+
+      if (data.status === "done" && data.report_html) {
+        reportProgressBar.style.width = "100%";
+        setTimeout(() => { reportProgress.style.display = "none"; }, 500);
+
+        meetingReportHtml = data.report_html;
+        showMeetingReport(data.report_html);
+        return;
+      }
+
+      if (data.status === "failed") {
+        reportProgress.style.display = "none";
+        reportProgressLabel.textContent = data.detail || "Report fehlgeschlagen";
+        return;
+      }
+    } catch (e) {
+      console.error("[meeting-report-poll] error:", e?.message);
+    }
+  }
+
+  reportProgress.style.display = "none";
+}
+
+function showMeetingReport(html) {
+  const reportPreview = $("reportPreview");
+  const reportActions = $("reportActions");
+  const reportFrame = $("reportFrame");
+
+  reportPreview.classList.remove("hidden");
+  reportActions.classList.remove("hidden");
+  reportActions.style.display = "flex";
+
+  // Write HTML into iframe
+  const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Auto-resize iframe to content
+  setTimeout(() => {
+    try {
+      reportFrame.style.height = doc.documentElement.scrollHeight + "px";
+    } catch (_) {}
+  }, 500);
+
+  // Wire up report action buttons
+  $("reportDownloadBtn").onclick = () => {
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `meeting-report-${new Date().toISOString().slice(0,10)}.html`;
+    a.click();
+  };
+
+  $("reportCopyBtn").onclick = async () => {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([doc.body?.innerText || ""], { type: "text/plain" }),
+      })]);
+      $("reportCopyBtn").textContent = "✓ Kopiert";
+      setTimeout(() => { $("reportCopyBtn").textContent = "📋 Kopieren"; }, 2000);
+    } catch {
+      await navigator.clipboard.writeText(doc.body?.innerText || "");
+      $("reportCopyBtn").textContent = "✓ Text kopiert";
+      setTimeout(() => { $("reportCopyBtn").textContent = "📋 Kopieren"; }, 2000);
+    }
+  };
+
+  $("reportTemplateBtn").onclick = async () => {
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const headers = { "Content-Type": "application/json" };
+      if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+
+      const res = await fetch("/api/ai/save-template", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ session_id: meetingReportSessionId, mode: "meeting" }),
+      });
+      if (res.ok) {
+        $("reportTemplateBtn").textContent = "✓ Vorlage gespeichert";
+        setTimeout(() => { $("reportTemplateBtn").textContent = "💾 Als Vorlage"; }, 3000);
+      }
+    } catch (e) {
+      console.error("Save template error:", e);
+    }
+  };
+
+  $("reportRegenerateBtn").onclick = async () => {
+    if (!meetingReportSessionId) return;
+    $("reportRegenerateBtn").disabled = true;
+    reportPreview.classList.add("hidden");
+    reportActions.classList.add("hidden");
+    reportActions.style.display = "none";
+
+    try {
+      const chatTranscript = chatMessages
+        .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
+        .join("\n");
+
+      const fullParts = [];
+      if (meetingData?.title) fullParts.push(`Meeting: ${meetingData.title}`);
+      if (meetingData?.meeting_type) fullParts.push(`Typ: ${meetingData.meeting_type}`);
+      if (chatTranscript.trim()) fullParts.push(`\nGespräch:\n${chatTranscript}`);
+      const fullTranscript = fullParts.join("\n");
+
+      const headers = { "Content-Type": "application/json" };
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+      } catch (_) {}
+
+      await fetch("/api/ai/generate-report", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          session_id: meetingReportSessionId,
+          transcript_text: fullTranscript,
+          session_mode: "meeting",
+        }),
+      }).catch(() => {});
+
+      pollMeetingReport(meetingReportSessionId);
+    } catch (e) {
+      console.error("Regenerate error:", e);
+    } finally {
+      $("reportRegenerateBtn").disabled = false;
+    }
+  };
 }
 
 function renderSummary(summary) {
