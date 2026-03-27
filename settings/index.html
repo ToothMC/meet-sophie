@@ -448,10 +448,13 @@ async function loadAccount() {
     }
   } catch {}
 
-  // Load subscription
+  // Load subscription via API (service role key, not RLS-limited)
   try {
-    const { data: sub } = await supabase
-      .from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle();
+    const subRes = await fetch("/api/settings?action=account", {
+      headers: { Authorization: "Bearer " + session.access_token },
+    });
+    const subData = await subRes.json();
+    const sub = subData?.subscription || null;
     const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
     if (sub?.plan) {
       planEl.textContent = sub.plan + (active ? "" : " (inaktiv)");
