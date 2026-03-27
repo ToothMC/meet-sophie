@@ -1587,7 +1587,11 @@ function autoResize() {
 
 ctaLive.addEventListener("click", () => transitionPhase("live"));
 ctaPost.addEventListener("click", () => transitionPhase("post"));
-ctaClose.addEventListener("click", () => transitionPhase("closed"));
+ctaClose.addEventListener("click", async () => {
+  await transitionPhase("closed");
+  // Navigate back to home after closing
+  window.location.href = "/";
+});
 
 $("saveContextBtn").addEventListener("click", saveContext);
 muteToggle.addEventListener("click", toggleSophieMute);
