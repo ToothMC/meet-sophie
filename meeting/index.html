@@ -1655,6 +1655,29 @@ function slugify(str) {
 
 function downloadProtocol() {
   if (!meetingData) return;
+
+  // If we have an AI-generated HTML report, download that instead
+  if (meetingReportHtml) {
+    const title = meetingData.title || meetingData.meeting_type || "meeting";
+    const filename = `${getDatePrefix()}_sophie-meeting-report_${slugify(title)}.html`;
+    const blob = new Blob([meetingReportHtml], { type: "text/html;charset=utf-8" });
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (isIOS && navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, { type: "text/html" });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title }).catch(() => {});
+        return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
   const isDE = lang === "de";
   const isFR = lang === "fr";
 
@@ -1758,6 +1781,14 @@ function downloadProtocol() {
     <p class="section-title">${escapeHtml(sec.title)}</p>
     <ul>${sec.items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
   </div>`).join("")}
+
+  ${chatMessages.length > 0 ? `<div class="section">
+    <p class="section-title">${isDE ? "Vollständiges Gesprächsprotokoll" : isFR ? "Transcription complète" : "Full Transcript"}</p>
+    ${chatMessages.map(m => `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.7;${m.role === "user" ? "background:#f0ede8;color:#2c2420;" : "background:#fff;border:1px solid #ede8e2;color:#5a4a40;"}">
+      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:${m.role === "user" ? "#1a1210" : "#c4a882"}">${m.role === "user" ? "User" : "Sophie"}</strong><br>
+      ${escapeHtml(m.content)}
+    </div>`).join("")}
+  </div>` : ""}
 
   ${diffItems.length > 0 ? `<div class="section">
     <p class="section-title">${diffLabel}</p>

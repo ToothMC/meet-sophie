@@ -635,6 +635,7 @@ async function handleMessage(req, res) {
 // Action: summarize — Summary generieren (POST-Phase)
 // ---------------------------------------------------------------------------
 
+// Summarize meeting + trigger HTML report via 4-AI pipeline
 async function handleSummarize(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
