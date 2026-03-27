@@ -520,9 +520,8 @@ let lastAssistantFinal = "";
 // Shared mic stream (for Sophie voice)
 let sharedMicStream = null;
 
-// Browser Speech Recognition (always-on during live, pauses during Sophie voice)
-let speechRecognition = null;
-let speechTranscript = [];  // Array of strings — everything spoken (without Sophie)
+// Audio recording transcript (Whisper result or test data)
+let speechTranscript = [];  // Array of strings — transcribed audio from meeting
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -1000,9 +999,8 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Disconnect Sophie voice + stop speech recognition when leaving live phase
+    // Disconnect Sophie voice + stop audio recording when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
-      stopSpeechRecognition();
       stopRecStatusUpdates();
       if (!sophieMuted) {
         sophieMuted = true;
@@ -1011,28 +1009,39 @@ async function transitionPhase(newPhase) {
       }
     }
 
-    // Auto-summarize when entering post phase (includes local transcription)
+    // Auto-summarize when entering post phase
     if (newPhase === "post") {
-      // TEST MODE: ?test in URL injects fake voice data to test the full report pipeline
-      // Check both current URL and original URL (URL may change when meeting is created)
-      if (window.__testMode || new URLSearchParams(window.location.search).has("test")) {
-        console.log("[TEST] Injecting fake voice transcript data");
+      // 1. Stop recording and get audio blob
+      const audioBlob = await stopAudioRecording();
+      cleanupMicStream();
+
+      // 2. Transcribe via Whisper (if we have audio)
+      if (audioBlob && audioBlob.size > 1000) {
+        const whisperText = await transcribeAudioBlob(audioBlob);
+        if (whisperText) {
+          speechTranscript.push(whisperText);
+        }
+      }
+
+      // TEST MODE: inject fake data
+      if (window.__testMode) {
         appendSystemMsg("🧪 TEST-MODUS: Fake Voice-Daten injiziert");
-        speechTranscript.push(
-          "Wir müssen die Markteinführung von MeetSophie besprechen.",
-          "Der Launch soll nächste Woche Dienstag stattfinden.",
-          "LinkedIn ist der wichtigste Kanal für uns.",
-          "Maike übernimmt die Content-Erstellung.",
-        );
+        if (speechTranscript.length === 0) {
+          speechTranscript.push(
+            "Wir müssen die Markteinführung von MeetSophie besprechen.",
+            "Der Launch soll nächste Woche Dienstag stattfinden.",
+            "LinkedIn ist der wichtigste Kanal für uns.",
+          );
+        }
         voiceTranscript.push(
-          { role: "user", text: "Sophie, was denkst du welcher Social Media Kanal am besten für ein B2B SaaS Produkt geeignet ist?" },
-          { role: "assistant", text: "Für ein B2B SaaS Produkt wie MeetSophie empfehle ich LinkedIn als primären Kanal. Die Zielgruppe ist dort am aktivsten. Twitter/X eignet sich gut als Zweitkanal für Thought Leadership. YouTube für Produktdemos und Tutorials." },
-          { role: "user", text: "Gut, dann nehmen wir LinkedIn. Kannst du das als Beschluss festhalten?" },
-          { role: "assistant", text: "Festgehalten. Beschluss: LinkedIn wird als primärer Kanal für die Markteinführung von MeetSophie gewählt. Soll ich auch einen Zeitplan vorschlagen?" },
-          { role: "user", text: "Ja bitte, und der Launch soll nächste Woche Dienstag sein." },
-          { role: "assistant", text: "Verstanden. Ich schlage folgenden Zeitplan vor: Montag Content-Vorbereitung, Dienstag Launch-Post auf LinkedIn, Mittwoch Follow-up Engagement. Maike könnte die Content-Erstellung übernehmen." },
+          { role: "user", text: "Sophie, welcher Social Media Kanal passt am besten für B2B SaaS?" },
+          { role: "assistant", text: "Für MeetSophie empfehle ich LinkedIn als primären Kanal. Twitter/X als Zweitkanal." },
+          { role: "user", text: "Gut, dann nehmen wir LinkedIn." },
+          { role: "assistant", text: "Beschluss festgehalten: LinkedIn als primärer Kanal für die Markteinführung." },
         );
       }
+
+      // 3. Generate summary + report
       await generateSummary();
     }
   } catch (e) {
@@ -1567,7 +1576,7 @@ function startRecStatusUpdates() {
   el.style.display = "block";
 
   recStatusInterval = setInterval(() => {
-    const srActive = speechRecognition ? "aktiv" : "aus";
+    const srActive = mediaRecorder && mediaRecorder.state === "recording" ? "aktiv" : mediaRecorder?.state || "aus";
     const segments = speechTranscript.length;
     const voiceMsgs = voiceTranscript.length;
     const dcState = sophieVoiceDc ? sophieVoiceDc.readyState : "—";
@@ -1582,86 +1591,130 @@ function stopRecStatusUpdates() {
 }
 
 // ---------------------------------------------------------------------------
-// Browser Speech Recognition (always-on during live, pauses during Sophie voice)
-// Free, no server, no upload, instant text
+// Audio Recording (MediaRecorder) + Whisper Transcription at end
+// Works on ALL browsers (no Google dependency like SpeechRecognition)
 // ---------------------------------------------------------------------------
-function startSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn("[meeting-speech] SpeechRecognition not supported");
-    appendSystemMsg("⚠️ SpeechRecognition API nicht verfügbar in diesem Browser!");
-    appendSystemMsg("ℹ️ Browser: " + navigator.userAgent.slice(0, 80));
-    return;
-  }
+let mediaRecorder = null;
+let audioChunks = [];
 
-  if (speechRecognition) return; // Already running
-
-  appendSystemMsg("🔧 SpeechRecognition API gefunden, starte...");
-
-  speechRecognition = new SpeechRecognition();
-  speechRecognition.continuous = true;
-  speechRecognition.interimResults = false;
-  speechRecognition.lang = lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US";
-
-  speechRecognition.onresult = (event) => {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        const text = event.results[i][0].transcript.trim();
-        if (text) {
-          speechTranscript.push(text);
-          appendSystemMsg(`🎤 [${speechTranscript.length}] ${text.slice(0, 100)}`);
-          console.log(`[meeting-speech] "${text.slice(0, 80)}"`);
-        }
-      }
-    }
-  };
-
-  speechRecognition.onerror = (event) => {
-    // Show ALL errors visibly
-    appendSystemMsg(`⚠️ Speech Error: ${event.error}`);
-    console.error("[meeting-speech] Error:", event.error);
-  };
-
-  // Auto-restart when it stops (browser stops after silence)
-  speechRecognition.onend = () => {
-    // Only restart if we're still in live phase and not in Sophie voice mode
-    if (meetingData?.phase === "live" && sophieMuted && speechRecognition) {
-      try { speechRecognition.start(); } catch (_) {}
-    }
-  };
-
+async function startAudioRecording() {
   try {
-    speechRecognition.start();
-    appendSystemMsg("✅ Spracherkennung gestartet — sprich jetzt");
-    console.log("[meeting-speech] Started");
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    appendSystemMsg("✅ Mikrofon aktiv — Aufnahme läuft");
+
+    mediaRecorder = new MediaRecorder(sharedMicStream, {
+      mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+              : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
+              : "audio/mp4",
+    });
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onerror = (e) => {
+      appendSystemMsg(`⚠️ Aufnahme-Fehler: ${e.error?.message || "unbekannt"}`);
+    };
+
+    // Record in 10-second chunks (so we don't lose everything on crash)
+    mediaRecorder.start(10000);
+    console.log("[meeting-audio] Recording started, mimeType:", mediaRecorder.mimeType);
   } catch (e) {
-    appendSystemMsg(`❌ Speech Start fehlgeschlagen: ${e.message}`);
-    console.error("[meeting-speech] Start failed:", e.message);
+    appendSystemMsg(`❌ Mikrofon nicht verfügbar: ${e.message}`);
+    console.error("[meeting-audio] getUserMedia failed:", e.message);
   }
 }
 
-function pauseSpeechRecognition() {
-  if (speechRecognition) {
-    try { speechRecognition.stop(); } catch (_) {}
-    console.log("[meeting-speech] Paused (Sophie voice active)");
+function pauseAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.pause();
+    console.log("[meeting-audio] Paused (Sophie voice active)");
   }
 }
 
-function resumeSpeechRecognition() {
-  if (speechRecognition) {
-    try { speechRecognition.start(); } catch (_) {}
-    console.log("[meeting-speech] Resumed");
+function resumeAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state === "paused") {
+    mediaRecorder.resume();
+    console.log("[meeting-audio] Resumed");
   }
 }
 
-function stopSpeechRecognition() {
-  if (speechRecognition) {
-    speechRecognition.onend = null; // Prevent auto-restart
-    try { speechRecognition.stop(); } catch (_) {}
-    speechRecognition = null;
-    console.log(`[meeting-speech] Stopped. ${speechTranscript.length} segments captured.`);
+function stopAudioRecording() {
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      resolve(null);
+      return;
+    }
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+      console.log(`[meeting-audio] Stopped. ${audioChunks.length} chunks, ${(blob.size / 1024).toFixed(0)}KB`);
+      audioChunks = [];
+      resolve(blob);
+    };
+    mediaRecorder.stop();
+  });
+}
+
+async function transcribeAudioBlob(blob) {
+  if (!blob || blob.size < 1000) {
+    appendSystemMsg("⚠️ Audioaufnahme zu kurz für Transkription");
+    return "";
   }
-  // Kill shared mic stream
+
+  appendSystemMsg(`🔄 Transkribiere ${(blob.size / 1024).toFixed(0)}KB Audio via Whisper...`);
+
+  // Convert blob to base64 using FileReader (no stack overflow)
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      resolve(dataUrl.split(",")[1]); // Remove "data:audio/webm;base64," prefix
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const ext = blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
+
+  let authToken = accessToken;
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.access_token) authToken = s.access_token;
+  } catch (_) {}
+
+  const resp = await fetch("/api/ai/transcribe", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+      audio_base64: base64,
+      filename: ext,
+      language: lang === "de" ? "de" : lang === "fr" ? "fr" : "en",
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    appendSystemMsg(`⚠️ Whisper-Fehler: ${resp.status}`);
+    console.error("[meeting-audio] Whisper error:", err);
+    return "";
+  }
+
+  const data = await resp.json();
+  const text = (data.text || "").trim();
+  if (text) {
+    appendSystemMsg(`✅ Transkription: ${text.length} Zeichen`);
+    console.log(`[meeting-audio] Whisper result: "${text.slice(0, 100)}..."`);
+  } else {
+    appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
+  }
+  return text;
+}
+
+function cleanupMicStream() {
   if (sharedMicStream) {
     sharedMicStream.getTracks().forEach(t => t.stop());
     sharedMicStream = null;
@@ -1954,13 +2007,13 @@ async function toggleSophieMute() {
   updateParticipantsBar();
 
   if (!sophieMuted) {
-    // UNMUTE → Pause speech recognition, connect Sophie voice
-    pauseSpeechRecognition();
+    // UNMUTE → Pause audio recording, connect Sophie voice
+    pauseAudioRecording();
     await connectSophieVoice();
   } else {
-    // MUTE → Disconnect Sophie voice, resume speech recognition
+    // MUTE → Disconnect Sophie voice, resume audio recording
     disconnectSophieVoice();
-    resumeSpeechRecognition();
+    resumeAudioRecording();
   }
 }
 
@@ -2258,10 +2311,8 @@ function captureLocation() {
 }
 
 ctaLive.addEventListener("click", async () => {
-  // ONLY SpeechRecognition here — one permission dialog
-  // getUserMedia for Sophie voice happens later in connectSophieVoice (separate user click)
-  startSpeechRecognition();
-  appendSystemMsg("🎙️ Spracherkennung aktiv");
+  // Start audio recording (getUserMedia + MediaRecorder) — one permission dialog
+  await startAudioRecording();
 
   startRecStatusUpdates();
   captureLocation(); // fire-and-forget
