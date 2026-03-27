@@ -524,22 +524,34 @@ async function loadTemplates() {
   try {
     const data = await api("templates");
     if (!data.templates?.length) {
-      list.innerHTML = '<p class="msg">Noch keine Vorlagen gespeichert. Erstelle einen Report und klicke "Als Vorlage speichern".</p>';
+      list.innerHTML = '<p class="msg">Keine Vorlagen vorhanden.</p>';
       return;
     }
-    list.innerHTML = data.templates.map(t => `<div class="card" style="display:flex;align-items:center;gap:10px;">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:#fff">${MODE_LABELS[t.mode] || t.mode}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${t.preview || 'Vorlage gespeichert'}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:2px">${Math.round(t.length / 1000)}k Zeichen</div>
-      </div>
-      <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.mode}')">Entfernen</button>
-    </div>`).join("");
+    list.innerHTML = data.templates.map(t => {
+      const label = MODE_LABELS[t.mode] || t.mode;
+      const isSystem = t.type === 'system';
+      const badge = isSystem
+        ? '<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(52,196,122,.15);color:#34c47a;font-weight:600;letter-spacing:.03em;">STANDARD</span>'
+        : '<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(142,178,255,.15);color:#8eb2ff;font-weight:600;letter-spacing:.03em;">INDIVIDUELL</span>';
+      const action = isSystem
+        ? ''
+        : `<button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.mode}')" title="Entfernt deine individuelle Vorlage, Standard wird wiederhergestellt">Zurücksetzen</button>`;
+      return `<div class="card" style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;font-weight:600;color:#fff">${label}</span>
+            ${badge}
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px">${t.preview ? t.preview.slice(0, 80) + '…' : 'Vorlage aktiv'}</div>
+        </div>
+        ${action}
+      </div>`;
+    }).join("");
   } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
 }
 
 async function deleteTemplate(mode) {
-  if (!confirm("Vorlage für '" + (MODE_LABELS[mode] || mode) + "' wirklich entfernen?")) return;
+  if (!confirm("Individuelle Vorlage für '" + (MODE_LABELS[mode] || mode) + "' entfernen und auf Standard zurücksetzen?")) return;
   try {
     await api("delete-template", { mode }, "POST");
     loadTemplates();
