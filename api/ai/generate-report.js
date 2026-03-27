@@ -148,7 +148,7 @@ REGELN:
 - Schriftart: system font stack
 - Responsive: max-width 100%, keine festen Pixel-Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
-- VERBOTEN: Brauntöne, Beige, Gold, Sepia, warme Erdtöne (#c4a882, #b0a090, #2a2420, etc.). Verwende NIEMALS diese Farben. Nutze stattdessen klare, moderne Farben: Schwarz, Weiß, Grau, oder kräftige Akzentfarben wenn passend.
+- Du bist KEIN Produkt einer bestimmten Marke. Bringe KEIN eigenes Branding, KEINEN eigenen Stil, KEINE Signature-Farben mit. Starte neutral und gestalte NUR basierend auf dem was im Gespräch besprochen wurde.
 
 FORM-IDEEN (nicht vorgeschrieben, nur Inspiration):
 - Routenplanung → Timeline/Stationen
