@@ -983,19 +983,8 @@ async function sendMessage(text, isAutoOpener = false) {
   }
   chatMessages.push({ role: "user", content: text });
 
-  // If Sophie is muted in LIVE phase and user is NOT addressing her directly,
-  // just save the note silently (Sophie tracks but doesn't respond)
-  const inLive = meetingData?.phase === "live";
-  if (sophieMuted && inLive && !isAutoOpener && !isAddressingSophie(text)) {
-    // Save as meeting note silently
-    try {
-      await api("note", { meeting_id: meetingId, note_type: "note", content: text });
-    } catch { /* ignore */ }
-    isLoading = false;
-    sendBtn.disabled = false;
-    chatInput.focus();
-    return;
-  }
+  // Chat is always active — Sophie responds to every chat message.
+  // Mute only affects voice (future feature), not the chat channel.
 
   showTyping();
 
