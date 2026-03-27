@@ -132,38 +132,30 @@ ${analysesBlock}`;
       ];
 
     } else {
-      // ── CREATIVE PATH: No template → Claude designs from scratch ──
-      htmlPrompt = `Du bist ein Premium Report-Designer für Sophie, eine hochintelligente KI.
+      // ── CREATIVE PATH: No template → AI designs from scratch with full creative freedom ──
+      htmlPrompt = `Du bist ein Premium Report-Designer.
 ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
 
 Erstelle einen REPORT als reines HTML (nur den <body> Inhalt, kein <html>/<head>).
 
-DESIGN-REGELN:
-- Modernes, elegantes Design — der User soll spüren dass er mit einer intelligenten KI arbeitet
+DU HAST VÖLLIGE KREATIVE FREIHEIT beim Design. Es gibt KEINE vorgegebenen Farben, KEINE vorgegebene Struktur, KEIN vorgegebenes Layout. Du entscheidest alles basierend auf dem Gesprächsinhalt.
+
+REGELN:
 - NUR Fakten verwenden die mindestens 2 KIs bestätigen
-- Der INHALT bestimmt die FORM:
-  → Routenplanung? Zeige die Route visuell als Timeline/Stationen mit Pfeilen, Distanzen, Fahrzeiten
-  → Sales Pitch? Score-Card mit farbigen Balken, Overall Score
-  → Meeting? Protokoll mit Agenda, Beschlüssen (✓), Action Items mit Owner
-  → Brainstorm? Ideen-Cluster, Favoriten hervorgehoben
-  → Kurzes Gespräch? Kompakte Zusammenfassung, keine erzwungene Tiefe
-  → Entscheidung? Pro/Contra visuell gegenübergestellt
-  → Design-/Stil-Diskussion? Setze die besprochenen Designwünsche DIREKT im Report um!
-- KEINE starre Vorlage — jeder Report ist einzigartig, passend zum Inhalt
-- Nutze moderne CSS: border-radius, subtle shadows, gradient accents, pill badges
-- FARBPALETTE: Leite die Farben aus dem INHALT des Gesprächs ab!
-  → Wenn der User über Farben/Design/Layout gesprochen hat: nutze GENAU diese Wünsche
-  → Wenn das Gespräch Business/professionell ist: seriöse, neutrale Farben (schwarz, weiß, grau)
-  → Wenn nichts spezifisches erwähnt wurde: verwende #1a1210 (dark), #c4a882 (gold accent), #4a8c5c (green), #b85a4a (red), #f5f0ea (bg)
-- Schriftart: system font stack (wird vom Parent vererbt)
-- Responsive: max-width 100%, keine festen Breiten
+- Der INHALT bestimmt ALLES — Form, Farben, Layout, Struktur
+- Lies das Gespräch genau: wenn der User Designwünsche äußert (Farben, Stil, Format), setze diese 1:1 um
+- Nutze moderne CSS (inline styles)
+- Schriftart: system font stack
+- Responsive: max-width 100%, keine festen Pixel-Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
 
-WICHTIG: Wenn im Gespräch EXPLIZIT über Designwünsche gesprochen wurde (z.B. "schwarz-weiß", "minimalistisch", "DIN A4"), dann ist das die HÖCHSTE PRIORITÄT. Der Report MUSS diese Wünsche widerspiegeln.
-
-KONSISTENZ bei wiederholten Session-Typen:
-- Sales Pitch: IMMER diese 8 Kriterien mit Score 0-5: Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Handling, Persuasiveness
-- Meeting: IMMER Agenda → Beschlüsse → Action Items → Offene Punkte
+FORM-IDEEN (nicht vorgeschrieben, nur Inspiration):
+- Routenplanung → Timeline/Stationen
+- Sales Pitch → Score-Card mit Balken
+- Meeting → Protokoll mit Beschlüssen + Action Items
+- Brainstorm → Ideen-Cluster
+- Kurzes Gespräch → Kompakte Zusammenfassung
+- Entscheidung → Pro/Contra gegenübergestellt
 
 Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
 
