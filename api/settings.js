@@ -160,6 +160,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, mode: templateMode });
     }
 
+    // Delete a template
+    if (action === 'delete-template') {
+      const { mode } = body;
+      if (!mode) return res.status(400).json({ error: 'Missing mode' });
+
+      const { data: profile } = await supabase
+        .from('user_profile').select('report_templates').eq('id', user.id).maybeSingle();
+      const templates = profile?.report_templates || {};
+      delete templates[mode];
+
+      await supabase.from('user_profile').update({ report_templates: templates }).eq('id', user.id);
+      return res.status(200).json({ ok: true, deleted: mode });
+    }
+
     // Delete a report
     if (action === 'delete-report') {
       const { session_id: delSessionId } = body;
