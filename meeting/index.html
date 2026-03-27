@@ -430,6 +430,11 @@ body{
     <button class="send-btn" id="sendBtn" disabled>Send</button>
   </div>
 
+  <!-- Recording Status (visible during live phase) -->
+  <div id="recordingStatus" class="hidden" style="display:none;padding:6px 12px;font-size:11px;font-family:monospace;background:#f0f0f0;border-radius:8px;margin:8px 0;color:#666;line-height:1.6">
+    🔴 REC: <span id="recStatusText">—</span>
+  </div>
+
   <!-- Phase CTA -->
   <div class="phase-cta" id="phaseCta">
     <button class="cta-live" id="ctaLive">Start Meeting &rarr;</button>
@@ -993,11 +998,10 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Recording is started in the ctaLive click handler (user gesture for iOS)
-
     // Disconnect Sophie voice + stop recording when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
       stopLocalRecording();
+      stopRecStatusUpdates();
       if (!sophieMuted) {
         sophieMuted = true;
         muteToggle.classList.remove("active");
@@ -1533,6 +1537,30 @@ function updateParticipantsBar() {
 }
 
 // ---------------------------------------------------------------------------
+// Recording Status Display (debug + user feedback)
+// ---------------------------------------------------------------------------
+let recStatusInterval = null;
+
+function startRecStatusUpdates() {
+  const el = $("recordingStatus");
+  const txt = $("recStatusText");
+  if (!el || !txt) return;
+  el.classList.remove("hidden");
+  el.style.display = "block";
+
+  recStatusInterval = setInterval(() => {
+    const recState = localRecorder ? localRecorder.state : "none";
+    const chunks = localAudioChunks.length;
+    const voiceMsgs = voiceTranscript.length;
+    const dcState = sophieVoiceDc ? sophieVoiceDc.readyState : "none";
+    txt.textContent = `Aufnahme: ${recState} | Parts: ${chunks} | Voice: ${voiceMsgs} msgs | DC: ${dcState}`;
+  }, 2000);
+}
+
+function stopRecStatusUpdates() {
+  if (recStatusInterval) { clearInterval(recStatusInterval); recStatusInterval = null; }
+}
+
 // ---------------------------------------------------------------------------
 // Local Audio Recording (always-on during live, pauses during Sophie voice)
 // ---------------------------------------------------------------------------
@@ -1715,8 +1743,16 @@ async function connectSophieVoice() {
 
     // DataChannel for transcript (MUST be created before offer)
     sophieVoiceDc = sophieVoicePc.createDataChannel("oai-events");
+    sophieVoiceDc.onerror = (e) => {
+      console.error("[meeting-voice] DataChannel error:", e);
+      appendSystemMsg("⚠️ Voice DataChannel Error");
+    };
+    sophieVoiceDc.onclose = () => {
+      console.log("[meeting-voice] DataChannel closed");
+    };
     sophieVoiceDc.onopen = () => {
       console.log("[meeting-voice] DataChannel open — enabling auto-response + transcript");
+      appendSystemMsg("✅ Voice Transcript aktiv");
       // Enable auto-response after user speech + keep transcription
       sophieVoiceDc.send(JSON.stringify({
         type: "session.update",
@@ -2213,10 +2249,12 @@ ctaLive.addEventListener("click", async () => {
   try {
     await startLocalRecording();
     console.log("[meeting] Local recording started from user gesture");
+    appendSystemMsg("🔴 Aufnahme gestartet");
   } catch (e) {
     console.error("[meeting] Failed to start recording:", e.message);
-    // Continue anyway — meeting can still work with chat + Sophie voice
+    appendSystemMsg("⚠️ Aufnahme konnte nicht gestartet werden: " + e.message);
   }
+  startRecStatusUpdates();
   captureLocation(); // fire-and-forget
   await transitionPhase("live");
 });
