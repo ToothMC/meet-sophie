@@ -613,6 +613,15 @@ async function handleMessage(req, res) {
     .replace(/\s*\[SESSION_END\]\s*/g, "")
     .trim() || rawReply.trim();
 
+  // Save user message + Sophie reply as chat_message notes for summary
+  const lastUserMsg = messages[messages.length - 1]?.content || "";
+  try {
+    await supabase.from("meeting_notes").insert([
+      { meeting_id, note_type: "chat_message", content: `[User] ${lastUserMsg}` },
+      { meeting_id, note_type: "chat_message", content: `[Sophie] ${reply}` },
+    ]);
+  } catch { /* ignore */ }
+
   return res.status(200).json({
     ok: true,
     reply,
