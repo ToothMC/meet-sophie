@@ -1130,6 +1130,39 @@ async function generateSummary() {
 let meetingReportSessionId = null;
 let meetingReportHtml = null;
 
+async function triggerAndPollMeetingReport(sessionId) {
+  // Build full transcript from chat messages
+  const chatTranscript = chatMessages
+    .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
+    .join("\n");
+
+  const fullParts = [];
+  if (meetingData?.title) fullParts.push(`Meeting: ${meetingData.title}`);
+  if (meetingData?.meeting_type) fullParts.push(`Typ: ${meetingData.meeting_type}`);
+  if (chatTranscript.trim()) fullParts.push(`\nGespräch:\n${chatTranscript}`);
+  const fullTranscript = fullParts.join("\n");
+
+  // Fire generate-report (don't await — poll instead)
+  const headers = { "Content-Type": "application/json" };
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+  } catch (_) {}
+
+  fetch("/api/ai/generate-report", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      session_id: sessionId,
+      transcript_text: fullTranscript,
+      session_mode: "meeting",
+    }),
+  }).catch(e => console.error("[meeting-report] generate fetch failed:", e?.message));
+
+  // Now poll for progress
+  pollMeetingReport(sessionId);
+}
+
 async function pollMeetingReport(sessionId) {
   meetingReportSessionId = sessionId;
   const reportSection = $("reportSection");
