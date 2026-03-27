@@ -344,7 +344,10 @@ body{
 <!-- Setup Screen (create new meeting) -->
 <div id="setupScreen" class="setup-screen hidden">
   <div class="setup-card">
-    <h2 id="setupTitle">New Meeting</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <a href="/" style="color:#7a6a5a;text-decoration:none;font-size:20px;line-height:1">&larr;</a>
+      <h2 id="setupTitle" style="margin:0;flex:1">New Meeting</h2>
+    </div>
 
     <label id="lblType">Meeting Type</label>
     <select id="meetingType">
