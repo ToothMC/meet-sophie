@@ -461,7 +461,7 @@ export default async function handler(req, res) {
         // Load parent meeting's structured data (decisions, actions, open points)
         if (mtg?.parent_meeting_id) {
           const { data: parentSummary } = await supabase.from("meeting_summary")
-            .select("short_summary, decisions, action_items, open_points")
+            .select("short_summary, decisions, action_items, open_points, lean_check")
             .eq("meeting_id", mtg.parent_meeting_id).maybeSingle();
 
           if (parentSummary) {
@@ -486,6 +486,33 @@ export default async function handler(req, res) {
               contextParts.push("\nUNGELÖSTE FRAGEN (ansprechen wenn relevant):");
               openPoints.forEach(o => contextParts.push(`• ${o.text}`));
             }
+
+            // Lean data from previous meeting — carry forward unvalidated items
+            const lean = parentSummary.lean_check;
+            if (lean) {
+              const leanParts = [];
+              if (lean.assumptions?.length) {
+                leanParts.push("UNGEPRÜFTE ANNAHMEN (nachfragen ob validiert!):");
+                lean.assumptions.forEach(a => leanParts.push(`  ⚠️ ${a}`));
+              }
+              if (lean.hypotheses?.length) {
+                leanParts.push("OFFENE HYPOTHESEN (wurde getestet?):");
+                lean.hypotheses.forEach(h => leanParts.push(`  💡 ${h}`));
+              }
+              if (lean.tests?.length) {
+                leanParts.push("BESCHLOSSENE TESTS (Ergebnis nachfragen!):");
+                lean.tests.forEach(t => leanParts.push(`  🧪 ${t}`));
+              }
+              if (lean.signals?.length) {
+                leanParts.push("DEFINIERTE SIGNALE (eingetreten?):");
+                lean.signals.forEach(s => leanParts.push(`  🚦 ${s}`));
+              }
+              if (leanParts.length > 0) {
+                contextParts.push("\nLEAN CHECK (aus letztem Meeting — Status prüfen!):");
+                contextParts.push(...leanParts);
+              }
+            }
+
             contextParts.push("── ENDE VORHERIGES MEETING ──");
           }
         }

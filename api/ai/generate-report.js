@@ -81,8 +81,18 @@ REGELN:
 7. Ort: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
 8. NIEMALS erfinden: keine Namen, Uhrzeiten, Orte, Rollen, Fristen
 9. Leere Sektionen (keine Beschlüsse, keine Action Items) → KOMPLETT ENTFERNEN
-10. Das vollständige Gesprächsprotokoll (wörtliches Transcript) MUSS als letzte Sektion enthalten sein, eingewickelt in: <div data-section="full-transcript">...</div>
-11. Das HTML MUSS einen <style>-Block mit @media print CSS enthalten für DIN A4 PDF-Export:
+10. LEAN CHECK — Extra Sektion VOR dem Gesprächsprotokoll, eingewickelt in <div data-section="lean-check">:
+    Analysiere das Gespräch und erstelle eine Lean-Analyse mit diesen Kategorien:
+    - ✅ FAKTEN: Was wurde als bewiesene/validierte Tatsache genannt? (mit Quelle/Evidenz wenn erkennbar)
+    - ⚠️ ANNAHMEN: Was wurde als Fakt behandelt, ist aber eigentlich eine ungeprüfte Annahme?
+    - 💡 HYPOTHESEN: Welche "Wenn-Dann" Hypothesen wurden aufgestellt?
+    - 🧪 TESTS: Welche Tests/Experimente wurden beschlossen um Hypothesen zu prüfen?
+    - 🚦 SIGNAL: Was wurde als Kriterium definiert um weiterzumachen / zu stoppen / anzupassen?
+    - NUR Kategorien einbauen die wirklich Inhalte haben. Leere Kategorien weglassen.
+    - Wenn das Meeting keine relevanten Lean-Aspekte hat (z.B. reines Status-Update): Lean Check KOMPLETT weglassen
+    - Design: dezente, professionelle Box — nicht aufdringlich, aber klar lesbar
+11. Das vollständige Gesprächsprotokoll (wörtliches Transcript) MUSS als letzte Sektion enthalten sein, eingewickelt in: <div data-section="full-transcript">...</div>
+12. Das HTML MUSS einen <style>-Block mit @media print CSS enthalten für DIN A4 PDF-Export:
     - @page { size: A4; margin: 20mm 18mm; }
     - Sektionen: page-break-inside: avoid
     - Gesprächsprotokoll (data-section="full-transcript"): page-break-before: always
@@ -152,7 +162,14 @@ Antworte NUR mit JSON in exakt diesem Format:
   "short_summary": "1-2 Sätze Zusammenfassung",
   "decisions": [{"text": "...", "owner": "..."}],
   "action_items": [{"text": "...", "owner": "...", "due": "...", "status": "open"}],
-  "open_points": [{"text": "..."}]
+  "open_points": [{"text": "..."}],
+  "lean_check": {
+    "facts": ["Was als validierte Tatsache genannt wurde"],
+    "assumptions": ["Was als Fakt behandelt wurde aber ungeprüft ist"],
+    "hypotheses": ["Wenn-Dann Hypothesen die aufgestellt wurden"],
+    "tests": ["Beschlossene Tests/Experimente"],
+    "signals": ["Kriterien für weitermachen/stoppen/anpassen"]
+  }
 }
 
 REGELN:
@@ -160,7 +177,8 @@ REGELN:
 - "owner" nur wenn namentlich zugeordnet, sonst ""
 - "due" nur wenn Datum/Frist genannt, sonst ""
 - Wenn eine Kategorie leer ist: leeres Array []
-- status ist immer "open" (wird später aktualisiert)` }],
+- status ist immer "open" (wird später aktualisiert)
+- lean_check: nur Kategorien mit Inhalt. Wenn das Meeting keine Lean-Aspekte hat, lean_check weglassen` }],
             model: 'gpt-4o-mini', maxTokens: 1500, temperature: 0.1,
           });
           const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
@@ -171,16 +189,19 @@ REGELN:
             .select('id').eq('session_id', session_id).maybeSingle();
 
           if (meetingRow?.id) {
-            const { error: sumErr } = await supabase.from('meeting_summary').upsert({
+            const upsertData = {
               meeting_id: meetingRow.id,
               short_summary: structured.short_summary || reportTitle,
               decisions: structured.decisions || [],
               action_items: structured.action_items || [],
               open_points: structured.open_points || [],
               risks: [],
-            }, { onConflict: 'meeting_id' });
+            };
+            if (structured.lean_check) upsertData.lean_check = structured.lean_check;
+
+            const { error: sumErr } = await supabase.from('meeting_summary').upsert(upsertData, { onConflict: 'meeting_id' });
             if (sumErr) console.error(`[report] structured data save failed:`, sumErr.message);
-            else console.log(`[report] Structured data saved: ${(structured.decisions||[]).length} decisions, ${(structured.action_items||[]).length} actions, ${(structured.open_points||[]).length} open`);
+            else console.log(`[report] Structured data saved: ${(structured.decisions||[]).length} decisions, ${(structured.action_items||[]).length} actions, ${(structured.open_points||[]).length} open, lean=${!!structured.lean_check}`);
 
             // Also update meeting title if empty
             const { data: mtg } = await supabase.from('meetings').select('title').eq('id', meetingRow.id).maybeSingle();
