@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
   // ── GET: Reports list ──
   if (action === 'reports' && req.method === 'GET') {
-    // Get user's sessions first, then their reports
+    // Load Talk reports from conversation_outputs
     const { data: sessions } = await supabase
       .from('user_sessions')
       .select('id')
@@ -62,31 +62,93 @@ export default async function handler(req, res) {
       .order('started_at', { ascending: false })
       .limit(50);
 
-    if (!sessions?.length) return res.status(200).json({ reports: [] });
+    const talkReports = [];
+    if (sessions?.length) {
+      const sessionIds = sessions.map(s => s.id);
+      const { data } = await supabase
+        .from('conversation_outputs')
+        .select('session_id, title, report_status, report_style, created_at')
+        .in('session_id', sessionIds)
+        .not('report_html', 'is', null)
+        .order('created_at', { ascending: false });
+      for (const r of (data || [])) {
+        talkReports.push({ ...r, source: 'talk', id: r.session_id });
+      }
+    }
 
-    const sessionIds = sessions.map(s => s.id);
-    const { data } = await supabase
-      .from('conversation_outputs')
-      .select('session_id, title, report_status, report_style, created_at')
-      .in('session_id', sessionIds)
-      .not('report_html', 'is', null)
-      .order('created_at', { ascending: false });
+    // Load Meeting reports from meetings + meeting_summary
+    const { data: meetings } = await supabase
+      .from('meetings')
+      .select('id, title, meeting_type, phase, started_at')
+      .eq('user_id', user.id)
+      .in('phase', ['post', 'closed'])
+      .order('started_at', { ascending: false })
+      .limit(50);
 
-    return res.status(200).json({ reports: data || [] });
+    const meetingReports = [];
+    if (meetings?.length) {
+      const meetingIds = meetings.map(m => m.id);
+      const { data: summaries } = await supabase
+        .from('meeting_summary')
+        .select('meeting_id, short_summary, created_at')
+        .in('meeting_id', meetingIds);
+      const sumMap = Object.fromEntries((summaries || []).map(s => [s.meeting_id, s]));
+
+      for (const m of meetings) {
+        meetingReports.push({
+          id: m.id,
+          session_id: m.id,
+          title: m.title || 'Meeting',
+          report_status: sumMap[m.id] ? 'done' : 'pending',
+          report_style: m.meeting_type || 'meeting',
+          created_at: sumMap[m.id]?.created_at || m.started_at,
+          source: 'meeting',
+        });
+      }
+    }
+
+    // Merge and sort by date
+    const all = [...talkReports, ...meetingReports]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return res.status(200).json({ reports: all });
   }
 
   // ── GET: Report detail ──
   if (action === 'report-detail' && req.method === 'GET') {
     const sessionId = req.query?.session_id;
+    const source = req.query?.source || 'talk';
     if (!sessionId) return res.status(400).json({ error: 'Missing session_id' });
 
-    // Verify ownership via user_sessions
+    if (source === 'meeting') {
+      // Meeting report from meeting_summary
+      const { data: meeting } = await supabase
+        .from('meetings').select('id').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+      if (!meeting) return res.status(404).json({ error: 'Meeting not found' });
+
+      const { data } = await supabase
+        .from('meeting_summary')
+        .select('meeting_id, short_summary, decisions, action_items, open_points, risks, created_at')
+        .eq('meeting_id', sessionId)
+        .maybeSingle();
+
+      if (!data) return res.status(404).json({ error: 'Meeting summary not found' });
+
+      // Get meeting title
+      const { data: mtg } = await supabase
+        .from('meetings').select('title, meeting_type').eq('id', sessionId).maybeSingle();
+
+      return res.status(200).json({
+        ...data,
+        session_id: data.meeting_id,
+        title: mtg?.title || 'Meeting',
+        source: 'meeting',
+      });
+    }
+
+    // Talk report from conversation_outputs
     const { data: session } = await supabase
-      .from('user_sessions')
-      .select('id')
-      .eq('id', sessionId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .from('user_sessions').select('id').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
     if (!session) return res.status(404).json({ error: 'Report not found' });
 
     const { data } = await supabase
@@ -96,7 +158,7 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (!data) return res.status(404).json({ error: 'Report not found' });
-    return res.status(200).json(data);
+    return res.status(200).json({ ...data, source: 'talk' });
   }
 
   // ── GET: Report template (single) ──
