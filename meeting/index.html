@@ -1123,15 +1123,24 @@ async function generateSummary() {
   appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
 
   try {
-    // Voice transcript ONLY — chat is NOT part of the report
+    // Voice transcript preferred — fall back to chat if voice is empty
     const voiceText = voiceTranscript
       .filter(m => m.text && m.text.trim())
       .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.text}`)
       .join("\n");
 
-    console.log(`[meeting] voice transcript: ${voiceTranscript.length} messages`);
+    let transcriptToSend = voiceText;
+    if (!transcriptToSend.trim() && chatMessages.length > 0) {
+      console.log(`[meeting] voice transcript empty, falling back to chat messages (${chatMessages.length})`);
+      transcriptToSend = "[CHAT FALLBACK — voice transcript unavailable]\n" +
+        chatMessages
+          .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
+          .join("\n");
+    }
 
-    const data = await api("summarize", { meeting_id: meetingId, chat_transcript: voiceText });
+    console.log(`[meeting] transcript: voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs, using=${voiceText.trim() ? "voice" : "chat-fallback"}`);
+
+    const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
     renderSummary(data.summary);
 
     // If backend created a report session, trigger generate-report from frontend + poll
