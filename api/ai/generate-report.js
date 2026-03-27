@@ -71,6 +71,7 @@ ${transcript_text}
 REGELN:
 1. Protokoll/Erstellt von: IMMER "Sophie"
 2. NUR Informationen verwenden die WÖRTLICH im Transcript stehen
+   AUSNAHME — Häufige Spracherkennungsfehler korrigieren: "Lead Check" / "Lead-Check" → "Lean Check", "Mietsophie" / "Mietzophie" / "Meet Sofie" → "MeetSophie"
 3. KLAR UNTERSCHEIDEN:
    - Metadaten DIESES Meetings (Datum, Ort, Uhrzeit) — nur wenn explizit über DIESES Meeting gesagt
    - Infos über ZUKÜNFTIGE Termine → gehören in Action Items oder "Nächster Termin", NICHT in den Header
