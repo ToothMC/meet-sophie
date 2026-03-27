@@ -1159,10 +1159,6 @@ async function generateSummary() {
   try {
     // Step 1: Speech recognition transcript (already text, no upload needed)
     const localText = speechTranscript.join(" ");
-    console.log(`[meeting] generateSummary: speech=${speechTranscript.length} segments, voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
-    appendSystemMsg(lang === "de"
-      ? `Verarbeite ${speechTranscript.length} Sprachsegmente, ${voiceTranscript.length} Voice-Nachrichten...`
-      : `Processing ${speechTranscript.length} speech segments, ${voiceTranscript.length} voice messages...`);
 
     // Step 2: Sophie voice transcript (from DataChannel during unmute)
     const voiceText = voiceTranscript
@@ -1176,16 +1172,22 @@ async function generateSummary() {
     if (voiceText.trim()) allParts.push(`[Sophie Voice Session]\n${voiceText}`);
 
     let transcriptToSend = allParts.join("\n\n---\n\n");
+    // NO chat fallback — only voice content goes into the report
 
-    // Last resort: chat messages as fallback
-    if (!transcriptToSend.trim() && chatMessages.length > 0) {
-      console.log(`[meeting] No audio/voice, falling back to chat (${chatMessages.length} msgs)`);
-      transcriptToSend = chatMessages
-        .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
-        .join("\n");
+    // ── VISIBLE TRANSCRIPT DEBUG ──────────────────────────────
+    // Show exactly what will be sent to the backend
+    console.log(`[meeting] TRANSCRIPT TO SEND:\n${transcriptToSend}`);
+    appendSystemMsg(`📊 Quellen: Speech=${speechTranscript.length} Segmente, Voice=${voiceTranscript.length} Nachrichten`);
+
+    // Show full transcript in chat so user can verify
+    if (transcriptToSend.trim()) {
+      const previewLines = transcriptToSend.split("\n").slice(0, 20);
+      const preview = previewLines.join("\n") + (transcriptToSend.split("\n").length > 20 ? "\n..." : "");
+      appendSystemMsg(`📝 Transcript-Inhalt:\n${preview}`);
+    } else {
+      appendSystemMsg("⚠️ KEIN TRANSCRIPT — Report wird leer sein!");
     }
-
-    console.log(`[meeting] transcript sources: speech=${speechTranscript.length} segments, voice=${voiceTranscript.length} msgs, chat=${chatMessages.length} msgs`);
+    // ──────────────────────────────────────────────────────────
 
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
     renderSummary(data.summary);
@@ -1751,10 +1753,10 @@ async function connectSophieVoice() {
       } catch (_) {}
     };
 
-    // Get mic stream for Sophie voice (separate from SpeechRecognition which manages its own mic)
-    // Only requested here when user actually unmutes Sophie — avoids double permission dialog
+    // Reuse the shared mic stream (created at meeting start — single permission dialog)
+    // Only re-request if stream died (e.g. hardware disconnect)
     if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
-      console.log("[meeting-voice] Requesting mic for Sophie voice...");
+      console.log("[meeting-voice] sharedMicStream unavailable, requesting new one...");
       sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
     const sophieStream = sharedMicStream.clone();
@@ -1866,15 +1868,11 @@ function disconnectSophieVoice(silent = false) {
     }
   }
 
-  // Kill Sophie's cloned stream + the shared mic (will be re-requested on next unmute)
+  // Kill Sophie's cloned stream only — keep sharedMicStream alive for SpeechRecognition reuse
   if (sophieVoiceStream) {
     try { sophieVoiceStream.getTracks().forEach(t => t.stop()); } catch {}
   }
   sophieVoiceStream = null;
-  if (sharedMicStream) {
-    sharedMicStream.getTracks().forEach(t => t.stop());
-    sharedMicStream = null;
-  }
   // Stop audio
   if (sophieVoiceAudio) {
     try { sophieVoiceAudio.srcObject = null; } catch {}
@@ -2235,8 +2233,15 @@ function captureLocation() {
 }
 
 ctaLive.addEventListener("click", async () => {
-  // Start browser SpeechRecognition — it manages its own mic permission internally
-  // NO getUserMedia here — Sophie voice gets its own mic stream only when unmuted
+  // 1. Get mic permission ONCE upfront — grants permission for both SpeechRecognition AND Sophie voice
+  try {
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    appendSystemMsg("⚠️ Mikrofon nicht verfügbar: " + e.message);
+    return; // Can't start meeting without mic
+  }
+
+  // 2. Start SpeechRecognition — mic permission already granted, NO second dialog
   startSpeechRecognition();
   appendSystemMsg("🎙️ Spracherkennung aktiv");
 
