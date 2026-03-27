@@ -527,14 +527,17 @@ async function loadReports() {
     if (!data.reports?.length) { list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return; }
     list.innerHTML = data.reports.map(r => {
       const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
-      const modeBadge = r.report_style ? `<span class="badge badge-active">${r.report_style}</span>` : '';
-      return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id}')">
+      const source = r.source || 'talk';
+      const sourceBadge = source === 'meeting'
+        ? '<span class="badge badge-decoupled">Meeting</span>'
+        : (r.report_style ? `<span class="badge badge-active">${r.report_style}</span>` : '');
+      return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
         <div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
             <div style="font-size:11px;color:#a09080;margin-top:2px">${date}</div>
           </div>
-          ${modeBadge}
+          ${sourceBadge}
         </div>
       </div>`;
     }).join("");
