@@ -66,7 +66,8 @@ export default async function handler(req, res) {
       ? `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
 ${modeHint} ${dateInstruction}
 Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
-Fokussiere dich NUR auf den INHALT — Fakten, Entscheidungen, Ergebnisse, Action Items. Ignoriere Design-Diskussionen.`
+Fokussiere dich NUR auf den INHALT — Fakten, Entscheidungen, Ergebnisse, Action Items, genannte Personen, Termine, Orte.
+Ignoriere Design-Diskussionen. Erfinde KEINE Namen, Zeiten oder Orte die nicht explizit genannt werden.`
       : `Analysiere dieses Gespräch. Extrahiere alles Relevante als freien Text.
 ${modeHint} ${dateInstruction}
 Erfinde NICHTS. Schreibe in der Sprache des Transcripts.
@@ -143,6 +144,18 @@ AUFGABE:
 3. Passe die Anzahl der Sektionen/Zeilen an den tatsächlichen Inhalt an (mehr oder weniger Rows je nach Bedarf)
 4. Neue Sektionen: im EXAKT SELBEN Stil wie bestehende Sektionen im Template
 5. Sprache: gleich wie die Analysen
+6. "Protokoll" ist IMMER "Sophie" (die KI-Assistentin die das Meeting protokolliert hat)
+
+KRITISCH — NICHT HALLUZINIEREN:
+- Wenn eine Information NICHT in den Analysen steht, ENTFERNE die Sektion komplett aus dem HTML
+- KEINE erfundenen Namen, Uhrzeiten, Orte, Rollen oder Fristen
+- Wenn keine Teilnehmer namentlich genannt werden: Sektion "Teilnehmer" ENTFERNEN
+- Wenn keine Uhrzeit genannt wird: "Uhrzeit" Feld ENTFERNEN
+- Wenn keine Beschlüsse gefasst wurden: "Beschlüsse" Sektion ENTFERNEN
+- Wenn keine Action Items existieren: "Action Items" Sektion ENTFERNEN
+- Wenn keine Risiken genannt wurden: "Risiken" Sektion ENTFERNEN
+- NIEMALS Platzhalter wie [Name], [Rolle], [00:00], — oder "Nicht spezifiziert" im Output
+- Lieber eine Sektion weglassen als sie mit erfundenen Daten füllen
 
 VERBOTEN:
 - Design ändern
@@ -150,6 +163,7 @@ VERBOTEN:
 - Schriften ändern
 - Layout-Struktur ändern
 - Eigene Design-Elemente hinzufügen
+- Inhalte erfinden die nicht im Transcript stehen
 
 Antworte NUR mit dem HTML. Kein Markdown, kein Text davor/danach.
 
@@ -230,10 +244,16 @@ REGELN:
 - Responsive: max-width 100%, keine festen Pixel-Breiten
 - Schreibe in der gleichen Sprache wie die Analysen
 - Bringe KEIN eigenes Branding mit. Starte neutral.
+- "Protokoll" / "Erstellt von" ist IMMER "Sophie"
+
+KRITISCH — NICHT HALLUZINIEREN:
+- Wenn eine Information NICHT in den Analysen steht, LASSE SIE WEG
+- KEINE erfundenen Namen, Uhrzeiten, Orte, Rollen oder Fristen
+- KEINE Platzhalter wie [Name], [Rolle], —, "Nicht spezifiziert"
+- Nur Sektionen einbauen für die es echte Inhalte gibt
+- Lieber einen kürzeren Report als einen mit erfundenen Daten
 
 FORM-IDEEN (nur Inspiration):
-- Routenplanung → Timeline/Stationen
-- Sales Pitch → Score-Card mit Balken
 - Meeting → Protokoll mit Beschlüssen + Action Items
 - Brainstorm → Ideen-Cluster
 - Kurzes Gespräch → Kompakte Zusammenfassung
