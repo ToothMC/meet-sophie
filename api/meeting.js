@@ -668,14 +668,18 @@ async function handleSummarize(req, res) {
   const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
-  // Also load chat transcript as content source
+  // Chat transcript: from DB notes OR from client fallback
   const { data: chatData } = await supabase
     .from("meeting_notes")
     .select("content, created_at")
     .eq("meeting_id", meeting_id)
     .eq("note_type", "chat_message")
     .order("created_at");
-  const chatTranscript = (chatData || []).map(m => m.content).join("\n");
+  const dbTranscript = (chatData || []).map(m => m.content).join("\n");
+  // Use client transcript as fallback if DB has nothing
+  const chatTranscript = dbTranscript.trim() || (body.chat_transcript || "").trim();
+
+  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, chatDB=${dbTranscript.length}, chatClient=${(body.chat_transcript||"").length}`);
 
   // If there's no content at all, return empty summary — do NOT hallucinate
   if (!notesStr.trim() && !contextStr.trim() && !chatTranscript.trim()) {
