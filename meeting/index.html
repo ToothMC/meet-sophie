@@ -691,9 +691,10 @@ async function initAuth() {
   currentUser = session.user;
   accessToken = session.access_token;
 
-  // Check URL for meeting_id
+  // Check URL for meeting_id and test mode
   const params = new URLSearchParams(window.location.search);
   const urlMeetingId = params.get("id");
+  if (params.has("test")) window.__testMode = true;
 
   authLoading.classList.add("hidden");
 
@@ -1012,8 +1013,9 @@ async function transitionPhase(newPhase) {
 
     // Auto-summarize when entering post phase (includes local transcription)
     if (newPhase === "post") {
-      // TEST MODE: ?test=voice injects fake voice data to test the full report pipeline
-      if (new URLSearchParams(window.location.search).has("test")) {
+      // TEST MODE: ?test in URL injects fake voice data to test the full report pipeline
+      // Check both current URL and original URL (URL may change when meeting is created)
+      if (window.__testMode || new URLSearchParams(window.location.search).has("test")) {
         console.log("[TEST] Injecting fake voice transcript data");
         appendSystemMsg("🧪 TEST-MODUS: Fake Voice-Daten injiziert");
         speechTranscript.push(
@@ -1225,10 +1227,8 @@ let meetingReportSessionId = null;
 let meetingReportHtml = null;
 
 async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
-  // Use the full transcript from backend (includes context, notes, chat, metadata)
-  const fullTranscript = backendTranscript || chatMessages
-    .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
-    .join("\n");
+  // Voice transcript only — NO chat fallback
+  const fullTranscript = backendTranscript || "";
 
   // Fire generate-report (don't await — poll instead)
   const headers = { "Content-Type": "application/json" };
