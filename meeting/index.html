@@ -1117,9 +1117,9 @@ async function generateSummary() {
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: chatTranscript });
     renderSummary(data.summary);
 
-    // If backend triggered HTML report generation, poll for it
+    // If backend created a report session, trigger generate-report from frontend + poll
     if (data.report_session_id) {
-      pollMeetingReport(data.report_session_id);
+      triggerAndPollMeetingReport(data.report_session_id);
     }
   } catch (e) {
     appendSystemMsg("Summary error: " + e.message);
