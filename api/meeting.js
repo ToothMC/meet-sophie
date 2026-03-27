@@ -694,6 +694,7 @@ Meeting: ${meeting.title || "Untitled"}
 Type: ${meeting.meeting_type}
 ${contextStr ? `\nContext:\n${contextStr}` : ""}
 ${notesStr ? `\nNotes from meeting:\n${notesStr}` : ""}
+${chatTranscript ? `\nChat transcript:\n${chatTranscript}` : ""}
 
 CRITICAL RULES:
 - ONLY summarize what is EXPLICITLY written in the notes and context above.
