@@ -94,7 +94,7 @@ body{
 
 /* ---- CONTEXT PANEL ---- */
 .context-panel{
-  border-bottom:1px solid rgba(255,255,255,.08);
+  border-bottom:1px solid #ede8e2;
   overflow:hidden;transition:max-height .3s ease;
 }
 .context-panel.collapsed .context-body{display:none}
@@ -102,26 +102,26 @@ body{
   display:flex;align-items:center;gap:8px;
   padding:10px 16px;cursor:pointer;user-select:none;
   font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-  color:rgba(255,255,255,.5);
+  color:#a09080;
 }
-.context-toggle:hover{color:rgba(255,255,255,.7)}
+.context-toggle:hover{color:#2a2420}
 .context-toggle .arrow{transition:transform .2s}
 .context-panel.collapsed .context-toggle .arrow{transform:rotate(-90deg)}
 .context-body{padding:0 16px 12px}
 .context-body textarea{
   width:100%;padding:8px 10px;font-size:13px;line-height:1.5;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-  border-radius:8px;color:#fff;resize:vertical;min-height:60px;
+  background:#fff;border:1px solid #ede8e2;
+  border-radius:8px;color:#2a2420;resize:vertical;min-height:60px;
   font-family:inherit;outline:none;margin-bottom:8px;
 }
-.context-body textarea:focus{border-color:rgba(255,255,255,.2)}
-.context-body textarea::placeholder{color:rgba(255,255,255,.25)}
+.context-body textarea:focus{border-color:#c4a882}
+.context-body textarea::placeholder{color:#b0a090}
 .save-context-btn{
   font-size:12px;padding:5px 12px;border-radius:6px;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
-  color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;
+  background:rgba(0,0,0,.04);border:1px solid #ede8e2;
+  color:#7a6a5a;cursor:pointer;font-family:inherit;
 }
-.save-context-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.save-context-btn:hover{background:rgba(0,0,0,.08);color:#2a2420}
 
 /* ---- CHAT ---- */
 .chat-area{
