@@ -447,6 +447,25 @@ body{
       <button class="export-btn" id="copySummaryBtn">📋 Copy</button>
       <button class="export-btn" id="shareSummaryBtn">📤 Share</button>
     </div>
+
+    <!-- HTML Report (generated via 4-AI pipeline like Talk) -->
+    <div id="reportSection" class="hidden" style="margin-top:16px">
+      <div id="reportProgress" style="display:none;margin-bottom:12px">
+        <div style="font-size:13px;color:#666;margin-bottom:6px" id="reportProgressLabel">Erstelle Report...</div>
+        <div style="height:4px;background:#e5e7eb;border-radius:4px;overflow:hidden">
+          <div id="reportProgressBar" style="height:100%;background:linear-gradient(90deg,#c4a882,#8B7355);width:5%;transition:width .5s ease;border-radius:4px"></div>
+        </div>
+      </div>
+      <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
+        <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
+      </div>
+      <div id="reportActions" class="hidden" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="export-btn" id="reportDownloadBtn">⬇ Report PDF</button>
+        <button class="export-btn" id="reportCopyBtn">📋 Kopieren</button>
+        <button class="export-btn" id="reportTemplateBtn">💾 Als Vorlage</button>
+        <button class="export-btn" id="reportRegenerateBtn">🔄 Neu generieren</button>
+      </div>
+    </div>
   </div>
 </div>
 
