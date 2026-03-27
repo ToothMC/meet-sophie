@@ -669,27 +669,14 @@ async function handleSummarize(req, res) {
   const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
-  // Chat transcript: client-sent transcript (voice or chat-fallback) takes priority over DB
-  const clientTranscript = (body.chat_transcript || "").trim();
-  let chatTranscript;
-  if (clientTranscript) {
-    // Client sends voice transcript (preferred) or chat-fallback — always use it when present
-    chatTranscript = clientTranscript;
-  } else {
-    // Fallback: read chat_message notes from DB
-    const { data: chatData } = await supabase
-      .from("meeting_notes")
-      .select("content, created_at")
-      .eq("meeting_id", meeting_id)
-      .eq("note_type", "chat_message")
-      .order("created_at");
-    chatTranscript = (chatData || []).map(m => m.content).join("\n").trim();
-  }
+  // Voice transcript ONLY — sent from frontend (SpeechRecognition + Sophie DataChannel)
+  // Chat messages are NEVER included in the report — they are a private side-channel
+  const voiceTranscript = (body.chat_transcript || "").trim();
 
-  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, transcript=${chatTranscript.length}, fromClient=${!!clientTranscript}`);
+  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, voiceTranscript=${voiceTranscript.length}`);
 
   // If there's no content at all, return empty summary — do NOT hallucinate
-  if (!notesStr.trim() && !contextStr.trim() && !chatTranscript.trim()) {
+  if (!notesStr.trim() && !contextStr.trim() && !voiceTranscript.trim()) {
     const emptySummary = {
       meeting_id,
       short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
@@ -715,7 +702,7 @@ Meeting: ${meeting.title || "Untitled"}
 Type: ${meeting.meeting_type}
 ${contextStr ? `\nContext:\n${contextStr}` : ""}
 ${notesStr ? `\nNotes from meeting:\n${notesStr}` : ""}
-${chatTranscript ? `\nChat transcript:\n${chatTranscript}` : ""}
+${voiceTranscript ? `\nVoice transcript (what was actually spoken):\n${voiceTranscript}` : ""}
 
 CRITICAL RULES:
 - ONLY summarize what is EXPLICITLY written in the notes and context above.
@@ -873,7 +860,7 @@ Return ONLY the JSON object.`;
     if (meeting.title) fullTranscriptParts.push(`Meeting: ${meeting.title}`);
     if (meeting.meeting_type) fullTranscriptParts.push(`Typ: ${meeting.meeting_type}`);
     if (contextStr.trim()) fullTranscriptParts.push(`\nKontext:\n${contextStr}`);
-    if (chatTranscript.trim()) fullTranscriptParts.push(`\nGespräch:\n${chatTranscript}`);
+    if (voiceTranscript.trim()) fullTranscriptParts.push(`\nVoice-Protokoll:\n${voiceTranscript}`);
     if (notesStr.trim()) fullTranscriptParts.push(`\nNotizen:\n${notesStr}`);
     const fullTranscript = fullTranscriptParts.join("\n");
 
@@ -913,7 +900,7 @@ Return ONLY the JSON object.`;
   if (meeting.meeting_type) fullTranscriptParts2.push(`Typ: ${meeting.meeting_type}`);
   if (meeting.started_at) fullTranscriptParts2.push(`Datum: ${new Date(meeting.started_at).toLocaleString("de-DE")}`);
   if (contextStr.trim()) fullTranscriptParts2.push(`\nKontext:\n${contextStr}`);
-  if (chatTranscript.trim()) fullTranscriptParts2.push(`\nVollständiges Gespräch:\n${chatTranscript}`);
+  if (voiceTranscript.trim()) fullTranscriptParts2.push(`\nVollständiges Voice-Protokoll:\n${voiceTranscript}`);
   if (notesStr.trim()) fullTranscriptParts2.push(`\nNotizen & Entscheidungen:\n${notesStr}`);
 
   return res.status(200).json({
