@@ -1224,6 +1224,18 @@ const endBtn   = document.getElementById("end");
 
 let selectedVoiceMode = null;
 
+// Hide mode pills for returning users — mode comes from chat handover or auto-detection
+// Pills only visible for first-time users who haven't had a voice session yet
+(function() {
+  try {
+    const flags = JSON.parse(localStorage.getItem("sophie_ux_flags") || "{}");
+    if (flags.hasStartedVoice) {
+      const bar = document.getElementById("modeBar");
+      if (bar) bar.style.display = "none";
+    }
+  } catch(_) {}
+})();
+
 // Mode pill toggle (voice page)
 document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
   btn.addEventListener("click", () => {
