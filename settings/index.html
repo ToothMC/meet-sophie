@@ -640,28 +640,7 @@ async function openReportDetail(sessionId, source = 'talk') {
     _reportDetailData = data;
     titleEl.textContent = data.title || "Report";
 
-    if (data.source === 'meeting') {
-      // Render meeting summary as structured HTML
-      let html = '';
-      if (data.short_summary) html += `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
-      if (data.decisions?.length) {
-        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Beschlüsse</h4>`;
-        html += data.decisions.map(d => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${d.text || d}${d.owner ? ` <span style="color:#22c55e;font-weight:500">→ ${d.owner}</span>` : ''}</div>`).join('') + '</div>';
-      }
-      if (data.action_items?.length) {
-        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Action Items</h4>`;
-        html += data.action_items.map(a => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${a.text || a}${a.owner ? ` <span style="color:#22c55e;font-weight:500">→ ${a.owner}</span>` : ''}${a.due ? ` <span style="color:#a09080;font-size:11px">bis ${a.due}</span>` : ''}</div>`).join('') + '</div>';
-      }
-      if (data.open_points?.length) {
-        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Offene Punkte</h4>`;
-        html += data.open_points.map(p => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${p.text || p}</div>`).join('') + '</div>';
-      }
-      if (data.risks?.length) {
-        html += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Risiken</h4>`;
-        html += data.risks.map(r => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${r.text || r}${r.severity ? ` <span style="color:${r.severity === 'high' ? '#ef4444' : r.severity === 'medium' ? '#eab308' : '#22c55e'};font-size:11px">${r.severity}</span>` : ''}</div>`).join('') + '</div>';
-      }
-      contentEl.innerHTML = html || '<p class="msg">Keine Details vorhanden.</p>';
-    } else if (data.report_html) {
+    if (data.report_html) {
       // Render HTML report in iframe for proper isolation
       contentEl.innerHTML = '<iframe id="settingsReportFrame" style="width:100%;border:none;min-height:500px;background:#fff;border-radius:8px" sandbox="allow-same-origin"></iframe>';
       const iframe = document.getElementById("settingsReportFrame");
@@ -679,8 +658,20 @@ async function openReportDetail(sessionId, source = 'talk') {
       doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}</style></head><body>${data.report_html}</body></html>`);
       doc.close();
       setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 300);
+    } else if (data.short_summary) {
+      // Fallback: structured summary for meetings without HTML report
+      let html = `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
+      const renderSection = (items, label) => {
+        if (!items?.length) return '';
+        return `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">${label}</h4>`
+          + items.map(i => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${i.text || i}</div>`).join('') + '</div>';
+      };
+      html += renderSection(data.decisions, "Beschlüsse");
+      html += renderSection(data.action_items, "Action Items");
+      html += renderSection(data.open_points, "Offene Punkte");
+      contentEl.innerHTML = html;
     } else {
-      contentEl.innerHTML = '<p class="msg">Kein HTML-Report vorhanden.</p>';
+      contentEl.innerHTML = '<p class="msg">Kein Report vorhanden.</p>';
     }
   } catch (e) {
     titleEl.textContent = "Fehler";

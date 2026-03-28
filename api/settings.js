@@ -139,27 +139,34 @@ export default async function handler(req, res) {
     if (!sessionId) return res.status(400).json({ error: 'Missing session_id' });
 
     if (source === 'meeting') {
-      // Meeting report from meeting_summary
-      const { data: meeting } = await supabase
-        .from('meetings').select('id').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
-      if (!meeting) return res.status(404).json({ error: 'Meeting not found' });
+      // Meeting report — check for HTML report first, fallback to summary
+      const { data: mtg } = await supabase
+        .from('meetings').select('id, title, meeting_type, session_id')
+        .eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+      if (!mtg) return res.status(404).json({ error: 'Meeting not found' });
 
+      // Try to load HTML report from conversation_outputs (via meeting's session_id)
+      let reportHtml = null;
+      if (mtg.session_id) {
+        const { data: co } = await supabase
+          .from('conversation_outputs').select('report_html')
+          .eq('session_id', mtg.session_id).maybeSingle();
+        if (co?.report_html) reportHtml = co.report_html;
+      }
+
+      // Load structured summary
       const { data } = await supabase
         .from('meeting_summary')
         .select('meeting_id, short_summary, decisions, action_items, open_points, risks, created_at')
-        .eq('meeting_id', sessionId)
-        .maybeSingle();
+        .eq('meeting_id', sessionId).maybeSingle();
 
-      if (!data) return res.status(404).json({ error: 'Meeting summary not found' });
-
-      // Get meeting title
-      const { data: mtg } = await supabase
-        .from('meetings').select('title, meeting_type').eq('id', sessionId).maybeSingle();
+      if (!data && !reportHtml) return res.status(404).json({ error: 'Meeting report not found' });
 
       return res.status(200).json({
-        ...data,
-        session_id: data.meeting_id,
-        title: mtg?.title || 'Meeting',
+        ...(data || {}),
+        report_html: reportHtml,
+        session_id: sessionId,
+        title: mtg.title || mtg.meeting_type || 'Meeting',
         source: 'meeting',
       });
     }
