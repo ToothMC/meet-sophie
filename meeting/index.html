@@ -750,7 +750,7 @@ async function showSetup() {
   const parentSelect = $("parentMeetingSelect");
   try {
     const data = await api("list", null, "GET");
-    const meetings = (data.meetings || []).filter(m => m.phase === "closed" || m.phase === "post");
+    const meetings = (data.meetings || []).filter(m => (m.phase === "closed" || m.phase === "post") && m.has_summary);
     if (meetings.length) {
       for (const m of meetings.slice(0, 15)) {
         const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
@@ -782,22 +782,17 @@ async function showSetup() {
           window.__parentPrefill.participants = parentParticipants.content;
         }
 
-        if (summary?.report_html) {
-          const tmp = document.createElement("div");
-          tmp.innerHTML = summary.report_html;
+        // Build agenda from structured summary (action_items, open_points)
+        if (summary) {
           const items = [];
-          const headings = tmp.querySelectorAll("h2, h3, h4, strong");
-          for (const h of headings) {
-            const hText = h.textContent.toLowerCase();
-            if (hText.includes("action") || hText.includes("nächste") || hText.includes("next") || hText.includes("offen") || hText.includes("open") || hText.includes("follow")) {
-              let el = h.closest("div, section") || h.parentElement;
-              el?.querySelectorAll("li").forEach(li => {
-                let text = li.textContent.trim().split(/[.!?]/)[0].trim();
-                if (text.length > 60) text = text.slice(0, 57) + "…";
-                if (text) items.push("• " + text);
-              });
-            }
-          }
+          const extract = (arr) => (arr || []).forEach(a => {
+            let text = typeof a === "string" ? a : (a.text || "");
+            text = text.trim().split(/[.!?]/)[0].trim();
+            if (text.length > 60) text = text.slice(0, 57) + "…";
+            if (text) items.push("• " + text);
+          });
+          extract(summary.action_items);
+          extract(summary.open_points);
           if (items.length) window.__parentPrefill.agenda = items.join("\n");
         }
       } catch (e) {

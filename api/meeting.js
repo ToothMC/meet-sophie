@@ -258,7 +258,19 @@ async function handleList(req, res) {
     return res.status(500).json({ error: "Failed to list meetings" });
   }
 
-  return res.status(200).json({ ok: true, meetings: data || [] });
+  // Mark which meetings have a summary
+  const meetingIds = (data || []).map(m => m.id);
+  let summaryIds = new Set();
+  if (meetingIds.length) {
+    const { data: sums } = await supabase
+      .from("meeting_summary")
+      .select("meeting_id")
+      .in("meeting_id", meetingIds);
+    summaryIds = new Set((sums || []).map(s => s.meeting_id));
+  }
+
+  const enriched = (data || []).map(m => ({ ...m, has_summary: summaryIds.has(m.id) }));
+  return res.status(200).json({ ok: true, meetings: enriched });
 }
 
 // ---------------------------------------------------------------------------
