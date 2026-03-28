@@ -446,6 +446,17 @@ body{
       <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
     </div>
     <div id="reportActions" class="hidden">
+      <div class="report-export-title">Inhalt</div>
+      <div class="export-row" style="gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
+          <input type="checkbox" id="optLeanCheck" checked onchange="onReportOptionChange()" style="accent-color:#c4a882;width:16px;height:16px"> Lean Check
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
+          <input type="checkbox" id="optTranscript" onchange="onReportOptionChange()" style="accent-color:#c4a882;width:16px;height:16px"> Gesprächsverlauf
+        </label>
+        <button class="export-btn" id="reportRegenerateBtn" disabled style="opacity:.4"><span>Aktualisieren</span></button>
+      </div>
+
       <div class="report-export-title">Export</div>
       <div class="export-row">
         <button class="export-btn" id="reportCopyBtn"><span>Kopieren</span></button>
@@ -456,17 +467,6 @@ body{
       <div class="report-export-title">Layout</div>
       <div class="export-row">
         <button class="export-btn" id="reportTemplateBtn"><span>Als Vorlage</span></button>
-        <button class="export-btn" id="reportRegenerateBtn"><span>Neu generieren</span></button>
-      </div>
-
-      <div id="reportOptions" class="report-export-title" style="margin-top:14px">Inhalt</div>
-      <div id="reportOptionsRow" class="export-row" style="gap:16px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
-          <input type="checkbox" id="optLeanCheck" checked style="accent-color:#c4a882;width:16px;height:16px"> Lean Check
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
-          <input type="checkbox" id="optTranscript" style="accent-color:#c4a882;width:16px;height:16px"> Gesprächsverlauf
-        </label>
       </div>
     </div>
   </div>
@@ -1540,52 +1540,30 @@ function showMeetingReport(html) {
     }
   };
 
-  $("reportRegenerateBtn").onclick = async () => {
-    if (!meetingReportSessionId) return;
-    const confirmMsg = lang === "de"
-      ? "Report komplett neu generieren? Der aktuelle Report wird überschrieben."
-      : "Regenerate report from scratch? The current report will be overwritten.";
-    if (!confirm(confirmMsg)) return;
+  // "Aktualisieren" — re-render report with current toggle options (no AI call)
+  $("reportRegenerateBtn").onclick = () => {
+    const exportHtml = getExportHtml();
+    const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
+    doc.open();
+    doc.write(exportHtml);
+    doc.close();
+    setTimeout(() => {
+      try { reportFrame.style.height = doc.documentElement.scrollHeight + "px"; } catch(_) {}
+    }, 300);
+    // Reset button to inactive
     $("reportRegenerateBtn").disabled = true;
-    reportPreview.classList.add("hidden");
-    reportActions.classList.add("hidden");
-    reportActions.style.display = "none";
-
-    try {
-      const chatTranscript = chatMessages
-        .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.content}`)
-        .join("\n");
-
-      const fullParts = [];
-      if (meetingData?.title) fullParts.push(`Meeting: ${meetingData.title}`);
-      if (meetingData?.meeting_type) fullParts.push(`Typ: ${meetingData.meeting_type}`);
-      if (chatTranscript.trim()) fullParts.push(`\nGespräch:\n${chatTranscript}`);
-      const fullTranscript = fullParts.join("\n");
-
-      const headers = { "Content-Type": "application/json" };
-      try {
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
-      } catch (_) {}
-
-      await fetch("/api/ai/generate-report", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          session_id: meetingReportSessionId,
-          transcript_text: fullTranscript,
-          session_mode: "meeting",
-        }),
-      }).catch(() => {});
-
-      pollMeetingReport(meetingReportSessionId);
-    } catch (e) {
-      console.error("Regenerate error:", e);
-    } finally {
-      $("reportRegenerateBtn").disabled = false;
-    }
+    $("reportRegenerateBtn").style.opacity = ".4";
   };
 }
+
+// Toggle change → activate "Aktualisieren" button
+window.onReportOptionChange = function() {
+  const btn = document.getElementById("reportRegenerateBtn");
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
+};
 
 // renderSummary removed — report card is the single output now
 
