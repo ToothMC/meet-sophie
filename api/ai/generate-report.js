@@ -242,6 +242,250 @@ REGELN:
     }
 
     // ══════════════════════════════════════════════════════════════════
+    // SALESPITCH DIRECT PATH — Single strong AI scores the pitch honestly
+    // Template-filling via generic path produces fake scores. This path
+    // evaluates the actual pitch content and generates real HTML.
+    // ══════════════════════════════════════════════════════════════════
+    if (session_mode === 'salespitch') {
+      console.log(`[report] ${session_id} — SALESPITCH DIRECT PATH (single AI)`);
+
+      await supabase.from('conversation_outputs')
+        .update({ report_progress: 30, report_status_detail: 'Bewerte Pitch...' })
+        .eq('session_id', session_id);
+
+      const pitchPrompt = `Du bist ein STRENGER, EHRLICHER Pitch-Evaluator. Du bewertest einen Sales Pitch aus einem Voice-Transcript.
+
+WICHTIG — STRENGE BEWERTUNG:
+- Score 1 = schwach, unvollständig, unklar
+- Score 2 = erkennbarer Ansatz, aber große Lücken
+- Score 3 = solide Basis, aber Verbesserungspotenzial
+- Score 4 = gut, nur Feinschliff nötig
+- Score 5 = exzellent, kaum zu verbessern
+- Ein kurzer, unvollständiger Pitch bekommt NIEDRIGE Scores (1-2). Sei NICHT nachsichtig.
+- Wenn der Pitch nur ein Satz war oder abgebrochen wurde: ALLE Scores auf 1-2 setzen.
+- Ein Score von 4+ erfordert nachweisbare Substanz im Transcript.
+
+BEWERTUNGSKRITERIEN — 13 Kriterien in 2 Gruppen:
+
+CONTENT (60%):
+01 Clarity (12%) — Sofortverständnis: Angebot, Zielgruppe, Relevanz
+02 Problem Sharpness (10%) — Problem real, klar, konkret, wichtig genug
+03 Value Proposition (12%) — Nutzen klar, spezifisch, glaubwürdig
+04 Structure (8%) — Aufbau, roter Faden, 3-5 Hauptpunkte
+05 Differentiation (8%) — Einzigartigkeit erkennbar
+06 Credibility (5%) — Substanz, Belege, keine leeren Claims
+07 Audience Fit (5%) — Inhalt passt zum Publikum
+
+DELIVERY (40%):
+08 Opening (8%) — Hook, sofortige Relevanz
+09 Closing (7%) — Zusammenfassung, CTA
+10 Voice & Rhythm (8%) — Tempo, Pausen, Variation
+11 Rhetoric & Language (7%) — Kurze Sätze, Bilder, keine Füllwörter
+12 Authenticity (5%) — Eigene Stimme, echte Überzeugung
+13 Persuasiveness (5%) — Handlungsimpuls, bleibt im Gedächtnis
+
+CONFIDENCE:
+- Voice-Input: alle Kriterien "high confidence"
+- Text-Input (kein Audio): Voice & Rhythm + Authenticity = "low confidence", Rhetoric = "medium"
+
+BERECHNUNG:
+- Content Score = gewichteter Durchschnitt der 7 Content-Kriterien
+- Delivery Score = gewichteter Durchschnitt der 6 Delivery-Kriterien
+- Overall = (Content Score × 0.6) + (Delivery Score × 0.4)
+
+TRANSCRIPT:
+${transcript_text}
+
+AUFGABE:
+Erstelle den kompletten Sales Pitch Report als HTML. Verwende das EXAKTE Design unten.
+Ersetze ALLE Platzhalter mit echten Werten aus deiner Bewertung.
+Jeder Score-Balken muss die korrekte Breite haben (Score/5 × 100 = Prozent).
+Farben: >= 4.0 = #22c55e (grün), 2.5-3.9 = #eab308 (gelb), < 2.5 = #ef4444 (rot).
+
+Schreibe in der gleichen Sprache wie das Transcript.
+Antworte NUR mit HTML. Kein Markdown, kein Text davor/danach.
+
+HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
+<div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:700px;margin:0 auto;padding:40px 0;color:#1a1a1a;line-height:1.6;">
+  <div style="text-align:center;margin-bottom:36px;">
+    <div style="display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:12px;">Score Card</div>
+    <h1 style="font-size:26px;font-weight:700;color:#111;margin:8px 0 4px;letter-spacing:-0.02em;">[PITCH THEMA]</h1>
+    <div style="font-size:14px;color:#888;">${todayDate} · [pitch_type] · Confidence: [level]</div>
+  </div>
+  <div style="background:#f8f8f8;border-radius:16px;padding:28px;margin-bottom:28px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:48px;font-weight:800;color:#111;letter-spacing:-0.03em;">[OVERALL]</div>
+      <div style="font-size:12px;color:#888;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;">Overall Score</div>
+    </div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Content (60%)</div>
+    <!-- FÜR JEDES Content-Kriterium: -->
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:500;color:#333;">[Kriterium]</span>
+        <span style="font-size:13px;font-weight:700;color:#111;">[X.X] / 5</span>
+      </div>
+      <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:[PROZENT]%;background:[FARBE];border-radius:4px;"></div>
+      </div>
+      <div style="font-size:12px;color:#888;margin-top:2px;">[1-Satz Begründung]</div>
+    </div>
+    <div style="text-align:right;font-size:13px;font-weight:600;color:#555;margin:14px 0 20px;">Content Score: [X.X] / 5.0</div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Delivery (40%)</div>
+    <!-- FÜR JEDES Delivery-Kriterium (gleiche Struktur wie Content): -->
+    <!-- Bei low-confidence Kriterien: * nach dem Namen + kursiver Hinweis -->
+    <div style="text-align:right;font-size:13px;font-weight:600;color:#555;margin-top:14px;">Delivery Score: [X.X] / 5.0</div>
+    <div style="margin-top:8px;font-size:11px;color:#aaa;font-style:italic;">[NUR bei Text-Pitch: "* Textbasiert — Confidence: low. Für vollständige Bewertung: Voice-Modus nutzen."]</div>
+  </div>
+
+  <!-- OVERALL VERDICT: 2-4 Sätze, direkt und ehrlich -->
+  <div style="background:#faf9f6;border-left:3px solid #c4a882;border-radius:8px;padding:20px;margin-bottom:28px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#a09080;margin-bottom:8px;">Verdict</div>
+    <div style="font-size:15px;color:#333;line-height:1.7;">[2-4 Sätze Gesamtbewertung — ehrlich, direkt, kein Schönreden]</div>
+  </div>
+
+  <!-- STÄRKEN (grüne Boxen) -->
+  <div style="margin-bottom:28px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Stärken</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:14px;color:#333;">[Stärke — nur wenn wirklich vorhanden]</div>
+    </div>
+  </div>
+
+  <!-- SCHWÄCHEN (gelbe/rote Boxen) -->
+  <div style="margin-bottom:28px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Schwächen</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:12px 16px;background:#fffbeb;border-radius:10px;border-left:3px solid #eab308;font-size:14px;color:#333;">[Schwäche — konkret und spezifisch]</div>
+    </div>
+  </div>
+
+  <!-- TOP 3 PRIORITÄTEN (schwarze Box) -->
+  <div style="background:#111;border-radius:14px;padding:24px;margin-bottom:28px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:8px;">Nächste Schritte</div>
+    <div style="font-size:16px;color:#fff;line-height:1.7;">[Top 3 Verbesserungen für den nächsten Versuch]</div>
+  </div>
+
+  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;">Erstellt mit Sophie · meet-sophie.com</div>
+</div>`;
+
+      const pitchSynthProviders = [
+        { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+        { provider: 'openai', model: 'gpt-4o' },
+      ];
+
+      let reportHtml = null;
+      for (const synth of pitchSynthProviders) {
+        try {
+          const adapter = getAdapter(synth.provider);
+          const response = await adapter.complete({
+            messages: [{ role: 'user', content: pitchPrompt }],
+            model: synth.model, maxTokens: 6000, temperature: 0.2,
+          });
+          const text = (response.content || '').trim();
+          reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
+          if (reportHtml.length > 100) {
+            console.log(`[report] ${session_id} — salespitch report via ${synth.provider} (${reportHtml.length} chars)`);
+            break;
+          }
+          reportHtml = null;
+        } catch (e) {
+          console.error(`[report] salespitch ${synth.provider} failed:`, e?.message);
+        }
+      }
+
+      if (reportHtml) {
+        await supabase.from('conversation_outputs')
+          .update({ report_progress: 80, report_status_detail: 'Speichere Report...' })
+          .eq('session_id', session_id);
+
+        const titleMatch = reportHtml.match(/<(?:h1|h2)[^>]*>([^<]+)/i);
+        const reportTitle = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Sales Pitch Report';
+        const { error: saveErr } = await supabase.from('conversation_outputs').update({
+          report_html: reportHtml,
+          report_status: 'done',
+          report_progress: 100,
+          title: reportTitle,
+          report_providers: ['salespitch-direct'],
+          report_status_detail: null,
+        }).eq('session_id', session_id);
+        if (saveErr) console.error(`[report] salespitch DB save failed:`, saveErr.message);
+
+        await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
+        console.log(`[report] Salespitch done: ${session_id} — ${reportHtml.length} chars HTML`);
+
+        // ── Extract structured scores and save to sophie_pitch_memory ──
+        try {
+          const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+          if (sess?.user_id) {
+            const extractAdapter = getAdapter('openai');
+            const extractResp = await extractAdapter.complete({
+              messages: [{ role: 'user', content: `Extract structured pitch scores from this HTML report.
+
+${reportHtml.slice(0, 10000)}
+
+Return ONLY JSON:
+{
+  "pitch_topic": "string",
+  "pitch_type": "sales|investor|keynote|internal|self|other",
+  "audience_type": "string",
+  "goal_type": "buy|invest|approve|trust|understand|remember|decide",
+  "scores_content": {"clarity":0,"problem_sharpness":0,"value_proposition":0,"structure":0,"differentiation":0,"credibility":0,"audience_fit":0},
+  "scores_delivery": {"opening":0,"closing":0,"voice_rhythm":0,"rhetoric_language":0,"authenticity":0,"persuasiveness":0},
+  "overall_score": 0.0,
+  "confidence_level": "low|medium|high",
+  "strengths": ["..."],
+  "weaknesses": ["..."]
+}
+Scores are 1.0-5.0. Extract exact values from the report.` }],
+              model: 'gpt-4o-mini', maxTokens: 800, temperature: 0.1,
+            });
+            const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
+            const pitchData = JSON.parse(jsonText);
+
+            const { data: prevPitch } = await supabase.from('sophie_pitch_memory')
+              .select('id, version')
+              .eq('user_id', sess.user_id)
+              .eq('topic', pitchData.pitch_topic || reportTitle)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const pitchRow = {
+              user_id: sess.user_id,
+              conversation_id: session_id,
+              topic: pitchData.pitch_topic || reportTitle,
+              target_audience: pitchData.audience_type || null,
+              pitch_type: pitchData.pitch_type || 'other',
+              goal_type: pitchData.goal_type || null,
+              score: Math.round((pitchData.overall_score || 0) * 20),
+              scores_content: pitchData.scores_content || null,
+              scores_delivery: pitchData.scores_delivery || null,
+              strengths: pitchData.strengths || [],
+              weaknesses: pitchData.weaknesses || [],
+              recurring_errors: [],
+              critical_objections: [],
+              version: prevPitch ? (prevPitch.version || 1) + 1 : 1,
+              parent_pitch_id: prevPitch?.id || null,
+            };
+
+            const { error: pitchErr } = await supabase.from('sophie_pitch_memory').insert(pitchRow);
+            if (pitchErr) console.error(`[report] pitch memory save failed:`, pitchErr.message);
+            else console.log(`[report] Pitch memory saved: topic="${pitchRow.topic}", type=${pitchRow.pitch_type}, score=${pitchRow.score}, v${pitchRow.version}`);
+          }
+        } catch (pitchMemErr) {
+          console.error(`[report] pitch memory extraction failed (non-critical):`, pitchMemErr?.message);
+        }
+      } else {
+        await supabase.from('conversation_outputs').update({
+          report_status: 'failed', report_progress: 100,
+          report_status_detail: 'Sales Pitch Report Generation fehlgeschlagen',
+        }).eq('session_id', session_id);
+      }
+      return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     // STANDARD PATH — 4-AI parallel analysis + synthesis (Talk, Brainstorm, etc.)
     // ══════════════════════════════════════════════════════════════════
 
@@ -558,79 +802,6 @@ ${analysesBlock}`;
       .eq('session_id', session_id);
 
     await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
-
-    // ── Sales Pitch Memory: extract structured scores and save to sophie_pitch_memory ──
-    if (session_mode === 'salespitch' && reportHtml.length > 100) {
-      try {
-        const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
-        if (sess?.user_id) {
-          const extractAdapter = getAdapter('openai');
-          const extractResp = await extractAdapter.complete({
-            messages: [{ role: 'user', content: `Extract structured pitch evaluation data from this Sales Pitch report HTML.
-
-HTML REPORT:
-${reportHtml.slice(0, 10000)}
-
-Return ONLY JSON in this exact format:
-{
-  "pitch_topic": "string",
-  "pitch_type": "sales|investor|keynote|internal|self|other",
-  "audience_type": "string",
-  "goal_type": "buy|invest|approve|trust|understand|remember|decide",
-  "scores_content": {"clarity":0,"problem_sharpness":0,"value_proposition":0,"structure":0,"differentiation":0,"credibility":0,"audience_fit":0},
-  "scores_delivery": {"opening":0,"closing":0,"voice_rhythm":0,"rhetoric_language":0,"authenticity":0,"persuasiveness":0},
-  "overall_score": 0.0,
-  "confidence_level": "low|medium|high",
-  "strengths": ["..."],
-  "weaknesses": ["..."]
-}
-
-Rules:
-- Scores are 1-5 (float). Extract from the report scorecard.
-- overall_score is the weighted average shown in the report.
-- If a field is not in the report, use reasonable defaults.
-- pitch_type: derive from context (sales/investor/keynote/internal/self/other).
-- goal_type: derive from pitch goal (buy/invest/approve/trust/understand/remember/decide).` }],
-            model: 'gpt-4o-mini', maxTokens: 800, temperature: 0.1,
-          });
-          const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
-          const pitchData = JSON.parse(jsonText);
-
-          // Check for existing pitch with same topic for version chaining
-          const { data: prevPitch } = await supabase.from('sophie_pitch_memory')
-            .select('id, version')
-            .eq('user_id', sess.user_id)
-            .eq('topic', pitchData.pitch_topic || reportTitle)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const pitchRow = {
-            user_id: sess.user_id,
-            conversation_id: session_id,
-            topic: pitchData.pitch_topic || reportTitle,
-            target_audience: pitchData.audience_type || null,
-            pitch_type: pitchData.pitch_type || 'other',
-            goal_type: pitchData.goal_type || null,
-            score: Math.round((pitchData.overall_score || 0) * 20), // 1-5 → 0-100
-            scores_content: pitchData.scores_content || null,
-            scores_delivery: pitchData.scores_delivery || null,
-            strengths: pitchData.strengths || [],
-            weaknesses: pitchData.weaknesses || [],
-            recurring_errors: [],
-            critical_objections: [],
-            version: prevPitch ? (prevPitch.version || 1) + 1 : 1,
-            parent_pitch_id: prevPitch?.id || null,
-          };
-
-          const { error: pitchErr } = await supabase.from('sophie_pitch_memory').insert(pitchRow);
-          if (pitchErr) console.error(`[report] pitch memory save failed:`, pitchErr.message);
-          else console.log(`[report] Pitch memory saved: topic="${pitchRow.topic}", type=${pitchRow.pitch_type}, score=${pitchRow.score}, v${pitchRow.version}`);
-        }
-      } catch (pitchMemErr) {
-        console.error(`[report] pitch memory extraction failed (non-critical):`, pitchMemErr?.message);
-      }
-    }
 
     console.log(`[report] Done: ${session_id} — ${reportHtml.length} chars HTML from ${analyses.length} providers`);
     return res.status(200).json({ ok: true, status: 'done' });
