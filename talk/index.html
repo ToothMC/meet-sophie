@@ -4082,12 +4082,16 @@ async function stopVoice(triggeredByLimit = false){
   showLiveBadge(false);
   showVoiceChat(false);
 
-  headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
+  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+  if (reportEnabled) {
+    headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
+    startFakeReportLoader();
+  } else {
+    headline.textContent = t("wrapping_up");
+  }
   setStatus(t("wrapping_up"));
   setSoftHint("");
   timerEl.style.display = "none";
-
-  startFakeReportLoader();
 
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
@@ -4265,7 +4269,6 @@ if (!hasRealConversation) {
     const memoryResult = await sendMemoryUpdate(durationSeconds);
 
     // Start async report polling with progress bar (skip if user disabled report)
-    const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
     const sessionId = memoryResult?.session?.id;
     if (reportEnabled && sessionId) {
       await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
