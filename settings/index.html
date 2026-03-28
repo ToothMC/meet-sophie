@@ -99,6 +99,23 @@ main{max-width:520px;margin:0 auto;padding:12px}
 .badge-decoupled{background:rgba(234,179,8,.1);color:#ca8a04}
 .badge-deleted{background:rgba(239,68,68,.1);color:#dc2626}
 
+/* Usage bar */
+.usage-bar-wrap{
+  height:8px;border-radius:4px;background:#ede8e2;overflow:hidden;margin:8px 0;
+}
+.usage-bar{
+  height:100%;border-radius:4px;transition:width .4s ease,background .3s;
+}
+.usage-bar.green{background:#22c55e}
+.usage-bar.orange{background:#f59e0b}
+.usage-bar.red{background:#ef4444}
+.usage-label{display:flex;justify-content:space-between;font-size:12px;color:#5a4a40;font-weight:600}
+.usage-detail{font-size:11px;color:#a09080;margin-top:4px;line-height:1.6}
+.usage-cost{margin-top:12px;padding-top:10px;border-top:1px solid #f0ece6}
+.usage-cost-label{font-size:11px;color:#a09080;margin-bottom:4px}
+.usage-cost-bar-wrap{height:5px;border-radius:3px;background:#ede8e2;overflow:hidden}
+.usage-cost-bar{height:100%;border-radius:3px;background:#c4a882;transition:width .4s ease}
+
 /* Provider grid */
 .provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .provider-card{
@@ -247,6 +264,18 @@ main{max-width:520px;margin:0 auto;padding:12px}
         <button class="btn btn-secondary btn-sm" id="manageSubBtn" style="display:none">Abo verwalten</button>
         <button class="btn btn-secondary btn-sm" id="logoutBtn2">Abmelden</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Section: Guthaben -->
+  <div class="section" id="sectionUsage">
+    <div class="section-toggle" onclick="toggleSection('sectionUsage')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Guthaben</span>
+      <span class="s-sub" id="usageSub">Dein verbleibendes Kontingent</span>
+    </div>
+    <div class="section-body">
+      <div id="usageContent"><p class="msg">Laden...</p></div>
     </div>
   </div>
 
@@ -427,6 +456,7 @@ if (!session?.user) {
   loadHealth();
   loadCosts();
   loadAccount();
+  loadUsage();
 }
 
 // ── Account Section ──
@@ -495,6 +525,58 @@ const logoutAction = async () => {
 };
 document.getElementById("logoutBtn").onclick = logoutAction;
 document.getElementById("logoutBtn2").onclick = logoutAction;
+
+// ── Usage / Balance Section ──
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+async function loadUsage() {
+  const el = document.getElementById("usageContent");
+  const sub = document.getElementById("usageSub");
+  try {
+    const d = await api("usage");
+    const pct = d.usagePercent || 0;
+    const barColor = pct < 80 ? "green" : pct < 95 ? "orange" : "red";
+    const remaining = d.remainingSeconds || 0;
+    const total = d.totalSeconds || 0;
+
+    // Subtitle update
+    sub.textContent = fmtTime(remaining) + " Min. \u00fcbrig";
+
+    // Build breakdown
+    const parts = [];
+    if (d.freeRemaining > 0) parts.push("Free: " + fmtTime(d.freeRemaining));
+    if (d.paidRemaining > 0) parts.push("Abo: " + fmtTime(d.paidRemaining));
+    if (d.topupRemaining > 0) parts.push("Top-up: " + fmtTime(d.topupRemaining));
+
+    // Daily cost bar
+    const costPct = d.dailyCap > 0 ? Math.min(100, Math.round((d.dailyCost / d.dailyCap) * 100)) : 0;
+
+    // CTA if low
+    const lowBalance = total > 0 && (remaining / total) < 0.2;
+
+    el.innerHTML = `
+      <div class="usage-label">
+        <span>${fmtTime(remaining)} \u00fcbrig</span>
+        <span>${fmtTime(total)} gesamt</span>
+      </div>
+      <div class="usage-bar-wrap">
+        <div class="usage-bar ${barColor}" style="width:${Math.min(pct, 100)}%"></div>
+      </div>
+      ${parts.length > 1 ? '<div class="usage-detail">' + parts.join(" &middot; ") + '</div>' : ''}
+      <div class="usage-cost">
+        <div class="usage-cost-label">AI-Budget heute: $${parseFloat(d.dailyCost).toFixed(2)} / $${parseFloat(d.dailyCap).toFixed(2)}</div>
+        <div class="usage-cost-bar-wrap">
+          <div class="usage-cost-bar" style="width:${costPct}%"></div>
+        </div>
+      </div>
+      ${lowBalance ? '<div style="margin-top:12px"><a href="/pricing" class="btn btn-secondary btn-sm">Minuten aufladen</a></div>' : ''}
+    `;
+  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
 
 // ── Helpers ──
 function toggleSection(id) {

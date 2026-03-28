@@ -29,6 +29,62 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── GET: Usage (balance + daily cost cap) ──
+  if (action === 'usage' && req.method === 'GET') {
+    const [usageRes, subRes, costRes] = await Promise.all([
+      supabase.from('user_usage')
+        .select('free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance')
+        .eq('user_id', user.id).maybeSingle(),
+      supabase.from('user_subscriptions')
+        .select('is_active, status, plan, current_period_end')
+        .eq('user_id', user.id).maybeSingle(),
+      supabase.from('ai_cost_daily')
+        .select('total_cost')
+        .eq('user_id', user.id)
+        .eq('date', new Date().toISOString().split('T')[0])
+        .maybeSingle(),
+    ]);
+
+    const usage = usageRes.data;
+    const sub = subRes.data;
+    const active = !!(sub?.is_active || sub?.status === 'active' || sub?.status === 'trialing');
+
+    const freeTotal = usage?.free_seconds_total ?? 120;
+    const freeUsed = usage?.free_seconds_used ?? 0;
+    const freeRemaining = Math.max(0, freeTotal - freeUsed);
+
+    const paidTotal = usage?.paid_seconds_total ?? 0;
+    const paidUsed = usage?.paid_seconds_used ?? 0;
+    const paidRemaining = Math.max(0, paidTotal - paidUsed);
+
+    const topupRemaining = Math.max(0, usage?.topup_seconds_balance ?? 0);
+
+    const totalSeconds = freeTotal + paidTotal + topupRemaining;
+    const remainingSeconds = freeRemaining + paidRemaining + topupRemaining;
+    const usedSeconds = totalSeconds - remainingSeconds;
+    const usagePercent = totalSeconds > 0 ? Math.round((usedSeconds / totalSeconds) * 100) : 0;
+
+    // Daily AI cost cap
+    const tier = active ? (sub?.plan === 'premium' ? 'premium' : 'abo') : 'free';
+    const caps = { free: 0.50, abo: 5.00, premium: 15.00 };
+    const dailyCost = costRes.data?.total_cost ?? 0;
+    const dailyCap = caps[tier] ?? caps.abo;
+
+    return res.status(200).json({
+      remainingSeconds,
+      totalSeconds,
+      usagePercent,
+      freeRemaining,
+      paidRemaining,
+      topupRemaining,
+      plan: sub?.plan || null,
+      isActive: active,
+      periodEnd: sub?.current_period_end || null,
+      dailyCost,
+      dailyCap,
+    });
+  }
+
   // ── GET: Sources ──
   if (action === 'sources' && req.method === 'GET') {
     const sources = await listSources(user.id);

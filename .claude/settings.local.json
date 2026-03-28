@@ -124,7 +124,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://de.wikipedia.org/api/rest_v1/page/summary/feb_2026\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://de.wikipedia.org/api/rest_v1/page/summary/Februar_2026\")",
       "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=feb%202026&srlimit=3&format=json&origin=*\")",
-      "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=Februar%202026&srlimit=3&format=json&origin=*\")"
+      "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=Februar%202026&srlimit=3&format=json&origin=*\")",
+      "Bash(grep -l \"user_subscriptions\\\\|user_profile\\\\|subscription\\\\|plan\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -n \"checkDailyBudget\\\\|AI_COST_CAP\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/ai/*.js)"
     ]
   },
   "hooks": {
