@@ -1,6 +1,7 @@
-// api/ai/tools.js — Echtzeit-Tools: Wetter, Web-Suche, News
+// api/ai/tools.js — Echtzeit-Tools: Wetter, Web-Suche, News, Wikipedia
 // Bing Search API (primary, needs BING_API_KEY) → DuckDuckGo/Google News RSS (fallback)
 // Open-Meteo for weather (kostenlos, kein Key)
+// Wikipedia REST API (kostenlos, kein Key)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
