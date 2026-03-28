@@ -3286,6 +3286,17 @@ function attachChannel(ch) {
           }
         }, {
           type: "function",
+          name: "get_wikipedia",
+          description: "Look up factual knowledge, definitions, biographies, history, or explanations from Wikipedia. Use when the user asks knowledge questions like 'What is...?', 'Who was...?', 'How does... work?', 'What happened in...?'. NEVER say you don't have access — use this tool instead!",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "The topic to look up (e.g. 'Albert Einstein', 'Quantencomputing', 'Februar 2026')" }
+            },
+            required: ["query"]
+          }
+        }, {
+          type: "function",
           name: "send_chat_note",
           description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
           parameters: {
