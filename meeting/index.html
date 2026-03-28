@@ -1540,6 +1540,10 @@ function showMeetingReport(html) {
 
   $("reportRegenerateBtn").onclick = async () => {
     if (!meetingReportSessionId) return;
+    const confirmMsg = lang === "de"
+      ? "Report komplett neu generieren? Der aktuelle Report wird überschrieben."
+      : "Regenerate report from scratch? The current report will be overwritten.";
+    if (!confirm(confirmMsg)) return;
     $("reportRegenerateBtn").disabled = true;
     reportPreview.classList.add("hidden");
     reportActions.classList.add("hidden");
