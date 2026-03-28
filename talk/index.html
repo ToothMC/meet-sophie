@@ -212,9 +212,10 @@ body{
 
 /* Report toggle */
 .report-toggle{
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
   cursor:pointer;margin-bottom:14px;
   -webkit-user-select:none;user-select:none;
+  position:relative;z-index:5;
 }
 .report-toggle input{ display:none; }
 .report-toggle-slider{
@@ -3826,11 +3827,9 @@ async function startVoice(){
       }
     })();
 
-    // Hide mode bar + report toggle once session starts (can't change mid-call)
+    // Hide mode bar once session starts (can't change mid-call)
     const modeBarEl = document.getElementById("modeBar");
     if (modeBarEl) modeBarEl.style.display = "none";
-    const reportToggleLabel = document.getElementById("reportToggleLabel");
-    if (reportToggleLabel) reportToggleLabel.style.display = "none";
 
     const tokenRes = await fetch("/api/session", {
       headers: {
