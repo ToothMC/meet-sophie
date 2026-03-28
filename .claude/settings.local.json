@@ -120,7 +120,11 @@
       "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&titles=Februar_2026&prop=extracts&exintro=0&explaintext=1&exsectionformat=plain&exchars=3000&format=json\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pages=d[''''query''''][''''pages'''']; p=list\\(pages.values\\(\\)\\)[0]; print\\(p.get\\(''''extract'''',''''NONE''''\\)[:1500]\\)\")",
       "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&titles=Februar_2026&prop=extracts&explaintext=1&exsectionformat=plain&exchars=4000&format=json\")",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pages=d[''''query''''][''''pages'''']; p=list\\(pages.values\\(\\)\\)[0]; print\\(p.get\\(''''extract'''',''''NONE''''\\)[:2000]\\)\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pages=d[''''query''''][''''pages'''']; p=list\\(pages.values\\(\\)\\)[0]; print\\(p.get\\(''''extract'''',''''NONE''''\\)[:2000]\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://de.wikipedia.org/api/rest_v1/page/summary/feb_2026\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://de.wikipedia.org/api/rest_v1/page/summary/Februar_2026\")",
+      "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=feb%202026&srlimit=3&format=json&origin=*\")",
+      "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=Februar%202026&srlimit=3&format=json&origin=*\")"
     ]
   },
   "hooks": {

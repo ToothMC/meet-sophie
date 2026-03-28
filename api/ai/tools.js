@@ -251,6 +251,18 @@ export async function getNews(topic) {
 
 // ── Wikipedia: REST API + MediaWiki API (kostenlos, kein API-Key) ──
 
+// Helper: normalize common abbreviations to full German names (for Wikipedia slugs)
+function _normalizeQuery(q) {
+  const monthMap = {
+    jan: 'Januar', feb: 'Februar', mär: 'März', mar: 'März', apr: 'April',
+    mai: 'Mai', jun: 'Juni', jul: 'Juli', aug: 'August', sep: 'September',
+    okt: 'Oktober', oct: 'Oktober', nov: 'November', dez: 'Dezember', dec: 'Dezember',
+  };
+  return q.replace(/\b(jan|feb|mär|mar|apr|mai|jun|jul|aug|sep|okt|oct|nov|dez|dec)\b/gi, (m) => {
+    return monthMap[m.toLowerCase()] || m;
+  });
+}
+
 // Helper: full article extract via MediaWiki API (for overview/event pages)
 async function _wikiFullExtract(title) {
   try {
