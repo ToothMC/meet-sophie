@@ -21,31 +21,55 @@ const AUTH_NUDGE_AT_TURN = 3;
 // ---------------------------------------------------------------------------
 // Chat Opener Pool — returned directly from action=start, no AI call needed
 // ---------------------------------------------------------------------------
-const CHAT_OPENERS = {
+// Free/anonymous: thinking partner openers (structured, reflective)
+const CHAT_OPENERS_FREE = {
   de: [
     "Was beschäftigt dich gerade?",
     "Was geht dir gerade durch den Kopf?",
     "Wobei wünschst du dir gerade Klarheit?",
-    "Was fühlt sich im Moment ungelöst an?",
     "Worüber möchtest du gerade nachdenken?",
   ],
   en: [
     "What's on your mind right now?",
     "What are you trying to figure out?",
-    "What feels unresolved for you right now?",
     "What would you like to think through?",
     "Where are you stuck?",
   ],
   fr: [
     "Qu'est-ce qui t'occupe l'esprit en ce moment?",
     "Sur quoi aimerais-tu avoir plus de clarté?",
-    "Qu'est-ce qui te semble non résolu en ce moment?",
     "À quoi veux-tu réfléchir?",
     "Qu'est-ce qui te préoccupe?",
   ],
 };
-function getOpener(lang) {
-  const pool = CHAT_OPENERS[lang] || CHAT_OPENERS.en;
+// Paid users: casual, relaxed, open — no pressure, no coaching vibe
+const CHAT_OPENERS_PAID = {
+  de: [
+    "Hey! Was gibt's?",
+    "Na, was steht an?",
+    "Hey — was treibst du so?",
+    "Was läuft bei dir?",
+    "Schreib einfach los.",
+  ],
+  en: [
+    "Hey! What's up?",
+    "What's going on?",
+    "Hey — what's on your plate?",
+    "What are you up to?",
+    "Just start typing.",
+  ],
+  fr: [
+    "Hey ! Quoi de neuf ?",
+    "Qu'est-ce qui se passe ?",
+    "Salut — quoi de beau ?",
+    "Alors, tu fais quoi ?",
+    "Écris, je suis là.",
+  ],
+};
+function getOpener(lang, isPaid = false) {
+  const pool = isPaid
+    ? (CHAT_OPENERS_PAID[lang] || CHAT_OPENERS_PAID.en)
+    : (CHAT_OPENERS_FREE[lang] || CHAT_OPENERS_FREE.en);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -333,7 +357,7 @@ async function handleStart(req, res) {
     ? systemPrompt + importedContext
     : systemPrompt;
 
-  const opener = getOpener(preferredLanguage);
+  const opener = getOpener(preferredLanguage, isPremium);
 
   return res.status(200).json({
     ok: true,
