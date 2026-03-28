@@ -264,27 +264,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, deleted: mode });
     }
 
-    // Delete a report
+    // Delete a report (only report, keep meeting structure)
     if (action === 'delete-report') {
-      const { session_id: delSessionId } = body;
-      if (!delSessionId) return res.status(400).json({ error: 'Missing session_id' });
+      const { session_id, source } = body;
+      if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
 
-      // Verify ownership
-      const { data: sess } = await supabase
-        .from('user_sessions').select('id').eq('id', delSessionId).eq('user_id', user.id).maybeSingle();
-      if (!sess) return res.status(404).json({ error: 'Session not found' });
+      if (source === 'meeting') {
+        await supabase.from('meeting_summary').delete().eq('meeting_id', session_id);
+        const { data: mtg } = await supabase.from('meetings').select('session_id').eq('id', session_id).maybeSingle();
+        if (mtg?.session_id) {
+          await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
+        }
+      } else {
+        await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
+        await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);
+      }
 
-      // Clear report fields (keep the conversation_outputs row for potential other data)
-      await supabase.from('conversation_outputs')
-        .update({
-          report_html: null, report_status: null, report_progress: null,
-          report_status_detail: null, report_providers: null, report_style: null,
-        })
-        .eq('session_id', delSessionId);
-
-      await supabase.from('user_sessions').update({ has_output: false }).eq('id', delSessionId);
-
-      return res.status(200).json({ ok: true, action: 'report_deleted' });
+      return res.status(200).json({ ok: true });
     }
 
     const { sourceId } = body;
@@ -302,28 +298,6 @@ export default async function handler(req, res) {
       await deleteAll(sourceId, user.id);
       return res.status(200).json({ ok: true, action: 'all_deleted' });
     }
-  }
-
-  // ── POST: Delete report ──
-  if (action === 'delete-report' && req.method === 'POST') {
-    const { session_id, source } = req.body || {};
-    if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
-
-    if (source === 'meeting') {
-      // Only delete report/summary — keep meeting structure intact
-      await supabase.from('meeting_summary').delete().eq('meeting_id', session_id);
-      // Clean up linked report session if exists
-      const { data: mtg } = await supabase.from('meetings').select('session_id').eq('id', session_id).maybeSingle();
-      if (mtg?.session_id) {
-        await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
-      }
-    } else {
-      // Delete talk report
-      await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
-      await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);
-    }
-
-    return res.status(200).json({ ok: true });
   }
 
   return res.status(400).json({ error: 'Unknown action' });
