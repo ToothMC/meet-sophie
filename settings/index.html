@@ -549,37 +549,70 @@ async function loadReports() {
     }
 
     let html = '';
+    const renderCard = (r) => {
+      const d = new Date(r.created_at);
+      const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+      const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+      const source = r.source || 'talk';
+      return `<div class="card" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
+        <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+          <div style="font-size:13px;font-weight:600;color:#2a2420">${date}, ${time}</div>
+        </div>
+      </div>`;
+    };
+
     for (const [cat, reports] of Object.entries(groups)) {
       if (!reports.length) continue;
       const groupId = 'reportGroup_' + cat;
+
+      // Group by cleaned title within category
+      const titleGroups = {};
+      for (const r of reports) {
+        const cleanTitle = (r.title || 'Report').replace(/_\d+$/, '').trim();
+        if (!titleGroups[cleanTitle]) titleGroups[cleanTitle] = [];
+        titleGroups[cleanTitle].push(r);
+      }
+
       html += `<div style="margin-bottom:8px;border:1px solid #ede8e2;border-radius:12px;overflow:hidden">
         <div onclick="document.getElementById('${groupId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;background:#fff">
-          <span style="font-size:10px;color:#c4a882;transition:transform .2s">&#9660;</span>
+          <span style="font-size:10px;color:#c4a882">&#9660;</span>
           <span style="font-size:12px;font-weight:600;color:#2a2420;flex:1">${groupLabels[cat]}</span>
           <span style="font-size:11px;color:#a09080">${reports.length}</span>
         </div>
         <div id="${groupId}" class="hidden" style="padding:0 14px 12px">`;
-      const moreId = 'reportMore_' + cat;
-      const renderCard = (r) => {
-        const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
-        const source = r.source || 'talk';
-        let displayTitle = (r.title || 'Report').replace(/_\d+$/, '');
-        const d = new Date(r.created_at);
-        const dateShort = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.`;
-        displayTitle = `${displayTitle} (${dateShort})`;
-        return `<div class="card" style="display:flex;align-items:center;gap:10px">
-          <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
-          <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
-            <div style="font-size:13px;font-weight:600;color:#2a2420">${displayTitle}</div>
-          </div>
-          <div style="font-size:11px;color:#a09080">${date}</div>
-        </div>`;
-      };
-      html += reports.slice(0, 10).map(renderCard).join('');
-      if (reports.length > 10) {
-        html += `<div id="${moreId}" style="display:none">${reports.slice(10).map(renderCard).join('')}</div>`;
-        html += `<div class="card" style="cursor:pointer;text-align:center;font-size:12px;color:#c4a882;font-weight:600" onclick="document.getElementById('${moreId}').style.display='block';this.remove()">+ ${reports.length - 10} weitere</div>`;
+
+      for (const [title, items] of Object.entries(titleGroups)) {
+        if (items.length === 1) {
+          // Single report — show directly with title + date
+          const r = items[0];
+          const d = new Date(r.created_at);
+          const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+          const source = r.source || 'talk';
+          html += `<div class="card" style="display:flex;align-items:center;gap:10px">
+            <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
+            <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+              <div style="font-size:13px;font-weight:600;color:#2a2420">${title}</div>
+            </div>
+            <div style="font-size:11px;color:#a09080">${date}</div>
+          </div>`;
+        } else {
+          // Multiple reports with same title — group them
+          const subId = 'titleGroup_' + cat + '_' + Math.random().toString(36).slice(2, 8);
+          html += `<div style="margin:4px 0;border:1px solid #f0ece6;border-radius:8px;overflow:hidden">
+            <div onclick="document.getElementById('${subId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;background:#faf9f6">
+              <span style="font-size:9px;color:#c4a882">&#9660;</span>
+              <span style="font-size:13px;font-weight:600;color:#2a2420;flex:1">${title}</span>
+              <span style="font-size:11px;color:#a09080">${items.length}×</span>
+            </div>
+            <div id="${subId}" class="hidden" style="padding:0 10px 6px">`;
+          // Sort newest first within group
+          items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          html += items.map(renderCard).join('');
+          html += '</div></div>';
+        }
       }
+
       html += '</div></div>';
     }
     list.innerHTML = html;
