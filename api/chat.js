@@ -458,7 +458,9 @@ async function handleMessage(req, res) {
     `[TOOL:weather:Ortsname] — für Wetter, Temperatur, Outdoor-Bedingungen\n` +
     `[TOOL:search:Suchanfrage] — für aktuelle Fakten, Preise, Ereignisse\n` +
     `[TOOL:news:Thema] — für aktuelle Nachrichten und Headlines\n` +
+    `[TOOL:wiki:Begriff] — für Faktenwissen, Definitionen, Biographien, historische Ereignisse, Erklärungen\n` +
     `Antworte mit dem Tag ALLEIN wenn du Echtzeit-Daten brauchst. Du bekommst die Daten dann automatisch. ` +
+    `Nutze wiki bevorzugt für Wissensfragen (Was ist...? Wer war...? Wie funktioniert...?). ` +
     `Wenn du KEINE Echtzeit-Daten brauchst, antworte ganz normal ohne Tag.`
   });
 
