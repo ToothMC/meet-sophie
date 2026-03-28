@@ -210,6 +210,44 @@ body{
   color:#fff;
 }
 
+/* Report toggle */
+.report-toggle{
+  display:flex;align-items:center;gap:8px;
+  cursor:pointer;margin-bottom:14px;
+  -webkit-user-select:none;user-select:none;
+}
+.report-toggle input{ display:none; }
+.report-toggle-slider{
+  width:32px;height:18px;
+  background:rgba(255,255,255,.15);
+  border-radius:9px;
+  position:relative;
+  transition:background .2s;
+}
+.report-toggle-slider::after{
+  content:'';position:absolute;
+  left:2px;top:2px;
+  width:14px;height:14px;
+  background:rgba(255,255,255,.5);
+  border-radius:50%;
+  transition:transform .2s, background .2s;
+}
+.report-toggle input:checked + .report-toggle-slider{
+  background:rgba(255,255,255,.3);
+}
+.report-toggle input:checked + .report-toggle-slider::after{
+  transform:translateX(14px);
+  background:#fff;
+}
+.report-toggle-text{
+  font-size:12px;color:rgba(255,255,255,.45);
+  letter-spacing:.02em;
+  transition:color .2s;
+}
+.report-toggle input:checked ~ .report-toggle-text{
+  color:rgba(255,255,255,.7);
+}
+
 .live-badge{
   display:none;
   align-items:center;
@@ -940,6 +978,11 @@ body{
     <button class="mode-pill" data-mode="meeting">◉ Meeting</button>
     <button class="mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
   </div>
+  <label class="report-toggle" id="reportToggleLabel">
+    <input type="checkbox" id="reportToggle" checked>
+    <span class="report-toggle-slider"></span>
+    <span class="report-toggle-text">Report</span>
+  </label>
   <button id="start" class="btn">Start conversation</button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 
@@ -2196,6 +2239,20 @@ function startFakeReportLoader() {
     if (progress > 92) progress = 92;
     inlineReportProgressBar.style.width = progress + "%";
   }, 380);
+}
+
+function resetPostCallUI() {
+  // Report was disabled — skip report panel, reset to ready state
+  startBtn.disabled = false;
+  startBtn.textContent = t("start");
+  startBtn.onclick = startVoice;
+  logoutBtn.disabled = false;
+  headline.textContent = t("sophie_waiting");
+  setStatus(t("ready"));
+  modeBar.style.display = "flex";
+  const rTgl = document.getElementById("reportToggleLabel");
+  if (rTgl) rTgl.style.display = "flex";
+  showBackground(false);
 }
 
 function stopFakeReportLoader() {
@@ -3769,9 +3826,11 @@ async function startVoice(){
       }
     })();
 
-    // Hide mode bar once session starts (can't change mid-call)
+    // Hide mode bar + report toggle once session starts (can't change mid-call)
     const modeBarEl = document.getElementById("modeBar");
     if (modeBarEl) modeBarEl.style.display = "none";
+    const reportToggleLabel = document.getElementById("reportToggleLabel");
+    if (reportToggleLabel) reportToggleLabel.style.display = "none";
 
     const tokenRes = await fetch("/api/session", {
       headers: {
@@ -4206,15 +4265,20 @@ if (!hasRealConversation) {
 
     const memoryResult = await sendMemoryUpdate(durationSeconds);
 
-    // Start async report polling with progress bar
+    // Start async report polling with progress bar (skip if user disabled report)
+    const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
     const sessionId = memoryResult?.session?.id;
-    if (sessionId) {
+    if (reportEnabled && sessionId) {
       await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
-    } else {
+    } else if (reportEnabled) {
       stopFakeReportLoader();
       showPostCallResults({
         output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
       }, transcriptSnapshot, { triggeredByLimit });
+    } else {
+      // Report disabled — skip report, just reset UI
+      stopFakeReportLoader();
+      resetPostCallUI();
     }
 
     track("talk_ended", {
