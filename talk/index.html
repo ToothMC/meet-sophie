@@ -220,7 +220,7 @@ body{
 .report-toggle input{ display:none; }
 .report-toggle-slider{
   width:32px;height:18px;
-  background:rgba(255,255,255,.15);
+  background:rgba(255,255,255,.12);
   border-radius:9px;
   position:relative;
   transition:background .2s;
@@ -229,19 +229,19 @@ body{
   content:'';position:absolute;
   left:2px;top:2px;
   width:14px;height:14px;
-  background:rgba(255,255,255,.5);
+  background:rgba(255,255,255,.35);
   border-radius:50%;
   transition:transform .2s, background .2s;
 }
 .report-toggle input:checked + .report-toggle-slider{
-  background:rgba(255,255,255,.3);
+  background:#6366f1;
 }
 .report-toggle input:checked + .report-toggle-slider::after{
   transform:translateX(14px);
   background:#fff;
 }
 .report-toggle-text{
-  font-size:12px;color:rgba(255,255,255,.45);
+  font-size:12px;color:rgba(255,255,255,.35);
   letter-spacing:.02em;
   transition:color .2s;
 }
