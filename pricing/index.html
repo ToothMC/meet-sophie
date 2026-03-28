@@ -31,51 +31,50 @@ body{
 .header h1{margin:0 0 6px;font-size:24px;font-weight:700;letter-spacing:-.3px;}
 .header p{margin:0;font-size:13px;color:#7a6a5a;}
 
-/* Plans grid */
-.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;}
+/* Plans grid — all buttons identical */
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px;}
 .plan{
   border-radius:14px;padding:14px 10px 12px;text-align:center;
   display:flex;flex-direction:column;align-items:center;
   background:#fff;border:1.5px solid #ede8e2;position:relative;
-  transition:border-color .2s;
+  transition:border-color .2s,box-shadow .2s;
 }
-.plan.current{border-color:#4a90d9;box-shadow:0 0 0 2px rgba(74,144,217,.25);}
-.plan.plus-highlight{border-color:#c4a882;}
 
-/* Current badge */
+/* Current plan = green ring */
+.plan.current{border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25);}
 .current-badge{
   position:absolute;top:-8px;left:50%;transform:translateX(-50%);
   font-size:9px;font-weight:700;padding:2px 8px;border-radius:6px;
-  background:#4a90d9;color:#fff;white-space:nowrap;display:none;
+  background:#22c55e;color:#fff;white-space:nowrap;display:none;
 }
 .plan.current .current-badge{display:block;}
 
-/* Best value badge */
-.best-badge{
-  position:absolute;top:-8px;left:50%;transform:translateX(-50%);
-  font-size:9px;font-weight:700;padding:2px 8px;border-radius:6px;
-  background:rgba(196,168,130,.15);color:#8a7050;white-space:nowrap;
+/* Best value = small star in top-right corner */
+.best-star{
+  position:absolute;top:6px;right:6px;
+  font-size:14px;line-height:1;display:none;
 }
-/* Hide best badge if current badge is shown */
-.plan.current .best-badge{display:none;}
+.plan.show-best .best-star{display:block;}
+/* Hide best star when it's the current plan */
+.plan.current .best-star{display:none;}
 
 .plan-name{font-size:13px;font-weight:700;margin-bottom:6px;margin-top:4px;}
 .plan-price{font-size:26px;font-weight:800;line-height:1;}
 .plan-per{font-size:10px;color:#a09080;margin-top:2px;}
 .plan-tokens{font-size:11px;color:#7a6a5a;margin-top:8px;font-weight:600;}
 .plan-spacer{flex:1;}
+
+/* All plan buttons look the same */
 .plan-btn{
   width:100%;padding:9px 4px;border-radius:10px;border:0;
   font-size:12px;font-weight:700;cursor:pointer;margin-top:10px;
   transition:opacity .15s;
+  background:#2a2420;color:#fff;
 }
 .plan-btn:hover{opacity:.88;}
 .plan-btn:disabled{opacity:.3;cursor:not-allowed;}
-.plan-btn-dark{background:#2a2420;color:#fff;}
-.plan-btn-light{background:#f0ebe5;color:#2a2420;}
-.plan-btn-ghost{background:transparent;color:#a09080;border:1px dashed #ddd;cursor:default;}
 
-/* TopUps */
+/* TopUps — compact */
 .topup-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a09080;text-align:center;margin-bottom:8px;}
 .topups{display:flex;gap:8px;margin-bottom:20px;}
 .tu{
@@ -130,10 +129,10 @@ body{
       <div class="current-badge" id="badgeFree"></div>
       <div class="plan-name">Free</div>
       <div class="plan-price">&euro;0</div>
-      <div class="plan-per" id="tFreePer"></div>
-      <div class="plan-tokens">50 Tokens</div>
+      <div class="plan-per"></div>
+      <div class="plan-tokens" id="tFreeTokens"></div>
       <div class="plan-spacer"></div>
-      <button class="plan-btn plan-btn-ghost" id="btnFree" disabled></button>
+      <button class="plan-btn" id="btnFree" disabled></button>
     </div>
 
     <div class="plan" id="planStart">
@@ -143,18 +142,18 @@ body{
       <div class="plan-per" id="tStartPer"></div>
       <div class="plan-tokens">300 Tokens</div>
       <div class="plan-spacer"></div>
-      <button class="plan-btn plan-btn-dark" id="btnStart" disabled></button>
+      <button class="plan-btn" id="btnStart" disabled></button>
     </div>
 
-    <div class="plan plus-highlight" id="planPlus">
+    <div class="plan show-best" id="planPlus">
       <div class="current-badge" id="badgePlus"></div>
-      <div class="best-badge" id="tPlusBest"></div>
+      <div class="best-star">&#9733;</div>
       <div class="plan-name">Plus</div>
       <div class="plan-price">&euro;19,90</div>
       <div class="plan-per" id="tPlusPer"></div>
       <div class="plan-tokens">800 Tokens</div>
       <div class="plan-spacer"></div>
-      <button class="plan-btn plan-btn-dark" id="btnPlus" disabled></button>
+      <button class="plan-btn" id="btnPlus" disabled></button>
     </div>
 
     <div class="plan" id="planPremium">
@@ -164,7 +163,7 @@ body{
       <div class="plan-per" id="tPremiumPer"></div>
       <div class="plan-tokens">2.000 Tokens</div>
       <div class="plan-spacer"></div>
-      <button class="plan-btn plan-btn-light" id="btnPremium" disabled></button>
+      <button class="plan-btn" id="btnPremium" disabled></button>
     </div>
   </div>
 
@@ -209,11 +208,11 @@ const supabase = createClient(
 const L={
   de:{
     h1:"Mach weiter mit Sophie.",
-    lead:"Starte sofort — oder spar mit einem Abo.",
-    freePer:"",startPer:"/ Monat",plusPer:"/ Monat",premiumPer:"/ Monat",
-    plusBest:"Beste Wahl",
-    freeBtn:"Aktuell",startBtn:"Jetzt starten",plusBtn:"Plus wählen",premiumBtn:"Premium",
-    topupLabel:"Ohne Abo · sofort",tuBtn:"Kaufen",
+    lead:"Wähle deinen Plan:",
+    freeTokens:"50 Tokens zum Start",
+    startPer:"/ Monat",plusPer:"/ Monat",premiumPer:"/ Monat",
+    selectPlan:"Plan wählen",
+    topupLabel:"Ohne Abo · nutzen wann du willst",tuBtn:"Auftanken",
     currentBadge:"Dein Plan",
     loginHint:"Noch kein Login?",loginLink:"Einloggen",
     err:"Fehler beim Checkout.",tErr:"Fehler beim Top-up.",
@@ -223,11 +222,11 @@ const L={
   },
   en:{
     h1:"Keep going with Sophie.",
-    lead:"Start instantly — or save with a plan.",
-    freePer:"",startPer:"/ month",plusPer:"/ month",premiumPer:"/ month",
-    plusBest:"Best Value",
-    freeBtn:"Current",startBtn:"Get started",plusBtn:"Choose Plus",premiumBtn:"Premium",
-    topupLabel:"No subscription · instant",tuBtn:"Buy",
+    lead:"Choose your plan:",
+    freeTokens:"50 tokens to start",
+    startPer:"/ month",plusPer:"/ month",premiumPer:"/ month",
+    selectPlan:"Select Plan",
+    topupLabel:"No subscription · use whenever you want",tuBtn:"Refill",
     currentBadge:"Your plan",
     loginHint:"Not signed in?",loginLink:"Sign in",
     err:"Checkout failed.",tErr:"Top-up failed.",
@@ -239,7 +238,7 @@ const L={
 
 const $ = id => document.getElementById(id);
 const c1=$("c1"),c2=$("c2"),msg=$("msg");
-const btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
+const btnFree=$("btnFree"),btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
 const btnTu5=$("btnTu5"),btnTu10=$("btnTu10"),btnTu20=$("btnTu20");
 const allBtns=[btnStart,btnPlus,btnPremium,btnTu5,btnTu10,btnTu20];
 let lang="en";
@@ -251,18 +250,21 @@ function setLang(l){
   $("langEN").classList.toggle("active",l==="en");
   const t=L[l];
   $("tH1").textContent=t.h1;$("tLead").textContent=t.lead;
-  $("tFreePer").textContent=t.freePer;$("tStartPer").textContent=t.startPer;
-  $("tPlusPer").textContent=t.plusPer;$("tPremiumPer").textContent=t.premiumPer;
-  $("tPlusBest").textContent=t.plusBest;
-  $("btnFree").textContent=t.freeBtn;
-  btnStart.textContent=t.startBtn;btnPlus.textContent=t.plusBtn;btnPremium.textContent=t.premiumBtn;
+  $("tFreeTokens").textContent=t.freeTokens;
+  $("tStartPer").textContent=t.startPer;
+  $("tPlusPer").textContent=t.plusPer;
+  $("tPremiumPer").textContent=t.premiumPer;
+  // All plan buttons say the same thing
+  btnFree.textContent=t.selectPlan;
+  btnStart.textContent=t.selectPlan;
+  btnPlus.textContent=t.selectPlan;
+  btnPremium.textContent=t.selectPlan;
   $("tTopupLabel").textContent=t.topupLabel;
   btnTu5.textContent=t.tuBtn;btnTu10.textContent=t.tuBtn;btnTu20.textContent=t.tuBtn;
   $("tL1").innerHTML=t.l1;$("tL2").innerHTML=t.l2;
   $("tPrivacy").textContent=l==="de"?"Datenschutz":"Privacy";
   $("tLoginHint").textContent=t.loginHint;$("btnLogin").textContent=t.loginLink;
   $("backBtn").innerHTML=l==="de"?"&#8592; Zurück":"&#8592; Back";
-  // Update current badges
   ["badgeFree","badgeStart","badgePlus","badgePremium"].forEach(id=>{
     const el=$(id);if(el)el.textContent=t.currentBadge;
   });
@@ -313,6 +315,7 @@ async function topup(pack){
   finally{msg.textContent="";updateEnabled();}
 }
 
+btnFree.onclick=()=>checkout("free");
 btnStart.onclick=()=>checkout("start");
 btnPlus.onclick=()=>checkout("plus");
 btnPremium.onclick=()=>checkout("premium");
