@@ -419,7 +419,7 @@ async function handleConfirm(req, res) {
 
       const { data: usage, error: usageFindErr } = await supabase
         .from("user_usage")
-        .select("user_id, topup_tokens_balance")
+        .select("user_id, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
         .eq("user_id", userId)
         .maybeSingle();
       if (usageFindErr) {
@@ -438,9 +438,13 @@ async function handleConfirm(req, res) {
           return res.status(500).json({ error: "Failed to insert user_usage" });
         }
       } else {
+        // Carry over remaining paid tokens as topup (upgrade fairness)
+        const paidRemaining = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+        const newTopupBalance = (usage.topup_tokens_balance || 0) + (paidRemaining > 0 ? paidRemaining : 0);
+
         const { error: updErr } = await supabase
           .from("user_usage")
-          .update({ free_tokens_used: DEFAULT_FREE_TOKENS, paid_tokens_total: includedTokens, paid_tokens_used: 0 })
+          .update({ free_tokens_used: DEFAULT_FREE_TOKENS, paid_tokens_total: includedTokens, paid_tokens_used: 0, topup_tokens_balance: newTopupBalance })
           .eq("user_id", userId);
         if (updErr) {
           console.error("user_usage update failed:", updErr);

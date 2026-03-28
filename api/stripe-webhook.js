@@ -151,11 +151,27 @@ export default async function handler(req, res) {
             return res.status(500).send("Supabase write failed (user_usage insert)");
           }
         } else {
+          // Carry over remaining paid tokens as topup balance (upgrade fairness)
+          const { data: currentUsage } = await supabase
+            .from("user_usage")
+            .select("paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          const paidRemaining = Math.max(0, (currentUsage?.paid_tokens_total || 0) - (currentUsage?.paid_tokens_used || 0));
+          const topupCarryover = paidRemaining > 0 ? paidRemaining : 0;
+          const newTopupBalance = (currentUsage?.topup_tokens_balance || 0) + topupCarryover;
+
+          if (topupCarryover > 0) {
+            console.log(`[webhook] Upgrade: carrying over ${topupCarryover} remaining paid tokens as topup for user ${userId.slice(0, 8)}`);
+          }
+
           const { error: uUpdErr } = await supabase
             .from("user_usage")
             .update({
               paid_tokens_total: includedTokens,
               paid_tokens_used: 0,
+              topup_tokens_balance: newTopupBalance,
             })
             .eq("user_id", userId);
 
