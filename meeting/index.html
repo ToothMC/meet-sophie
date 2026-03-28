@@ -754,10 +754,12 @@ async function showSetup() {
     const meetings = (data.meetings || []).filter(m => (m.phase === "closed" || m.phase === "post") && m.has_summary);
     if (meetings.length) {
       for (const m of meetings.slice(0, 15)) {
-        const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
+        const d = new Date(m.created_at);
+        const date = d.toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
+        const time = d.toLocaleTimeString(lang === "de" ? "de-DE" : "en-US", { hour: "2-digit", minute: "2-digit" });
         const opt = document.createElement("option");
         opt.value = m.id;
-        opt.textContent = `${m.title || m.meeting_type} — ${date}`;
+        opt.textContent = `${m.title || m.meeting_type} — ${date}, ${time}`;
         opt.dataset.title = m.title || m.meeting_type;
         parentSelect.appendChild(opt);
       }
