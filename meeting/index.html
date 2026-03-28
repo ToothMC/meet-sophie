@@ -927,9 +927,11 @@ async function loadMeeting(id) {
       appendSystemMsg(`[${n.note_type.toUpperCase()}] ${n.content}`);
     });
 
-    // Show summary if exists
-    if (data.summary) {
-      renderSummary(data.summary);
+    // Show report card if meeting has a report session
+    if (meetingData.session_id && (meetingData.phase === "post" || meetingData.phase === "closed")) {
+      meetingReportSessionId = meetingData.session_id;
+      $("summaryCard").classList.remove("hidden");
+      pollMeetingReport(meetingReportSessionId);
     }
 
     // Auto-send opener in prep phase — short, no AI call needed
