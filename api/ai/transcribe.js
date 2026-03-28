@@ -27,6 +27,21 @@ export default async function handler(req, res) {
 
     console.log(`[transcribe] ${user.id}: ${(audioBuffer.length / 1024).toFixed(0)}KB, file=${filename || 'audio.webm'}`);
 
+    // Pre-check token balance before expensive Whisper API call
+    const { data: usagePre } = await supabase
+      .from('user_usage')
+      .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (usagePre) {
+      const totalRem = Math.max(0, (usagePre.free_tokens_total || 0) - (usagePre.free_tokens_used || 0))
+        + Math.max(0, (usagePre.paid_tokens_total || 0) - (usagePre.paid_tokens_used || 0))
+        + Math.max(0, usagePre.topup_tokens_balance || 0);
+      if (totalRem <= 0) {
+        return res.status(402).json({ error: 'No tokens remaining' });
+      }
+    }
+
     // Build multipart form for OpenAI Whisper
     const boundary = '----WhisperBoundary' + Date.now();
     const fname = filename || 'audio.webm';
@@ -39,6 +54,8 @@ export default async function handler(req, res) {
     parts.push('\r\n');
     // Model part
     parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n`);
+    // Response format: verbose_json to get duration
+    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\nverbose_json\r\n`);
     // Language part
     if (language) {
       parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`);
@@ -65,8 +82,9 @@ export default async function handler(req, res) {
     const result = await whisperRes.json();
     console.log(`[transcribe] OK: ${(result.text || '').slice(0, 100)}...`);
 
-    // Deduct usage in tokens
-    const estimatedSeconds = Math.ceil(audioBuffer.length / 16000);
+    // Deduct usage in tokens — use Whisper's reported duration, fallback to file size estimate
+    const actualDuration = result.duration || null;
+    const estimatedSeconds = actualDuration ? Math.ceil(actualDuration) : Math.max(1, Math.ceil(audioBuffer.length / 16000));
     const tokensToDeduct = Math.ceil(estimatedSeconds / SECONDS_PER_TOKEN);
     try {
       const { data: usage } = await supabase

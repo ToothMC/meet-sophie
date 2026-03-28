@@ -55,6 +55,27 @@ export default async function handler(req, res) {
   try {
     console.log("Stripe event received:", { type: event.type, id: event.id });
 
+    // Idempotency: skip already-processed events (Stripe can deliver webhooks multiple times)
+    const { data: existingEvent } = await supabase
+      .from("analytics_events")
+      .select("id")
+      .eq("event_name", "stripe_webhook_" + event.type)
+      .eq("meta->>stripe_event_id", event.id)
+      .maybeSingle();
+
+    if (existingEvent) {
+      console.log("Webhook already processed, skipping:", event.id);
+      return res.status(200).json({ received: true, duplicate: true });
+    }
+
+    // Mark this event as processed BEFORE doing anything (prevents race with parallel deliveries)
+    const eventUserId = event.data?.object?.metadata?.user_id || null;
+    await supabase.from("analytics_events").insert({
+      user_id: eventUserId,
+      event_name: "stripe_webhook_" + event.type,
+      meta: { stripe_event_id: event.id, event_type: event.type },
+    }).catch(() => {}); // don't block on analytics failure
+
     // 1) Checkout completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;

@@ -396,6 +396,20 @@ async function handleMessage(req, res) {
     if (!isPremium && session.turn_count >= FREE_TURNS_LIMIT) {
       return res.status(402).json({ error: "Free limit reached", turns_used: session.turn_count, upgrade_required: true });
     }
+    // Pre-check token balance before making expensive AI call
+    const { data: usagePre } = await supabase
+      .from("user_usage")
+      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (usagePre) {
+      const freeRem = Math.max(0, (usagePre.free_tokens_total || 0) - (usagePre.free_tokens_used || 0));
+      const paidRem = Math.max(0, (usagePre.paid_tokens_total || 0) - (usagePre.paid_tokens_used || 0));
+      const topupRem = Math.max(0, usagePre.topup_tokens_balance || 0);
+      if (freeRem + paidRem + topupRem <= 0) {
+        return res.status(402).json({ error: "Token limit reached", remaining_tokens: 0, upgrade_required: true });
+      }
+    }
   }
 
   // Check if user is asking about history — search imported data if so

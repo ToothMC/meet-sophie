@@ -86,7 +86,7 @@ async function handleCheckout(req, res) {
 
     const priceId =
       p === "start"   ? process.env.STRIPE_PRICE_ID_START :
-      p === "plus"    ? process.env.STRIPE_PRICE_ID_PLUS :
+      p === "plus"    ? (process.env.STRIPE_PRICE_ID_PLUS_V2 || process.env.STRIPE_PRICE_ID_PLUS) :
       p === "premium" ? process.env.STRIPE_PRICE_ID_PREMIUM :
       null;
 
