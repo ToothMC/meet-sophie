@@ -800,8 +800,16 @@
       inset:0;
       background:rgba(0,0,0,.35);
       z-index:90;
+      touch-action:none;
+      overscroll-behavior:none;
     }
     body.chat-foreground-active .chat-foreground-backdrop{ display:block; }
+    body.chat-foreground-active{
+      overflow:hidden;
+      position:fixed;
+      width:100%;
+      height:100%;
+    }
 
     .chat-card.foreground{
       width:400px;
@@ -870,6 +878,8 @@
       .chat-card.foreground .chat-messages{
         flex:1;overflow-y:auto;
         -webkit-overflow-scrolling:touch;
+        overscroll-behavior:contain;
+        touch-action:pan-y;
       }
     }
     @media (max-width:1200px){
@@ -2091,10 +2101,13 @@
         chatOriginalParent = chatCard.parentElement;
         chatOriginalNext = chatCard.nextElementSibling;
       }
+      // Save scroll position before locking body
+      chatCard._savedScrollY = window.scrollY;
       // Move to body so it escapes the hero-grid stacking context
       document.body.appendChild(chatCard);
       chatCard.classList.add("foreground");
       document.body.classList.add("chat-foreground-active");
+      document.body.style.top = `-${chatCard._savedScrollY}px`;
       setTimeout(() => {
         const emailField = document.getElementById("chatAuthEmail");
         const authSection = document.getElementById("chatAuth");
@@ -2112,6 +2125,12 @@
       if (!chatCard) return;
       chatCard.classList.remove("foreground");
       document.body.classList.remove("chat-foreground-active");
+      document.body.style.top = "";
+      // Restore scroll position
+      if (chatCard._savedScrollY != null) {
+        window.scrollTo(0, chatCard._savedScrollY);
+        chatCard._savedScrollY = null;
+      }
       // Move chat back to its original position in the DOM
       if (chatOriginalParent) {
         if (chatOriginalNext) {
