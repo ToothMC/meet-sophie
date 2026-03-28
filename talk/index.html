@@ -2941,13 +2941,48 @@ ${(voiceHandover.recentMessages || [])
   try {
     await cancelAnyOngoingResponse();
 
-    // Sales Pitch: ignore handover entirely — start Phase A immediately
+    // Sales Pitch: start Phase A with handover context + correct language
     if (selectedVoiceMode === "salespitch") {
+      const pitchLang = voiceHandover?.language || _uiLang || "en";
+      const chatContext = voiceHandover ? `
+CHAT CONTEXT (use this info, do NOT ask again what you already know):
+Known user name: ${voiceHandover.userName || "(unknown)"}
+Language: ${pitchLang}
+Summary: ${voiceHandover.summary || "(none)"}
+Recent messages:
+${(voiceHandover.recentMessages || [])
+  .map(m => `- ${m.role}: ${m.content}`)
+  .join("\n")}
+
+If the user already told you what they're pitching or who the audience is, acknowledge it and skip that question.
+` : "";
+
+      const langLock = pitchLang === "de"
+        ? "Speak GERMAN. All questions and feedback in German."
+        : pitchLang === "fr"
+        ? "Speak FRENCH. All questions and feedback in French."
+        : "Speak ENGLISH. All questions and feedback in English.";
+
       await sendWhenChannelOpen({
         type: "response.create",
         response: {
           modalities: ["audio", "text"],
-          instructions: `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first. Ask who they are pitching to. No handover context. No prior conversation.`
+          instructions: `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first.
+
+${langLock}
+${chatContext}
+
+PHASE A — 3 Setup Questions (fixed order, ask one at a time):
+${pitchLang === "de" ? `1. "Hey — lass uns deinen Pitch anschauen. Was präsentierst du?"
+2. "Vor wem wirst du präsentieren?"
+3. "Was soll am Ende beim Publikum hängen bleiben?"
+Dann: "Okay. Pitch, sobald du bereit bist."` : `1. "Hey — let's look at your pitch. What are you presenting?"
+2. "Who will you be presenting to?"
+3. "What should stick with the audience at the end?"
+Then: "Okay. Pitch whenever you're ready."`}
+
+If any of these are already answered from the chat context, skip them and move to the next.
+No smalltalk. No mode explanation. No onboarding. Be direct and natural.`
         }
       }, 3000);
       return;
