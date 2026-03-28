@@ -90,16 +90,28 @@ body{
   line-height:1.5;
 }
 
-/* -- Primary row: Start + TopUp 5 -- */
-.primary-row{
+/* -- Two-column grid -- */
+.grid-2col{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:12px;
-  margin-bottom:16px;
+  gap:16px;
+  margin-bottom:20px;
 }
+.col{ display:flex; flex-direction:column; gap:10px; }
+.col-label{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#a09080;
+  text-align:center;
+  padding-bottom:2px;
+}
+
+/* -- Cards -- */
 .card{
-  border-radius:20px;
-  padding:20px 18px;
+  border-radius:16px;
+  padding:16px 14px;
   display:flex;
   flex-direction:column;
 }
@@ -108,53 +120,49 @@ body{
   border:1.5px solid #c4a882;
   box-shadow:0 4px 20px rgba(0,0,0,.06);
 }
+.card-secondary{
+  background:#fff;
+  border:1px solid #ede8e2;
+}
 .card-topup{
   background:rgba(0,0,0,.03);
   border:1px solid #ede8e2;
 }
 .card-badge{
   display:inline-block;
-  font-size:11px;
+  font-size:10px;
   font-weight:700;
   letter-spacing:.03em;
-  padding:3px 9px;
-  border-radius:8px;
-  margin-bottom:12px;
+  padding:2px 8px;
+  border-radius:7px;
+  margin-bottom:8px;
   align-self:flex-start;
 }
 .badge-start{ background:rgba(196,168,130,.15); color:#8a7050; }
 .badge-topup{ background:rgba(0,0,0,.05); color:#5a4a40; }
-.card-name{
-  font-size:13px;
-  font-weight:500;
-  color:#7a6a5a;
-  margin-bottom:4px;
-}
 .card-price{
-  font-size:28px;
+  font-size:24px;
   font-weight:800;
-  margin-bottom:0;
-  line-height:1;
+  margin-bottom:4px;
+  line-height:1.2;
 }
 .card-per{
   font-size:11px;
+  font-weight:500;
   color:#a09080;
-  margin-bottom:10px;
-  margin-top:3px;
 }
 .card-sub{
-  font-size:12.5px;
+  font-size:12px;
   color:#7a6a5a;
-  line-height:1.5;
-  margin-bottom:16px;
-  flex:1;
+  line-height:1.4;
+  margin-bottom:10px;
 }
 .card-btn{
   width:100%;
-  padding:13px 10px;
-  border-radius:13px;
+  padding:11px 8px;
+  border-radius:12px;
   border:0;
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
   cursor:pointer;
   transition:opacity .15s;
@@ -162,90 +170,8 @@ body{
 .card-btn:hover{ opacity:.9; }
 .card-btn:disabled{ opacity:.35; cursor:not-allowed; }
 .btn-start{ background:#2a2420; color:#fff; }
+.btn-secondary{ background:#f5f0ea; color:#2a2420; }
 .btn-topup{ background:#fff; color:#2a2420; border:1px solid #ede8e2; }
-
-/* -- Upgrade row: Plus + Premium -- */
-.upgrade-wrap{
-  margin-bottom:16px;
-}
-.upgrade-label{
-  font-size:11px;
-  font-weight:600;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  color:#a09080;
-  text-align:center;
-  margin-bottom:8px;
-}
-.upgrade-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-.upgrade-btn{
-  padding:14px 10px;
-  border-radius:14px;
-  border:1px solid #ede8e2;
-  background:rgba(0,0,0,.02);
-  color:#2a2420;
-  font-size:14px;
-  font-weight:600;
-  cursor:pointer;
-  transition:background .15s, border-color .15s;
-  width:100%;
-  text-align:center;
-}
-.upgrade-btn:hover{ background:rgba(0,0,0,.04); border-color:#c4a882; }
-.upgrade-btn:disabled{ opacity:.25; cursor:not-allowed; }
-.upgrade-btn .plan-name{
-  font-size:12px;
-  font-weight:500;
-  color:#7a6a5a;
-  margin-bottom:2px;
-}
-.upgrade-btn .plan-price{
-  font-size:18px;
-  font-weight:800;
-}
-.upgrade-btn .plan-tokens{
-  display:block;
-  font-size:10px;
-  font-weight:500;
-  color:#a09080;
-  margin-top:3px;
-}
-
-/* -- More topups -- */
-.topup-wrap{
-  margin-bottom:20px;
-}
-.topup-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-.pack-btn{
-  padding:10px 10px 9px;
-  border-radius:12px;
-  border:1px solid #ede8e2;
-  background:rgba(0,0,0,.02);
-  color:#7a6a5a;
-  font-size:14px;
-  font-weight:600;
-  cursor:pointer;
-  transition:background .15s, color .15s;
-  width:100%;
-}
-.pack-btn:hover{ background:rgba(0,0,0,.04); color:#2a2420; }
-.pack-btn:disabled{ opacity:.25; cursor:not-allowed; }
-.pack-btn span{
-  display:block;
-  font-size:10px;
-  font-weight:500;
-  opacity:.7;
-  margin-top:2px;
-  letter-spacing:.02em;
-}
 
 /* -- Legal -- */
 .legal-block{
@@ -299,8 +225,8 @@ body{
 
 /* -- Responsive -- */
 @media (max-width:460px){
-  .primary-row{ grid-template-columns:1fr; }
-  .card-price{ font-size:25px; }
+  .grid-2col{ grid-template-columns:1fr; }
+  .card-price{ font-size:22px; }
   .header h1{ font-size:23px; }
 }
 </style>
@@ -326,58 +252,55 @@ body{
     <p id="tLead"></p>
   </div>
 
-  <!-- Primary: Start Abo + €5 TopUp -->
-  <div class="primary-row">
+  <!-- Two columns: Abos | Top-ups -->
+  <div class="grid-2col">
 
-    <!-- Start -->
-    <div class="card card-start">
-      <div class="card-badge badge-start" id="tStartBadge"></div>
-      <div class="card-name" id="tStartName"></div>
-      <div class="card-price">&euro;9,90</div>
-      <div class="card-per" id="tStartPer"></div>
-      <div class="card-sub" id="tStartSub"></div>
-      <button class="card-btn btn-start" id="btnStart" disabled></button>
+    <!-- Left: Abos -->
+    <div class="col">
+      <div class="col-label" id="tAboLabel"></div>
+
+      <div class="card card-start">
+        <div class="card-badge badge-start" id="tStartBadge"></div>
+        <div class="card-price">&euro;9,90 <span class="card-per" id="tStartPer"></span></div>
+        <div class="card-sub" id="tStartSub"></div>
+        <button class="card-btn btn-start" id="btnStart" disabled></button>
+      </div>
+
+      <div class="card card-secondary">
+        <div class="card-price">&euro;19,90 <span class="card-per" id="tPlusPer"></span></div>
+        <div class="card-sub" id="tPlusSub"></div>
+        <button class="card-btn btn-secondary" id="btnPlus" disabled></button>
+      </div>
+
+      <div class="card card-secondary">
+        <div class="card-price">&euro;39,90 <span class="card-per" id="tPremiumPer"></span></div>
+        <div class="card-sub" id="tPremiumSub"></div>
+        <button class="card-btn btn-secondary" id="btnPremium" disabled></button>
+      </div>
     </div>
 
-    <!-- €5 TopUp -->
-    <div class="card card-topup">
-      <div class="card-badge badge-topup" id="tTopup5Badge"></div>
-      <div class="card-name" id="tTopup5Name"></div>
-      <div class="card-price">&euro;5</div>
-      <div class="card-sub" id="tTopup5Sub"></div>
-      <button class="card-btn btn-topup" id="btnTopup5" disabled></button>
+    <!-- Right: Top-ups -->
+    <div class="col">
+      <div class="col-label" id="tTopupLabel"></div>
+
+      <div class="card card-topup">
+        <div class="card-badge badge-topup" id="tTopup5Badge"></div>
+        <div class="card-price">&euro;5 <span class="card-per" id="tTopup5Per"></span></div>
+        <div class="card-sub" id="tTopup5Sub"></div>
+        <button class="card-btn btn-topup" id="btnTopup5" disabled></button>
+      </div>
+
+      <div class="card card-topup">
+        <div class="card-price">&euro;10 <span class="card-per" id="tTopup10Per"></span></div>
+        <button class="card-btn btn-topup" id="btnTopup10" disabled></button>
+      </div>
+
+      <div class="card card-topup">
+        <div class="card-price">&euro;20 <span class="card-per" id="tTopup20Per"></span></div>
+        <button class="card-btn btn-topup" id="btnTopup20" disabled></button>
+      </div>
     </div>
 
-  </div>
-
-  <!-- Upgrade: Plus + Premium -->
-  <div class="upgrade-wrap">
-    <div class="upgrade-label" id="tUpgradeLabel"></div>
-    <div class="upgrade-row">
-      <button class="upgrade-btn" id="btnPlus" disabled>
-        <div class="plan-name" id="tPlusName"></div>
-        <div class="plan-price">&euro;19,90</div>
-        <span class="plan-tokens" id="tPlusTokens"></span>
-      </button>
-      <button class="upgrade-btn" id="btnPremium" disabled>
-        <div class="plan-name" id="tPremiumName"></div>
-        <div class="plan-price">&euro;39,90</div>
-        <span class="plan-tokens" id="tPremiumTokens"></span>
-      </button>
-    </div>
-  </div>
-
-  <!-- More TopUps: €10 + €20 -->
-  <div class="topup-wrap">
-    <div class="upgrade-label" id="tMoreTokens"></div>
-    <div class="topup-row">
-      <button class="pack-btn" id="btnTopup10" disabled>
-        &euro;10 <span id="tTokens10"></span>
-      </button>
-      <button class="pack-btn" id="btnTopup20" disabled>
-        &euro;20 <span id="tTokens20"></span>
-      </button>
-    </div>
   </div>
 
   <!-- Legal -->
@@ -419,23 +342,26 @@ const TEXT = {
   de:{
     h1:            "Mach jetzt weiter mit Sophie.",
     lead:          "Starte sofort — oder spar mit einem Abo.",
+    aboLabel:      "Abo",
+    topupLabel:    "Ohne Abo",
     startBadge:    "★ Beste Wahl",
-    startName:     "Start · monatlich",
-    startPer:      "pro Monat · 300 Tokens",
-    startSub:      "300 Tokens pro Monat. Voice, Chat, Memory. Jederzeit kündbar.",
+    startPer:      "/ Monat · 300 Tokens",
+    startSub:      "Voice, Chat, Memory. Jederzeit kündbar.",
     startBtn:      "Jetzt starten",
-    topup5Badge:   "⚡ Ohne Abo",
-    topup5Name:    "50 Tokens",
-    topup5Sub:     "Ohne Bindung. Premium-Qualität. Einfach loslegen.",
-    topup5Btn:     "5€ — sofort los",
-    upgradeLabel:  "Mehr Power",
-    plusName:      "Plus",
-    plusTokens:    "800 Tokens · bessere KI",
-    premiumName:   "Premium",
-    premiumTokens: "2.000 Tokens · beste KI",
-    moreTokens:    "Mehr Tokens laden",
-    tokens10:      "100 Tokens",
-    tokens20:      "250 Tokens",
+    plusPer:       "/ Monat · 800 Tokens",
+    plusSub:       "Bessere KI. Mehr Tokens.",
+    plusBtn:       "Plus wählen",
+    premiumPer:    "/ Monat · 2.000 Tokens",
+    premiumSub:    "Beste KI. Voller Umfang.",
+    premiumBtn:    "Premium wählen",
+    topup5Badge:   "⚡ Sofort los",
+    topup5Per:     "50 Tokens",
+    topup5Sub:     "Premium-Qualität. Keine Bindung.",
+    topup5Btn:     "5€ kaufen",
+    topup10Per:    "100 Tokens",
+    topup10Btn:    "10€ kaufen",
+    topup20Per:    "250 Tokens",
+    topup20Btn:    "20€ kaufen",
     loginHint:     "Noch kein Login?",
     loginLink:     "Einloggen, um fortzufahren",
     loading:       "Einen Moment…",
@@ -449,23 +375,26 @@ const TEXT = {
   en:{
     h1:            "Keep going with Sophie.",
     lead:          "Start instantly — or save with a plan.",
+    aboLabel:      "Plans",
+    topupLabel:    "No subscription",
     startBadge:    "★ Best Value",
-    startName:     "Start · monthly",
-    startPer:      "per month · 300 Tokens",
-    startSub:      "300 tokens per month. Voice, chat, memory. Cancel anytime.",
+    startPer:      "/ month · 300 tokens",
+    startSub:      "Voice, chat, memory. Cancel anytime.",
     startBtn:      "Get started",
-    topup5Badge:   "⚡ No subscription",
-    topup5Name:    "50 Tokens",
-    topup5Sub:     "No commitment. Premium quality. Just go.",
-    topup5Btn:     "€5 — start now",
-    upgradeLabel:  "More power",
-    plusName:      "Plus",
-    plusTokens:    "800 tokens · better AI",
-    premiumName:   "Premium",
-    premiumTokens: "2,000 tokens · best AI",
-    moreTokens:    "More tokens",
-    tokens10:      "100 tokens",
-    tokens20:      "250 tokens",
+    plusPer:       "/ month · 800 tokens",
+    plusSub:       "Better AI. More tokens.",
+    plusBtn:       "Choose Plus",
+    premiumPer:    "/ month · 2,000 tokens",
+    premiumSub:    "Best AI. Full access.",
+    premiumBtn:    "Choose Premium",
+    topup5Badge:   "⚡ Start now",
+    topup5Per:     "50 tokens",
+    topup5Sub:     "Premium quality. No commitment.",
+    topup5Btn:     "Buy €5",
+    topup10Per:    "100 tokens",
+    topup10Btn:    "Buy €10",
+    topup20Per:    "250 tokens",
+    topup20Btn:    "Buy €20",
     loginHint:     "Not signed in?",
     loginLink:     "Sign in to continue",
     loading:       "One moment…",
@@ -502,23 +431,26 @@ function setLang(l){
   const t = TEXT[l];
   document.getElementById("tH1").textContent            = t.h1;
   document.getElementById("tLead").textContent           = t.lead;
+  document.getElementById("tAboLabel").textContent       = t.aboLabel;
+  document.getElementById("tTopupLabel").textContent     = t.topupLabel;
   document.getElementById("tStartBadge").textContent     = t.startBadge;
-  document.getElementById("tStartName").textContent      = t.startName;
   document.getElementById("tStartPer").textContent       = t.startPer;
   document.getElementById("tStartSub").textContent       = t.startSub;
   btnStart.textContent                                   = t.startBtn;
+  document.getElementById("tPlusPer").textContent        = t.plusPer;
+  document.getElementById("tPlusSub").textContent        = t.plusSub;
+  btnPlus.textContent                                    = t.plusBtn;
+  document.getElementById("tPremiumPer").textContent     = t.premiumPer;
+  document.getElementById("tPremiumSub").textContent     = t.premiumSub;
+  btnPremium.textContent                                 = t.premiumBtn;
   document.getElementById("tTopup5Badge").textContent    = t.topup5Badge;
-  document.getElementById("tTopup5Name").textContent     = t.topup5Name;
+  document.getElementById("tTopup5Per").textContent      = t.topup5Per;
   document.getElementById("tTopup5Sub").textContent      = t.topup5Sub;
   btnTopup5.textContent                                  = t.topup5Btn;
-  document.getElementById("tUpgradeLabel").textContent   = t.upgradeLabel;
-  document.getElementById("tPlusName").textContent       = t.plusName;
-  document.getElementById("tPlusTokens").textContent     = t.plusTokens;
-  document.getElementById("tPremiumName").textContent    = t.premiumName;
-  document.getElementById("tPremiumTokens").textContent  = t.premiumTokens;
-  document.getElementById("tMoreTokens").textContent     = t.moreTokens;
-  document.getElementById("tTokens10").textContent       = t.tokens10;
-  document.getElementById("tTokens20").textContent       = t.tokens20;
+  document.getElementById("tTopup10Per").textContent     = t.topup10Per;
+  btnTopup10.textContent                                 = t.topup10Btn;
+  document.getElementById("tTopup20Per").textContent     = t.topup20Per;
+  btnTopup20.textContent                                 = t.topup20Btn;
   document.getElementById("tLegal1").innerHTML           = t.legal1;
   document.getElementById("tLegal2").innerHTML           = t.legal2;
   document.getElementById("tPrivacy").textContent        = t.privacy;
