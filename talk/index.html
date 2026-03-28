@@ -125,6 +125,10 @@ body{
   width:90%;
   max-width:420px;
   padding-top:40px;
+  transition:padding-bottom .3s ease;
+}
+.wrap.vc-active{
+  padding-bottom:32dvh;
 }
 
 /* Buttons */
@@ -259,10 +263,10 @@ body{
 .voice-chat{
   position:fixed;
   bottom:0;left:0;right:0;
-  z-index:50;
+  z-index:4;
   display:flex;
   flex-direction:column;
-  max-height:45dvh;
+  max-height:30dvh;
   background:rgba(11,15,20,.88);
   backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);
@@ -1324,14 +1328,17 @@ const voiceChatSendBtn = document.getElementById("voiceChatSend");
 
 function showVoiceChat(show) {
   if (!voiceChatEl) return;
+  const wrap = document.querySelector(".wrap");
   if (show) {
     voiceChatEl.style.display = "flex";
     voiceChatInput.disabled = false;
     voiceChatSendBtn.disabled = false;
+    if (wrap) wrap.classList.add("vc-active");
   } else {
     voiceChatEl.style.display = "none";
     voiceChatMessages.innerHTML = "";
     voiceChatInput.value = "";
+    if (wrap) wrap.classList.remove("vc-active");
   }
 }
 
@@ -3286,6 +3293,17 @@ function attachChannel(ch) {
             },
             required: ["topic"]
           }
+        }, {
+          type: "function",
+          name: "send_chat_note",
+          description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+          parameters: {
+            type: "object",
+            properties: {
+              note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+            },
+            required: ["note"]
+          }
         }];
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
@@ -3295,11 +3313,35 @@ function attachChannel(ch) {
           name: "signal_pitch_report",
           description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
           parameters: { type: "object", properties: {} }
+        }, {
+          type: "function",
+          name: "send_chat_note",
+          description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+          parameters: {
+            type: "object",
+            properties: {
+              note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+            },
+            required: ["note"]
+          }
         }];
         sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       } else {
-        // Static mode indicator for brainstorm/meeting sessions
+        // brainstorm/meeting: add send_chat_note tool
+        sessionUpdate.session.tools = [{
+          type: "function",
+          name: "send_chat_note",
+          description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+          parameters: {
+            type: "object",
+            properties: {
+              note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+            },
+            required: ["note"]
+          }
+        }];
+        sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       }
       dcSend(sessionUpdate);
@@ -3555,6 +3597,22 @@ function attachChannel(ch) {
         return;
       }
 
+      // ── send_chat_note: Sophie sends a text note to the chat panel ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "send_chat_note") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const note = String(args.note || "").trim();
+          if (note && voiceChatEl && voiceChatEl.style.display !== "none") {
+            appendVoiceChatBubble("sophie", note);
+          }
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (_) {}
+        return;
+      }
+
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_pitch_report") {
         try {
           // Acknowledge the function call (required by API) but do NOT send response.create
@@ -3586,10 +3644,6 @@ function attachChannel(ch) {
         if (full) {
           partialAssistant = full;
           if (closingResponseActive) closingHasSpoken = true;
-          // Show Sophie's voice response in chat panel
-          if (voiceChatEl && voiceChatEl.style.display !== "none") {
-            appendVoiceChatBubble("sophie", full);
-          }
         }
         return;
       }

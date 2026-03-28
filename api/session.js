@@ -577,7 +577,13 @@ export default async function handler(req, res) {
       `This is parallel communication — like someone showing you a note while talking. ` +
       `Acknowledge naturally: "Ah, I see your message..." or "Good point, you wrote..." ` +
       `Then incorporate the content into your voice response. Keep it concise since the user can also read your answer in the chat panel. ` +
-      `Always respond in the same language the conversation is in.`;
+      `Always respond in the same language the conversation is in.` +
+      `\n\nCHAT NOTE TOOL (send_chat_note): ` +
+      `You have a tool to send short text notes to the user's chat panel during the voice session. ` +
+      `ONLY use it for structured info better READ than heard: numbered lists, key facts, names, URLs, dates, or brief summaries. ` +
+      `NEVER send your full spoken response as a note — only the condensed essence. ` +
+      `Example: You explain 5 points verbally in detail → send_chat_note with just "1. Point A\\n2. Point B\\n3. Point C". ` +
+      `Keep notes very short (max 2-3 lines, max 280 chars). Do NOT use this for every response — only when visual text genuinely helps.`;
 
     const fullPrompt = sophiePrompt + importedContext + researchInstruction;
 
