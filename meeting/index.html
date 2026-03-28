@@ -776,36 +776,34 @@ async function showSetup() {
         const parentParticipants = contexts.find(c => c.context_type === "participants");
         const summary = parentData.summary;
 
-        // Prefill participants from parent (usually same group)
+        // Prefill participants from parent
         if (parentParticipants?.content) {
           $("ctxParticipants").value = parentParticipants.content;
+          autoResizeTextarea($("ctxParticipants"));
         }
 
-        // Build agenda from follow-ups / open items in summary
+        // Build agenda from follow-ups / open items — short bullet points only
         if (summary?.report_html) {
           const tmp = document.createElement("div");
           tmp.innerHTML = summary.report_html;
-          // Search for action items, next steps, open questions in report headings
           const items = [];
           const headings = tmp.querySelectorAll("h2, h3, h4, strong");
           for (const h of headings) {
             const hText = h.textContent.toLowerCase();
             if (hText.includes("action") || hText.includes("nächste") || hText.includes("next") || hText.includes("offen") || hText.includes("open") || hText.includes("follow")) {
-              // Get all list items after this heading
               let el = h.closest("div, section") || h.parentElement;
               el?.querySelectorAll("li").forEach(li => {
-                const text = li.textContent.trim();
-                if (text && text.length < 200) items.push("• " + text);
+                // Extract first sentence or max 60 chars — keep it short
+                let text = li.textContent.trim().split(/[.!?]/)[0].trim();
+                if (text.length > 60) text = text.slice(0, 57) + "…";
+                if (text) items.push("• " + text);
               });
             }
           }
           if (items.length) {
-            $("ctxAgenda").value = (lang === "de" ? "Follow-ups aus letztem Meeting:\n" : "Follow-ups from last meeting:\n") + items.join("\n");
-          } else if (summary.short_summary) {
-            $("ctxAgenda").value = (lang === "de" ? "Letztes Meeting: " : "Last meeting: ") + summary.short_summary;
+            $("ctxAgenda").value = items.join("\n");
+            autoResizeTextarea($("ctxAgenda"));
           }
-        } else if (summary?.short_summary) {
-          $("ctxAgenda").value = (lang === "de" ? "Letztes Meeting: " : "Last meeting: ") + summary.short_summary;
         }
       } catch (e) {
         console.log("Could not load parent meeting data:", e);
@@ -1121,6 +1119,16 @@ function appendSystemMsg(text) {
   // System messages are silent — log only, no UI
   console.log("[meeting-system]", text);
 }
+
+function autoResizeTextarea(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 300) + "px";
+}
+// Auto-resize all context textareas on input
+["ctxAgenda", "ctxParticipants", "ctxGoal"].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener("input", () => autoResizeTextarea(el));
+});
 
 function setSophieStatus(text) {
   const el = $("sophieStatus");
