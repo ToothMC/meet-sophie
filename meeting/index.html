@@ -46,6 +46,7 @@ body{
 .phase-badge{display:none!important}
 .participants-bar{display:none!important}
 #recordingStatus{display:none!important}
+@keyframes sophiePulse{0%,100%{opacity:.5}50%{opacity:1}}
 
 /* ---- SETUP SCREEN ---- */
 .setup-screen{
@@ -401,6 +402,9 @@ body{
   <div class="live-timer hidden" id="liveTimer"></div>
 
   <!-- Input Bar -->
+  <!-- Sophie status indicator -->
+  <div id="sophieStatus" style="display:none;text-align:center;padding:6px 12px;font-size:12px;color:#c4a882;animation:sophiePulse 2s ease-in-out infinite"></div>
+
   <div class="input-bar" id="inputBar">
     <textarea id="chatInput" placeholder="Type here..." rows="1"></textarea>
     <button class="send-btn" id="sendBtn" disabled>Send</button>
@@ -1039,6 +1043,7 @@ async function transitionPhase(newPhase) {
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
       // 1. Stop recording and get audio blob
+      setSophieStatus(lang === "de" ? "Sophie hört sich das Gespräch an …" : "Sophie is reviewing the conversation …");
       const audioBlob = await stopAudioRecording();
       cleanupMicStream();
 
@@ -1069,9 +1074,12 @@ async function transitionPhase(newPhase) {
       }
 
       // 3. Generate summary + report
+      setSophieStatus(lang === "de" ? "Sophie erstellt den Report …" : "Sophie is creating the report …");
       await generateSummary();
+      setSophieStatus("");
     }
   } catch (e) {
+    setSophieStatus("");
     alert("Error: " + e.message);
   }
 }
@@ -1083,7 +1091,28 @@ function appendMsg(role, content) {
   const div = document.createElement("div");
   const isHint = role === "assistant" && content.trim().startsWith("💡");
   div.className = `msg ${role}${isHint ? " hint" : ""}`;
-  div.textContent = content;
+  // Render bullet points as list, preserve line breaks
+  const escaped = content.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const lines = escaped.split("\n");
+  const hasBullets = lines.some(l => l.trim().startsWith("•") || l.trim().startsWith("-"));
+  if (hasBullets) {
+    let html = "";
+    let inList = false;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("•") || trimmed.startsWith("- ")) {
+        if (!inList) { html += "<ul style='margin:4px 0;padding-left:18px'>"; inList = true; }
+        html += `<li style="margin:2px 0">${trimmed.replace(/^[•\-]\s*/, "")}</li>`;
+      } else {
+        if (inList) { html += "</ul>"; inList = false; }
+        if (trimmed) html += `<div>${trimmed}</div>`;
+      }
+    }
+    if (inList) html += "</ul>";
+    div.innerHTML = html;
+  } else {
+    div.innerHTML = escaped.replace(/\n/g, "<br>");
+  }
   chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
@@ -1091,6 +1120,17 @@ function appendMsg(role, content) {
 function appendSystemMsg(text) {
   // System messages are silent — log only, no UI
   console.log("[meeting-system]", text);
+}
+
+function setSophieStatus(text) {
+  const el = $("sophieStatus");
+  if (!text) {
+    el.style.display = "none";
+    el.textContent = "";
+  } else {
+    el.textContent = text;
+    el.style.display = "block";
+  }
 }
 
 function showTyping() {
@@ -1139,6 +1179,7 @@ async function sendMessage(text, isAutoOpener = false) {
   // Mute only affects voice (future feature), not the chat channel.
 
   showTyping();
+  setSophieStatus(lang === "de" ? "Sophie denkt nach …" : "Sophie is thinking …");
 
   try {
     const data = await api("message", {
@@ -1147,6 +1188,7 @@ async function sendMessage(text, isAutoOpener = false) {
     });
 
     removeTyping();
+    setSophieStatus("");
 
     let reply = data.reply;
 
@@ -1167,7 +1209,8 @@ async function sendMessage(text, isAutoOpener = false) {
 
   } catch (e) {
     removeTyping();
-    appendSystemMsg("Error: " + e.message);
+    setSophieStatus("");
+    console.error("Chat error:", e);
   } finally {
     isLoading = false;
     sendBtn.disabled = false;
@@ -2023,11 +2066,14 @@ async function toggleSophieMute() {
   if (!sophieMuted) {
     // UNMUTE → Pause audio recording, connect Sophie voice
     pauseAudioRecording();
+    setSophieStatus(lang === "de" ? "Sophie kommt dazu …" : "Sophie is joining …");
     await connectSophieVoice();
+    setSophieStatus(lang === "de" ? "Sophie hört zu" : "Sophie is listening");
   } else {
     // MUTE → Disconnect Sophie voice, resume audio recording
     disconnectSophieVoice();
     resumeAudioRecording();
+    setSophieStatus("");
   }
 }
 
@@ -2329,6 +2375,9 @@ function captureLocation() {
 }
 
 ctaLive.addEventListener("click", async () => {
+  // Auto-save context before going live (so Sophie sees the agenda)
+  await saveContext();
+
   // Start audio recording (getUserMedia + MediaRecorder) — one permission dialog
   await startAudioRecording();
 

@@ -541,7 +541,7 @@ async function loadReports() {
     const groups = { meeting: [], salespitch: [], brainstorm: [], talk: [] };
     const groupLabels = { meeting: "Meeting", salespitch: "Sales Pitch", brainstorm: "Brainstorming", talk: "Gespräche" };
     for (const r of data.reports) {
-      const cat = r.source === 'meeting' ? 'meeting'
+      const cat = (r.source === 'meeting' || r.report_style === 'meeting') ? 'meeting'
         : (r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
         : r.report_style === 'brainstorm' ? 'brainstorm'
         : 'talk';
