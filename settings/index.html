@@ -559,7 +559,8 @@ async function loadReports() {
           <span style="font-size:11px;color:#a09080">${reports.length}</span>
         </div>
         <div id="${groupId}" class="hidden" style="padding:0 14px 12px">`;
-      html += reports.map(r => {
+      const moreId = 'reportMore_' + cat;
+      const renderCard = (r) => {
         const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
         const source = r.source || 'talk';
         let displayTitle = (r.title || 'Report').replace(/_\d+$/, '');
@@ -573,7 +574,12 @@ async function loadReports() {
           </div>
           <div style="font-size:11px;color:#a09080">${date}</div>
         </div>`;
-      }).join('');
+      };
+      html += reports.slice(0, 10).map(renderCard).join('');
+      if (reports.length > 10) {
+        html += `<div id="${moreId}" style="display:none">${reports.slice(10).map(renderCard).join('')}</div>`;
+        html += `<div class="card" style="cursor:pointer;text-align:center;font-size:12px;color:#c4a882;font-weight:600" onclick="document.getElementById('${moreId}').style.display='block';this.remove()">+ ${reports.length - 10} weitere</div>`;
+      }
       html += '</div></div>';
     }
     list.innerHTML = html;
