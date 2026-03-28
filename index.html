@@ -1326,6 +1326,7 @@
                 <button id="compareBtn" title="Alle KIs parallel befragen, schnellste Antwort + Abweichungen">⚡ Vergleiche</button>
                 <button id="challengeBtn" class="challenge-btn" title="KIs diskutieren untereinander für beste Antwort (höherer Verbrauch)">🏆 Challenge</button>
               </div>
+              <div id="tokenCounter" style="display:none;text-align:right;padding:0 12px 2px;font-size:11px;opacity:.55;color:#c8d8ff"></div>
               <div class="chat-footer">
                 <textarea id="chatInput" placeholder="Type your message..." rows="1"></textarea>
                 <button class="chat-send" id="chatSendBtn" type="button" aria-label="Send">➤</button>
@@ -3178,6 +3179,16 @@
         const secondOpinion  = data.second_opinion || null;
         turnCount++;
 
+        // Update token counter
+        if (data.remaining_tokens != null) {
+          const tcEl = document.getElementById("tokenCounter");
+          tcEl.textContent = data.remaining_tokens + " Tokens";
+          tcEl.style.display = "block";
+          if (data.remaining_tokens <= 5) tcEl.style.color = "#ff6b6b";
+          else if (data.remaining_tokens <= 15) tcEl.style.color = "#ffa94d";
+          else tcEl.style.color = "#c8d8ff";
+        }
+
         if (voiceConfirmed) {
           history.push({ role: "assistant", content: reply });
           appendBubble("sophie", reply, aiProvider, secondOpinion);
@@ -3263,8 +3274,13 @@
         // }
         if (data.limit_reached) {
           sessionEnded = true;
-          const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
-          const reportCTA   = t.chat_report_cta   || "Start now — €19.90 / month";
+          const hasToken = !!(await getToken().catch(() => null));
+          const reportTitle = hasToken
+            ? (t.chat_tokens_exhausted || "Your tokens are used up.")
+            : (t.chat_report_title || "Want to continue talking with Sophie?");
+          const reportCTA = hasToken
+            ? (t.chat_topup_cta || "Buy more tokens")
+            : (t.chat_report_cta || "Start now — €19.90 / month");
           reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
           show(reportEl);
           inputEl.disabled  = true;
@@ -3276,8 +3292,13 @@
         if (isFreeLimitError(e)) {
           hide(typingEl);
           sessionEnded = true;
-          const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
-          const reportCTA   = t.chat_report_cta   || "Start now — €19.90 / month";
+          const hasToken = !!(await getToken().catch(() => null));
+          const reportTitle = hasToken
+            ? (t.chat_tokens_exhausted || "Your tokens are used up.")
+            : (t.chat_report_title || "Want to continue talking with Sophie?");
+          const reportCTA = hasToken
+            ? (t.chat_topup_cta || "Buy more tokens")
+            : (t.chat_report_cta || "Start now — €19.90 / month");
           reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
           show(reportEl);
           inputEl.disabled = true;

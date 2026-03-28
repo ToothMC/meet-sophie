@@ -1,7 +1,6 @@
 // api/admin.js — Admin Dashboard API
 import { createClient } from '@supabase/supabase-js';
-
-const PLAN_PRICES = { starter: 9.90, plus: 19.90, pro: 39.90 };
+import { PLAN_PRICES } from '../lib/billing-constants.js';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
 
     const [subsRes, usageRes, costTodayRes, costWeekRes, costMonthRes, healthRes] = await Promise.all([
       supabase.from('user_subscriptions').select('plan, is_active, status'),
-      supabase.from('user_usage').select('free_seconds_used, paid_seconds_used, topup_seconds_balance'),
+      supabase.from('user_usage').select('free_tokens_used, paid_tokens_used, topup_tokens_balance'),
       supabase.from('ai_cost_daily').select('total_cost').eq('date', today),
       supabase.from('ai_cost_daily').select('total_cost').gte('date', weekAgo),
       supabase.from('ai_cost_daily').select('total_cost').gte('date', monthStart),
@@ -45,7 +44,7 @@ export default async function handler(req, res) {
 
     const subs = subsRes.data || [];
     const activeSubs = subs.filter(s => s.is_active || s.status === 'active' || s.status === 'trialing');
-    const planCounts = { starter: 0, plus: 0, pro: 0 };
+    const planCounts = { start: 0, plus: 0, premium: 0 };
     for (const s of activeSubs) {
       if (s.plan && planCounts[s.plan] !== undefined) planCounts[s.plan]++;
     }
@@ -152,7 +151,7 @@ export default async function handler(req, res) {
 
     const [subsRes, usageRes, profRes, costRes] = await Promise.all([
       supabase.from('user_subscriptions').select('user_id, plan, is_active, status, current_period_end'),
-      supabase.from('user_usage').select('user_id, free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance'),
+      supabase.from('user_usage').select('user_id, free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance'),
       supabase.from('user_profile').select('user_id, preferred_name, first_name'),
       supabase.from('ai_cost_daily').select('user_id, total_cost').gte('date', monthStart),
     ]);
@@ -179,9 +178,9 @@ export default async function handler(req, res) {
       const sub = subMap[id];
       const usage = usageMap[id];
       const prof = profMap[id];
-      const freeRem = Math.max(0, (usage?.free_seconds_total ?? 120) - (usage?.free_seconds_used ?? 0));
-      const paidRem = Math.max(0, (usage?.paid_seconds_total ?? 0) - (usage?.paid_seconds_used ?? 0));
-      const topupRem = Math.max(0, usage?.topup_seconds_balance ?? 0);
+      const freeRem = Math.max(0, (usage?.free_tokens_total ?? 50) - (usage?.free_tokens_used ?? 0));
+      const paidRem = Math.max(0, (usage?.paid_tokens_total ?? 0) - (usage?.paid_tokens_used ?? 0));
+      const topupRem = Math.max(0, usage?.topup_tokens_balance ?? 0);
 
       users.push({
         id,

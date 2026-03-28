@@ -1,4 +1,4 @@
-// api/billing.js — Konsolidierter Billing-Endpoint
+// api/billing.js — Konsolidierter Billing-Endpoint (token-based)
 // ?action=checkout  → create-checkout-session
 // ?action=portal    → create-portal-session
 // ?action=topup     → create-topup-session
@@ -6,35 +6,16 @@
 
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_FREE_TOKENS,
+  includedTokensForPlan,
+  topupTokensForPack,
+  planFromPriceId,
+} from "../lib/billing-constants.js";
 
 // ---------------------------------------------------------------------------
-// Helpers (aus confirm-checkout.js)
+// Helpers
 // ---------------------------------------------------------------------------
-
-const DEFAULT_FREE_SECONDS_TOTAL = 120;
-
-function includedSecondsForPlan(plan) {
-  const p = String(plan || "").toLowerCase().trim();
-  if (p === "starter") return 15 * 60;
-  if (p === "plus") return 25 * 60;
-  return 0;
-}
-
-function topupSecondsForPack(pack) {
-  const k = Number(pack);
-  if (k === 5) return 5 * 60;
-  if (k === 10) return 10 * 60;
-  if (k === 20) return 20 * 60;
-  return 0;
-}
-
-function planFromPriceId(priceId) {
-  const starter = process.env.STRIPE_PRICE_ID_STARTER;
-  const plus = process.env.STRIPE_PRICE_ID_PLUS;
-  if (starter && priceId === starter) return "starter";
-  if (plus && priceId === plus) return "plus";
-  return "";
-}
 
 async function safeTrack(supabase, userId, event_name, meta = {}) {
   try {
@@ -104,12 +85,13 @@ async function handleCheckout(req, res) {
     const p = String(plan || "").toLowerCase().trim();
 
     const priceId =
-      p === "starter" ? process.env.STRIPE_PRICE_ID_STARTER :
+      p === "start"   ? process.env.STRIPE_PRICE_ID_START :
       p === "plus"    ? process.env.STRIPE_PRICE_ID_PLUS :
+      p === "premium" ? process.env.STRIPE_PRICE_ID_PREMIUM :
       null;
 
     if (!priceId) {
-      return res.status(400).json({ error: "Missing/invalid plan. Use { plan: 'starter' | 'plus' }" });
+      return res.status(400).json({ error: "Missing/invalid plan. Use { plan: 'start' | 'plus' | 'premium' }" });
     }
 
     const TERMS_VERSION   = "2026-03-03";
@@ -415,9 +397,9 @@ async function handleConfirm(req, res) {
         }
       }
 
-      const includedSeconds = includedSecondsForPlan(plan);
-      if (!includedSeconds) {
-        return res.status(400).json({ error: "Could not resolve included seconds for subscription", plan });
+      const includedTokens = includedTokensForPlan(plan);
+      if (!includedTokens) {
+        return res.status(400).json({ error: "Could not resolve included tokens for subscription", plan });
       }
 
       const { error: subErr } = await supabase
@@ -437,7 +419,7 @@ async function handleConfirm(req, res) {
 
       const { data: usage, error: usageFindErr } = await supabase
         .from("user_usage")
-        .select("user_id, topup_seconds_balance")
+        .select("user_id, topup_tokens_balance")
         .eq("user_id", userId)
         .maybeSingle();
       if (usageFindErr) {
@@ -447,9 +429,9 @@ async function handleConfirm(req, res) {
 
       if (!usage) {
         const { error: insErr } = await supabase.from("user_usage").insert({
-          user_id: userId, free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
-          free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL,
-          paid_seconds_total: includedSeconds, paid_seconds_used: 0, topup_seconds_balance: 0,
+          user_id: userId, free_tokens_total: DEFAULT_FREE_TOKENS,
+          free_tokens_used: DEFAULT_FREE_TOKENS,
+          paid_tokens_total: includedTokens, paid_tokens_used: 0, topup_tokens_balance: 0,
         });
         if (insErr) {
           console.error("user_usage insert failed:", insErr);
@@ -458,7 +440,7 @@ async function handleConfirm(req, res) {
       } else {
         const { error: updErr } = await supabase
           .from("user_usage")
-          .update({ free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL, paid_seconds_total: includedSeconds, paid_seconds_used: 0 })
+          .update({ free_tokens_used: DEFAULT_FREE_TOKENS, paid_tokens_total: includedTokens, paid_tokens_used: 0 })
           .eq("user_id", userId);
         if (updErr) {
           console.error("user_usage update failed:", updErr);
@@ -471,22 +453,22 @@ async function handleConfirm(req, res) {
         stripe_subscription_id: stripeSubscriptionId, stripe_customer_id: stripeCustomerId,
       });
       await safeTrack(supabase, userId, "subscription_confirmed_via_return", {
-        checkout_session_id: sessionId, plan, included_seconds: includedSeconds,
+        checkout_session_id: sessionId, plan, included_tokens: includedTokens,
       });
       return res.status(200).json({ ok: true, mode, plan, session_id: sessionId });
     }
 
     if (mode === "payment") {
-      const pack       = session?.metadata?.topup_pack;
-      const addSeconds = topupSecondsForPack(pack);
+      const pack      = session?.metadata?.topup_pack;
+      const addTokens = topupTokensForPack(pack);
 
-      if (addSeconds <= 0) {
+      if (addTokens <= 0) {
         return res.status(400).json({ error: "Invalid topup pack", pack });
       }
 
       const { data: usage, error: usageFindErr } = await supabase
         .from("user_usage")
-        .select("user_id, topup_seconds_balance")
+        .select("user_id, topup_tokens_balance")
         .eq("user_id", userId)
         .maybeSingle();
       if (usageFindErr) {
@@ -496,19 +478,19 @@ async function handleConfirm(req, res) {
 
       if (!usage) {
         const { error: insErr } = await supabase.from("user_usage").insert({
-          user_id: userId, free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
-          free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL,
-          paid_seconds_total: 0, paid_seconds_used: 0, topup_seconds_balance: addSeconds,
+          user_id: userId, free_tokens_total: DEFAULT_FREE_TOKENS,
+          free_tokens_used: DEFAULT_FREE_TOKENS,
+          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: addTokens,
         });
         if (insErr) {
           console.error("user_usage insert failed:", insErr);
           return res.status(500).json({ error: "Failed to insert user_usage" });
         }
       } else {
-        const newBal = (usage.topup_seconds_balance || 0) + addSeconds;
+        const newBal = (usage.topup_tokens_balance || 0) + addTokens;
         const { error: updErr } = await supabase
           .from("user_usage")
-          .update({ free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL, topup_seconds_balance: newBal })
+          .update({ free_tokens_used: DEFAULT_FREE_TOKENS, topup_tokens_balance: newBal })
           .eq("user_id", userId);
         if (updErr) {
           console.error("user_usage update failed:", updErr);
@@ -520,9 +502,9 @@ async function handleConfirm(req, res) {
         checkout_session_id: sessionId, mode, topup_pack: Number(pack), stripe_customer_id: stripeCustomerId,
       });
       await safeTrack(supabase, userId, "topup_confirmed_via_return", {
-        checkout_session_id: sessionId, pack: Number(pack), added_seconds: addSeconds,
+        checkout_session_id: sessionId, pack: Number(pack), added_tokens: addTokens,
       });
-      return res.status(200).json({ ok: true, mode, pack: Number(pack), added_seconds: addSeconds, session_id: sessionId });
+      return res.status(200).json({ ok: true, mode, pack: Number(pack), added_tokens: addTokens, session_id: sessionId });
     }
 
     return res.status(400).json({ error: "Unsupported checkout mode", mode });

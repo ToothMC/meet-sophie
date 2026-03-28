@@ -1,6 +1,7 @@
 // api/settings.js — Settings API (sources, costs, health)
 import { createClient } from '@supabase/supabase-js';
 import { listSources, decoupleSource, deleteRawData, deleteAll } from '../lib/import/source-ledger.js';
+import { TOKEN_COSTS, SECONDS_PER_TOKEN } from '../lib/billing-constants.js';
 
 export default async function handler(req, res) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
   if (action === 'usage' && req.method === 'GET') {
     const [usageRes, subRes, costRes] = await Promise.all([
       supabase.from('user_usage')
-        .select('free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance')
+        .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
         .eq('user_id', user.id).maybeSingle(),
       supabase.from('user_subscriptions')
         .select('is_active, status, plan, current_period_end')
@@ -49,20 +50,24 @@ export default async function handler(req, res) {
     const sub = subRes.data;
     const active = !!(sub?.is_active || sub?.status === 'active' || sub?.status === 'trialing');
 
-    const freeTotal = usage?.free_seconds_total ?? 120;
-    const freeUsed = usage?.free_seconds_used ?? 0;
+    const freeTotal = usage?.free_tokens_total ?? 50;
+    const freeUsed = usage?.free_tokens_used ?? 0;
     const freeRemaining = Math.max(0, freeTotal - freeUsed);
 
-    const paidTotal = usage?.paid_seconds_total ?? 0;
-    const paidUsed = usage?.paid_seconds_used ?? 0;
+    const paidTotal = usage?.paid_tokens_total ?? 0;
+    const paidUsed = usage?.paid_tokens_used ?? 0;
     const paidRemaining = Math.max(0, paidTotal - paidUsed);
 
-    const topupRemaining = Math.max(0, usage?.topup_seconds_balance ?? 0);
+    const topupRemaining = Math.max(0, usage?.topup_tokens_balance ?? 0);
 
-    const totalSeconds = freeTotal + paidTotal + topupRemaining;
-    const remainingSeconds = freeRemaining + paidRemaining + topupRemaining;
-    const usedSeconds = totalSeconds - remainingSeconds;
-    const usagePercent = totalSeconds > 0 ? Math.round((usedSeconds / totalSeconds) * 100) : 0;
+    const totalTokens = freeTotal + paidTotal + topupRemaining;
+    const remainingTokens = freeRemaining + paidRemaining + topupRemaining;
+    const usedTokens = totalTokens - remainingTokens;
+    const usagePercent = totalTokens > 0 ? Math.round((usedTokens / totalTokens) * 100) : 0;
+
+    // Derived values
+    const estimatedVoiceMinutes = Math.floor(remainingTokens / TOKEN_COSTS.voice_minute);
+    const remainingSeconds = remainingTokens * SECONDS_PER_TOKEN; // backward compat
 
     // Daily AI cost cap
     const tier = active ? (sub?.plan === 'premium' ? 'premium' : 'abo') : 'free';
@@ -71,8 +76,10 @@ export default async function handler(req, res) {
     const dailyCap = caps[tier] ?? caps.abo;
 
     return res.status(200).json({
+      remainingTokens,
+      totalTokens,
       remainingSeconds,
-      totalSeconds,
+      estimatedVoiceMinutes,
       usagePercent,
       freeRemaining,
       paidRemaining,

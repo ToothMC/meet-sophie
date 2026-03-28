@@ -196,8 +196,8 @@
       if (!data) {
         await supabase.from("user_usage").insert({
           user_id: userId,
-          free_seconds_total: 120,
-          free_seconds_used: 0
+          free_tokens_total: 50,
+          free_tokens_used: 0
         });
       }
     }

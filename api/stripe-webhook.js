@@ -1,34 +1,14 @@
 import Stripe from "stripe";
 import { buffer } from "micro";
 import { createClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_FREE_TOKENS,
+  includedTokensForPlan,
+  topupTokensForPack,
+  planFromPriceId,
+} from "../lib/billing-constants.js";
 
 export const config = { api: { bodyParser: false } };
-
-// ✅ Free = 120 Sekunden (2 Minuten)
-const DEFAULT_FREE_SECONDS_TOTAL = 120;
-
-function includedSecondsForPlan(plan) {
-  const p = String(plan || "").toLowerCase().trim();
-  if (p === "starter") return 15 * 60; // Companion: 15 min
-  if (p === "plus") return 25 * 60;    // Best Friend: 25 min
-  return 0;
-}
-
-function topupSecondsForPack(pack) {
-  const k = Number(pack);
-  if (k === 5) return 5 * 60;     // 5 min
-  if (k === 10) return 10 * 60;   // 10 min
-  if (k === 20) return 20 * 60;   // 20 min
-  return 0;
-}
-
-function planFromPriceId(priceId) {
-  const starter = process.env.STRIPE_PRICE_ID_STARTER;
-  const plus = process.env.STRIPE_PRICE_ID_PLUS;
-  if (starter && priceId === starter) return "starter";
-  if (plus && priceId === plus) return "plus";
-  return "";
-}
 
 async function safeTrack(supabase, userId, event_name, meta = {}) {
   try {
@@ -73,7 +53,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("✅ Stripe event received:", { type: event.type, id: event.id });
+    console.log("Stripe event received:", { type: event.type, id: event.id });
 
     // 1) Checkout completed
     if (event.type === "checkout.session.completed") {
@@ -109,10 +89,10 @@ export default async function handler(req, res) {
           }
         }
 
-        const includedSeconds = includedSecondsForPlan(plan);
+        const includedTokens = includedTokensForPlan(plan);
 
-        if (!includedSeconds) {
-          console.error("No included seconds resolved - refusing activation", {
+        if (!includedTokens) {
+          console.error("No included tokens resolved - refusing activation", {
             userId,
             plan,
             stripeSubscriptionId,
@@ -120,9 +100,9 @@ export default async function handler(req, res) {
           await safeTrack(supabase, userId, "subscription_activation_failed", {
             plan: plan || null,
             stripe_subscription_id: stripeSubscriptionId,
-            reason: "no_included_seconds",
+            reason: "no_included_tokens",
           });
-          return res.status(500).send("No included seconds resolved");
+          return res.status(500).send("No included tokens resolved");
         }
 
         const { error: subErr } = await supabase
@@ -160,11 +140,11 @@ export default async function handler(req, res) {
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
-            free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
-            free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL, // ✅ freetime ist abgelaufen im Upgrade-Moment
-            paid_seconds_total: includedSeconds,
-            paid_seconds_used: 0,
-            topup_seconds_balance: 0,
+            free_tokens_total: DEFAULT_FREE_TOKENS,
+            free_tokens_used: DEFAULT_FREE_TOKENS,
+            paid_tokens_total: includedTokens,
+            paid_tokens_used: 0,
+            topup_tokens_balance: 0,
           });
           if (uInsErr) {
             console.error("Supabase insert user_usage failed:", uInsErr);
@@ -174,8 +154,8 @@ export default async function handler(req, res) {
           const { error: uUpdErr } = await supabase
             .from("user_usage")
             .update({
-              paid_seconds_total: includedSeconds,
-              paid_seconds_used: 0,
+              paid_tokens_total: includedTokens,
+              paid_tokens_used: 0,
             })
             .eq("user_id", userId);
 
@@ -189,7 +169,7 @@ export default async function handler(req, res) {
           plan: plan || null,
           stripe_subscription_id: stripeSubscriptionId,
           stripe_customer_id: stripeCustomerId,
-          included_seconds: includedSeconds,
+          included_tokens: includedTokens,
         });
 
         return res.status(200).json({ received: true });
@@ -198,16 +178,16 @@ export default async function handler(req, res) {
       // B) Top-up payment
       if (mode === "payment") {
         const pack = session?.metadata?.topup_pack;
-        const addSeconds = topupSecondsForPack(pack);
+        const addTokens = topupTokensForPack(pack);
 
-        if (addSeconds <= 0) {
+        if (addTokens <= 0) {
           await safeTrack(supabase, userId, "topup_invalid_pack", { pack });
           return res.status(200).json({ received: true });
         }
 
         const { data: usage, error: uSelErr } = await supabase
           .from("user_usage")
-          .select("topup_seconds_balance")
+          .select("topup_tokens_balance")
           .eq("user_id", userId)
           .maybeSingle();
 
@@ -216,18 +196,18 @@ export default async function handler(req, res) {
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
-            free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
-            free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL,
-            paid_seconds_total: 0,
-            paid_seconds_used: 0,
-            topup_seconds_balance: addSeconds,
+            free_tokens_total: DEFAULT_FREE_TOKENS,
+            free_tokens_used: DEFAULT_FREE_TOKENS,
+            paid_tokens_total: 0,
+            paid_tokens_used: 0,
+            topup_tokens_balance: addTokens,
           });
           if (uInsErr) return res.status(500).send("Supabase write failed (user_usage insert)");
         } else {
-          const newBal = (usage.topup_seconds_balance || 0) + addSeconds;
+          const newBal = (usage.topup_tokens_balance || 0) + addTokens;
           const { error: uUpdErr } = await supabase
             .from("user_usage")
-            .update({ topup_seconds_balance: newBal })
+            .update({ topup_tokens_balance: newBal })
             .eq("user_id", userId);
 
           if (uUpdErr) return res.status(500).send("Supabase write failed (user_usage update)");
@@ -235,7 +215,7 @@ export default async function handler(req, res) {
 
         await safeTrack(supabase, userId, "topup_completed", {
           pack: Number(pack),
-          added_seconds: addSeconds,
+          added_tokens: addTokens,
           stripe_customer_id: stripeCustomerId,
         });
 
@@ -287,7 +267,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
-    // 3) Monthly renew -> reset seconds (THIS is crucial)
+    // 3) Monthly renew -> reset tokens
     if (event.type === "invoice.paid") {
       const invoice = event.data.object;
 
@@ -310,15 +290,15 @@ export default async function handler(req, res) {
       if (!row.is_active) return res.status(200).json({ received: true });
 
       const userId = row.user_id;
-      const includedSeconds = includedSecondsForPlan(row.plan);
+      const includedTokens = includedTokensForPlan(row.plan);
 
-      if (!includedSeconds) return res.status(200).json({ received: true });
+      if (!includedTokens) return res.status(200).json({ received: true });
 
       const { error: uUpdErr } = await supabase
         .from("user_usage")
         .update({
-          paid_seconds_total: includedSeconds,
-          paid_seconds_used: 0,
+          paid_tokens_total: includedTokens,
+          paid_tokens_used: 0,
         })
         .eq("user_id", userId);
 
@@ -326,13 +306,13 @@ export default async function handler(req, res) {
 
       await safeTrack(supabase, userId, "subscription_renewed", {
         stripe_subscription_id: stripeSubscriptionId,
-        included_seconds: includedSeconds,
+        included_tokens: includedTokens,
       });
 
       return res.status(200).json({ received: true });
     }
 
-    // 4) Subscription Deleted -> deactivate (+ optional zero seconds)
+    // 4) Subscription Deleted -> deactivate (+ optional zero tokens)
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -359,9 +339,9 @@ export default async function handler(req, res) {
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
 
-      // optional: take away paid seconds immediately (depends on your gating)
+      // optional: take away paid tokens immediately (depends on your gating)
       await supabase.from("user_usage").update({
-        paid_seconds_total: 0,
+        paid_tokens_total: 0,
       }).eq("user_id", userId);
 
       await safeTrack(supabase, userId, "subscription_deleted", {

@@ -174,17 +174,17 @@ async function handleCreate(req, res) {
 
   const supabase = getSupabase();
 
-  // ── Paywall: Check subscription + remaining time ──
+  // ── Paywall: Check subscription + remaining tokens ──
   const [subRes, usageRes] = await Promise.all([
     supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_usage").select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance").eq("user_id", user.id).maybeSingle(),
   ]);
   const sub = subRes.data;
   const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
   const usage = usageRes.data;
-  const freeRem = Math.max(0, (usage?.free_seconds_total ?? 120) - (usage?.free_seconds_used ?? 0));
-  const paidRem = Math.max(0, (usage?.paid_seconds_total ?? 0) - (usage?.paid_seconds_used ?? 0));
-  const topupRem = Math.max(0, usage?.topup_seconds_balance ?? 0);
+  const freeRem = Math.max(0, (usage?.free_tokens_total ?? 50) - (usage?.free_tokens_used ?? 0));
+  const paidRem = Math.max(0, (usage?.paid_tokens_total ?? 0) - (usage?.paid_tokens_used ?? 0));
+  const topupRem = Math.max(0, usage?.topup_tokens_balance ?? 0);
   const remaining = freeRem + paidRem + topupRem;
 
   if (!active && remaining <= 0) {

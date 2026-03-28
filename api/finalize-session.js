@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { DEFAULT_FREE_TOKENS } from "../lib/billing-constants.js";
 
 export default async function handler(req, res) {
   try {
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
 
     const { data: usage, error: usageErr } = await supabase
       .from("user_usage")
-      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -52,11 +53,11 @@ export default async function handler(req, res) {
       });
     }
 
-    const freeTotal = usage.free_seconds_total ?? 120;
-    const freeUsed = usage.free_seconds_used ?? 0;
-    const paidTotal = usage.paid_seconds_total ?? 0;
-    const paidUsed = usage.paid_seconds_used ?? 0;
-    const topupBal = usage.topup_seconds_balance ?? 0;
+    const freeTotal = usage.free_tokens_total ?? DEFAULT_FREE_TOKENS;
+    const freeUsed = usage.free_tokens_used ?? 0;
+    const paidTotal = usage.paid_tokens_total ?? 0;
+    const paidUsed = usage.paid_tokens_used ?? 0;
+    const topupBal = usage.topup_tokens_balance ?? 0;
 
     const freeRemaining = Math.max(0, freeTotal - freeUsed);
     const paidRemaining = Math.max(0, paidTotal - paidUsed);
@@ -64,26 +65,26 @@ export default async function handler(req, res) {
 
     const totalRemaining = freeRemaining + paidRemaining + topupRemaining;
 
-    if (!forceFinalize && totalRemaining > 3) {
+    if (!forceFinalize && totalRemaining > 1) {
       return res.status(200).json({
         ok: true,
         finalized: false,
-        reason: "still_time_left",
-        remaining_seconds: totalRemaining,
+        reason: "still_tokens_left",
+        remaining_tokens: totalRemaining,
       });
     }
 
     const patch = {
-      free_seconds_used: freeRemaining > 0 ? freeTotal : freeUsed,
-      paid_seconds_used: paidRemaining > 0 ? paidTotal : paidUsed,
-      topup_seconds_balance: topupRemaining > 0 ? 0 : topupBal,
+      free_tokens_used: freeRemaining > 0 ? freeTotal : freeUsed,
+      paid_tokens_used: paidRemaining > 0 ? paidTotal : paidUsed,
+      topup_tokens_balance: topupRemaining > 0 ? 0 : topupBal,
     };
 
     const { data: updated, error: updErr } = await supabase
       .from("user_usage")
       .update(patch)
       .eq("user_id", user.id)
-      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
       .maybeSingle();
 
     if (updErr) {
@@ -91,15 +92,15 @@ export default async function handler(req, res) {
     }
 
     const finalRemaining =
-      Math.max(0, (updated?.free_seconds_total ?? 120) - (updated?.free_seconds_used ?? 0)) +
-      Math.max(0, (updated?.paid_seconds_total ?? 0) - (updated?.paid_seconds_used ?? 0)) +
-      Math.max(0, (updated?.topup_seconds_balance ?? 0));
+      Math.max(0, (updated?.free_tokens_total ?? DEFAULT_FREE_TOKENS) - (updated?.free_tokens_used ?? 0)) +
+      Math.max(0, (updated?.paid_tokens_total ?? 0) - (updated?.paid_tokens_used ?? 0)) +
+      Math.max(0, (updated?.topup_tokens_balance ?? 0));
 
     return res.status(200).json({
       ok: true,
       finalized: true,
       forced: forceFinalize,
-      remaining_seconds: finalRemaining,
+      remaining_tokens: finalRemaining,
       usage: updated,
     });
   } catch (error) {

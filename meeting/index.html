@@ -2093,17 +2093,18 @@ async function reportMeetingVoiceUsage(seconds) {
     const { data: { session: authSession } } = await supabase.auth.getSession();
     if (!authSession?.access_token) return;
 
+    const tokens = Math.ceil(seconds / 6);
     const res = await fetch("/api/user?action=usage", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authSession.access_token}`,
       },
-      body: JSON.stringify({ seconds_used: seconds }),
+      body: JSON.stringify({ tokens_used: tokens }),
       keepalive: true,
     });
     const data = await res.json().catch(() => null);
-    console.log(`[meeting-voice] Usage reported: ${seconds}s`, res.status, data);
+    console.log(`[meeting-voice] Usage reported: ${seconds}s (${tokens} tokens)`, res.status, data);
   } catch (e) {
     console.error("[meeting-voice] Usage report failed:", e.message);
   }

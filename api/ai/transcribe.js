@@ -1,6 +1,7 @@
 // api/ai/transcribe.js — Whisper transcription for meeting audio recordings
 // Accepts JSON { audio_base64, filename, language } instead of multipart
 import { createClient } from '@supabase/supabase-js';
+import { SECONDS_PER_TOKEN } from '../../lib/billing-constants.js';
 
 export const config = { maxDuration: 60, api: { bodyParser: { sizeLimit: '25mb' } } };
 
@@ -64,37 +65,48 @@ export default async function handler(req, res) {
     const result = await whisperRes.json();
     console.log(`[transcribe] OK: ${(result.text || '').slice(0, 100)}...`);
 
-    // Deduct usage
+    // Deduct usage in tokens
     const estimatedSeconds = Math.ceil(audioBuffer.length / 16000);
+    const tokensToDeduct = Math.ceil(estimatedSeconds / SECONDS_PER_TOKEN);
     try {
       const { data: usage } = await supabase
         .from('user_usage')
-        .select('free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance')
+        .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (usage) {
-        const freeRemaining = Math.max(0, (usage.free_seconds_total || 0) - (usage.free_seconds_used || 0));
+        const freeRemaining = Math.max(0, (usage.free_tokens_total || 0) - (usage.free_tokens_used || 0));
+        const paidRemaining = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+        const topupRemaining = Math.max(0, usage.topup_tokens_balance || 0);
         const updates = { updated_at: new Date().toISOString() };
-        let toDeduct = estimatedSeconds;
+        let toDeduct = tokensToDeduct;
 
-        if (freeRemaining > 0) {
+        // Waterfall: free → paid → topup
+        if (toDeduct > 0 && freeRemaining > 0) {
           const fromFree = Math.min(toDeduct, freeRemaining);
-          updates.free_seconds_used = (usage.free_seconds_used || 0) + fromFree;
+          updates.free_tokens_used = (usage.free_tokens_used || 0) + fromFree;
           toDeduct -= fromFree;
         }
-        if (toDeduct > 0) {
-          updates.paid_seconds_used = (usage.paid_seconds_used || 0) + toDeduct;
+        if (toDeduct > 0 && paidRemaining > 0) {
+          const fromPaid = Math.min(toDeduct, paidRemaining);
+          updates.paid_tokens_used = (usage.paid_tokens_used || 0) + fromPaid;
+          toDeduct -= fromPaid;
+        }
+        if (toDeduct > 0 && topupRemaining > 0) {
+          const fromTopup = Math.min(toDeduct, topupRemaining);
+          updates.topup_tokens_balance = (usage.topup_tokens_balance || 0) - fromTopup;
+          toDeduct -= fromTopup;
         }
 
         await supabase.from('user_usage').update(updates).eq('user_id', user.id);
-        console.log(`[transcribe] Usage: ~${estimatedSeconds}s deducted`);
+        console.log(`[transcribe] Usage: ~${estimatedSeconds}s = ${tokensToDeduct} tokens deducted`);
       }
     } catch (ue) {
       console.error('[transcribe] Usage error:', ue.message);
     }
 
-    return res.status(200).json({ text: result.text || '', seconds_used: estimatedSeconds });
+    return res.status(200).json({ text: result.text || '', seconds_used: estimatedSeconds, tokens_used: tokensToDeduct });
   } catch (e) {
     console.error('[transcribe] Error:', e.message);
     return res.status(500).json({ error: e.message });

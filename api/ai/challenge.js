@@ -4,9 +4,11 @@
 // Round 2: Claude reviews all answers critically
 // Round 3: Synthesis — best parts combined into optimal answer
 // WARNING: 3x cost of normal request (multiple rounds)
+import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 import { normalizeResponse } from '../../lib/ai/persona-normalizer.js';
+import { TOKEN_COSTS } from '../../lib/billing-constants.js';
 
 const CHALLENGE_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
@@ -155,6 +157,26 @@ Erstelle jetzt die bestmögliche Antwort. Antworte direkt, ohne Meta-Kommentare.
         costUsd: c.usage?.costUsd || 0, latencyMs: 0, routingReason: c.reason,
       }).catch(() => {});
     }
+
+    // Deduct challenge tokens (waterfall: free → paid → topup)
+    try {
+      const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      const { data: usage } = await supabase
+        .from('user_usage')
+        .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
+        .eq('user_id', userId).maybeSingle();
+      if (usage) {
+        const freeRem = Math.max(0, (usage.free_tokens_total || 0) - (usage.free_tokens_used || 0));
+        const paidRem = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+        const topupRem = Math.max(0, usage.topup_tokens_balance || 0);
+        let toDeduct = TOKEN_COSTS.challenge;
+        const updates = { updated_at: new Date().toISOString() };
+        if (toDeduct > 0 && freeRem > 0) { const f = Math.min(toDeduct, freeRem); updates.free_tokens_used = (usage.free_tokens_used || 0) + f; toDeduct -= f; }
+        if (toDeduct > 0 && paidRem > 0) { const p = Math.min(toDeduct, paidRem); updates.paid_tokens_used = (usage.paid_tokens_used || 0) + p; toDeduct -= p; }
+        if (toDeduct > 0 && topupRem > 0) { const t = Math.min(toDeduct, topupRem); updates.topup_tokens_balance = (usage.topup_tokens_balance || 0) - t; toDeduct -= t; }
+        await supabase.from('user_usage').update(updates).eq('user_id', userId);
+      }
+    } catch (e) { console.error('[challenge] token deduction error:', e?.message); }
   }
 
   return res.status(200).json({

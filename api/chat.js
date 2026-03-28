@@ -13,6 +13,7 @@ import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
 import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { getSecondOpinion } from "./ai/second-opinion.js";
 import { getWeather, webSearch, getNews, getWikipedia } from "./ai/tools.js";
+import { TOKEN_COSTS } from "../lib/billing-constants.js";
 
 const FREE_TURNS_LIMIT = 10;
 const AUTH_NUDGE_AT_TURN = 3;
@@ -71,6 +72,54 @@ function envCheck(res) {
   if (!process.env.OPENAI_API_KEY)
     return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Token deduction helper (waterfall: free → paid → topup)
+// ---------------------------------------------------------------------------
+
+async function deductChatTokens(supabase, userId, amount = 1) {
+  const { data: usage } = await supabase
+    .from("user_usage")
+    .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!usage) return { ok: false, remaining: 0, exhausted: true };
+
+  const freeRem = Math.max(0, (usage.free_tokens_total || 0) - (usage.free_tokens_used || 0));
+  const paidRem = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+  const topupRem = Math.max(0, usage.topup_tokens_balance || 0);
+  const totalRem = freeRem + paidRem + topupRem;
+
+  if (totalRem <= 0) return { ok: false, remaining: 0, exhausted: true };
+
+  let toDeduct = amount;
+  const updates = { updated_at: new Date().toISOString() };
+
+  // 1. Free tokens
+  if (toDeduct > 0 && freeRem > 0) {
+    const fromFree = Math.min(toDeduct, freeRem);
+    updates.free_tokens_used = (usage.free_tokens_used || 0) + fromFree;
+    toDeduct -= fromFree;
+  }
+  // 2. Paid tokens
+  if (toDeduct > 0 && paidRem > 0) {
+    const fromPaid = Math.min(toDeduct, paidRem);
+    updates.paid_tokens_used = (usage.paid_tokens_used || 0) + fromPaid;
+    toDeduct -= fromPaid;
+  }
+  // 3. Top-up tokens
+  if (toDeduct > 0 && topupRem > 0) {
+    const fromTopup = Math.min(toDeduct, topupRem);
+    updates.topup_tokens_balance = (usage.topup_tokens_balance || 0) - fromTopup;
+    toDeduct -= fromTopup;
+  }
+
+  await supabase.from("user_usage").update(updates).eq("user_id", userId);
+
+  const remaining = totalRem - amount + toDeduct; // toDeduct is 0 if fully covered
+  return { ok: true, remaining: Math.max(0, remaining), exhausted: remaining <= 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -467,9 +516,10 @@ async function handleMessage(req, res) {
   let userTier = "free";
   if (user) {
     const { data: sub } = await supabase.from("user_subscriptions").select("plan,is_active,status").eq("user_id", user.id).maybeSingle();
-    const isPremium = !!(sub?.is_active || sub?.status === "active");
-    if (isPremium) {
-      userTier = sub?.plan === "plus" ? "premium" : "abo";
+    const isActive = !!(sub?.is_active || sub?.status === "active");
+    if (isActive) {
+      const planName = sub?.plan || "";
+      userTier = planName === "premium" ? "premium" : "abo";
     }
   }
 
@@ -624,6 +674,20 @@ async function handleMessage(req, res) {
     }).catch(err => console.error("Cost tracking error:", err?.message));
   }
 
+  // Deduct chat token for authenticated users
+  let tokenDeduction = null;
+  if (user) {
+    try {
+      tokenDeduction = await deductChatTokens(supabase, user.id, TOKEN_COSTS.chat_message);
+      if (tokenDeduction.exhausted) {
+        // Still return this response but signal exhaustion
+        console.log(`[chat] tokens exhausted for user ${user.id.slice(0, 8)}`);
+      }
+    } catch (e) {
+      console.error("[chat] token deduction error:", e?.message);
+    }
+  }
+
   // Second Opinion: auto-trigger for high-risk requests (authenticated users only)
   let secondOpinionMeta = null;
   const soShouldTrigger = user && shouldTriggerSecondOpinion(ctx);
@@ -688,6 +752,7 @@ async function handleMessage(req, res) {
     provider: aiResponse.provider,
     routing_reason: decision.reason,
     import_hint: import_hint,
+    ...(tokenDeduction && { remaining_tokens: tokenDeduction.remaining }),
     ...(secondOpinionMeta && { second_opinion: secondOpinionMeta }),
   });
 }

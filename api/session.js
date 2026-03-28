@@ -1,6 +1,7 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN } from "../lib/billing-constants.js";
 
 export default async function handler(req, res) {
   try {
@@ -110,11 +111,11 @@ export default async function handler(req, res) {
     const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion"; // returned to frontend
 
     // ---------------------------
-    // Usage / Remaining seconds (für ALLE)
+    // Usage / Remaining tokens (für ALLE)
     // ---------------------------
     const { data: usage, error: usageErr } = await supabase
       .from("user_usage")
-      .select("free_seconds_total, free_seconds_used, paid_seconds_total, paid_seconds_used, topup_seconds_balance")
+      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -122,15 +123,15 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: usageErr.message });
     }
 
-    const freeTotal = usage?.free_seconds_total ?? 120;
-    const freeUsed = usage?.free_seconds_used ?? 0;
+    const freeTotal = usage?.free_tokens_total ?? DEFAULT_FREE_TOKENS;
+    const freeUsed = usage?.free_tokens_used ?? 0;
     const freeRemaining = Math.max(0, freeTotal - freeUsed);
 
-    const paidTotal = usage?.paid_seconds_total ?? 0;
-    const paidUsed = usage?.paid_seconds_used ?? 0;
+    const paidTotal = usage?.paid_tokens_total ?? 0;
+    const paidUsed = usage?.paid_tokens_used ?? 0;
     const paidRemaining = Math.max(0, paidTotal - paidUsed);
 
-    const topupRemaining = Math.max(0, usage?.topup_seconds_balance ?? 0);
+    const topupRemaining = Math.max(0, usage?.topup_tokens_balance ?? 0);
 
     const remaining = freeRemaining + paidRemaining + topupRemaining;
 
@@ -142,6 +143,7 @@ export default async function handler(req, res) {
     return res.status(402).json({
       error: "No remaining time",
       reason,
+      remaining_tokens: 0,
       remaining_seconds: 0,
       is_premium: isPremium,
       plan: plan,
@@ -629,9 +631,12 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    const remainingVoiceSeconds = remaining * SECONDS_PER_TOKEN;
+
     return res.status(200).json({
       ...data,
-      remaining_seconds: remaining,
+      remaining_tokens: remaining,
+      remaining_seconds: remainingVoiceSeconds,
       is_premium: isPremium,
       plan: plan,
       mode: mode,
@@ -646,9 +651,9 @@ export default async function handler(req, res) {
       summary_required_before_cut: true,
 
       // Helpful info for UI / debug
-      free_remaining_seconds: freeRemaining,
-      paid_remaining_seconds: paidRemaining,
-      topup_remaining_seconds: topupRemaining,
+      free_remaining_tokens: freeRemaining,
+      paid_remaining_tokens: paidRemaining,
+      topup_remaining_tokens: topupRemaining,
     });
   } catch (error) {
     console.error("Server error:", error);
