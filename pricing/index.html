@@ -173,6 +173,26 @@ body{
 .btn-secondary{ background:#f5f0ea; color:#2a2420; }
 .btn-topup{ background:#fff; color:#2a2420; border:1px solid #ede8e2; }
 
+/* -- Current plan banner -- */
+.current-plan{
+  text-align:center;
+  font-size:13px;
+  color:#7a6a5a;
+  background:rgba(196,168,130,.08);
+  border:1px solid rgba(196,168,130,.2);
+  border-radius:12px;
+  padding:10px 16px;
+  margin-bottom:16px;
+}
+.current-plan strong{ color:#2a2420; }
+
+/* -- Free card -- */
+.card-free{
+  background:rgba(0,0,0,.02);
+  border:1px dashed #ddd;
+  opacity:.7;
+}
+
 /* -- Legal -- */
 .legal-block{
   border-top:1px solid rgba(0,0,0,.03);
@@ -252,12 +272,22 @@ body{
     <p id="tLead"></p>
   </div>
 
+  <!-- Current plan banner -->
+  <div class="current-plan" id="currentPlan" style="display:none">
+    <span id="tCurrentPlan"></span>
+  </div>
+
   <!-- Two columns: Abos | Top-ups -->
   <div class="grid-2col">
 
     <!-- Left: Abos -->
     <div class="col">
       <div class="col-label" id="tAboLabel"></div>
+
+      <div class="card card-free" id="cardFree">
+        <div class="card-price">&euro;0 <span class="card-per" id="tFreePer"></span></div>
+        <div class="card-sub" id="tFreeSub"></div>
+      </div>
 
       <div class="card card-start">
         <div class="card-badge badge-start" id="tStartBadge"></div>
@@ -344,6 +374,9 @@ const TEXT = {
     lead:          "Starte sofort — oder spar mit einem Abo.",
     aboLabel:      "Abo",
     topupLabel:    "Ohne Abo",
+    currentPlan:   "Dein aktueller Plan: <strong>%PLAN%</strong>",
+    freePer:       "50 Tokens",
+    freeSub:       "Chat ausprobieren. Kein Abo nötig.",
     startBadge:    "★ Beste Wahl",
     startPer:      "/ Monat · 300 Tokens",
     startSub:      "Voice, Chat, Memory. Jederzeit kündbar.",
@@ -377,6 +410,9 @@ const TEXT = {
     lead:          "Start instantly — or save with a plan.",
     aboLabel:      "Plans",
     topupLabel:    "No subscription",
+    currentPlan:   "Your current plan: <strong>%PLAN%</strong>",
+    freePer:       "50 tokens",
+    freeSub:       "Try the chat. No subscription needed.",
     startBadge:    "★ Best Value",
     startPer:      "/ month · 300 tokens",
     startSub:      "Voice, chat, memory. Cancel anytime.",
@@ -433,6 +469,8 @@ function setLang(l){
   document.getElementById("tLead").textContent           = t.lead;
   document.getElementById("tAboLabel").textContent       = t.aboLabel;
   document.getElementById("tTopupLabel").textContent     = t.topupLabel;
+  document.getElementById("tFreePer").textContent        = t.freePer;
+  document.getElementById("tFreeSub").textContent        = t.freeSub;
   document.getElementById("tStartBadge").textContent     = t.startBadge;
   document.getElementById("tStartPer").textContent       = t.startPer;
   document.getElementById("tStartSub").textContent       = t.startSub;
@@ -537,10 +575,29 @@ btnTopup5.onclick  = () => startTopup(5);
 btnTopup10.onclick = () => startTopup(10);
 btnTopup20.onclick = () => startTopup(20);
 
+const PLAN_LABELS = { start: "Start", plus: "Plus", premium: "Premium" };
+
 (async function init(){
   setLang(currentLang);
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) loginHint.style.display = "block";
+  if (!session?.access_token) {
+    loginHint.style.display = "block";
+  } else {
+    // Show current plan
+    try {
+      const { data: sub } = await supabase
+        .from("user_subscriptions")
+        .select("plan, is_active, status")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      const active = !!(sub?.is_active || sub?.status === "active");
+      const planName = active ? (PLAN_LABELS[sub?.plan] || sub?.plan || "Free") : "Free";
+      const banner = document.getElementById("currentPlan");
+      const t = TEXT[currentLang];
+      banner.innerHTML = t.currentPlan.replace("%PLAN%", planName);
+      banner.style.display = "block";
+    } catch {}
+  }
 })();
 </script>
 
