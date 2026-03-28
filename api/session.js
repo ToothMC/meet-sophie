@@ -572,6 +572,11 @@ export default async function handler(req, res) {
       `\n\nNACHRICHTEN: Du hast ein Tool namens "get_news". ` +
       `Nutze es wenn der User nach aktuellen Nachrichten, News-Headlines oder Neuigkeiten fragt. ` +
       `Sage "Ich prüfe die aktuellen Nachrichten..." und nutze dann das Tool.` +
+      `\n\nWIKIPEDIA: Du hast ein Tool namens "get_wikipedia". ` +
+      `Nutze es für Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen — immer wenn der User nach konkretem Wissen fragt ` +
+      `(Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...). ` +
+      `Sage "Moment, ich schaue das nach..." und nutze dann das Tool. ` +
+      `Sage NIEMALS "Ich habe keinen Zugriff" — du HAST Zugriff über deine Tools!` +
       `\n\nCHAT MESSAGES: ` +
       `Messages prefixed with [CHAT MESSAGE] are text messages the user typed during your voice conversation. ` +
       `This is parallel communication — like someone showing you a note while talking. ` +
