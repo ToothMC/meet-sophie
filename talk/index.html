@@ -3559,11 +3559,11 @@ function attachChannel(ch) {
 
       // ── Realtime Tools: Weather, Search, News ──
       if (msg?.type === "response.function_call_arguments.done" &&
-          ["get_weather", "web_search", "get_news"].includes(msg?.name)) {
+          ["get_weather", "web_search", "get_news", "get_wikipedia"].includes(msg?.name)) {
         try {
           const args = JSON.parse(msg.arguments || "{}");
-          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news" };
-          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic } };
+          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki" };
+          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query } };
           console.log(`[${runId}] [tools] ${msg.name} called:`, JSON.stringify(args));
           showResearchIndicator();
 
