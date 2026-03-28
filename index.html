@@ -2969,7 +2969,22 @@
     deactivateVoiceAttention();
     setPulse("soft");
 
-    // Check login status and show settings icon
+    // Auth readiness: resolve once Supabase auth is fully restored
+    let _authReady;
+    const authReadyPromise = new Promise(r => { _authReady = r; });
+    let _cachedToken = null;
+
+    // Listen for auth state changes — resolves immediately when session is restored from localStorage
+    const { data: { subscription: _authSub } } = supabase.auth.onAuthStateChange((event, session) => {
+      _cachedToken = session?.access_token || null;
+      const settingsBtn = document.getElementById("chatSettingsBtn");
+      if (settingsBtn) settingsBtn.style.display = _cachedToken ? "block" : "none";
+      _authReady(true);
+    });
+    // Fallback: if no auth event fires within 2s (e.g. no session), resolve anyway
+    setTimeout(() => _authReady(false), 2000);
+
+    // Also kick off getSession to populate the cache
     getToken().catch(() => {});
 
     if (authEmail) authEmail.value = "";
@@ -2982,6 +2997,7 @@
     async function getToken() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || null;
+      _cachedToken = token;
       // Show settings icon when logged in
       const settingsBtn = document.getElementById("chatSettingsBtn");
       if (settingsBtn) settingsBtn.style.display = token ? "block" : "none";
@@ -3015,6 +3031,9 @@
       );
     }
     async function startSession() {
+      // Wait for auth to be fully restored before starting session
+      // This ensures logged-in users always get their full profile/context/routing
+      await authReadyPromise;
       const startData = await callChat("start", {
         language: getCurrentLang(),
         ...(selectedChatMode ? { session_mode: selectedChatMode } : {})
@@ -3324,18 +3343,24 @@
     async function endSession() {
       if (!sessionId || sessionEnded) return;
       sessionEnded = true;
-      const token   = await getToken().catch(() => null);
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const payload = JSON.stringify({ session_id: sessionId, transcript: history });
-      navigator.sendBeacon
-        ? navigator.sendBeacon("/api/chat?action=end", new Blob([payload], { type: "application/json" }))
-        : fetch("/api/chat?action=end", {
-            method: "POST",
-            headers,
-            body: payload,
-            keepalive: true
-          }).catch(() => {});
+      // Use cached token — can't await async in beforeunload
+      const token = _cachedToken;
+      const payloadObj = { session_id: sessionId, transcript: history };
+      // Pass token in body for sendBeacon (which can't set headers)
+      if (token) payloadObj._token = token;
+      const payload = JSON.stringify(payloadObj);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/api/chat?action=end", new Blob([payload], { type: "application/json" }));
+      } else {
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        fetch("/api/chat?action=end", {
+          method: "POST",
+          headers,
+          body: payload,
+          keepalive: true
+        }).catch(() => {});
+      }
     }
     sendBtn.addEventListener("click", sendMessage);
     inputEl.addEventListener("keydown", e => {

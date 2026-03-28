@@ -703,14 +703,15 @@ async function handleEnd(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === "object" ? body : {};
 
-  const { session_id, transcript } = body;
+  const { session_id, transcript, _token: bodyToken } = body;
   if (!session_id) return res.status(400).json({ error: "Missing session_id" });
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase    = createClient(supabaseUrl, serviceKey);
 
-  const token = getToken(req);
+  // Token from header (normal fetch) or body fallback (sendBeacon can't set headers)
+  const token = getToken(req) || bodyToken || null;
   const user  = await getUser(token, supabaseUrl, serviceKey);
 
   // Ownership check: if session has a user_id, caller must match
