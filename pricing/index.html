@@ -74,6 +74,7 @@ body{
 }
 .plan-btn:hover{opacity:.88;}
 .plan-btn:disabled{opacity:.3;cursor:not-allowed;}
+.plan.current .plan-btn{background:#22c55e;color:#fff;opacity:1;cursor:default;pointer-events:none;}
 
 /* TopUps — compact */
 .topup-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a09080;text-align:center;margin-bottom:8px;}
@@ -336,7 +337,11 @@ const PLAN_MAP={free:"planFree",start:"planStart",plus:"planPlus",premium:"planP
     const active=!!(sub?.is_active||sub?.status==="active");
     const key=active?(sub?.plan||"free"):"free";
     const el=$(PLAN_MAP[key]||"planFree");
-    if(el)el.classList.add("current");
+    if(el){
+      el.classList.add("current");
+      const btn=el.querySelector(".plan-btn");
+      if(btn)btn.textContent=L[lang].currentBadge;
+    }
   }catch{}
 })();
 </script>
