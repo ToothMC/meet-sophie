@@ -9,606 +9,329 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
 <meta name="theme-color" content="#faf9f6">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Sophie – Pricing</title>
-
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{ height:100%; }
 body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  color:#2a2420;
-  min-height:100vh;
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  background:#faf9f6;
-  position:relative;
-  overflow-x:hidden;
-  overflow-y:auto;
-  padding:24px 0 48px;
+  margin:0;font-family:system-ui,-apple-system,sans-serif;color:#2a2420;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;
+  background:#faf9f6;padding:24px 0 48px;overflow-x:hidden;
 }
-.bg{
-  position:absolute; inset:-40px;
-  background:
-    radial-gradient(900px 500px at 20% 25%, rgba(196,168,130,.08), transparent 60%),
-    radial-gradient(700px 500px at 80% 65%, rgba(196,168,130,.05), transparent 60%);
-}
-.wrap{
-  width:min(680px,94vw);
-  position:relative;
-  z-index:2;
-  margin:0 auto;
-}
+.wrap{width:min(720px,94vw);margin:0 auto;}
 
-/* -- Top bar -- */
-.top{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:24px;
-  font-size:13px;
-}
-.lang{ display:flex; gap:8px; }
-.lang span{
-  cursor:pointer;
-  padding:4px 8px;
-  border-radius:10px;
-  border:1px solid #ede8e2;
-  opacity:.7;
-}
-.lang .active{ background:#2a2420; color:#fff; opacity:1; }
-.back{
-  color:#7a6a5a;
-  text-decoration:none;
-  font-size:14px;
-  font-weight:600;
-  padding:6px 10px;
-  border-radius:10px;
-  background:rgba(0,0,0,.04);
-  border:1px solid #ede8e2;
-  cursor:pointer;
-}
+/* Top */
+.top{display:flex;justify-content:space-between;margin-bottom:20px;font-size:13px;}
+.lang{display:flex;gap:8px;}
+.lang span{cursor:pointer;padding:4px 8px;border-radius:10px;border:1px solid #ede8e2;opacity:.7;}
+.lang .active{background:#2a2420;color:#fff;opacity:1;}
+.back{color:#7a6a5a;text-decoration:none;font-size:14px;font-weight:600;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.04);border:1px solid #ede8e2;cursor:pointer;}
 
-/* -- Header -- */
-.header{
-  text-align:center;
-  margin-bottom:20px;
-}
-.header h1{
-  margin:0 0 8px;
-  font-size:26px;
-  font-weight:700;
-  line-height:1.2;
-  letter-spacing:-.3px;
-}
-.header p{
-  margin:0;
-  font-size:14px;
-  color:#7a6a5a;
-  line-height:1.5;
-}
+/* Header */
+.header{text-align:center;margin-bottom:24px;}
+.header h1{margin:0 0 6px;font-size:24px;font-weight:700;letter-spacing:-.3px;}
+.header p{margin:0;font-size:13px;color:#7a6a5a;}
 
-/* -- Current plan banner -- */
-.current-plan{
-  text-align:center;
-  font-size:13px;
-  color:#7a6a5a;
-  background:rgba(196,168,130,.08);
-  border:1px solid rgba(196,168,130,.2);
-  border-radius:12px;
-  padding:9px 16px;
-  margin-bottom:18px;
-}
-.current-plan strong{ color:#2a2420; }
-
-/* -- Section label -- */
-.section-label{
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  color:#a09080;
-  text-align:center;
-  margin-bottom:10px;
-}
-
-/* -- Plans row: 4 cards -- */
-.plans-row{
-  display:grid;
-  grid-template-columns:repeat(4, 1fr);
-  gap:10px;
-  margin-bottom:24px;
-}
+/* Plans grid */
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;}
 .plan{
-  border-radius:16px;
-  padding:16px 12px 14px;
-  text-align:center;
-  position:relative;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-end;
+  border-radius:14px;padding:14px 10px 12px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;
+  background:#fff;border:1.5px solid #ede8e2;position:relative;
+  transition:border-color .2s;
 }
-.plan-free{
-  background:rgba(0,0,0,.02);
-  border:1px dashed #ddd;
+.plan.current{border-color:#4a90d9;box-shadow:0 0 0 2px rgba(74,144,217,.25);}
+.plan.plus-highlight{border-color:#c4a882;}
+
+/* Current badge */
+.current-badge{
+  position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+  font-size:9px;font-weight:700;padding:2px 8px;border-radius:6px;
+  background:#4a90d9;color:#fff;white-space:nowrap;display:none;
 }
-.plan-start{
-  background:#fff;
-  border:1px solid #ede8e2;
+.plan.current .current-badge{display:block;}
+
+/* Best value badge */
+.best-badge{
+  position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+  font-size:9px;font-weight:700;padding:2px 8px;border-radius:6px;
+  background:rgba(196,168,130,.15);color:#8a7050;white-space:nowrap;
 }
-.plan-plus{
-  background:#fff;
-  border:1.5px solid #c4a882;
-  box-shadow:0 4px 20px rgba(0,0,0,.06);
-}
-.plan-premium{
-  background:#fff;
-  border:1px solid #ede8e2;
-}
-.plan-badge{
-  font-size:9px;
-  font-weight:700;
-  letter-spacing:.04em;
-  padding:2px 8px;
-  border-radius:6px;
-  background:rgba(196,168,130,.15);
-  color:#8a7050;
-  position:absolute;
-  top:-9px;
-  left:50%;
-  transform:translateX(-50%);
-  white-space:nowrap;
-}
-.plan-name{
-  font-size:12px;
-  font-weight:600;
-  color:#7a6a5a;
-  margin-bottom:4px;
-}
-.plan-price{
-  font-size:24px;
-  font-weight:800;
-  line-height:1;
-  margin-bottom:3px;
-}
-.plan-tokens{
-  font-size:11px;
-  color:#a09080;
-  margin-bottom:12px;
-}
+/* Hide best badge if current badge is shown */
+.plan.current .best-badge{display:none;}
+
+.plan-name{font-size:13px;font-weight:700;margin-bottom:6px;margin-top:4px;}
+.plan-price{font-size:26px;font-weight:800;line-height:1;}
+.plan-per{font-size:10px;color:#a09080;margin-top:2px;}
+.plan-tokens{font-size:11px;color:#7a6a5a;margin-top:8px;font-weight:600;}
+.plan-spacer{flex:1;}
 .plan-btn{
-  width:100%;
-  padding:10px 6px;
-  border-radius:11px;
-  border:0;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
+  width:100%;padding:9px 4px;border-radius:10px;border:0;
+  font-size:12px;font-weight:700;cursor:pointer;margin-top:10px;
   transition:opacity .15s;
 }
-.plan-btn:hover{ opacity:.88; }
-.plan-btn:disabled{ opacity:.3; cursor:not-allowed; }
-.plan-btn-start{ background:#2a2420; color:#fff; }
-.plan-btn-plus{ background:#2a2420; color:#fff; }
-.plan-btn-premium{ background:#f5f0ea; color:#2a2420; }
-.plan-current{
-  font-size:11px;
-  color:#a09080;
-  padding:10px 0 0;
-  font-weight:500;
-}
+.plan-btn:hover{opacity:.88;}
+.plan-btn:disabled{opacity:.3;cursor:not-allowed;}
+.plan-btn-dark{background:#2a2420;color:#fff;}
+.plan-btn-light{background:#f0ebe5;color:#2a2420;}
+.plan-btn-ghost{background:transparent;color:#a09080;border:1px dashed #ddd;cursor:default;}
 
-/* -- TopUp row: 3 cards -- */
-.topup-row{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:10px;
-  margin-bottom:24px;
+/* TopUps */
+.topup-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a09080;text-align:center;margin-bottom:8px;}
+.topups{display:flex;gap:8px;margin-bottom:20px;}
+.tu{
+  flex:1;border-radius:10px;padding:8px 6px;text-align:center;
+  background:rgba(0,0,0,.02);border:1px solid #ede8e2;
 }
-.topup{
-  border-radius:12px;
-  padding:10px 8px;
-  text-align:center;
-  background:rgba(0,0,0,.02);
-  border:1px solid #ede8e2;
-  display:flex;
-  align-items:center;
-  gap:8px;
+.tu-price{font-size:16px;font-weight:800;}
+.tu-tokens{font-size:9px;color:#a09080;margin:2px 0 6px;}
+.tu-btn{
+  width:100%;padding:6px 4px;border-radius:8px;border:1px solid #ede8e2;
+  background:#fff;color:#2a2420;font-size:10px;font-weight:700;cursor:pointer;
 }
-.topup-price{
-  font-size:16px;
-  font-weight:800;
-  white-space:nowrap;
-}
-.topup-tokens{
-  font-size:10px;
-  color:#a09080;
-  flex:1;
-  text-align:left;
-}
-.topup-btn{
-  padding:7px 12px;
-  border-radius:8px;
-  border:1px solid #ede8e2;
-  background:#fff;
-  color:#2a2420;
-  font-size:11px;
-  font-weight:700;
-  cursor:pointer;
-  transition:opacity .15s;
-  white-space:nowrap;
-}
-.topup-btn:hover{ opacity:.88; }
-.topup-btn:disabled{ opacity:.3; cursor:not-allowed; }
+.tu-btn:hover{opacity:.88;}
+.tu-btn:disabled{opacity:.3;cursor:not-allowed;}
 
-/* -- Legal -- */
-.legal-block{
-  border-top:1px solid rgba(0,0,0,.03);
-  padding-top:16px;
-  margin-bottom:14px;
-}
-.legal-block label{
-  display:flex;
-  gap:9px;
-  font-size:12px;
-  color:#7a6a5a;
-  line-height:1.5;
-  margin-bottom:8px;
-}
-.legal-block label:last-child{ margin-bottom:0; }
-.legal-block input[type=checkbox]{ flex-shrink:0; margin-top:2px; accent-color:#c4a882; }
-.legal-block a{ color:#2a2420; text-decoration:underline; }
+/* Legal */
+.legal{border-top:1px solid rgba(0,0,0,.04);padding-top:14px;margin-bottom:12px;}
+.legal label{display:flex;gap:8px;font-size:11px;color:#7a6a5a;line-height:1.5;margin-bottom:6px;}
+.legal input[type=checkbox]{flex-shrink:0;margin-top:2px;accent-color:#c4a882;}
+.legal a{color:#2a2420;text-decoration:underline;}
 
-/* -- Login link -- */
-.login-link{
-  display:none;
-  text-align:center;
-  margin-bottom:14px;
-  font-size:13px;
-  color:#7a6a5a;
-}
-.login-link a{ color:#5a4a40; text-decoration:underline; cursor:pointer; }
+.login-link{display:none;text-align:center;margin-bottom:12px;font-size:12px;color:#7a6a5a;}
+.login-link a{color:#5a4a40;text-decoration:underline;cursor:pointer;}
+.msg{text-align:center;font-size:12px;color:#7a6a5a;min-height:16px;margin-bottom:4px;}
+.footer{margin-top:14px;text-align:center;font-size:11px;opacity:.4;}
+.footer a{color:#7a6a5a;text-decoration:none;}
 
-/* -- Msg -- */
-.msg{
-  text-align:center;
-  font-size:13px;
-  color:#7a6a5a;
-  min-height:18px;
-  margin-bottom:6px;
-}
-
-/* -- Footer -- */
-.footer{
-  margin-top:16px;
-  text-align:center;
-  font-size:12px;
-  opacity:.4;
-}
-.footer a{ color:#7a6a5a; text-decoration:none; }
-
-/* -- Responsive -- */
-@media (max-width:520px){
-  .plans-row{ grid-template-columns:repeat(2, 1fr); }
-  .topup-row{ grid-template-columns:1fr; }
-  .plan-price{ font-size:20px; }
-  .header h1{ font-size:22px; }
+@media(max-width:480px){
+  .plans{grid-template-columns:repeat(2,1fr);}
+  .plan-price{font-size:22px;}
+  .topups{flex-wrap:wrap;}
+  .tu{min-width:calc(33% - 6px);}
 }
 </style>
 </head>
-
 <body>
-<div class="bg"></div>
-
 <div class="wrap">
 
-  <!-- Top bar -->
   <div class="top">
     <a class="back" id="backBtn" href="/">&#8592; Zurück</a>
-    <div class="lang">
-      <span id="langDE">DE</span>
-      <span id="langEN">EN</span>
-    </div>
+    <div class="lang"><span id="langDE">DE</span><span id="langEN">EN</span></div>
   </div>
 
-  <!-- Header -->
   <div class="header">
     <h1 id="tH1"></h1>
     <p id="tLead"></p>
   </div>
 
-  <!-- Current plan -->
-  <div class="current-plan" id="currentPlan" style="display:none"></div>
-
   <!-- Plans -->
-  <div class="section-label" id="tAboLabel"></div>
-  <div class="plans-row">
-
-    <div class="plan plan-free">
+  <div class="plans">
+    <div class="plan" id="planFree">
+      <div class="current-badge" id="badgeFree"></div>
       <div class="plan-name">Free</div>
       <div class="plan-price">&euro;0</div>
+      <div class="plan-per" id="tFreePer"></div>
       <div class="plan-tokens">50 Tokens</div>
-      <div class="plan-current" id="tFreeCurrent"></div>
+      <div class="plan-spacer"></div>
+      <button class="plan-btn plan-btn-ghost" id="btnFree" disabled></button>
     </div>
 
-    <div class="plan plan-start">
+    <div class="plan" id="planStart">
+      <div class="current-badge" id="badgeStart"></div>
       <div class="plan-name">Start</div>
       <div class="plan-price">&euro;9,90</div>
+      <div class="plan-per" id="tStartPer"></div>
       <div class="plan-tokens">300 Tokens</div>
-      <button class="plan-btn plan-btn-start" id="btnStart" disabled></button>
+      <div class="plan-spacer"></div>
+      <button class="plan-btn plan-btn-dark" id="btnStart" disabled></button>
     </div>
 
-    <div class="plan plan-plus">
-      <div class="plan-badge" id="tPlusBadge"></div>
+    <div class="plan plus-highlight" id="planPlus">
+      <div class="current-badge" id="badgePlus"></div>
+      <div class="best-badge" id="tPlusBest"></div>
       <div class="plan-name">Plus</div>
       <div class="plan-price">&euro;19,90</div>
+      <div class="plan-per" id="tPlusPer"></div>
       <div class="plan-tokens">800 Tokens</div>
-      <button class="plan-btn plan-btn-plus" id="btnPlus" disabled></button>
+      <div class="plan-spacer"></div>
+      <button class="plan-btn plan-btn-dark" id="btnPlus" disabled></button>
     </div>
 
-    <div class="plan plan-premium">
+    <div class="plan" id="planPremium">
+      <div class="current-badge" id="badgePremium"></div>
       <div class="plan-name">Premium</div>
       <div class="plan-price">&euro;39,90</div>
+      <div class="plan-per" id="tPremiumPer"></div>
       <div class="plan-tokens">2.000 Tokens</div>
-      <button class="plan-btn plan-btn-premium" id="btnPremium" disabled></button>
+      <div class="plan-spacer"></div>
+      <button class="plan-btn plan-btn-light" id="btnPremium" disabled></button>
     </div>
-
   </div>
 
-  <!-- Top-ups -->
-  <div class="section-label" id="tTopupLabel"></div>
-  <div class="topup-row">
-
-    <div class="topup">
-      <div class="topup-price">&euro;5</div>
-      <div class="topup-tokens">50 Tokens</div>
-      <button class="topup-btn" id="btnTopup5" disabled></button>
+  <!-- TopUps -->
+  <div class="topup-label" id="tTopupLabel"></div>
+  <div class="topups">
+    <div class="tu">
+      <div class="tu-price">&euro;5</div>
+      <div class="tu-tokens">50 Tokens</div>
+      <button class="tu-btn" id="btnTu5" disabled></button>
     </div>
-
-    <div class="topup">
-      <div class="topup-price">&euro;10</div>
-      <div class="topup-tokens">100 Tokens</div>
-      <button class="topup-btn" id="btnTopup10" disabled></button>
+    <div class="tu">
+      <div class="tu-price">&euro;10</div>
+      <div class="tu-tokens">100 Tokens</div>
+      <button class="tu-btn" id="btnTu10" disabled></button>
     </div>
-
-    <div class="topup">
-      <div class="topup-price">&euro;20</div>
-      <div class="topup-tokens">250 Tokens</div>
-      <button class="topup-btn" id="btnTopup20" disabled></button>
+    <div class="tu">
+      <div class="tu-price">&euro;20</div>
+      <div class="tu-tokens">250 Tokens</div>
+      <button class="tu-btn" id="btnTu20" disabled></button>
     </div>
-
   </div>
 
   <!-- Legal -->
-  <div class="legal-block">
-    <label><input type="checkbox" id="legal1"><span id="tLegal1"></span></label>
-    <label><input type="checkbox" id="legal2"><span id="tLegal2"></span></label>
+  <div class="legal">
+    <label><input type="checkbox" id="c1"><span id="tL1"></span></label>
+    <label><input type="checkbox" id="c2"><span id="tL2"></span></label>
   </div>
-
-  <!-- Login -->
-  <div class="login-link" id="loginHint">
-    <span id="tLoginHint"></span> <a id="btnLogin"></a>
-  </div>
-
-  <!-- Msg -->
+  <div class="login-link" id="loginHint"><span id="tLoginHint"></span> <a id="btnLogin"></a></div>
   <div class="msg" id="msg"></div>
-
-  <!-- Footer -->
-  <div class="footer">
-    <a href="/impressum.html">Impressum</a> ·
-    <a href="/privacy.html" id="tPrivacy">Datenschutz</a>
-  </div>
+  <div class="footer"><a href="/impressum.html">Impressum</a> · <a href="/privacy.html" id="tPrivacy">Datenschutz</a></div>
 
 </div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+const supabase = createClient(
+  "https://ohzfojsbmzinpxhcynpt.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I"
+);
 
-const SUPABASE_URL     = "https://ohzfojsbmzinpxhcynpt.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const T = {
+const L={
   de:{
-    h1:          "Mach weiter mit Sophie.",
-    lead:        "Starte sofort — oder spar mit einem Abo.",
-    aboLabel:    "Abo · monatlich",
-    topupLabel:  "Ohne Abo · sofort",
-    currentPlan: "Dein aktueller Plan: <strong>%PLAN%</strong>",
-    freeCurrent: "Dein Plan",
-    plusBadge:   "★ Beste Wahl",
-    startBtn:    "Jetzt starten",
-    plusBtn:     "Plus wählen",
-    premiumBtn:  "Premium wählen",
-    topup5Btn:   "Kaufen",
-    topup10Btn:  "Kaufen",
-    topup20Btn:  "Kaufen",
-    loginHint:   "Noch kein Login?",
-    loginLink:   "Einloggen",
-    checkoutErr: "Fehler beim Starten des Checkouts.",
-    topupErr:    "Fehler beim Starten des Top-ups.",
-    legalMissing:"Bitte bestätige beide Checkboxen.",
-    privacy:     "Datenschutz",
-    legal1:      `Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
-    legal2:      `Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
+    h1:"Mach weiter mit Sophie.",
+    lead:"Starte sofort — oder spar mit einem Abo.",
+    freePer:"",startPer:"/ Monat",plusPer:"/ Monat",premiumPer:"/ Monat",
+    plusBest:"Beste Wahl",
+    freeBtn:"Aktuell",startBtn:"Jetzt starten",plusBtn:"Plus wählen",premiumBtn:"Premium",
+    topupLabel:"Ohne Abo · sofort",tuBtn:"Kaufen",
+    currentBadge:"Dein Plan",
+    loginHint:"Noch kein Login?",loginLink:"Einloggen",
+    err:"Fehler beim Checkout.",tErr:"Fehler beim Top-up.",
+    legal:"Bitte bestätige beide Checkboxen.",
+    l1:`Ich akzeptiere die <a href="/terms.html" target="_blank">AGB</a> und die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a>.`,
+    l2:`Ich stimme zu, dass die Dienstleistung sofort beginnt und mir bekannt ist, dass ich dadurch mein Widerrufsrecht verliere.`,
   },
   en:{
-    h1:          "Keep going with Sophie.",
-    lead:        "Start instantly — or save with a plan.",
-    aboLabel:    "Plans · monthly",
-    topupLabel:  "No subscription · instant",
-    currentPlan: "Your current plan: <strong>%PLAN%</strong>",
-    freeCurrent: "Your plan",
-    plusBadge:   "★ Best Value",
-    startBtn:    "Get started",
-    plusBtn:     "Choose Plus",
-    premiumBtn:  "Choose Premium",
-    topup5Btn:   "Buy",
-    topup10Btn:  "Buy",
-    topup20Btn:  "Buy",
-    loginHint:   "Not signed in?",
-    loginLink:   "Sign in",
-    checkoutErr: "Failed to start checkout.",
-    topupErr:    "Failed to start top-up.",
-    legalMissing:"Please confirm both checkboxes.",
-    privacy:     "Privacy Policy",
-    legal1:      `I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
-    legal2:      `I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
+    h1:"Keep going with Sophie.",
+    lead:"Start instantly — or save with a plan.",
+    freePer:"",startPer:"/ month",plusPer:"/ month",premiumPer:"/ month",
+    plusBest:"Best Value",
+    freeBtn:"Current",startBtn:"Get started",plusBtn:"Choose Plus",premiumBtn:"Premium",
+    topupLabel:"No subscription · instant",tuBtn:"Buy",
+    currentBadge:"Your plan",
+    loginHint:"Not signed in?",loginLink:"Sign in",
+    err:"Checkout failed.",tErr:"Top-up failed.",
+    legal:"Please confirm both checkboxes.",
+    l1:`I accept the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.`,
+    l2:`I agree the service begins immediately and acknowledge I lose my right of withdrawal.`,
   }
 };
 
-const c1 = document.getElementById("legal1");
-const c2 = document.getElementById("legal2");
-const msg = document.getElementById("msg");
-const btnStart   = document.getElementById("btnStart");
-const btnPlus    = document.getElementById("btnPlus");
-const btnPremium = document.getElementById("btnPremium");
-const btnTopup5  = document.getElementById("btnTopup5");
-const btnTopup10 = document.getElementById("btnTopup10");
-const btnTopup20 = document.getElementById("btnTopup20");
-const btnLogin   = document.getElementById("btnLogin");
-const loginHint  = document.getElementById("loginHint");
-const allBtns = [btnStart, btnPlus, btnPremium, btnTopup5, btnTopup10, btnTopup20];
-
-let currentLang = "en";
-if ((navigator.language || "").toLowerCase().startsWith("de")) currentLang = "de";
+const $ = id => document.getElementById(id);
+const c1=$("c1"),c2=$("c2"),msg=$("msg");
+const btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
+const btnTu5=$("btnTu5"),btnTu10=$("btnTu10"),btnTu20=$("btnTu20");
+const allBtns=[btnStart,btnPlus,btnPremium,btnTu5,btnTu10,btnTu20];
+let lang="en";
+if((navigator.language||"").startsWith("de"))lang="de";
 
 function setLang(l){
-  currentLang = l;
-  document.getElementById("langDE").classList.toggle("active", l === "de");
-  document.getElementById("langEN").classList.toggle("active", l === "en");
-  const t = T[l];
-  document.getElementById("tH1").textContent         = t.h1;
-  document.getElementById("tLead").textContent        = t.lead;
-  document.getElementById("tAboLabel").textContent    = t.aboLabel;
-  document.getElementById("tTopupLabel").textContent  = t.topupLabel;
-  document.getElementById("tPlusBadge").textContent   = t.plusBadge;
-  btnStart.textContent   = t.startBtn;
-  btnPlus.textContent    = t.plusBtn;
-  btnPremium.textContent = t.premiumBtn;
-  btnTopup5.textContent  = t.topup5Btn;
-  btnTopup10.textContent = t.topup10Btn;
-  btnTopup20.textContent = t.topup20Btn;
-  document.getElementById("tLegal1").innerHTML  = t.legal1;
-  document.getElementById("tLegal2").innerHTML  = t.legal2;
-  document.getElementById("tPrivacy").textContent = t.privacy;
-  document.getElementById("tLoginHint").textContent = t.loginHint;
-  btnLogin.textContent = t.loginLink;
-  document.getElementById("backBtn").innerHTML = l === "de" ? "&#8592; Zurück" : "&#8592; Back";
+  lang=l;
+  $("langDE").classList.toggle("active",l==="de");
+  $("langEN").classList.toggle("active",l==="en");
+  const t=L[l];
+  $("tH1").textContent=t.h1;$("tLead").textContent=t.lead;
+  $("tFreePer").textContent=t.freePer;$("tStartPer").textContent=t.startPer;
+  $("tPlusPer").textContent=t.plusPer;$("tPremiumPer").textContent=t.premiumPer;
+  $("tPlusBest").textContent=t.plusBest;
+  $("btnFree").textContent=t.freeBtn;
+  btnStart.textContent=t.startBtn;btnPlus.textContent=t.plusBtn;btnPremium.textContent=t.premiumBtn;
+  $("tTopupLabel").textContent=t.topupLabel;
+  btnTu5.textContent=t.tuBtn;btnTu10.textContent=t.tuBtn;btnTu20.textContent=t.tuBtn;
+  $("tL1").innerHTML=t.l1;$("tL2").innerHTML=t.l2;
+  $("tPrivacy").textContent=l==="de"?"Datenschutz":"Privacy";
+  $("tLoginHint").textContent=t.loginHint;$("btnLogin").textContent=t.loginLink;
+  $("backBtn").innerHTML=l==="de"?"&#8592; Zurück":"&#8592; Back";
+  // Update current badges
+  ["badgeFree","badgeStart","badgePlus","badgePremium"].forEach(id=>{
+    const el=$(id);if(el)el.textContent=t.currentBadge;
+  });
   updateEnabled();
 }
+$("langDE").onclick=()=>setLang("de");
+$("langEN").onclick=()=>setLang("en");
+$("backBtn").addEventListener("click",e=>{e.preventDefault();history.length>1?history.back():location.href="/";});
 
-document.getElementById("langDE").onclick = () => setLang("de");
-document.getElementById("langEN").onclick = () => setLang("en");
+function updateEnabled(){const ok=c1.checked&&c2.checked;allBtns.forEach(b=>b.disabled=!ok);}
+c1.onchange=updateEnabled;c2.onchange=updateEnabled;
 
-document.getElementById("backBtn").addEventListener("click", e => {
-  e.preventDefault();
-  if (history.length > 1) { history.back(); } else { window.location.href = "/"; }
-});
+function goLogin(){location.href=`/login/?redirect=${encodeURIComponent(location.pathname+location.search)}`;}
+$("btnLogin").onclick=goLogin;
 
-function updateEnabled(){
-  const ok = c1.checked && c2.checked;
-  allBtns.forEach(b => b.disabled = !ok);
-}
-c1.onchange = updateEnabled;
-c2.onchange = updateEnabled;
-
-function goLogin(){
-  const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-  window.location.href = `/login/?redirect=${redirect}`;
-}
-btnLogin.onclick = goLogin;
-
-async function getTokenOrLogin(){
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) { goLogin(); return null; }
+async function tok(){
+  const{data:{session}}=await supabase.auth.getSession();
+  if(!session?.access_token){goLogin();return null;}
   return session.access_token;
 }
+function lp(){return{termsAccepted:true,privacyAccepted:true,waiverAccepted:true,lang,at:new Date().toISOString()};}
+function dis(v){allBtns.forEach(b=>b.disabled=v);}
 
-function legalPayload(){
-  return { termsAccepted:true, privacyAccepted:true, waiverAccepted:true, lang:currentLang, at:new Date().toISOString() };
+async function checkout(plan){
+  msg.textContent="";
+  if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;return;}
+  dis(true);
+  try{
+    const t=await tok();if(!t)return;
+    const r=await fetch("/api/billing?action=checkout",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({plan,legal:lp()})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d?.url){msg.textContent=d?.error||L[lang].err;return;}
+    location.href=d.url;
+  }catch{msg.textContent=L[lang].err;}
+  finally{updateEnabled();}
+}
+async function topup(pack){
+  msg.textContent="";
+  if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;return;}
+  dis(true);
+  try{
+    const t=await tok();if(!t)return;
+    const r=await fetch("/api/billing?action=topup",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({pack,legal:lp()})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d?.url){msg.textContent=d?.error||L[lang].tErr;return;}
+    location.href=d.url;
+  }catch{msg.textContent=L[lang].tErr;}
+  finally{msg.textContent="";updateEnabled();}
 }
 
-function setAllDisabled(v){ allBtns.forEach(b => b.disabled = v); }
+btnStart.onclick=()=>checkout("start");
+btnPlus.onclick=()=>checkout("plus");
+btnPremium.onclick=()=>checkout("premium");
+btnTu5.onclick=()=>topup(5);btnTu10.onclick=()=>topup(10);btnTu20.onclick=()=>topup(20);
 
-async function startCheckout(plan){
-  msg.textContent = "";
-  if (!(c1.checked && c2.checked)){ msg.textContent = T[currentLang].legalMissing; return; }
-  setAllDisabled(true);
-  try {
-    const token = await getTokenOrLogin(); if (!token) return;
-    const res = await fetch("/api/billing?action=checkout", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-      body:JSON.stringify({ plan, legal:legalPayload() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : T[currentLang].checkoutErr; return; }
-    window.location.href = data.url;
-  } catch { msg.textContent = T[currentLang].checkoutErr; }
-  finally { updateEnabled(); }
-}
+const PLAN_MAP={free:"planFree",start:"planStart",plus:"planPlus",premium:"planPremium"};
 
-async function startTopup(pack){
-  msg.textContent = "";
-  if (!(c1.checked && c2.checked)){ msg.textContent = T[currentLang].legalMissing; return; }
-  setAllDisabled(true);
-  try {
-    const token = await getTokenOrLogin(); if (!token) return;
-    const res = await fetch("/api/billing?action=topup", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-      body:JSON.stringify({ pack, legal:legalPayload() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : T[currentLang].topupErr; return; }
-    window.location.href = data.url;
-  } catch { msg.textContent = T[currentLang].topupErr; }
-  finally { msg.textContent = ""; updateEnabled(); }
-}
-
-btnStart.onclick   = () => startCheckout("start");
-btnPlus.onclick    = () => startCheckout("plus");
-btnPremium.onclick = () => startCheckout("premium");
-btnTopup5.onclick  = () => startTopup(5);
-btnTopup10.onclick = () => startTopup(10);
-btnTopup20.onclick = () => startTopup(20);
-
-const PLAN_LABELS = { start: "Start", plus: "Plus", premium: "Premium" };
-
-(async function init(){
-  setLang(currentLang);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    loginHint.style.display = "block";
-    return;
-  }
-  try {
-    const { data: sub } = await supabase
-      .from("user_subscriptions")
-      .select("plan, is_active, status")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-    const active = !!(sub?.is_active || sub?.status === "active");
-    const planKey = active ? (sub?.plan || "free") : "free";
-    const planName = PLAN_LABELS[planKey] || "Free";
-    const t = T[currentLang];
-
-    // Show banner
-    const banner = document.getElementById("currentPlan");
-    banner.innerHTML = t.currentPlan.replace("%PLAN%", planName);
-    banner.style.display = "block";
-
-    // Mark current plan
-    if (planKey === "free") {
-      document.getElementById("tFreeCurrent").textContent = t.freeCurrent;
-    }
-  } catch {}
+(async function(){
+  setLang(lang);
+  const{data:{session}}=await supabase.auth.getSession();
+  if(!session?.access_token){$("loginHint").style.display="block";return;}
+  try{
+    const{data:sub}=await supabase.from("user_subscriptions").select("plan,is_active,status").eq("user_id",session.user.id).maybeSingle();
+    const active=!!(sub?.is_active||sub?.status==="active");
+    const key=active?(sub?.plan||"free"):"free";
+    const el=$(PLAN_MAP[key]||"planFree");
+    if(el)el.classList.add("current");
+  }catch{}
 })();
 </script>
-
 </body>
 </html>
