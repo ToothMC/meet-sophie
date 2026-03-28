@@ -453,15 +453,14 @@ async function handleMessage(req, res) {
   // Realtime tools: inject tool instructions into system prompt
   // AI decides contextually when to request a tool (no keyword matching)
   routerMessages.push({ role: "system", content:
-    `ECHTZEIT-TOOLS: Du hast Zugriff auf Echtzeit-Daten. Wenn der User nach Informationen fragt die aktueller sind als dein Trainingsdaten-Cutoff, ` +
-    `antworte NUR mit einem Tool-Tag — sonst nichts. Formate:\n` +
-    `[TOOL:weather:Ortsname] — für Wetter, Temperatur, Outdoor-Bedingungen\n` +
-    `[TOOL:search:Suchanfrage] — für aktuelle Fakten, Preise, Ereignisse\n` +
-    `[TOOL:news:Thema] — für aktuelle Nachrichten und Headlines\n` +
-    `[TOOL:wiki:Begriff] — für Faktenwissen, Definitionen, Biographien, historische Ereignisse, Erklärungen\n` +
-    `Antworte mit dem Tag ALLEIN wenn du Echtzeit-Daten brauchst. Du bekommst die Daten dann automatisch. ` +
-    `Nutze wiki bevorzugt für Wissensfragen (Was ist...? Wer war...? Wie funktioniert...?). ` +
-    `Wenn du KEINE Echtzeit-Daten brauchst, antworte ganz normal ohne Tag.`
+    `ECHTZEIT-TOOLS: Du hast Zugriff auf externe Datenquellen über Tools. Sage NIEMALS "Ich habe keinen Zugriff" oder "Ich kann nicht im Internet suchen". ` +
+    `Du HAST Zugriff — nutze die Tools! Antworte NUR mit einem Tool-Tag (sonst nichts), wenn eine dieser Situationen zutrifft:\n` +
+    `[TOOL:weather:Ortsname] — Wetter, Temperatur, Outdoor-Bedingungen\n` +
+    `[TOOL:search:Suchanfrage] — aktuelle Fakten, Preise, Ereignisse, alles was sich ändern kann\n` +
+    `[TOOL:news:Thema] — aktuelle Nachrichten und Headlines\n` +
+    `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen. Nutze wiki wenn der User nach konkretem Wissen fragt (Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...)\n` +
+    `Antworte mit dem Tag ALLEIN — du bekommst die Daten dann automatisch und antwortest basierend darauf. ` +
+    `Wenn die Frage rein persönlich oder reflektiv ist (keine Fakten nötig), antworte normal ohne Tag.`
   });
 
   // Determine user tier for routing
