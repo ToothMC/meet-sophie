@@ -434,12 +434,20 @@ body{
     <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
       <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
     </div>
+    <div id="reportOptions" class="hidden" style="display:flex;gap:12px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7a6a5a;cursor:pointer;user-select:none">
+        <input type="checkbox" id="optLeanCheck" checked style="accent-color:#c4a882"> Lean Check
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7a6a5a;cursor:pointer;user-select:none">
+        <input type="checkbox" id="optTranscript" style="accent-color:#c4a882"> Gesprächsverlauf
+      </label>
+    </div>
     <div id="reportActions" class="hidden" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-      <button class="export-btn" id="reportPrintBtn">🖨 PDF Export</button>
-      <button class="export-btn" id="reportDownloadFullBtn">⬇ + Transcript</button>
+      <button class="export-btn" id="reportPrintBtn">🖨 PDF</button>
+      <button class="export-btn" id="reportDownloadFullBtn">⬇ Download</button>
       <button class="export-btn" id="reportCopyBtn">📋 Kopieren</button>
-      <button class="export-btn" id="reportTemplateBtn">💾 Als Vorlage</button>
-      <button class="export-btn" id="reportRegenerateBtn">🔄 Neu generieren</button>
+      <button class="export-btn" id="reportTemplateBtn">💾 Vorlage</button>
+      <button class="export-btn" id="reportRegenerateBtn">🔄 Neu</button>
     </div>
   </div>
 </div>
@@ -1408,6 +1416,8 @@ function showMeetingReport(html) {
   const reportFrame = $("reportFrame");
 
   reportPreview.classList.remove("hidden");
+  $("reportOptions").classList.remove("hidden");
+  $("reportOptions").style.display = "flex";
   reportActions.classList.remove("hidden");
   reportActions.style.display = "flex";
 
@@ -1424,9 +1434,16 @@ function showMeetingReport(html) {
     } catch (_) {}
   }, 500);
 
-  // Helper: strip full transcript section from HTML for official export
-  function stripTranscriptSection(rawHtml) {
-    return rawHtml.replace(/<div\s+data-section="full-transcript"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
+  // Helper: filter report sections based on toggle options
+  function getExportHtml() {
+    let out = html;
+    if (!$("optTranscript")?.checked) {
+      out = out.replace(/<div\s+data-section="full-transcript"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
+    }
+    if (!$("optLeanCheck")?.checked) {
+      out = out.replace(/<div\s+data-section="lean-check"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
+    }
+    return out;
   }
 
   function downloadHtmlFile(content, suffix) {
@@ -1443,7 +1460,7 @@ function showMeetingReport(html) {
   $("reportPrintBtn").onclick = () => {
     // Open clean HTML (no transcript) in new window for printing
     // Cannot use iframe.print() due to sandbox restrictions
-    const cleanHtml = stripTranscriptSection(html);
+    const cleanHtml = getExportHtml();
     const printWin = window.open("", "_blank");
     if (!printWin) { alert(lang === "de" ? "Popup-Blocker aktiv — bitte erlauben." : "Popup blocked — please allow popups."); return; }
     printWin.document.write(cleanHtml);
@@ -1453,13 +1470,13 @@ function showMeetingReport(html) {
     setTimeout(() => { try { printWin.focus(); printWin.print(); } catch(_) {} }, 500);
   };
 
-  // Full version download — WITH transcript (for internal review)
+  // Download — respects toggle options
   $("reportDownloadFullBtn").onclick = () => {
-    downloadHtmlFile(html, "protokoll-full");
+    downloadHtmlFile(getExportHtml(), "protokoll");
   };
 
   $("reportCopyBtn").onclick = async () => {
-    const cleanHtml = stripTranscriptSection(html);
+    const cleanHtml = getExportHtml();
     // Parse clean HTML to get plain text without transcript
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = cleanHtml;
@@ -1502,6 +1519,8 @@ function showMeetingReport(html) {
     if (!meetingReportSessionId) return;
     $("reportRegenerateBtn").disabled = true;
     reportPreview.classList.add("hidden");
+    $("reportOptions").classList.add("hidden");
+    $("reportOptions").style.display = "none";
     reportActions.classList.add("hidden");
     reportActions.style.display = "none";
 
