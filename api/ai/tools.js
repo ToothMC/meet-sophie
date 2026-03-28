@@ -248,3 +248,72 @@ export async function getNews(topic) {
 
   return `Keine aktuellen Nachrichten zu "${topic}" verfügbar.`;
 }
+
+// ── Wikipedia: REST API (kostenlos, kein API-Key) ──
+
+export async function getWikipedia(query) {
+  if (!query) return 'Kein Suchbegriff angegeben.';
+
+  // Try direct page summary first (fast, clean)
+  const slug = encodeURIComponent(query.trim().replace(/\s+/g, '_'));
+  try {
+    const summaryRes = await fetch(
+      `https://de.wikipedia.org/api/rest_v1/page/summary/${slug}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(5000) }
+    );
+    if (summaryRes.ok) {
+      const data = await summaryRes.json();
+      if (data.type === 'standard' && data.extract) {
+        let result = `Wikipedia: ${data.title}\n\n${data.extract}`;
+        if (data.content_urls?.desktop?.page) {
+          result += `\n\nQuelle: ${data.content_urls.desktop.page}`;
+        }
+        return result;
+      }
+    }
+  } catch (e) { console.error('[tools] Wikipedia summary error:', e?.message); }
+
+  // Fallback: search API → then get summary of best match
+  try {
+    const searchRes = await fetch(
+      `https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=3&format=json&origin=*`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!searchRes.ok) return `Wikipedia-Suche für "${query}" fehlgeschlagen.`;
+    const searchData = await searchRes.json();
+    const results = searchData.query?.search || [];
+
+    if (results.length === 0) return `Kein Wikipedia-Artikel zu "${query}" gefunden.`;
+
+    // Get summary of top result
+    const topSlug = encodeURIComponent(results[0].title.replace(/\s+/g, '_'));
+    const topRes = await fetch(
+      `https://de.wikipedia.org/api/rest_v1/page/summary/${topSlug}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(5000) }
+    );
+    if (topRes.ok) {
+      const data = await topRes.json();
+      if (data.extract) {
+        let result = `Wikipedia: ${data.title}\n\n${data.extract}`;
+        if (data.content_urls?.desktop?.page) {
+          result += `\n\nQuelle: ${data.content_urls.desktop.page}`;
+        }
+        if (results.length > 1) {
+          result += `\n\nWeitere Artikel: ${results.slice(1).map(r => r.title).join(', ')}`;
+        }
+        return result;
+      }
+    }
+
+    // Last resort: return search snippets
+    const snippets = results.map(r => {
+      const clean = r.snippet.replace(/<[^>]+>/g, '');
+      return `- ${r.title}: ${clean}`;
+    });
+    return `Wikipedia-Suchergebnisse für "${query}":\n${snippets.join('\n')}`;
+  } catch (e) {
+    console.error('[tools] Wikipedia search error:', e?.message);
+  }
+
+  return `Keine Wikipedia-Informationen zu "${query}" gefunden.`;
+}
