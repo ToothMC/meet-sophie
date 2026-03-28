@@ -282,8 +282,11 @@ async function _wikiFullExtract(title) {
 export async function getWikipedia(query) {
   if (!query) return 'Kein Suchbegriff angegeben.';
 
+  // Normalize abbreviations (feb → Februar, etc.)
+  query = _normalizeQuery(query.trim());
+
   // Try direct page summary first (fast, clean)
-  const slug = encodeURIComponent(query.trim().replace(/\s+/g, '_'));
+  const slug = encodeURIComponent(query.replace(/\s+/g, '_'));
   try {
     const summaryRes = await fetch(
       `https://de.wikipedia.org/api/rest_v1/page/summary/${slug}`,
