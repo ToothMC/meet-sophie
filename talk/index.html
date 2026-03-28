@@ -3621,14 +3621,16 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_pitch_report") {
         try {
-          // Acknowledge the function call (required by API) but do NOT send response.create
+          // Acknowledge the function call — then trigger a FINAL spoken response so Sophie finishes naturally
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
           }});
           // Guard: only honour if user has actually pitched (at least 2 user turns = setup answer + pitch)
           if (hasUserSpoken && convoLog.filter(m => m.role === "user").length >= 2) {
             pitchReportSignaled = true;
-            console.log(`[${runId}] [salespitch] signal_pitch_report received — ending after audio`);
+            console.log(`[${runId}] [salespitch] signal_pitch_report received — letting Sophie finish, then ending`);
+            // Do NOT send response.create — let any remaining audio finish playing
+            // The session ends in response.done handler after Sophie is done speaking
           } else {
             console.log(`[${runId}] [salespitch] signal_pitch_report ignored — too early (user turns: ${convoLog.filter(m => m.role === "user").length})`);
           }
@@ -3679,11 +3681,18 @@ function attachChannel(ch) {
 
         partialAssistant = "";
 
-        // Sales Pitch: Sophie announced report → end call gracefully (NOT as time limit!)
+        // Sales Pitch: Sophie finished her verbal feedback → let audio buffer drain, then end cleanly
+        // Do NOT use stopVoice(false) — it sends response.cancel which kills buffered audio mid-sentence.
         if (pitchReportSignaled && !limitTriggered && !softEndFinalizing) {
           pitchReportSignaled = false;
-          console.log(`[${runId}] [salespitch] ending call after report announcement — normal end (not time limit)`);
-          setTimeout(() => { void stopVoice(false); }, 1500);
+          console.log(`[${runId}] [salespitch] response.done — waiting for audio to finish before ending`);
+          // Audio is already streamed to the WebRTC buffer. Wait generously for playback to complete.
+          // Sophie's feedback is max ~30s of speech. Audio buffer drains in real-time after response.done.
+          setTimeout(() => {
+            console.log(`[${runId}] [salespitch] audio drain complete — ending session cleanly`);
+            // Skip the response.cancel + goodbye in stopVoice — go straight to session teardown
+            stopVoicePitchClean();
+          }, 20000);
           return;
         }
 
@@ -4081,6 +4090,65 @@ async function startVoice(){
       preview: String(err?.bodyPreview || "").slice(0, 180)
     });
   }
+}
+
+// Clean pitch session end — no response.cancel, no goodbye, just teardown + report
+async function stopVoicePitchClean() {
+  console.log(`[${runId}] [salespitch] stopVoicePitchClean — clean teardown`);
+  clearModeIndicator();
+  endBtn.disabled = true;
+  startBtn.disabled = true;
+  logoutBtn.disabled = true;
+  stopDynamicResets();
+  stopCountdown();
+  clearClosingTimers();
+  showLiveBadge(false);
+  showVoiceChat(false);
+
+  headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
+  startFakeReportLoader();
+  setStatus("");
+  setSoftHint("");
+  timerEl.style.display = "none";
+
+  // Calculate actual wallclock duration only — no time-limit inflation
+  const wallclockSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+
+  const hasRealConversation = hasUserSpoken && wallclockSeconds >= 10 &&
+    convoLog.some(item => String(item?.text || "").trim());
+
+  // Close connections cleanly (no cancel, no goodbye)
+  if (dc) { try { dc.close(); } catch(_){} dc = null; }
+  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(_){} stream = null; }
+  if (pc) { try { pc.close(); } catch(_){} pc = null; }
+  if (audioEl) { try { audioEl.srcObject = null; } catch(_){} audioEl = null; }
+
+  if (!hasRealConversation) {
+    stopFakeReportLoader();
+    talkStartedAt = null;
+    remainingAtSessionStart = 0;
+    convoLog = [];
+    partialAssistant = "";
+    lastAssistantFinal = "";
+    userTranscriptBuffer.clear();
+    hasUserSpoken = false;
+    showBackground(false);
+    statusEl.style.visibility = "visible";
+    startBtn.disabled = false;
+    startBtn.textContent = t("start");
+    startBtn.onclick = startVoice;
+    logoutBtn.disabled = false;
+    headline.textContent = t("sophie_waiting");
+    setStatus(t("ready"));
+    return;
+  }
+
+  // Charge only wallclock seconds (NOT entire balance)
+  try { await reportUsage(wallclockSeconds); } catch(_) {}
+
+  // Build transcript and trigger report
+  const transcriptLog = convoLog.map(m => ({ role: m.role, text: m.text }));
+  showPostCallResults({}, transcriptLog, { triggeredByLimit: false });
 }
 
 async function stopVoice(triggeredByLimit = false){
