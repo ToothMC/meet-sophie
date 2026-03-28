@@ -107,11 +107,13 @@ export default async function handler(req, res) {
       const sumMap = Object.fromEntries((summaries || []).map(s => [s.meeting_id, s]));
 
       for (const m of meetings) {
+        // Only show meetings that actually have a summary/report
+        if (!sumMap[m.id]) continue;
         meetingReports.push({
           id: m.id,
           session_id: m.id,
           title: m.title || 'Meeting',
-          report_status: sumMap[m.id] ? 'done' : 'pending',
+          report_status: 'done',
           report_style: m.meeting_type || 'meeting',
           created_at: sumMap[m.id]?.created_at || m.started_at,
           source: 'meeting',
