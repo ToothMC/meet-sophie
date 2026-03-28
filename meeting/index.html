@@ -1454,21 +1454,31 @@ function showMeetingReport(html) {
     } catch (_) {}
   }, 500);
 
-  // Helper: filter report sections based on toggle options
+  // Helper: filter report sections based on toggle options (DOM-based, reliable)
   function getExportHtml() {
-    let out = html;
-    // Transcript: default hidden (display:none in CSS), remove entirely if toggle off, show if on
-    if (!$("optTranscript")?.checked) {
-      out = out.replace(/<div\s+data-section="full-transcript"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
-    } else {
-      // Make transcript visible for export
-      out = out.replace(/(<div\s+data-section="full-transcript"[^>]*style="[^"]*?)display:\s*none;?/i, '$1');
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+
+    // Transcript: remove if off, show if on
+    const transcriptEl = tmp.querySelector('[data-section="full-transcript"]');
+    if (transcriptEl) {
+      if (!$("optTranscript")?.checked) {
+        transcriptEl.remove();
+      } else {
+        transcriptEl.style.display = "";
+      }
     }
-    // Lean Check: default visible, strip if toggle off
-    if (!$("optLeanCheck")?.checked) {
-      out = out.replace(/<div\s+data-section="lean-check"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
+
+    // Lean Check: remove if off
+    const leanEl = tmp.querySelector('[data-section="lean-check"]');
+    if (leanEl && !$("optLeanCheck")?.checked) {
+      leanEl.remove();
     }
-    return out;
+
+    // Re-assemble: extract style block + body content
+    const styleMatch = html.match(/<style[^>]*>[\s\S]*?<\/style>/i);
+    const styleBlock = styleMatch ? styleMatch[0] : "";
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styleBlock}</head><body>${tmp.innerHTML}</body></html>`;
   }
 
   function downloadHtmlFile(content, suffix) {
@@ -2157,7 +2167,11 @@ function slugify(str) {
 }
 
 function stripTranscriptGlobal(rawHtml) {
-  return rawHtml.replace(/<div\s+data-section="full-transcript"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
+  const tmp = document.createElement("div");
+  tmp.innerHTML = rawHtml;
+  const el = tmp.querySelector('[data-section="full-transcript"]');
+  if (el) el.remove();
+  return tmp.innerHTML;
 }
 
 function downloadProtocol() {
