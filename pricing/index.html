@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#faf9f6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Sophie – Weiter</title>
+<title>Sophie – Pricing</title>
 
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -37,7 +37,7 @@ body{
     radial-gradient(700px 500px at 80% 65%, rgba(196,168,130,.05), transparent 60%);
 }
 .wrap{
-  width:min(640px,92vw);
+  width:min(680px,94vw);
   position:relative;
   z-index:2;
   margin:0 auto;
@@ -74,104 +74,21 @@ body{
 /* -- Header -- */
 .header{
   text-align:center;
-  margin-bottom:28px;
+  margin-bottom:20px;
 }
 .header h1{
-  margin:0 0 10px;
-  font-size:27px;
+  margin:0 0 8px;
+  font-size:26px;
   font-weight:700;
   line-height:1.2;
   letter-spacing:-.3px;
 }
 .header p{
   margin:0;
-  font-size:15px;
+  font-size:14px;
   color:#7a6a5a;
   line-height:1.5;
 }
-
-/* -- Two-column grid -- */
-.grid-2col{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-  margin-bottom:20px;
-}
-.col{ display:flex; flex-direction:column; gap:10px; }
-.col-label{
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  color:#a09080;
-  text-align:center;
-  padding-bottom:2px;
-}
-
-/* -- Cards -- */
-.card{
-  border-radius:16px;
-  padding:16px 14px;
-  display:flex;
-  flex-direction:column;
-}
-.card-start{
-  background:#fff;
-  border:1.5px solid #c4a882;
-  box-shadow:0 4px 20px rgba(0,0,0,.06);
-}
-.card-secondary{
-  background:#fff;
-  border:1px solid #ede8e2;
-}
-.card-topup{
-  background:rgba(0,0,0,.03);
-  border:1px solid #ede8e2;
-}
-.card-badge{
-  display:inline-block;
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:.03em;
-  padding:2px 8px;
-  border-radius:7px;
-  margin-bottom:8px;
-  align-self:flex-start;
-}
-.badge-start{ background:rgba(196,168,130,.15); color:#8a7050; }
-.badge-topup{ background:rgba(0,0,0,.05); color:#5a4a40; }
-.card-price{
-  font-size:24px;
-  font-weight:800;
-  margin-bottom:4px;
-  line-height:1.2;
-}
-.card-per{
-  font-size:11px;
-  font-weight:500;
-  color:#a09080;
-}
-.card-sub{
-  font-size:12px;
-  color:#7a6a5a;
-  line-height:1.4;
-  margin-bottom:10px;
-}
-.card-btn{
-  width:100%;
-  padding:11px 8px;
-  border-radius:12px;
-  border:0;
-  font-size:13px;
-  font-weight:700;
-  cursor:pointer;
-  transition:opacity .15s;
-}
-.card-btn:hover{ opacity:.9; }
-.card-btn:disabled{ opacity:.35; cursor:not-allowed; }
-.btn-start{ background:#2a2420; color:#fff; }
-.btn-secondary{ background:#f5f0ea; color:#2a2420; }
-.btn-topup{ background:#fff; color:#2a2420; border:1px solid #ede8e2; }
 
 /* -- Current plan banner -- */
 .current-plan{
@@ -181,17 +98,142 @@ body{
   background:rgba(196,168,130,.08);
   border:1px solid rgba(196,168,130,.2);
   border-radius:12px;
-  padding:10px 16px;
-  margin-bottom:16px;
+  padding:9px 16px;
+  margin-bottom:18px;
 }
 .current-plan strong{ color:#2a2420; }
 
-/* -- Free card -- */
-.card-free{
+/* -- Section label -- */
+.section-label{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#a09080;
+  text-align:center;
+  margin-bottom:10px;
+}
+
+/* -- Plans row: 4 cards -- */
+.plans-row{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:10px;
+  margin-bottom:24px;
+}
+.plan{
+  border-radius:16px;
+  padding:16px 12px 14px;
+  text-align:center;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.plan-free{
   background:rgba(0,0,0,.02);
   border:1px dashed #ddd;
-  opacity:.7;
 }
+.plan-start{
+  background:#fff;
+  border:1px solid #ede8e2;
+}
+.plan-plus{
+  background:#fff;
+  border:1.5px solid #c4a882;
+  box-shadow:0 4px 20px rgba(0,0,0,.06);
+}
+.plan-premium{
+  background:#fff;
+  border:1px solid #ede8e2;
+}
+.plan-badge{
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.04em;
+  padding:2px 8px;
+  border-radius:6px;
+  margin-bottom:8px;
+  background:rgba(196,168,130,.15);
+  color:#8a7050;
+}
+.plan-name{
+  font-size:12px;
+  font-weight:600;
+  color:#7a6a5a;
+  margin-bottom:4px;
+}
+.plan-price{
+  font-size:24px;
+  font-weight:800;
+  line-height:1;
+  margin-bottom:3px;
+}
+.plan-tokens{
+  font-size:11px;
+  color:#a09080;
+  margin-bottom:12px;
+}
+.plan-btn{
+  width:100%;
+  padding:10px 6px;
+  border-radius:11px;
+  border:0;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  transition:opacity .15s;
+}
+.plan-btn:hover{ opacity:.88; }
+.plan-btn:disabled{ opacity:.3; cursor:not-allowed; }
+.plan-btn-start{ background:#2a2420; color:#fff; }
+.plan-btn-plus{ background:#2a2420; color:#fff; }
+.plan-btn-premium{ background:#f5f0ea; color:#2a2420; }
+.plan-current{
+  font-size:11px;
+  color:#a09080;
+  padding:10px 0 0;
+  font-weight:500;
+}
+
+/* -- TopUp row: 3 cards -- */
+.topup-row{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+  margin-bottom:24px;
+}
+.topup{
+  border-radius:14px;
+  padding:14px 10px;
+  text-align:center;
+  background:rgba(0,0,0,.03);
+  border:1px solid #ede8e2;
+}
+.topup-price{
+  font-size:22px;
+  font-weight:800;
+  margin-bottom:2px;
+}
+.topup-tokens{
+  font-size:11px;
+  color:#a09080;
+  margin-bottom:10px;
+}
+.topup-btn{
+  width:100%;
+  padding:9px 6px;
+  border-radius:10px;
+  border:1px solid #ede8e2;
+  background:#fff;
+  color:#2a2420;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  transition:opacity .15s;
+}
+.topup-btn:hover{ opacity:.88; }
+.topup-btn:disabled{ opacity:.3; cursor:not-allowed; }
 
 /* -- Legal -- */
 .legal-block{
@@ -219,11 +261,7 @@ body{
   font-size:13px;
   color:#7a6a5a;
 }
-.login-link a{
-  color:#5a4a40;
-  text-decoration:underline;
-  cursor:pointer;
-}
+.login-link a{ color:#5a4a40; text-decoration:underline; cursor:pointer; }
 
 /* -- Msg -- */
 .msg{
@@ -244,10 +282,10 @@ body{
 .footer a{ color:#7a6a5a; text-decoration:none; }
 
 /* -- Responsive -- */
-@media (max-width:460px){
-  .grid-2col{ grid-template-columns:1fr; }
-  .card-price{ font-size:22px; }
-  .header h1{ font-size:23px; }
+@media (max-width:520px){
+  .plans-row{ grid-template-columns:repeat(2, 1fr); }
+  .plan-price{ font-size:20px; }
+  .header h1{ font-size:22px; }
 }
 </style>
 </head>
@@ -259,7 +297,7 @@ body{
 
   <!-- Top bar -->
   <div class="top">
-    <a class="back" id="backBtn" href="/">← Zurück</a>
+    <a class="back" id="backBtn" href="/">&#8592; Zurück</a>
     <div class="lang">
       <span id="langDE">DE</span>
       <span id="langEN">EN</span>
@@ -272,77 +310,72 @@ body{
     <p id="tLead"></p>
   </div>
 
-  <!-- Current plan banner -->
-  <div class="current-plan" id="currentPlan" style="display:none">
-    <span id="tCurrentPlan"></span>
-  </div>
+  <!-- Current plan -->
+  <div class="current-plan" id="currentPlan" style="display:none"></div>
 
-  <!-- Two columns: Abos | Top-ups -->
-  <div class="grid-2col">
+  <!-- Plans -->
+  <div class="section-label" id="tAboLabel"></div>
+  <div class="plans-row">
 
-    <!-- Left: Abos -->
-    <div class="col">
-      <div class="col-label" id="tAboLabel"></div>
-
-      <div class="card card-free" id="cardFree">
-        <div class="card-price">&euro;0 <span class="card-per" id="tFreePer"></span></div>
-        <div class="card-sub" id="tFreeSub"></div>
-      </div>
-
-      <div class="card card-start">
-        <div class="card-badge badge-start" id="tStartBadge"></div>
-        <div class="card-price">&euro;9,90 <span class="card-per" id="tStartPer"></span></div>
-        <div class="card-sub" id="tStartSub"></div>
-        <button class="card-btn btn-start" id="btnStart" disabled></button>
-      </div>
-
-      <div class="card card-secondary">
-        <div class="card-price">&euro;19,90 <span class="card-per" id="tPlusPer"></span></div>
-        <div class="card-sub" id="tPlusSub"></div>
-        <button class="card-btn btn-secondary" id="btnPlus" disabled></button>
-      </div>
-
-      <div class="card card-secondary">
-        <div class="card-price">&euro;39,90 <span class="card-per" id="tPremiumPer"></span></div>
-        <div class="card-sub" id="tPremiumSub"></div>
-        <button class="card-btn btn-secondary" id="btnPremium" disabled></button>
-      </div>
+    <div class="plan plan-free">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">&euro;0</div>
+      <div class="plan-tokens">50 Tokens</div>
+      <div class="plan-current" id="tFreeCurrent"></div>
     </div>
 
-    <!-- Right: Top-ups -->
-    <div class="col">
-      <div class="col-label" id="tTopupLabel"></div>
+    <div class="plan plan-start">
+      <div class="plan-name">Start</div>
+      <div class="plan-price">&euro;9,90</div>
+      <div class="plan-tokens">300 Tokens</div>
+      <button class="plan-btn plan-btn-start" id="btnStart" disabled></button>
+    </div>
 
-      <div class="card card-topup">
-        <div class="card-badge badge-topup" id="tTopup5Badge"></div>
-        <div class="card-price">&euro;5 <span class="card-per" id="tTopup5Per"></span></div>
-        <div class="card-sub" id="tTopup5Sub"></div>
-        <button class="card-btn btn-topup" id="btnTopup5" disabled></button>
-      </div>
+    <div class="plan plan-plus">
+      <div class="plan-badge" id="tPlusBadge"></div>
+      <div class="plan-name">Plus</div>
+      <div class="plan-price">&euro;19,90</div>
+      <div class="plan-tokens">800 Tokens</div>
+      <button class="plan-btn plan-btn-plus" id="btnPlus" disabled></button>
+    </div>
 
-      <div class="card card-topup">
-        <div class="card-price">&euro;10 <span class="card-per" id="tTopup10Per"></span></div>
-        <button class="card-btn btn-topup" id="btnTopup10" disabled></button>
-      </div>
+    <div class="plan plan-premium">
+      <div class="plan-name">Premium</div>
+      <div class="plan-price">&euro;39,90</div>
+      <div class="plan-tokens">2.000 Tokens</div>
+      <button class="plan-btn plan-btn-premium" id="btnPremium" disabled></button>
+    </div>
 
-      <div class="card card-topup">
-        <div class="card-price">&euro;20 <span class="card-per" id="tTopup20Per"></span></div>
-        <button class="card-btn btn-topup" id="btnTopup20" disabled></button>
-      </div>
+  </div>
+
+  <!-- Top-ups -->
+  <div class="section-label" id="tTopupLabel"></div>
+  <div class="topup-row">
+
+    <div class="topup">
+      <div class="topup-price">&euro;5</div>
+      <div class="topup-tokens">50 Tokens</div>
+      <button class="topup-btn" id="btnTopup5" disabled></button>
+    </div>
+
+    <div class="topup">
+      <div class="topup-price">&euro;10</div>
+      <div class="topup-tokens">100 Tokens</div>
+      <button class="topup-btn" id="btnTopup10" disabled></button>
+    </div>
+
+    <div class="topup">
+      <div class="topup-price">&euro;20</div>
+      <div class="topup-tokens">250 Tokens</div>
+      <button class="topup-btn" id="btnTopup20" disabled></button>
     </div>
 
   </div>
 
   <!-- Legal -->
   <div class="legal-block">
-    <label>
-      <input type="checkbox" id="legal1">
-      <span id="tLegal1"></span>
-    </label>
-    <label>
-      <input type="checkbox" id="legal2">
-      <span id="tLegal2"></span>
-    </label>
+    <label><input type="checkbox" id="legal1"><span id="tLegal1"></span></label>
+    <label><input type="checkbox" id="legal2"><span id="tLegal2"></span></label>
   </div>
 
   <!-- Login -->
@@ -368,78 +401,52 @@ const SUPABASE_URL     = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TEXT = {
+const T = {
   de:{
-    h1:            "Mach jetzt weiter mit Sophie.",
-    lead:          "Starte sofort — oder spar mit einem Abo.",
-    aboLabel:      "Abo",
-    topupLabel:    "Ohne Abo",
-    currentPlan:   "Dein aktueller Plan: <strong>%PLAN%</strong>",
-    freePer:       "50 Tokens",
-    freeSub:       "Chat ausprobieren. Kein Abo nötig.",
-    startBadge:    "★ Beste Wahl",
-    startPer:      "/ Monat · 300 Tokens",
-    startSub:      "Voice, Chat, Memory. Jederzeit kündbar.",
-    startBtn:      "Jetzt starten",
-    plusPer:       "/ Monat · 800 Tokens",
-    plusSub:       "Bessere KI. Mehr Tokens.",
-    plusBtn:       "Plus wählen",
-    premiumPer:    "/ Monat · 2.000 Tokens",
-    premiumSub:    "Beste KI. Voller Umfang.",
-    premiumBtn:    "Premium wählen",
-    topup5Badge:   "⚡ Sofort los",
-    topup5Per:     "50 Tokens",
-    topup5Sub:     "Premium-Qualität. Keine Bindung.",
-    topup5Btn:     "5€ kaufen",
-    topup10Per:    "100 Tokens",
-    topup10Btn:    "10€ kaufen",
-    topup20Per:    "250 Tokens",
-    topup20Btn:    "20€ kaufen",
-    loginHint:     "Noch kein Login?",
-    loginLink:     "Einloggen, um fortzufahren",
-    loading:       "Einen Moment…",
-    checkoutErr:   "Fehler beim Starten des Checkouts.",
-    topupErr:      "Fehler beim Starten des Top-ups.",
-    legalMissing:  "Bitte bestätige beide Checkboxen.",
-    privacy:       "Datenschutz",
-    legal1:        `Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
-    legal2:        `Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
+    h1:          "Mach weiter mit Sophie.",
+    lead:        "Starte sofort — oder spar mit einem Abo.",
+    aboLabel:    "Abo · monatlich",
+    topupLabel:  "Ohne Abo · sofort",
+    currentPlan: "Dein aktueller Plan: <strong>%PLAN%</strong>",
+    freeCurrent: "Dein Plan",
+    plusBadge:   "★ Beste Wahl",
+    startBtn:    "Jetzt starten",
+    plusBtn:     "Plus wählen",
+    premiumBtn:  "Premium wählen",
+    topup5Btn:   "Kaufen",
+    topup10Btn:  "Kaufen",
+    topup20Btn:  "Kaufen",
+    loginHint:   "Noch kein Login?",
+    loginLink:   "Einloggen",
+    checkoutErr: "Fehler beim Starten des Checkouts.",
+    topupErr:    "Fehler beim Starten des Top-ups.",
+    legalMissing:"Bitte bestätige beide Checkboxen.",
+    privacy:     "Datenschutz",
+    legal1:      `Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
+    legal2:      `Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
   },
   en:{
-    h1:            "Keep going with Sophie.",
-    lead:          "Start instantly — or save with a plan.",
-    aboLabel:      "Plans",
-    topupLabel:    "No subscription",
-    currentPlan:   "Your current plan: <strong>%PLAN%</strong>",
-    freePer:       "50 tokens",
-    freeSub:       "Try the chat. No subscription needed.",
-    startBadge:    "★ Best Value",
-    startPer:      "/ month · 300 tokens",
-    startSub:      "Voice, chat, memory. Cancel anytime.",
-    startBtn:      "Get started",
-    plusPer:       "/ month · 800 tokens",
-    plusSub:       "Better AI. More tokens.",
-    plusBtn:       "Choose Plus",
-    premiumPer:    "/ month · 2,000 tokens",
-    premiumSub:    "Best AI. Full access.",
-    premiumBtn:    "Choose Premium",
-    topup5Badge:   "⚡ Start now",
-    topup5Per:     "50 tokens",
-    topup5Sub:     "Premium quality. No commitment.",
-    topup5Btn:     "Buy €5",
-    topup10Per:    "100 tokens",
-    topup10Btn:    "Buy €10",
-    topup20Per:    "250 tokens",
-    topup20Btn:    "Buy €20",
-    loginHint:     "Not signed in?",
-    loginLink:     "Sign in to continue",
-    loading:       "One moment…",
-    checkoutErr:   "Failed to start checkout.",
-    topupErr:      "Failed to start top-up.",
-    legalMissing:  "Please confirm both checkboxes.",
-    privacy:       "Privacy Policy",
-    legal1:        `I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
-    legal2:        `I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
+    h1:          "Keep going with Sophie.",
+    lead:        "Start instantly — or save with a plan.",
+    aboLabel:    "Plans · monthly",
+    topupLabel:  "No subscription · instant",
+    currentPlan: "Your current plan: <strong>%PLAN%</strong>",
+    freeCurrent: "Your plan",
+    plusBadge:   "★ Best Value",
+    startBtn:    "Get started",
+    plusBtn:     "Choose Plus",
+    premiumBtn:  "Choose Premium",
+    topup5Btn:   "Buy",
+    topup10Btn:  "Buy",
+    topup20Btn:  "Buy",
+    loginHint:   "Not signed in?",
+    loginLink:   "Sign in",
+    checkoutErr: "Failed to start checkout.",
+    topupErr:    "Failed to start top-up.",
+    legalMissing:"Please confirm both checkboxes.",
+    privacy:     "Privacy Policy",
+    legal1:      `I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
+    legal2:      `I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
   }
 };
 
@@ -463,38 +470,24 @@ function setLang(l){
   currentLang = l;
   document.getElementById("langDE").classList.toggle("active", l === "de");
   document.getElementById("langEN").classList.toggle("active", l === "en");
-
-  const t = TEXT[l];
-  document.getElementById("tH1").textContent            = t.h1;
-  document.getElementById("tLead").textContent           = t.lead;
-  document.getElementById("tAboLabel").textContent       = t.aboLabel;
-  document.getElementById("tTopupLabel").textContent     = t.topupLabel;
-  document.getElementById("tFreePer").textContent        = t.freePer;
-  document.getElementById("tFreeSub").textContent        = t.freeSub;
-  document.getElementById("tStartBadge").textContent     = t.startBadge;
-  document.getElementById("tStartPer").textContent       = t.startPer;
-  document.getElementById("tStartSub").textContent       = t.startSub;
-  btnStart.textContent                                   = t.startBtn;
-  document.getElementById("tPlusPer").textContent        = t.plusPer;
-  document.getElementById("tPlusSub").textContent        = t.plusSub;
-  btnPlus.textContent                                    = t.plusBtn;
-  document.getElementById("tPremiumPer").textContent     = t.premiumPer;
-  document.getElementById("tPremiumSub").textContent     = t.premiumSub;
-  btnPremium.textContent                                 = t.premiumBtn;
-  document.getElementById("tTopup5Badge").textContent    = t.topup5Badge;
-  document.getElementById("tTopup5Per").textContent      = t.topup5Per;
-  document.getElementById("tTopup5Sub").textContent      = t.topup5Sub;
-  btnTopup5.textContent                                  = t.topup5Btn;
-  document.getElementById("tTopup10Per").textContent     = t.topup10Per;
-  btnTopup10.textContent                                 = t.topup10Btn;
-  document.getElementById("tTopup20Per").textContent     = t.topup20Per;
-  btnTopup20.textContent                                 = t.topup20Btn;
-  document.getElementById("tLegal1").innerHTML           = t.legal1;
-  document.getElementById("tLegal2").innerHTML           = t.legal2;
-  document.getElementById("tPrivacy").textContent        = t.privacy;
-  document.getElementById("tLoginHint").textContent      = t.loginHint;
-  btnLogin.textContent                                   = t.loginLink;
-  document.getElementById("backBtn").textContent         = l === "de" ? "← Zurück" : "← Back";
+  const t = T[l];
+  document.getElementById("tH1").textContent         = t.h1;
+  document.getElementById("tLead").textContent        = t.lead;
+  document.getElementById("tAboLabel").textContent    = t.aboLabel;
+  document.getElementById("tTopupLabel").textContent  = t.topupLabel;
+  document.getElementById("tPlusBadge").textContent   = t.plusBadge;
+  btnStart.textContent   = t.startBtn;
+  btnPlus.textContent    = t.plusBtn;
+  btnPremium.textContent = t.premiumBtn;
+  btnTopup5.textContent  = t.topup5Btn;
+  btnTopup10.textContent = t.topup10Btn;
+  btnTopup20.textContent = t.topup20Btn;
+  document.getElementById("tLegal1").innerHTML  = t.legal1;
+  document.getElementById("tLegal2").innerHTML  = t.legal2;
+  document.getElementById("tPrivacy").textContent = t.privacy;
+  document.getElementById("tLoginHint").textContent = t.loginHint;
+  btnLogin.textContent = t.loginLink;
+  document.getElementById("backBtn").innerHTML = l === "de" ? "&#8592; Zurück" : "&#8592; Back";
   updateEnabled();
 }
 
@@ -533,7 +526,7 @@ function setAllDisabled(v){ allBtns.forEach(b => b.disabled = v); }
 
 async function startCheckout(plan){
   msg.textContent = "";
-  if (!(c1.checked && c2.checked)){ msg.textContent = TEXT[currentLang].legalMissing; return; }
+  if (!(c1.checked && c2.checked)){ msg.textContent = T[currentLang].legalMissing; return; }
   setAllDisabled(true);
   try {
     const token = await getTokenOrLogin(); if (!token) return;
@@ -543,17 +536,16 @@ async function startCheckout(plan){
       body:JSON.stringify({ plan, legal:legalPayload() }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : TEXT[currentLang].checkoutErr; return; }
+    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : T[currentLang].checkoutErr; return; }
     window.location.href = data.url;
-  } catch { msg.textContent = TEXT[currentLang].checkoutErr; }
+  } catch { msg.textContent = T[currentLang].checkoutErr; }
   finally { updateEnabled(); }
 }
 
 async function startTopup(pack){
   msg.textContent = "";
-  if (!(c1.checked && c2.checked)){ msg.textContent = TEXT[currentLang].legalMissing; return; }
+  if (!(c1.checked && c2.checked)){ msg.textContent = T[currentLang].legalMissing; return; }
   setAllDisabled(true);
-  msg.textContent = currentLang === "de" ? "Checkout wird geöffnet…" : "Opening checkout…";
   try {
     const token = await getTokenOrLogin(); if (!token) return;
     const res = await fetch("/api/billing?action=topup", {
@@ -562,9 +554,9 @@ async function startTopup(pack){
       body:JSON.stringify({ pack, legal:legalPayload() }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : TEXT[currentLang].topupErr; return; }
+    if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : T[currentLang].topupErr; return; }
     window.location.href = data.url;
-  } catch { msg.textContent = TEXT[currentLang].topupErr; }
+  } catch { msg.textContent = T[currentLang].topupErr; }
   finally { msg.textContent = ""; updateEnabled(); }
 }
 
@@ -582,22 +574,29 @@ const PLAN_LABELS = { start: "Start", plus: "Plus", premium: "Premium" };
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     loginHint.style.display = "block";
-  } else {
-    // Show current plan
-    try {
-      const { data: sub } = await supabase
-        .from("user_subscriptions")
-        .select("plan, is_active, status")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      const active = !!(sub?.is_active || sub?.status === "active");
-      const planName = active ? (PLAN_LABELS[sub?.plan] || sub?.plan || "Free") : "Free";
-      const banner = document.getElementById("currentPlan");
-      const t = TEXT[currentLang];
-      banner.innerHTML = t.currentPlan.replace("%PLAN%", planName);
-      banner.style.display = "block";
-    } catch {}
+    return;
   }
+  try {
+    const { data: sub } = await supabase
+      .from("user_subscriptions")
+      .select("plan, is_active, status")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    const active = !!(sub?.is_active || sub?.status === "active");
+    const planKey = active ? (sub?.plan || "free") : "free";
+    const planName = PLAN_LABELS[planKey] || "Free";
+    const t = T[currentLang];
+
+    // Show banner
+    const banner = document.getElementById("currentPlan");
+    banner.innerHTML = t.currentPlan.replace("%PLAN%", planName);
+    banner.style.display = "block";
+
+    // Mark current plan
+    if (planKey === "free") {
+      document.getElementById("tFreeCurrent").textContent = t.freeCurrent;
+    }
+  } catch {}
 })();
 </script>
 
