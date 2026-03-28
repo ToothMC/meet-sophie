@@ -602,7 +602,11 @@ function updateDeleteBar() {
 async function deleteSelectedReports() {
   const checked = document.querySelectorAll(".report-cb:checked");
   if (!checked.length) return;
-  if (!confirm(`${checked.length} Report(s) wirklich löschen?`)) return;
+  const meetingCount = [...checked].filter(cb => cb.dataset.source === "meeting").length;
+  const msg = meetingCount > 0
+    ? `${checked.length} Report(s) löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt.`
+    : `${checked.length} Report(s) wirklich löschen?`;
+  if (!confirm(msg)) return;
 
   const btn = document.getElementById("deleteSelectedBtn");
   btn.disabled = true;
@@ -762,9 +766,13 @@ window.deleteTemplate = deleteTemplate;
 
 async function deleteReport() {
   if (!_reportDetailData?.session_id) return;
-  if (!confirm("Report wirklich löschen? Das kann nicht rückgängig gemacht werden.")) return;
+  const source = _reportDetailData.source || 'talk';
+  const msg = source === 'meeting'
+    ? "Report löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt."
+    : "Report wirklich löschen?";
+  if (!confirm(msg)) return;
   try {
-    await api("delete-report", { session_id: _reportDetailData.session_id }, "POST");
+    await api("delete-report", { session_id: _reportDetailData.session_id, source }, "POST");
     closeReportDetail();
     loadReports();
   } catch (e) { alert("Fehler: " + e?.message); }

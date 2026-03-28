@@ -310,22 +310,13 @@ export default async function handler(req, res) {
     if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
 
     if (source === 'meeting') {
-      // 1. Remove child references (other meetings pointing to this as parent)
-      await supabase.from('meetings').update({ parent_meeting_id: null }).eq('parent_meeting_id', session_id);
-      // 2. Delete dependent rows (FK constraints)
+      // Only delete report/summary — keep meeting structure intact
       await supabase.from('meeting_summary').delete().eq('meeting_id', session_id);
-      await supabase.from('meeting_notes').delete().eq('meeting_id', session_id);
-      await supabase.from('meeting_context').delete().eq('meeting_id', session_id);
-      // 3. Clean up linked talk session if meeting has one
+      // Clean up linked report session if exists
       const { data: mtg } = await supabase.from('meetings').select('session_id').eq('id', session_id).maybeSingle();
       if (mtg?.session_id) {
-        // Null the FK first, then delete
-        await supabase.from('meetings').update({ session_id: null }).eq('id', session_id);
         await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
-        await supabase.from('user_sessions').delete().eq('id', mtg.session_id);
       }
-      // 4. Delete meeting itself
-      await supabase.from('meetings').delete().eq('id', session_id).eq('user_id', user.id);
     } else {
       // Delete talk report
       await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
