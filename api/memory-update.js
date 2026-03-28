@@ -449,14 +449,30 @@ ${transcriptText}
 // but with pitch-specific scorecard in key_insights + action_plan
 // ---------------------------------------------------------------------------
 async function generateSalesPitchReport({ transcriptText, openAiKey, model }) {
-  const system = `You analyze a Sales Pitch training session and produce a structured Sales Pitch Report.
+  const system = `You analyze a Sales Pitch training session and produce a structured Sales Pitch Report v2.
 The transcript contains a pitch practice: the user pitched, Sophie asked critical questions, and gave verbal feedback.
 
 Extract ALL evaluation data from the conversation. Score each criterion yourself based on the pitch quality you observe.
 
+PITCH TYPE CLASSIFICATION — derive from the 3 setup answers (what, who, goal):
+- "sales": customer, buying, ROI, pain point
+- "investor": investor, funding, market, traction
+- "keynote": audience, stage, conference, talk
+- "internal": team, management, budget, approval
+- "self": job interview, jury, application, self-presentation
+- "other": none of the above
+
+SCORING — 13 criteria in 2 groups:
+CONTENT (60%): clarity (12%), problem_sharpness (10%), value_proposition (12%), structure (8%), differentiation (8%), credibility (5%), audience_fit (5%)
+DELIVERY (40%): opening (8%), closing (7%), voice_rhythm (8%), rhetoric_language (7%), authenticity (5%), persuasiveness (5%)
+
+Overall score = weighted average (score × weight per criterion, sum / 100).
+
+CONFIDENCE: If text-only (no audio), mark voice_rhythm and authenticity as "low" confidence, rhetoric_language as "medium". Otherwise all "high".
+
 IMPORTANT: Write the ENTIRE output in the SAME language as the transcript.
 This includes ALL fields: overall_verdict, notes, strongest_elements, main_weaknesses, likely_audience_questions, improvement_priorities, recommended_next_attempt.
-Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Resistance, Persuasiveness) — but the "note" field for each criterion must be in the transcript language.`;
+Criterion names in the scorecard MUST stay in English — but the "note" field for each criterion must be in the transcript language.`;
 
   const userMsg = `Transcript:\n${transcriptText}`;
 
@@ -466,11 +482,40 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
     properties: {
       session_title: { type: "string" },
       short_summary: { type: "string" },
+      pitch_type: { type: "string" },
       audience_type: { type: "string" },
       pitch_goal: { type: "string" },
+      goal_type: { type: "string" },
       pitch_topic: { type: "string" },
       overall_verdict: { type: "string" },
-      scorecard: {
+      scores_content: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          clarity: { type: "number" },
+          problem_sharpness: { type: "number" },
+          value_proposition: { type: "number" },
+          structure: { type: "number" },
+          differentiation: { type: "number" },
+          credibility: { type: "number" },
+          audience_fit: { type: "number" },
+        },
+        required: ["clarity", "problem_sharpness", "value_proposition", "structure", "differentiation", "credibility", "audience_fit"],
+      },
+      scores_delivery: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          opening: { type: "number" },
+          closing: { type: "number" },
+          voice_rhythm: { type: "number" },
+          rhetoric_language: { type: "number" },
+          authenticity: { type: "number" },
+          persuasiveness: { type: "number" },
+        },
+        required: ["opening", "closing", "voice_rhythm", "rhetoric_language", "authenticity", "persuasiveness"],
+      },
+      scorecard_notes: {
         type: "array",
         items: {
           type: "object",
@@ -479,11 +524,15 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
             criterion: { type: "string" },
             score: { type: "number" },
             note: { type: "string" },
+            confidence: { type: "string" },
+            group: { type: "string" },
           },
-          required: ["criterion", "score", "note"],
+          required: ["criterion", "score", "note", "confidence", "group"],
         },
       },
       overall_score: { type: "number" },
+      content_score: { type: "number" },
+      delivery_score: { type: "number" },
       confidence_level: { type: "string" },
       strongest_elements: { type: "array", items: { type: "string" } },
       main_weaknesses: { type: "array", items: { type: "string" } },
@@ -492,8 +541,9 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
       recommended_next_attempt: { type: "string" },
     },
     required: [
-      "session_title", "short_summary", "audience_type", "pitch_goal", "pitch_topic",
-      "overall_verdict", "scorecard", "overall_score", "confidence_level",
+      "session_title", "short_summary", "pitch_type", "audience_type", "pitch_goal", "goal_type", "pitch_topic",
+      "overall_verdict", "scores_content", "scores_delivery", "scorecard_notes",
+      "overall_score", "content_score", "delivery_score", "confidence_level",
       "strongest_elements", "main_weaknesses", "likely_audience_questions",
       "improvement_priorities", "recommended_next_attempt"
     ],
@@ -542,10 +592,11 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
     throw new Error("Bad JSON from sales pitch report model");
   }
 
-  // Map scorecard to key_insights format for the report UI
-  const scorecardInsights = (parsed.scorecard || []).map((item) => ({
+  // Map scorecard_notes to key_insights format for the report UI
+  const scorecardInsights = (parsed.scorecard_notes || []).map((item) => ({
     type: "scorecard",
-    text: `${item.criterion}: ${item.score}/5 — ${item.note}`,
+    text: `${item.criterion}: ${item.score}/5${item.confidence !== "high" ? ` (${item.confidence} confidence)` : ""} — ${item.note}`,
+    group: item.group,
   }));
 
   const strengthInsights = (parsed.strongest_elements || []).map((s) => ({
@@ -592,14 +643,20 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
     ],
     action_plan: actionPlan,
     open_questions: parsed.likely_audience_questions || [],
-    // Extra pitch-specific data for the frontend
+    // Extra pitch-specific data for the frontend (v2)
     sales_pitch_report: {
+      pitch_type: parsed.pitch_type || "other",
       audience_type: parsed.audience_type || "",
       pitch_goal: parsed.pitch_goal || "",
+      goal_type: parsed.goal_type || "",
       pitch_topic: parsed.pitch_topic || "",
       overall_verdict: parsed.overall_verdict || "",
-      scorecard: parsed.scorecard || [],
+      scores_content: parsed.scores_content || {},
+      scores_delivery: parsed.scores_delivery || {},
+      scorecard_notes: parsed.scorecard_notes || [],
       overall_score: parsed.overall_score || 0,
+      content_score: parsed.content_score || 0,
+      delivery_score: parsed.delivery_score || 0,
       confidence_level: parsed.confidence_level || "low",
       strongest_elements: parsed.strongest_elements || [],
       main_weaknesses: parsed.main_weaknesses || [],

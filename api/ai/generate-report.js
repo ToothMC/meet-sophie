@@ -559,6 +559,79 @@ ${analysesBlock}`;
 
     await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
 
+    // ── Sales Pitch Memory: extract structured scores and save to sophie_pitch_memory ──
+    if (session_mode === 'salespitch' && reportHtml.length > 100) {
+      try {
+        const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+        if (sess?.user_id) {
+          const extractAdapter = getAdapter('openai');
+          const extractResp = await extractAdapter.complete({
+            messages: [{ role: 'user', content: `Extract structured pitch evaluation data from this Sales Pitch report HTML.
+
+HTML REPORT:
+${reportHtml.slice(0, 10000)}
+
+Return ONLY JSON in this exact format:
+{
+  "pitch_topic": "string",
+  "pitch_type": "sales|investor|keynote|internal|self|other",
+  "audience_type": "string",
+  "goal_type": "buy|invest|approve|trust|understand|remember|decide",
+  "scores_content": {"clarity":0,"problem_sharpness":0,"value_proposition":0,"structure":0,"differentiation":0,"credibility":0,"audience_fit":0},
+  "scores_delivery": {"opening":0,"closing":0,"voice_rhythm":0,"rhetoric_language":0,"authenticity":0,"persuasiveness":0},
+  "overall_score": 0.0,
+  "confidence_level": "low|medium|high",
+  "strengths": ["..."],
+  "weaknesses": ["..."]
+}
+
+Rules:
+- Scores are 1-5 (float). Extract from the report scorecard.
+- overall_score is the weighted average shown in the report.
+- If a field is not in the report, use reasonable defaults.
+- pitch_type: derive from context (sales/investor/keynote/internal/self/other).
+- goal_type: derive from pitch goal (buy/invest/approve/trust/understand/remember/decide).` }],
+            model: 'gpt-4o-mini', maxTokens: 800, temperature: 0.1,
+          });
+          const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
+          const pitchData = JSON.parse(jsonText);
+
+          // Check for existing pitch with same topic for version chaining
+          const { data: prevPitch } = await supabase.from('sophie_pitch_memory')
+            .select('id, version')
+            .eq('user_id', sess.user_id)
+            .eq('topic', pitchData.pitch_topic || reportTitle)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const pitchRow = {
+            user_id: sess.user_id,
+            conversation_id: session_id,
+            topic: pitchData.pitch_topic || reportTitle,
+            target_audience: pitchData.audience_type || null,
+            pitch_type: pitchData.pitch_type || 'other',
+            goal_type: pitchData.goal_type || null,
+            score: Math.round((pitchData.overall_score || 0) * 20), // 1-5 → 0-100
+            scores_content: pitchData.scores_content || null,
+            scores_delivery: pitchData.scores_delivery || null,
+            strengths: pitchData.strengths || [],
+            weaknesses: pitchData.weaknesses || [],
+            recurring_errors: [],
+            critical_objections: [],
+            version: prevPitch ? (prevPitch.version || 1) + 1 : 1,
+            parent_pitch_id: prevPitch?.id || null,
+          };
+
+          const { error: pitchErr } = await supabase.from('sophie_pitch_memory').insert(pitchRow);
+          if (pitchErr) console.error(`[report] pitch memory save failed:`, pitchErr.message);
+          else console.log(`[report] Pitch memory saved: topic="${pitchRow.topic}", type=${pitchRow.pitch_type}, score=${pitchRow.score}, v${pitchRow.version}`);
+        }
+      } catch (pitchMemErr) {
+        console.error(`[report] pitch memory extraction failed (non-critical):`, pitchMemErr?.message);
+      }
+    }
+
     console.log(`[report] Done: ${session_id} — ${reportHtml.length} chars HTML from ${analyses.length} providers`);
     return res.status(200).json({ ok: true, status: 'done' });
 

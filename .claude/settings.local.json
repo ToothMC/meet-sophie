@@ -127,7 +127,17 @@
       "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=Februar%202026&srlimit=3&format=json&origin=*\")",
       "Bash(grep -l \"user_subscriptions\\\\|user_profile\\\\|subscription\\\\|plan\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -n \"checkDailyBudget\\\\|AI_COST_CAP\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/ai/*.js)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(grep -r \"9.90\\\\|19.90\\\\|39.90\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.jsx)",
+      "Bash(npm list:*)",
+      "Bash(brew list:*)",
+      "Bash(python3 -c \"from PIL import Image; print\\(''''Pillow available''''\\)\")",
+      "Bash(ls -la ~/Downloads/*.png ~/Downloads/*.jpg ~/Downloads/*.jpeg)",
+      "Bash(ls -lt ~/Downloads/*.png ~/Downloads/*.jpg)",
+      "Bash(ls -lt ~/Downloads/*.png ~/Downloads/*.jpg ~/Downloads/*.webp)",
+      "Bash(find ~ -name *sophie*icon*1024* -o -name '*sophie icon 1024*')",
+      "Bash(python3:*)",
+      "Bash(grep -r \"pitch\\\\|PitchMemory\\\\|PitchScorecard\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase --include=*.sql)"
     ]
   },
   "hooks": {

@@ -120,11 +120,13 @@ function mapBrainstormToCard(row: any): HistoryCard {
 // ── Mapper: PitchMemory -> HistoryCard ──────────────────────
 
 function mapPitchToCard(row: any): HistoryCard {
+  const scoreDisplay = row.score != null ? (row.score / 20).toFixed(1) : null
+  const pitchType = row.pitch_type ? ` · ${row.pitch_type}` : ''
   return {
     id:             row.id,
     type:           HistoryCardType.PITCH_SESSION,
     title:          row.topic,
-    subtitle:       row.score != null ? `Score: ${row.score}/100 (v${row.version})` : null,
+    subtitle:       scoreDisplay ? `${scoreDisplay}/5.0 (v${row.version})${pitchType}` : null,
     mode:           SophieMode.SALES_PITCH,
     isOpen:         (row.weaknesses?.length ?? 0) > 0,
     relevanceScore: row.score != null ? row.score / 100 : 0.5,
