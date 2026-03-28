@@ -543,9 +543,9 @@ async function loadUsage() {
     const remaining = d.remainingTokens || 0;
     const total = d.totalTokens || 0;
 
-    // Estimate breakdown: ~1 token = ~1 min voice, ~1 token = ~3 chat messages
-    const estVoiceMin = remaining;
-    const estChatMsgs = remaining * 3;
+    // Estimate breakdown: 10 tokens = 1 min voice, 1 token = 1 chat message
+    const estVoiceMin = Math.floor(remaining / 10);
+    const estChatMsgs = remaining;
 
     // Subtitle update
     sub.textContent = remaining + " Tokens \u00fcbrig";
