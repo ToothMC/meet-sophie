@@ -566,7 +566,9 @@ async function loadUsage() {
           <div class="usage-cost-bar" style="width:${costPct}%"></div>
         </div>
       </div>
-      ${lowBalance ? '<div style="margin-top:12px"><a href="/pricing" class="btn btn-secondary btn-sm">Tokens kaufen</a></div>' : ''}
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <a href="/pricing" class="btn btn-secondary btn-sm">${lowBalance ? 'Tokens auftanken' : 'Pläne & Tokens'}</a>
+      </div>
     `;
   } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
 }
