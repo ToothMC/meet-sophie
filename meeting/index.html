@@ -42,15 +42,10 @@ body{
 }
 .topbar .back:hover{background:rgba(0,0,0,.08);color:#2a2420}
 .topbar .title{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#2a2420}
-.phase-badge{
-  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  padding:4px 10px;border-radius:12px;white-space:nowrap;
-}
-.phase-badge[data-phase="prep"]{background:rgba(63,140,255,.12);color:#3b82f6}
-.phase-badge[data-phase="live"]{background:rgba(255,70,70,.12);color:#ef4444;animation:pulse-live 2s infinite}
-.phase-badge[data-phase="post"]{background:rgba(139,92,246,.12);color:#8b5cf6}
-.phase-badge[data-phase="closed"]{background:rgba(0,0,0,.06);color:#999}
-@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.6}}
+/* Phase badge, participants bar, recording status — hidden (clean UI) */
+.phase-badge{display:none!important}
+.participants-bar{display:none!important}
+#recordingStatus{display:none!important}
 
 /* ---- SETUP SCREEN ---- */
 .setup-screen{
@@ -1043,11 +1038,8 @@ function appendMsg(role, content) {
 }
 
 function appendSystemMsg(text) {
-  const div = document.createElement("div");
-  div.className = "msg system";
-  div.textContent = text;
-  chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
+  // System messages are silent — log only, no UI
+  console.log("[meeting-system]", text);
 }
 
 function showTyping() {
