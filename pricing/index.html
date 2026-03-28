@@ -49,10 +49,11 @@ body{
 }
 .plan.current .current-badge{display:block;}
 
-/* Best value = small star in top-right corner */
+/* Best value = star + text in top-right corner */
 .best-star{
-  position:absolute;top:6px;right:6px;
-  font-size:14px;line-height:1;display:none;
+  position:absolute;top:6px;right:8px;
+  font-size:9px;font-weight:700;color:#8a7050;
+  display:none;
 }
 .plan.show-best .best-star{display:block;}
 /* Hide best star when it's the current plan */
@@ -147,7 +148,7 @@ body{
 
     <div class="plan show-best" id="planPlus">
       <div class="current-badge" id="badgePlus"></div>
-      <div class="best-star">&#9733;</div>
+      <div class="best-star" id="tBestStar"></div>
       <div class="plan-name">Plus</div>
       <div class="plan-price">&euro;19,90</div>
       <div class="plan-per" id="tPlusPer"></div>
@@ -210,6 +211,7 @@ const L={
     h1:"Mach weiter mit Sophie.",
     lead:"Wähle deinen Plan:",
     freeTokens:"50 Tokens zum Start",
+    bestStar:"★ Beste Wahl",
     startPer:"/ Monat",plusPer:"/ Monat",premiumPer:"/ Monat",
     selectPlan:"Plan wählen",
     topupLabel:"Ohne Abo · nutzen wann du willst",tuBtn:"Auftanken",
@@ -224,6 +226,7 @@ const L={
     h1:"Keep going with Sophie.",
     lead:"Choose your plan:",
     freeTokens:"50 tokens to start",
+    bestStar:"★ Best Value",
     startPer:"/ month",plusPer:"/ month",premiumPer:"/ month",
     selectPlan:"Select Plan",
     topupLabel:"No subscription · use whenever you want",tuBtn:"Refill",
@@ -251,6 +254,7 @@ function setLang(l){
   const t=L[l];
   $("tH1").textContent=t.h1;$("tLead").textContent=t.lead;
   $("tFreeTokens").textContent=t.freeTokens;
+  $("tBestStar").textContent=t.bestStar;
   $("tStartPer").textContent=t.startPer;
   $("tPlusPer").textContent=t.plusPer;
   $("tPremiumPer").textContent=t.premiumPer;
