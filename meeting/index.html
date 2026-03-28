@@ -1455,9 +1455,14 @@ function showMeetingReport(html) {
   // Helper: filter report sections based on toggle options
   function getExportHtml() {
     let out = html;
+    // Transcript: default hidden (display:none in CSS), remove entirely if toggle off, show if on
     if (!$("optTranscript")?.checked) {
       out = out.replace(/<div\s+data-section="full-transcript"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
+    } else {
+      // Make transcript visible for export
+      out = out.replace(/(<div\s+data-section="full-transcript"[^>]*style="[^"]*?)display:\s*none;?/i, '$1');
     }
+    // Lean Check: default visible, strip if toggle off
     if (!$("optLeanCheck")?.checked) {
       out = out.replace(/<div\s+data-section="lean-check"[^>]*>[\s\S]*?<\/div>\s*(?=<\/div>|<div|$)/i, '');
     }

@@ -86,8 +86,20 @@ REGELN:
 7. Ort: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
 8. NIEMALS erfinden: keine Namen, Uhrzeiten, Orte, Rollen, Fristen
 9. Leere Sektionen (keine Beschlüsse, keine Action Items) → KOMPLETT ENTFERNEN
-10. KEIN Gesprächsprotokoll/Transcript im Report. Das Protokoll ist eine Zusammenfassung, kein Wortlaut-Mitschnitt.
-11. KEIN Lean Check im Default-Report. Lean-Analyse wird separat intern gespeichert.
+10. LEAN CHECK — IMMER als letzte inhaltliche Sektion generieren, eingewickelt in <div data-section="lean-check">:
+    Analysiere das Gespräch und erstelle eine Lean-Analyse mit diesen Kategorien:
+    - FAKTEN: Was wurde als bewiesene/validierte Tatsache genannt?
+    - ANNAHMEN: Was wurde als Fakt behandelt, ist aber eigentlich eine ungeprüfte Annahme?
+    - HYPOTHESEN: Welche "Wenn-Dann" Hypothesen wurden aufgestellt?
+    - TESTS: Welche Tests/Experimente wurden beschlossen um Hypothesen zu prüfen?
+    - SIGNAL: Was wurde als Kriterium definiert um weiterzumachen / zu stoppen / anzupassen?
+    - NUR Kategorien einbauen die wirklich Inhalte haben. Leere Kategorien weglassen.
+    - Wenn das Meeting keine relevanten Lean-Aspekte hat (z.B. reines Status-Update): Lean Check KOMPLETT weglassen.
+    - Design: dezente Box mit border-left 3px solid #c4a882, Hintergrund #faf9f6, professionell.
+    - Keine Emojis in der Lean-Analyse.
+11. GESPRÄCHSPROTOKOLL — IMMER als allerletzte Sektion generieren, eingewickelt in <div data-section="full-transcript">:
+    - Wörtliches Transcript aus dem Input, formatiert als Fließtext.
+    - CSS: display:none als Default (wird vom Frontend bei Bedarf eingeblendet).
 12. Das HTML MUSS einen <style>-Block mit @media print CSS enthalten für DIN A4 PDF-Export:
     - @page { size: A4; margin: 20mm 18mm; }
     - Sektionen: page-break-inside: avoid
