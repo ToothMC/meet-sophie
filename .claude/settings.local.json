@@ -137,7 +137,11 @@
       "Bash(ls -lt ~/Downloads/*.png ~/Downloads/*.jpg ~/Downloads/*.webp)",
       "Bash(find ~ -name *sophie*icon*1024* -o -name '*sophie icon 1024*')",
       "Bash(python3:*)",
-      "Bash(grep -r \"pitch\\\\|PitchMemory\\\\|PitchScorecard\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase --include=*.sql)"
+      "Bash(grep -r \"pitch\\\\|PitchMemory\\\\|PitchScorecard\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase --include=*.sql)",
+      "Bash(grep -l \"conversation_outputs\\\\|user_sessions\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"report_style\\\\|report_html\\\\|report_status\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -l \"ALTER TABLE.*conversation_outputs\\\\|ADD.*report_style\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(cat /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {

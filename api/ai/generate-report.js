@@ -407,6 +407,7 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
           report_progress: 100,
           title: reportTitle,
           report_providers: ['salespitch-direct'],
+          report_style: 'salespitch',
           report_status_detail: null,
         }).eq('session_id', session_id);
         if (saveErr) console.error(`[report] salespitch DB save failed:`, saveErr.message);
