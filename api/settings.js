@@ -300,5 +300,25 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── POST: Delete report ──
+  if (action === 'delete-report' && req.method === 'POST') {
+    const { session_id, source } = req.body || {};
+    if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
+
+    if (source === 'meeting') {
+      // Delete meeting summary + meeting itself
+      await supabase.from('meeting_summary').delete().eq('meeting_id', session_id);
+      await supabase.from('meeting_notes').delete().eq('meeting_id', session_id);
+      await supabase.from('meeting_context').delete().eq('meeting_id', session_id);
+      await supabase.from('meetings').delete().eq('id', session_id).eq('user_id', user.id);
+    } else {
+      // Delete talk report
+      await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
+      await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);
+    }
+
+    return res.status(200).json({ ok: true });
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }

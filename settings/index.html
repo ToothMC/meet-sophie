@@ -329,6 +329,10 @@ main{max-width:520px;margin:0 auto;padding:12px}
       <span class="s-sub">Deine bisherigen Reports</span>
     </div>
     <div class="section-body">
+      <div id="deleteSelectedBar" style="display:none;padding:8px 0;margin-bottom:8px;display:none">
+        <button id="deleteSelectedBtn" onclick="deleteSelectedReports()" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🗑 Ausgewählte löschen</button>
+        <span id="deleteSelectedCount" style="font-size:12px;color:#a09080;margin-left:8px"></span>
+      </div>
       <div id="reportsList"><p class="msg">Laden...</p></div>
       <!-- Report detail modal -->
       <div id="reportDetailOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.85);overflow-y:auto;padding:20px">
@@ -558,18 +562,16 @@ async function loadReports() {
       html += reports.slice(0, 10).map(r => {
         const date = new Date(r.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
         const source = r.source || 'talk';
-        // Clean title: remove _XX suffix, add date
         let displayTitle = (r.title || 'Report').replace(/_\d+$/, '');
         const d = new Date(r.created_at);
         const dateShort = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.`;
         displayTitle = `${displayTitle} (${dateShort})`;
-        return `<div class="card" style="cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:600;color:#2a2420">${displayTitle}</div>
-            </div>
-            <div style="font-size:11px;color:#a09080">${date}</div>
+        return `<div class="card" style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
+          <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+            <div style="font-size:13px;font-weight:600;color:#2a2420">${displayTitle}</div>
           </div>
+          <div style="font-size:11px;color:#a09080">${date}</div>
         </div>`;
       }).join('');
       if (reports.length > 10) html += `<div style="font-size:11px;color:#a09080;text-align:center;padding:4px">+ ${reports.length - 10} weitere</div>`;
@@ -577,6 +579,44 @@ async function loadReports() {
     }
     list.innerHTML = html;
   } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+function updateDeleteBar() {
+  const checked = document.querySelectorAll(".report-cb:checked");
+  const bar = document.getElementById("deleteSelectedBar");
+  const count = document.getElementById("deleteSelectedCount");
+  if (checked.length > 0) {
+    bar.style.display = "flex";
+    bar.style.alignItems = "center";
+    count.textContent = checked.length + " ausgewählt";
+  } else {
+    bar.style.display = "none";
+  }
+}
+
+async function deleteSelectedReports() {
+  const checked = document.querySelectorAll(".report-cb:checked");
+  if (!checked.length) return;
+  if (!confirm(`${checked.length} Report(s) wirklich löschen?`)) return;
+
+  const btn = document.getElementById("deleteSelectedBtn");
+  btn.disabled = true;
+  btn.textContent = "Lösche...";
+
+  for (const cb of checked) {
+    const id = cb.dataset.id;
+    const source = cb.dataset.source;
+    try {
+      await api("delete-report", { session_id: id, source }, "POST");
+    } catch (e) {
+      console.error("Delete failed:", id, e);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = "🗑 Ausgewählte löschen";
+  document.getElementById("deleteSelectedBar").style.display = "none";
+  await loadReports();
 }
 
 async function openReportDetail(sessionId, source = 'talk') {
