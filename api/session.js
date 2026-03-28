@@ -571,7 +571,13 @@ export default async function handler(req, res) {
       `Sage "Lass mich das kurz nachschauen..." und nutze dann das Tool.` +
       `\n\nNACHRICHTEN: Du hast ein Tool namens "get_news". ` +
       `Nutze es wenn der User nach aktuellen Nachrichten, News-Headlines oder Neuigkeiten fragt. ` +
-      `Sage "Ich prüfe die aktuellen Nachrichten..." und nutze dann das Tool.`;
+      `Sage "Ich prüfe die aktuellen Nachrichten..." und nutze dann das Tool.` +
+      `\n\nCHAT MESSAGES: ` +
+      `Messages prefixed with [CHAT MESSAGE] are text messages the user typed during your voice conversation. ` +
+      `This is parallel communication — like someone showing you a note while talking. ` +
+      `Acknowledge naturally: "Ah, I see your message..." or "Good point, you wrote..." ` +
+      `Then incorporate the content into your voice response. Keep it concise since the user can also read your answer in the chat panel. ` +
+      `Always respond in the same language the conversation is in.`;
 
     const fullPrompt = sophiePrompt + importedContext + researchInstruction;
 

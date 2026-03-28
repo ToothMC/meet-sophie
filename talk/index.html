@@ -1316,6 +1316,69 @@ const downloadReportBtn = document.getElementById("downloadReportBtn");
 const saveTemplateBtn = document.getElementById("saveTemplateBtn");
 const regenerateReportBtn = document.getElementById("regenerateReportBtn");
 
+// ── Voice Chat (text during voice session) ──
+const voiceChatEl = document.getElementById("voiceChat");
+const voiceChatMessages = document.getElementById("voiceChatMessages");
+const voiceChatInput = document.getElementById("voiceChatInput");
+const voiceChatSendBtn = document.getElementById("voiceChatSend");
+
+function showVoiceChat(show) {
+  if (!voiceChatEl) return;
+  if (show) {
+    voiceChatEl.style.display = "flex";
+    voiceChatInput.disabled = false;
+    voiceChatSendBtn.disabled = false;
+  } else {
+    voiceChatEl.style.display = "none";
+    voiceChatMessages.innerHTML = "";
+    voiceChatInput.value = "";
+  }
+}
+
+function appendVoiceChatBubble(role, text) {
+  if (!voiceChatMessages) return;
+  const el = document.createElement("div");
+  el.className = "vc-msg " + (role === "user" ? "vc-user" : "vc-sophie");
+  el.textContent = text;
+  voiceChatMessages.appendChild(el);
+  voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
+}
+
+function sendVoiceChatMessage() {
+  const text = (voiceChatInput.value || "").trim();
+  if (!text || !dc || dc.readyState !== "open") return;
+
+  // Show user bubble
+  appendVoiceChatBubble("user", text);
+
+  // Track in convoLog
+  convoLog.push({ role: "user", text: "[chat] " + text });
+
+  // Send to Realtime API via DataChannel
+  dcSend({
+    type: "conversation.item.create",
+    item: {
+      type: "message",
+      role: "user",
+      content: [{ type: "input_text", text: "[CHAT MESSAGE] " + text }]
+    }
+  });
+
+  // Trigger response — OpenAI handles parallel queuing
+  dcSend({ type: "response.create" });
+
+  // Clear input
+  voiceChatInput.value = "";
+  voiceChatInput.focus();
+}
+
+voiceChatSendBtn?.addEventListener("click", sendVoiceChatMessage);
+voiceChatInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendVoiceChatMessage();
+  }
+});
 
 // Style-Switcher: regenerate report in different style
 document.getElementById("reportStyleBar")?.addEventListener("click", async (e) => {
@@ -3099,6 +3162,9 @@ async function maybeTriggerSoftEnding(){
     stopCountdown();
     muteMic();
     setSoftHint("");
+    // Disable voice chat input during closing
+    if (voiceChatInput) voiceChatInput.disabled = true;
+    if (voiceChatSendBtn) voiceChatSendBtn.disabled = true;
     console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
 
     if (sophieIsResponding || userIsSpeaking) {
@@ -3520,6 +3586,10 @@ function attachChannel(ch) {
         if (full) {
           partialAssistant = full;
           if (closingResponseActive) closingHasSpoken = true;
+          // Show Sophie's voice response in chat panel
+          if (voiceChatEl && voiceChatEl.style.display !== "none") {
+            appendVoiceChatBubble("sophie", full);
+          }
         }
         return;
       }
@@ -3942,6 +4012,7 @@ async function startVoice(){
 
     showBackground(false);
     showLiveBadge(false);
+    showVoiceChat(false);
 
     startBtn.disabled = false;
     startBtn.textContent = t("start");
