@@ -79,14 +79,13 @@ body{
 }
 .type-pill:hover{border-color:#c4a882;color:#2a2420}
 .type-pill.active{background:#2a2420;color:#fff;border-color:#2a2420}
-.parent-pill{
-  padding:10px 14px;font-size:13px;
+#parentMeetingSelect{
+  width:100%;padding:12px 14px;font-size:14px;
   border:1px solid #ede8e2;border-radius:10px;
   background:#fff;color:#2a2420;cursor:pointer;
-  font-family:inherit;text-align:left;transition:all .15s;
+  font-family:inherit;appearance:auto;
+  -webkit-appearance:menulist;
 }
-.parent-pill:hover{border-color:#c4a882}
-.parent-pill.active{border-color:#2a2420;background:#faf5f0}
 .setup-card .btn-primary{
   display:block;width:100%;margin-top:24px;padding:14px;font-size:16px;font-weight:700;
   border:none;border-radius:12px;cursor:pointer;
@@ -353,9 +352,9 @@ body{
     <input type="text" id="meetingTitle" placeholder="e.g. Q2 Planning" />
 
     <label id="lblParent">Previous Meeting (optional)</label>
-    <div id="parentMeetingList" style="display:flex;flex-direction:column;gap:6px">
-      <div style="font-size:13px;color:#a09080;padding:8px 0">Laden...</div>
-    </div>
+    <select id="parentMeetingSelect">
+      <option value="">—</option>
+    </select>
 
     <button class="btn-primary" id="createBtn">Start Preparation</button>
   </div>
@@ -743,36 +742,32 @@ async function showSetup() {
     selectedMeetingType = pill.dataset.value;
   };
 
-  // Load past meetings for parent selector as pill buttons
-  const parentList = $("parentMeetingList");
+  // Load past meetings for parent selector as dropdown
+  const parentSelect = $("parentMeetingSelect");
   try {
     const data = await api("list", null, "GET");
     const meetings = (data.meetings || []).filter(m => m.phase === "closed" || m.phase === "post");
-    if (!meetings.length) {
-      parentList.innerHTML = `<div style="font-size:12px;color:#a09080;padding:4px 0">${lang === "de" ? "Noch keine abgeschlossenen Meetings" : "No completed meetings yet"}</div>`;
-    } else {
-      parentList.innerHTML = meetings.slice(0, 8).map(m => {
+    if (meetings.length) {
+      for (const m of meetings.slice(0, 15)) {
         const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
-        return `<button type="button" class="parent-pill" data-id="${m.id}" data-title="${(m.title || m.meeting_type).replace(/"/g, '&quot;')}">${m.title || m.meeting_type} <span style="color:#a09080;font-size:11px">${date}</span></button>`;
-      }).join("");
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = `${m.title || m.meeting_type} — ${date}`;
+        opt.dataset.title = m.title || m.meeting_type;
+        parentSelect.appendChild(opt);
+      }
     }
-  } catch {
-    parentList.innerHTML = `<div style="font-size:12px;color:#a09080">—</div>`;
-  }
+  } catch {}
 
-  // Parent pill click → select + prefill title
-  parentList.onclick = (e) => {
-    const pill = e.target.closest(".parent-pill");
-    if (!pill) return;
-    const wasActive = pill.classList.contains("active");
-    parentList.querySelectorAll(".parent-pill").forEach(p => p.classList.remove("active"));
-    if (wasActive) {
+  // Parent select change → prefill title
+  parentSelect.onchange = () => {
+    const opt = parentSelect.selectedOptions[0];
+    if (opt?.value) {
+      selectedParentId = opt.value;
+      $("meetingTitle").value = opt.dataset.title || "";
+    } else {
       selectedParentId = null;
       $("meetingTitle").value = "";
-    } else {
-      pill.classList.add("active");
-      selectedParentId = pill.dataset.id;
-      $("meetingTitle").value = pill.dataset.title;
     }
   };
 }
@@ -859,15 +854,14 @@ async function loadMeeting(id) {
       renderSummary(data.summary);
     }
 
-    // Auto-send opener in prep phase
+    // Auto-send opener in prep phase — short, no AI call needed
     if (meetingData.phase === "prep" && notes.length === 0) {
-      await sendMessage(lang === "de"
-        ? "Ich bereite mich auf ein Meeting vor. Hilf mir bitte."
+      const openerText = lang === "de"
+        ? "Wenn du Hilfe brauchst, sag Bescheid. Ich bin da!"
         : lang === "fr"
-        ? "Je me pr\u00e9pare pour une r\u00e9union. Aide-moi s'il te pla\u00eet."
-        : "I'm preparing for a meeting. Please help me.",
-        true
-      );
+        ? "Si tu as besoin d'aide, dis-le moi. Je suis là !"
+        : "If you need help, just ask. I'm here!";
+      appendMsg("assistant", openerText);
     }
   } catch (e) {
     chatArea.innerHTML = `<div class="msg system">Error loading meeting: ${e.message}</div>`;
@@ -974,6 +968,20 @@ async function transitionPhase(newPhase) {
     };
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
+
+    // When going LIVE: show agenda points or parent summary as Sophie message
+    if (newPhase === "live") {
+      const agenda = $("ctxAgenda")?.value?.trim();
+      const goal = $("ctxGoal")?.value?.trim();
+      let liveOpener = "";
+      if (agenda) {
+        liveOpener = agenda;
+        if (goal) liveOpener += "\n\n" + (lang === "de" ? "Ziel: " : "Goal: ") + goal;
+      } else if (goal) {
+        liveOpener = (lang === "de" ? "Ziel: " : "Goal: ") + goal;
+      }
+      if (liveOpener) appendMsg("assistant", liveOpener);
+    }
 
     // Disconnect Sophie voice + stop audio recording when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
