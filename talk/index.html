@@ -3985,6 +3985,7 @@ async function stopVoice(triggeredByLimit = false){
   stopCountdown();
   clearClosingTimers();
   showLiveBadge(false);
+  showVoiceChat(false);
 
   headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
   setStatus(t("wrapping_up"));
