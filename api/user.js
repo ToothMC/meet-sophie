@@ -82,70 +82,41 @@ async function handleUsage(req, res) {
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
-    let { data: usage, error: usageErr } = await supabase
-      .from("user_usage")
-      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Atomic deduction via Postgres RPC (prevents race conditions)
+    const { data: result, error: rpcErr } = await supabase.rpc("deduct_tokens", {
+      p_user_id: user.id,
+      p_amount: tokensToCharge,
+    });
 
-    if (usageErr) return res.status(500).json({ error: usageErr.message });
-
-    if (!usage) {
-      const ins = await supabase.from("user_usage").insert({
-        user_id: user.id,
-        free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
-        paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
-      }).select().maybeSingle();
-      if (ins.error) return res.status(500).json({ error: ins.error.message });
-      usage = ins.data;
+    if (rpcErr) {
+      // If RPC fails (e.g. user has no row), try creating the row first
+      if (rpcErr.message?.includes("NOT FOUND") || !result?.length) {
+        await supabase.from("user_usage").insert({
+          user_id: user.id,
+          free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
+          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+        }).catch(() => {});
+        return res.status(402).json({ error: "No remaining tokens", remaining_tokens: 0, remaining_seconds: 0 });
+      }
+      return res.status(500).json({ error: rpcErr.message });
     }
 
-    const freeTotal = usage?.free_tokens_total ?? DEFAULT_FREE_TOKENS;
-    const freeUsed  = usage?.free_tokens_used  ?? 0;
-    const paidTotal = usage?.paid_tokens_total  ?? 0;
-    const paidUsed  = usage?.paid_tokens_used   ?? 0;
-    const topupBal  = usage?.topup_tokens_balance ?? 0;
-
-    const freeRemaining  = Math.max(0, freeTotal - freeUsed);
-    const paidRemaining  = Math.max(0, paidTotal - paidUsed);
-    const topupRemaining = Math.max(0, topupBal);
-    const totalRemaining = freeRemaining + paidRemaining + topupRemaining;
-
-    if (totalRemaining <= 0) {
-      return res.status(402).json({ error: "No remaining time", remaining_tokens: 0, remaining_seconds: 0 });
+    const r = Array.isArray(result) ? result[0] : result;
+    if (!r || r.charged === 0) {
+      return res.status(402).json({ error: "No remaining tokens", remaining_tokens: 0, remaining_seconds: 0 });
     }
-
-    let toCharge = tokensToCharge;
-    const chargeFree  = Math.min(freeRemaining, toCharge);  toCharge -= chargeFree;
-    const chargePaid  = Math.min(paidRemaining, toCharge);  toCharge -= chargePaid;
-    const chargeTopup = Math.min(topupRemaining, toCharge); toCharge -= chargeTopup;
-
-    const newFreeUsed = Math.min(freeTotal, freeUsed + chargeFree);
-    const newPaidUsed = Math.min(paidTotal, paidUsed + chargePaid);
-    const newTopupBal = Math.max(0, topupBal - chargeTopup);
-
-    const upd = await supabase
-      .from("user_usage")
-      .update({ free_tokens_used: newFreeUsed, paid_tokens_used: newPaidUsed, topup_tokens_balance: newTopupBal })
-      .eq("user_id", user.id)
-      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
-      .maybeSingle();
-
-    if (upd.error) return res.status(500).json({ error: upd.error.message });
-
-    const u2 = upd.data;
-    const rem =
-      Math.max(0, (u2.free_tokens_total ?? DEFAULT_FREE_TOKENS) - (u2.free_tokens_used ?? 0)) +
-      Math.max(0, (u2.paid_tokens_total ?? 0)   - (u2.paid_tokens_used ?? 0)) +
-      Math.max(0, (u2.topup_tokens_balance ?? 0));
 
     return res.status(200).json({
       ok: true,
-      charged_tokens: (tokensToCharge - toCharge),
-      buckets: { free: chargeFree, paid: chargePaid, topup: chargeTopup },
-      remaining_tokens: rem,
-      remaining_seconds: rem * SECONDS_PER_TOKEN,
-      usage: u2,
+      charged_tokens: r.charged,
+      buckets: { free: r.free_charged, paid: r.paid_charged, topup: r.topup_charged },
+      remaining_tokens: r.remaining,
+      remaining_seconds: r.remaining * SECONDS_PER_TOKEN,
+      usage: {
+        free_tokens_total: r.free_tokens_total, free_tokens_used: r.free_tokens_used,
+        paid_tokens_total: r.paid_tokens_total, paid_tokens_used: r.paid_tokens_used,
+        topup_tokens_balance: r.topup_tokens_balance,
+      },
     });
   } catch (e) {
     console.error("user/usage error:", e);

@@ -11,6 +11,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { TOKEN_COSTS } from "../lib/billing-constants.js";
 import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
@@ -383,7 +384,11 @@ async function handleContext(req, res) {
   if (context_type === "file" && body.file_path && finalContent.startsWith("[File:")) {
     try {
       const extracted = await extractFileContent(supabase, body.file_path);
-      if (extracted) finalContent = extracted;
+      if (extracted) {
+        finalContent = extracted;
+        // Deduct tokens for AI-powered file extraction (GPT-4o Vision)
+        await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message * 2 }).catch(() => {});
+      }
     } catch (e) {
       console.error("File extraction error:", e?.message);
       // Keep original placeholder content
@@ -590,6 +595,9 @@ async function handleMessage(req, res) {
   const openaiData = await openaiResp.json();
   const rawReply = openaiData?.choices?.[0]?.message?.content || "";
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
+
+  // Deduct token for meeting chat message (same cost as regular chat)
+  await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message }).catch(() => {});
 
   // Extract structured items from LIVE-phase responses
   let extractedItems = null;

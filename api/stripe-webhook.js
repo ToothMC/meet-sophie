@@ -262,7 +262,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
-    // 2) Subscription Updated -> status/period_end sync
+    // 2) Subscription Updated -> status/period_end sync + plan change detection
     if (event.type === "customer.subscription.updated") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -274,7 +274,7 @@ export default async function handler(req, res) {
 
       const { data: row, error: findErr } = await supabase
         .from("user_subscriptions")
-        .select("user_id")
+        .select("user_id, plan")
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
@@ -283,22 +283,60 @@ export default async function handler(req, res) {
 
       const userId = row.user_id;
 
+      // Detect plan change via price ID
+      const newPriceId = sub.items?.data?.[0]?.price?.id || null;
+      const newPlan = newPriceId ? planFromPriceId(newPriceId) : null;
+
+      const updateFields = {
+        status,
+        is_active: isActive,
+        current_period_end: currentPeriodEnd,
+      };
+
+      // If plan changed (e.g. via Stripe portal), update plan name and tokens
+      if (newPlan && newPlan !== row.plan) {
+        updateFields.plan = newPlan;
+        console.log(`[webhook] Plan change detected: ${row.plan} → ${newPlan} for user ${userId.slice(0, 8)}`);
+      }
+
       const { error: updErr } = await supabase
         .from("user_subscriptions")
-        .update({
-          status,
-          is_active: isActive,
-          current_period_end: currentPeriodEnd,
-        })
+        .update(updateFields)
         .eq("user_id", userId);
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
+
+      // If plan changed, adjust token allocation (carry over remaining as topup)
+      if (newPlan && newPlan !== row.plan) {
+        const newTokens = includedTokensForPlan(newPlan);
+        if (newTokens > 0) {
+          const { data: usage } = await supabase
+            .from("user_usage")
+            .select("paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (usage) {
+            const paidRem = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+            const newTopup = (usage.topup_tokens_balance || 0) + paidRem;
+
+            await supabase.from("user_usage").update({
+              paid_tokens_total: newTokens,
+              paid_tokens_used: 0,
+              topup_tokens_balance: newTopup,
+            }).eq("user_id", userId);
+
+            console.log(`[webhook] Tokens adjusted: ${usage.paid_tokens_total}→${newTokens}, carried over ${paidRem} as topup`);
+          }
+        }
+      }
 
       await safeTrack(supabase, userId, "subscription_updated", {
         status,
         is_active: isActive,
         current_period_end: currentPeriodEnd,
         stripe_subscription_id: stripeSubscriptionId,
+        plan_changed: newPlan && newPlan !== row.plan ? `${row.plan}→${newPlan}` : null,
       });
 
       return res.status(200).json({ received: true });
