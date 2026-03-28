@@ -241,7 +241,7 @@ export default async function handler(req, res) {
 
     const { data } = await supabase
       .from('conversation_outputs')
-      .select('session_id, title, report_html, report_providers, report_status, created_at')
+      .select('session_id, title, report_html, report_providers, report_status, report_style, created_at')
       .eq('session_id', sessionId)
       .maybeSingle();
 

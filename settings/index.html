@@ -371,7 +371,10 @@ main{max-width:520px;margin:0 auto;padding:12px}
             <button onclick="closeReportDetail()" style="background:none;border:none;color:#2a2420;font-size:20px;cursor:pointer">&times;</button>
           </div>
           <div id="reportDetailContent" style="background:#fff;border:1px solid #ede8e2;border-radius:12px;padding:16px;overflow:hidden;color:#1a1a1a"></div>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <div id="pitchAgainBar" style="display:none;margin-top:12px">
+            <button class="btn btn-primary btn-sm" onclick="pitchAgain()" style="width:100%;padding:12px;font-size:14px;font-weight:600">&#9650; Pitch again</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="copyReportDetail()">Kopieren</button>
             <button class="btn btn-secondary btn-sm" onclick="saveReportAsTemplate()">Als Vorlage speichern</button>
             <button class="btn btn-danger btn-sm" onclick="deleteReport()" style="margin-left:auto">L&ouml;schen</button>
@@ -750,6 +753,12 @@ async function openReportDetail(sessionId, source = 'talk') {
     _reportDetailData = data;
     titleEl.textContent = data.title || "Report";
 
+    // Show "Pitch again" button only for salespitch reports
+    const pitchBar = document.getElementById("pitchAgainBar");
+    if (pitchBar) {
+      pitchBar.style.display = (data.report_style === 'salespitch' || data.report_style === 'pitch') ? 'block' : 'none';
+    }
+
     if (data.report_html) {
       // Render HTML report in iframe for proper isolation
       contentEl.innerHTML = '<iframe id="settingsReportFrame" style="width:100%;border:none;min-height:500px;background:#fff;border-radius:8px" sandbox="allow-same-origin"></iframe>';
@@ -821,6 +830,26 @@ async function saveReportAsTemplate() {
   } catch (e) { alert("Fehler: " + e?.message); }
 }
 window.saveReportAsTemplate = saveReportAsTemplate;
+
+function pitchAgain() {
+  if (!_reportDetailData) return;
+  // Extract pitch context from the report title for handover
+  const title = _reportDetailData.title || "Sales Pitch";
+  const handover = {
+    funnelMode: "salespitch",
+    language: document.documentElement.lang || "de",
+    summary: `Der User möchte seinen Pitch "${title}" wiederholen und verbessern. Vorheriger Report existiert.`,
+    recentMessages: [
+      { role: "user", content: `Ich möchte meinen Pitch "${title}" nochmal machen und verbessern.` }
+    ],
+    userName: "",
+    previousPitchSessionId: _reportDetailData.session_id || null,
+  };
+  localStorage.setItem("sophie_session_mode", "salespitch");
+  sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+  window.location.href = "/talk";
+}
+window.pitchAgain = pitchAgain;
 
 // ── Section: Meine Vorlagen ──
 const MODE_LABELS = { default: "Standard Report", brainstorm: "Brainstorm", salespitch: "Sales Pitch", meeting: "Meeting" };
