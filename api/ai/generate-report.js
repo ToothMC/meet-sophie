@@ -86,24 +86,25 @@ REGELN:
 7. Ort: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
 8. NIEMALS erfinden: keine Namen, Uhrzeiten, Orte, Rollen, Fristen
 9. Leere Sektionen (keine Beschlüsse, keine Action Items) → KOMPLETT ENTFERNEN
-10. LEAN CHECK — Extra Sektion VOR dem Gesprächsprotokoll, eingewickelt in <div data-section="lean-check">:
-    Analysiere das Gespräch und erstelle eine Lean-Analyse mit diesen Kategorien:
-    - ✅ FAKTEN: Was wurde als bewiesene/validierte Tatsache genannt? (mit Quelle/Evidenz wenn erkennbar)
-    - ⚠️ ANNAHMEN: Was wurde als Fakt behandelt, ist aber eigentlich eine ungeprüfte Annahme?
-    - 💡 HYPOTHESEN: Welche "Wenn-Dann" Hypothesen wurden aufgestellt?
-    - 🧪 TESTS: Welche Tests/Experimente wurden beschlossen um Hypothesen zu prüfen?
-    - 🚦 SIGNAL: Was wurde als Kriterium definiert um weiterzumachen / zu stoppen / anzupassen?
-    - NUR Kategorien einbauen die wirklich Inhalte haben. Leere Kategorien weglassen.
-    - Wenn das Meeting keine relevanten Lean-Aspekte hat (z.B. reines Status-Update): Lean Check KOMPLETT weglassen
-    - Design: dezente, professionelle Box — nicht aufdringlich, aber klar lesbar
-11. Das vollständige Gesprächsprotokoll (wörtliches Transcript) MUSS als letzte Sektion enthalten sein, eingewickelt in: <div data-section="full-transcript">...</div>
+10. KEIN Gesprächsprotokoll/Transcript im Report. Das Protokoll ist eine Zusammenfassung, kein Wortlaut-Mitschnitt.
+11. KEIN Lean Check im Default-Report. Lean-Analyse wird separat intern gespeichert.
 12. Das HTML MUSS einen <style>-Block mit @media print CSS enthalten für DIN A4 PDF-Export:
     - @page { size: A4; margin: 20mm 18mm; }
     - Sektionen: page-break-inside: avoid
-    - Gesprächsprotokoll (data-section="full-transcript"): page-break-before: always
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
-${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit HTML (inline CSS, system font stack, responsive). Professionelles Meeting-Protokoll-Design.'}`;
+DESIGN-REGELN (WICHTIG):
+- Font: system-ui, -apple-system, sans-serif
+- Hauptfarbe: #2a2420 (Text), #c4a882 (Akzent, Linien, Überschriften-Deko)
+- Hintergrund: #fff, Sektionen mit feinem Border (#ede8e2) oder dezenter Hintergrund (#faf9f6)
+- Header: Titel groß (24px), Metadaten (Datum, Protokoll) klein darunter, kein fetter Rahmen
+- Sektionen: klare Überschriften (uppercase, 11px, letter-spacing, Farbe #a09080), Inhalt 14px
+- Tagesordnungspunkte: nummeriert, klare Trennung, genug Whitespace
+- Action Items: mit Verantwortlichem und Frist falls genannt
+- Gesamteindruck: elegant, professionell, viel Weißraum. Wie ein Dokument von einer Premium-Beratung — nicht wie ein automatisch generiertes Formular.
+- Keine Emojis im finalen Report.
+
+${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
       // Use strong model — Claude first, GPT-4o fallback
       const meetingSynthProviders = [
