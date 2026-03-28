@@ -129,6 +129,7 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
+  justify-content:flex-end;
 }
 .plan-free{
   background:rgba(0,0,0,.02);
@@ -153,9 +154,13 @@ body{
   letter-spacing:.04em;
   padding:2px 8px;
   border-radius:6px;
-  margin-bottom:8px;
   background:rgba(196,168,130,.15);
   color:#8a7050;
+  position:absolute;
+  top:-9px;
+  left:50%;
+  transform:translateX(-50%);
+  white-space:nowrap;
 }
 .plan-name{
   font-size:12px;
@@ -204,33 +209,37 @@ body{
   margin-bottom:24px;
 }
 .topup{
-  border-radius:14px;
-  padding:14px 10px;
+  border-radius:12px;
+  padding:10px 8px;
   text-align:center;
-  background:rgba(0,0,0,.03);
+  background:rgba(0,0,0,.02);
   border:1px solid #ede8e2;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
 .topup-price{
-  font-size:22px;
+  font-size:16px;
   font-weight:800;
-  margin-bottom:2px;
+  white-space:nowrap;
 }
 .topup-tokens{
-  font-size:11px;
+  font-size:10px;
   color:#a09080;
-  margin-bottom:10px;
+  flex:1;
+  text-align:left;
 }
 .topup-btn{
-  width:100%;
-  padding:9px 6px;
-  border-radius:10px;
+  padding:7px 12px;
+  border-radius:8px;
   border:1px solid #ede8e2;
   background:#fff;
   color:#2a2420;
-  font-size:12px;
+  font-size:11px;
   font-weight:700;
   cursor:pointer;
   transition:opacity .15s;
+  white-space:nowrap;
 }
 .topup-btn:hover{ opacity:.88; }
 .topup-btn:disabled{ opacity:.3; cursor:not-allowed; }
@@ -284,6 +293,7 @@ body{
 /* -- Responsive -- */
 @media (max-width:520px){
   .plans-row{ grid-template-columns:repeat(2, 1fr); }
+  .topup-row{ grid-template-columns:1fr; }
   .plan-price{ font-size:20px; }
   .header h1{ font-size:22px; }
 }
