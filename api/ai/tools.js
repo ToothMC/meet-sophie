@@ -249,7 +249,23 @@ export async function getNews(topic) {
   return `Keine aktuellen Nachrichten zu "${topic}" verfügbar.`;
 }
 
-// ── Wikipedia: REST API (kostenlos, kein API-Key) ──
+// ── Wikipedia: REST API + MediaWiki API (kostenlos, kein API-Key) ──
+
+// Helper: full article extract via MediaWiki API (for overview/event pages)
+async function _wikiFullExtract(title) {
+  try {
+    const res = await fetch(
+      `https://de.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}` +
+      `&prop=extracts&explaintext=1&exsectionformat=plain&exchars=4000&format=json&origin=*`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const pages = data.query?.pages || {};
+    const page = Object.values(pages)[0];
+    return page?.extract || null;
+  } catch { return null; }
+}
 
 export async function getWikipedia(query) {
   if (!query) return 'Kein Suchbegriff angegeben.';
@@ -264,7 +280,13 @@ export async function getWikipedia(query) {
     if (summaryRes.ok) {
       const data = await summaryRes.json();
       if (data.type === 'standard' && data.extract) {
-        let result = `Wikipedia: ${data.title}\n\n${data.extract}`;
+        let extract = data.extract;
+        // If summary is too short (overview/event pages), fetch full article
+        if (extract.length < 300) {
+          const full = await _wikiFullExtract(data.title);
+          if (full && full.length > extract.length) extract = full;
+        }
+        let result = `Wikipedia: ${data.title}\n\n${extract}`;
         if (data.content_urls?.desktop?.page) {
           result += `\n\nQuelle: ${data.content_urls.desktop.page}`;
         }
@@ -273,7 +295,7 @@ export async function getWikipedia(query) {
     }
   } catch (e) { console.error('[tools] Wikipedia summary error:', e?.message); }
 
-  // Fallback: search API → then get summary of best match
+  // Fallback: search API → then get summary/full extract of best match
   try {
     const searchRes = await fetch(
       `https://de.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=3&format=json&origin=*`,
@@ -285,8 +307,9 @@ export async function getWikipedia(query) {
 
     if (results.length === 0) return `Kein Wikipedia-Artikel zu "${query}" gefunden.`;
 
-    // Get summary of top result
-    const topSlug = encodeURIComponent(results[0].title.replace(/\s+/g, '_'));
+    // Get summary of top result, with full extract fallback
+    const topTitle = results[0].title;
+    const topSlug = encodeURIComponent(topTitle.replace(/\s+/g, '_'));
     const topRes = await fetch(
       `https://de.wikipedia.org/api/rest_v1/page/summary/${topSlug}`,
       { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(5000) }
@@ -294,7 +317,12 @@ export async function getWikipedia(query) {
     if (topRes.ok) {
       const data = await topRes.json();
       if (data.extract) {
-        let result = `Wikipedia: ${data.title}\n\n${data.extract}`;
+        let extract = data.extract;
+        if (extract.length < 300) {
+          const full = await _wikiFullExtract(data.title);
+          if (full && full.length > extract.length) extract = full;
+        }
+        let result = `Wikipedia: ${data.title}\n\n${extract}`;
         if (data.content_urls?.desktop?.page) {
           result += `\n\nQuelle: ${data.content_urls.desktop.page}`;
         }

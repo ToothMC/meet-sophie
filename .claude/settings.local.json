@@ -112,7 +112,15 @@
       "Bash(ls /Users/michaelhammer/.claude/projects/*/memory/)",
       "Bash(grep -A 30 \"conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_logs",
-      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__search_docs"
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__search_docs",
+      "Bash(than training cutoff\" data.:*)",
+      "Bash(curl -s \"https://de.wikipedia.org/api/rest_v1/page/summary/Februar_2026\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''extract'''',''''NO EXTRACT''''\\)[:500]\\)\")",
+      "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&titles=Februar_2026&prop=extracts&exintro=0&explaintext=1&exsectionformat=plain&exchars=3000&format=json\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pages=d[''''query''''][''''pages'''']; p=list\\(pages.values\\(\\)\\)[0]; print\\(p.get\\(''''extract'''',''''NONE''''\\)[:1500]\\)\")",
+      "Bash(curl -s \"https://de.wikipedia.org/w/api.php?action=query&titles=Februar_2026&prop=extracts&explaintext=1&exsectionformat=plain&exchars=4000&format=json\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pages=d[''''query''''][''''pages'''']; p=list\\(pages.values\\(\\)\\)[0]; print\\(p.get\\(''''extract'''',''''NONE''''\\)[:2000]\\)\")"
     ]
   },
   "hooks": {
