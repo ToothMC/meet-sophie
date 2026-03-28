@@ -62,6 +62,10 @@ export default async function handler(req, res) {
       const meetingPrompt = `Du erstellst ein Meeting-Protokoll aus einem Voice-Transcript.
 ${dateInstruction}
 
+HINWEIS ZUM TRANSCRIPT-FORMAT:
+- "[user]: [chat] ..." = Text-Nachrichten die der User WÄHREND des Meetings getippt hat. Enthalten oft wichtige Fakten, Links oder Korrekturen — gleichwertig behandeln.
+- "[assistant]: [chat note] ..." = Notizen die Sophie im Chat-Panel angezeigt hat (Stichpunkte etc.).
+
 ${meetingTemplate ? `TEMPLATE (Design beibehalten, nur Textinhalte ersetzen):
 ${meetingTemplate.slice(0, 8000)}
 
@@ -259,6 +263,10 @@ REGELN:
     // Step 1: All 4 AIs analyze the transcript (content only, no design classification if template exists)
     const structuredAnalysisInstructions = `Analysiere dieses Gespräch STRUKTURIERT. ${dateInstruction}
 ${modeHint}
+
+HINWEIS ZUM TRANSCRIPT-FORMAT:
+- Zeilen mit "[user]: [chat] ..." sind Text-Nachrichten die der User WÄHREND des Voice-Gesprächs getippt hat (parallel zum Sprechen). Diese enthalten oft wichtige Fakten, Links oder Anweisungen — behandle sie gleichwertig.
+- Zeilen mit "[assistant]: [chat note] ..." sind kurze Notizen die Sophie dem User im Chat-Panel gezeigt hat (z.B. Stichpunkte, Zusammenfassungen). Diese zeigen was Sophie als besonders wichtig hervorgehoben hat.
 
 Antworte in der Sprache des Transcripts mit EXAKT diesen Sektionen:
 

@@ -376,23 +376,6 @@ body{
   object-fit:cover;
 }
 
-#billingFooter{
-  position:fixed;
-  left:0; right:0;
-  bottom:10px;
-  z-index:4;
-  text-align:center;
-  font-size:12px;
-  opacity:.55;
-  pointer-events:none;
-}
-#billingFooter a{
-  color:rgba(255,255,255,.9);
-  text-decoration:none;
-  pointer-events:auto;
-}
-#billingFooter a:hover{ text-decoration:underline; }
-
 .softHint{
   margin-top:-4px;
   margin-bottom:10px;
@@ -1080,10 +1063,6 @@ body{
   </video>
 </div>
 
-<div id="billingFooter" aria-label="billing-footer">
-  <a href="#" id="manageSubLink" style="display:none;">Manage subscription</a>
-</div>
-
 <script type="module">
 // Catch auth errors in URL hash (e.g. expired magic link) — redirect immediately
 const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -1135,50 +1114,6 @@ supabase.auth.onAuthStateChange((event, session) => {
   if (event === "SIGNED_OUT" || !session?.user) {
     window.location.href = "/login";
   }
-});  
-  
-const manageSubLink = document.getElementById("manageSubLink");
-const billingFooter = document.getElementById("billingFooter");
-
-async function initManageSubscriptionLink(){
-  try{
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    const res = await fetch("/api/billing?action=portal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: "{}",
-    });
-
-    if (res.status === 200) {
-      manageSubLink.style.display = "inline";
-      billingFooter.style.pointerEvents = "auto";
-    }
-  } catch(_) {}
-}
-
-manageSubLink?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  try{
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    const res = await fetch("/api/billing?action=portal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: "{}",
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (data?.url) window.location.href = data.url;
-  } catch(_) {}
 });
 
 async function sendMemoryUpdate(secondsUsed) {
@@ -1651,9 +1586,6 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   // Reopen report button
   const _reopenBtn = document.getElementById("reopenReportBtn");
   if (_reopenBtn) _reopenBtn.textContent = "📋 " + t("view_report");
-  // Manage subscription link
-  const _manageSub = document.getElementById("manageSubLink");
-  if (_manageSub) _manageSub.textContent = t("manage_sub");
 }
 // ────────────────────────────────────────────────────────────
 
@@ -3602,8 +3534,12 @@ function attachChannel(ch) {
         try {
           const args = JSON.parse(msg.arguments || "{}");
           const note = String(args.note || "").trim();
-          if (note && voiceChatEl && voiceChatEl.style.display !== "none") {
-            appendVoiceChatBubble("sophie", note);
+          if (note) {
+            if (voiceChatEl && voiceChatEl.style.display !== "none") {
+              appendVoiceChatBubble("sophie", note);
+            }
+            // Track in convoLog so it appears in the report
+            convoLog.push({ role: "assistant", text: "[chat note] " + note });
           }
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
@@ -3883,32 +3819,8 @@ async function startVoice(){
         };
 
         postCallSecondaryBtn.textContent = t("manage_sub");
-        postCallSecondaryBtn.onclick = async () => {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-              window.location.href = "/pricing";
-              return;
-            }
-
-            const res = await fetch("/api/billing?action=portal", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: "{}",
-            });
-
-            const portal = await res.json().catch(() => ({}));
-            if (portal?.url) {
-              window.location.href = portal.url;
-            } else {
-              window.location.href = "/pricing";
-            }
-          } catch (_) {
-            window.location.href = "/pricing";
-          }
+        postCallSecondaryBtn.onclick = () => {
+          window.location.href = "/settings/";
         };
       } else {
         postCallCtaTitle.textContent = t("continue_sophie");
@@ -4443,8 +4355,6 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
   sessionStorage.setItem("FORCE_NEW_CHAT", "1");
   window.location.href = "/";
 });
-
-initManageSubscriptionLink();
 
 // On mobile, getUserMedia requires a user gesture (tap/click) for first-time
 // permission. But if already granted, we can auto-start without a gesture.
