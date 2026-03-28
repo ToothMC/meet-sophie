@@ -43,7 +43,7 @@ body{
   margin:0 auto;
 }
 
-/* ── Top bar ── */
+/* -- Top bar -- */
 .top{
   display:flex;
   justify-content:space-between;
@@ -71,7 +71,7 @@ body{
   cursor:pointer;
 }
 
-/* ── Header ── */
+/* -- Header -- */
 .header{
   text-align:center;
   margin-bottom:28px;
@@ -90,7 +90,7 @@ body{
   line-height:1.5;
 }
 
-/* ── Primary: Abo + 5€ ── */
+/* -- Primary row: Start + TopUp 5 -- */
 .primary-row{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -103,12 +103,12 @@ body{
   display:flex;
   flex-direction:column;
 }
-.card-abo{
+.card-start{
   background:#fff;
   border:1.5px solid #c4a882;
   box-shadow:0 4px 20px rgba(0,0,0,.06);
 }
-.card-topup5{
+.card-topup{
   background:rgba(0,0,0,.03);
   border:1px solid #ede8e2;
 }
@@ -122,8 +122,8 @@ body{
   margin-bottom:12px;
   align-self:flex-start;
 }
-.badge-abo{ background:rgba(196,168,130,.15); color:#8a7050; }
-.badge-topup5{ background:rgba(0,0,0,.05); color:#5a4a40; }
+.badge-start{ background:rgba(196,168,130,.15); color:#8a7050; }
+.badge-topup{ background:rgba(0,0,0,.05); color:#5a4a40; }
 .card-name{
   font-size:13px;
   font-weight:500;
@@ -161,14 +161,14 @@ body{
 }
 .card-btn:hover{ opacity:.9; }
 .card-btn:disabled{ opacity:.35; cursor:not-allowed; }
-.btn-abo{ background:#2a2420; color:#fff; }
-.btn-topup5{ background:#fff; color:#2a2420; border:1px solid #ede8e2; }
+.btn-start{ background:#2a2420; color:#fff; }
+.btn-topup{ background:#fff; color:#2a2420; border:1px solid #ede8e2; }
 
-/* ── Secondary: €10 + €20 ── */
-.secondary-wrap{
-  margin-bottom:20px;
+/* -- Upgrade row: Plus + Premium -- */
+.upgrade-wrap{
+  margin-bottom:16px;
 }
-.secondary-label{
+.upgrade-label{
   font-size:11px;
   font-weight:600;
   letter-spacing:.08em;
@@ -177,7 +177,49 @@ body{
   text-align:center;
   margin-bottom:8px;
 }
-.secondary-row{
+.upgrade-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.upgrade-btn{
+  padding:14px 10px;
+  border-radius:14px;
+  border:1px solid #ede8e2;
+  background:rgba(0,0,0,.02);
+  color:#2a2420;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .15s, border-color .15s;
+  width:100%;
+  text-align:center;
+}
+.upgrade-btn:hover{ background:rgba(0,0,0,.04); border-color:#c4a882; }
+.upgrade-btn:disabled{ opacity:.25; cursor:not-allowed; }
+.upgrade-btn .plan-name{
+  font-size:12px;
+  font-weight:500;
+  color:#7a6a5a;
+  margin-bottom:2px;
+}
+.upgrade-btn .plan-price{
+  font-size:18px;
+  font-weight:800;
+}
+.upgrade-btn .plan-tokens{
+  display:block;
+  font-size:10px;
+  font-weight:500;
+  color:#a09080;
+  margin-top:3px;
+}
+
+/* -- More topups -- */
+.topup-wrap{
+  margin-bottom:20px;
+}
+.topup-row{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
@@ -205,7 +247,7 @@ body{
   letter-spacing:.02em;
 }
 
-/* ── Legal — compact ── */
+/* -- Legal -- */
 .legal-block{
   border-top:1px solid rgba(0,0,0,.03);
   padding-top:16px;
@@ -223,7 +265,7 @@ body{
 .legal-block input[type=checkbox]{ flex-shrink:0; margin-top:2px; accent-color:#c4a882; }
 .legal-block a{ color:#2a2420; text-decoration:underline; }
 
-/* ── Login link ── */
+/* -- Login link -- */
 .login-link{
   display:none;
   text-align:center;
@@ -237,7 +279,7 @@ body{
   cursor:pointer;
 }
 
-/* ── Msg ── */
+/* -- Msg -- */
 .msg{
   text-align:center;
   font-size:13px;
@@ -246,7 +288,7 @@ body{
   margin-bottom:6px;
 }
 
-/* ── Footer ── */
+/* -- Footer -- */
 .footer{
   margin-top:16px;
   text-align:center;
@@ -255,7 +297,7 @@ body{
 }
 .footer a{ color:#7a6a5a; text-decoration:none; }
 
-/* ── Responsive ── */
+/* -- Responsive -- */
 @media (max-width:460px){
   .primary-row{ grid-template-columns:1fr; }
   .card-price{ font-size:25px; }
@@ -284,44 +326,61 @@ body{
     <p id="tLead"></p>
   </div>
 
-  <!-- Primary: Abo + €5 -->
+  <!-- Primary: Start Abo + €5 TopUp -->
   <div class="primary-row">
 
-    <!-- Abo -->
-    <div class="card card-abo">
-      <div class="card-badge badge-abo" id="tAboBadge"></div>
-      <div class="card-name" id="tAboName"></div>
-      <div class="card-price">€19,90</div>
-      <div class="card-per" id="tAboPer"></div>
-      <div class="card-sub" id="tAboSub"></div>
-      <button class="card-btn btn-abo" id="btnAbo" disabled></button>
+    <!-- Start -->
+    <div class="card card-start">
+      <div class="card-badge badge-start" id="tStartBadge"></div>
+      <div class="card-name" id="tStartName"></div>
+      <div class="card-price">&euro;9,90</div>
+      <div class="card-per" id="tStartPer"></div>
+      <div class="card-sub" id="tStartSub"></div>
+      <button class="card-btn btn-start" id="btnStart" disabled></button>
     </div>
 
-    <!-- €5 -->
-    <div class="card card-topup5">
-      <div class="card-badge badge-topup5" id="tTopup5Badge"></div>
+    <!-- €5 TopUp -->
+    <div class="card card-topup">
+      <div class="card-badge badge-topup" id="tTopup5Badge"></div>
       <div class="card-name" id="tTopup5Name"></div>
-      <div class="card-price">€5</div>
+      <div class="card-price">&euro;5</div>
       <div class="card-sub" id="tTopup5Sub"></div>
-      <button class="card-btn btn-topup5" id="btnTopup5" disabled></button>
+      <button class="card-btn btn-topup" id="btnTopup5" disabled></button>
     </div>
 
   </div>
 
-  <!-- Secondary: €10 + €20 -->
-  <div class="secondary-wrap">
-    <div class="secondary-label" id="tMoreTime"></div>
-    <div class="secondary-row">
+  <!-- Upgrade: Plus + Premium -->
+  <div class="upgrade-wrap">
+    <div class="upgrade-label" id="tUpgradeLabel"></div>
+    <div class="upgrade-row">
+      <button class="upgrade-btn" id="btnPlus" disabled>
+        <div class="plan-name" id="tPlusName"></div>
+        <div class="plan-price">&euro;19,90</div>
+        <span class="plan-tokens" id="tPlusTokens"></span>
+      </button>
+      <button class="upgrade-btn" id="btnPremium" disabled>
+        <div class="plan-name" id="tPremiumName"></div>
+        <div class="plan-price">&euro;39,90</div>
+        <span class="plan-tokens" id="tPremiumTokens"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- More TopUps: €10 + €20 -->
+  <div class="topup-wrap">
+    <div class="upgrade-label" id="tMoreTokens"></div>
+    <div class="topup-row">
       <button class="pack-btn" id="btnTopup10" disabled>
-        €10 <span id="tSophieTime10"></span>
+        &euro;10 <span id="tTokens10"></span>
       </button>
       <button class="pack-btn" id="btnTopup20" disabled>
-        €20 <span id="tSophieTime20"></span>
+        &euro;20 <span id="tTokens20"></span>
       </button>
     </div>
   </div>
 
-  <!-- Legal — compact, below cards -->
+  <!-- Legal -->
   <div class="legal-block">
     <label>
       <input type="checkbox" id="legal1">
@@ -333,7 +392,7 @@ body{
     </label>
   </div>
 
-  <!-- Login — subtle link -->
+  <!-- Login -->
   <div class="login-link" id="loginHint">
     <span id="tLoginHint"></span> <a id="btnLogin"></a>
   </div>
@@ -358,64 +417,79 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const TEXT = {
   de:{
-    h1:          "Mach jetzt weiter mit Sophie.",
-    lead:        "Setze das Gespräch fort — mit Abo oder flexiblem Sofortzugang.",
-    aboBadge:    "★ Beste Wahl",
-    aboName:     "Abo · monatlich",
-    aboPer:      "pro Monat",
-    aboSub:      "Am besten für regelmäßige Nutzung. Kontinuität, Memory und stabiler Zugang. Optional: automatisch weiterlaufen, wenn dein Kontingent endet.",
-    aboBtn:      "Mit Abo weitermachen",
-    topup5Badge: "⚡ Sofort los",
-    topup5Name:  "5€ Sophie Time",
-    topup5Sub:   "Ohne Bindung. Einfach jetzt weitermachen.",
-    topup5Btn:   "Jetzt für 5€ weiter",
-    moreTime:    "Mehr Zeit laden",
-    sophieTime:  "Sophie Time",
-    loginHint:   "Noch kein Login?",
-    loginLink:   "Einloggen, um fortzufahren",
-    loading:     "Einen Moment…",
-    checkoutErr: "Fehler beim Starten des Checkouts.",
-    topupErr:    "Fehler beim Starten des Top-ups.",
-    legalMissing:"Bitte bestätige beide Checkboxen.",
-    privacy:     "Datenschutz",
-    legal1:      `Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
-    legal2:      `Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
+    h1:            "Mach jetzt weiter mit Sophie.",
+    lead:          "Starte sofort — oder spar mit einem Abo.",
+    startBadge:    "★ Beste Wahl",
+    startName:     "Start · monatlich",
+    startPer:      "pro Monat · 300 Tokens",
+    startSub:      "300 Tokens pro Monat. Voice, Chat, Memory. Jederzeit kündbar.",
+    startBtn:      "Jetzt starten",
+    topup5Badge:   "⚡ Ohne Abo",
+    topup5Name:    "50 Tokens",
+    topup5Sub:     "Ohne Bindung. Premium-Qualität. Einfach loslegen.",
+    topup5Btn:     "5€ — sofort los",
+    upgradeLabel:  "Mehr Power",
+    plusName:      "Plus",
+    plusTokens:    "800 Tokens · bessere KI",
+    premiumName:   "Premium",
+    premiumTokens: "2.000 Tokens · beste KI",
+    moreTokens:    "Mehr Tokens laden",
+    tokens10:      "100 Tokens",
+    tokens20:      "250 Tokens",
+    loginHint:     "Noch kein Login?",
+    loginLink:     "Einloggen, um fortzufahren",
+    loading:       "Einen Moment…",
+    checkoutErr:   "Fehler beim Starten des Checkouts.",
+    topupErr:      "Fehler beim Starten des Top-ups.",
+    legalMissing:  "Bitte bestätige beide Checkboxen.",
+    privacy:       "Datenschutz",
+    legal1:        `Ich akzeptiere die <a href="/terms.html" target="_blank" rel="noopener">AGB</a> und die <a href="/privacy.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.`,
+    legal2:        `Ich stimme ausdrücklich zu, dass die Ausführung der Dienstleistung sofort beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.`,
   },
   en:{
-    h1:          "Keep going with Sophie.",
-    lead:        "Continue the conversation — with subscription or instant access.",
-    aboBadge:    "★ Best Value",
-    aboName:     "Subscription · monthly",
-    aboPer:      "per month",
-    aboSub:      "Best for regular use. Continuity, memory, and reliable access. Optionally continue automatically when your included time runs out.",
-    aboBtn:      "Continue with subscription",
-    topup5Badge: "⚡ Start now",
-    topup5Name:  "€5 Sophie Time",
-    topup5Sub:   "No commitment. Just continue right now.",
-    topup5Btn:   "Continue now for €5",
-    moreTime:    "More time",
-    sophieTime:  "Sophie Time",
-    loginHint:   "Not signed in?",
-    loginLink:   "Sign in to continue",
-    loading:     "One moment…",
-    checkoutErr: "Failed to start checkout.",
-    topupErr:    "Failed to start top-up.",
-    legalMissing:"Please confirm both checkboxes.",
-    privacy:     "Privacy Policy",
-    legal1:      `I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
-    legal2:      `I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
+    h1:            "Keep going with Sophie.",
+    lead:          "Start instantly — or save with a plan.",
+    startBadge:    "★ Best Value",
+    startName:     "Start · monthly",
+    startPer:      "per month · 300 Tokens",
+    startSub:      "300 tokens per month. Voice, chat, memory. Cancel anytime.",
+    startBtn:      "Get started",
+    topup5Badge:   "⚡ No subscription",
+    topup5Name:    "50 Tokens",
+    topup5Sub:     "No commitment. Premium quality. Just go.",
+    topup5Btn:     "€5 — start now",
+    upgradeLabel:  "More power",
+    plusName:      "Plus",
+    plusTokens:    "800 tokens · better AI",
+    premiumName:   "Premium",
+    premiumTokens: "2,000 tokens · best AI",
+    moreTokens:    "More tokens",
+    tokens10:      "100 tokens",
+    tokens20:      "250 tokens",
+    loginHint:     "Not signed in?",
+    loginLink:     "Sign in to continue",
+    loading:       "One moment…",
+    checkoutErr:   "Failed to start checkout.",
+    topupErr:      "Failed to start top-up.",
+    legalMissing:  "Please confirm both checkboxes.",
+    privacy:       "Privacy Policy",
+    legal1:        `I accept the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.`,
+    legal2:        `I agree that the service begins immediately and acknowledge that I lose my right of withdrawal once the service starts.`,
   }
 };
 
 const c1 = document.getElementById("legal1");
 const c2 = document.getElementById("legal2");
 const msg = document.getElementById("msg");
-const btnAbo     = document.getElementById("btnAbo");
+const btnStart   = document.getElementById("btnStart");
+const btnPlus    = document.getElementById("btnPlus");
+const btnPremium = document.getElementById("btnPremium");
 const btnTopup5  = document.getElementById("btnTopup5");
 const btnTopup10 = document.getElementById("btnTopup10");
 const btnTopup20 = document.getElementById("btnTopup20");
 const btnLogin   = document.getElementById("btnLogin");
 const loginHint  = document.getElementById("loginHint");
+const allBtns = [btnStart, btnPlus, btnPremium, btnTopup5, btnTopup10, btnTopup20];
 
 let currentLang = "en";
 if ((navigator.language || "").toLowerCase().startsWith("de")) currentLang = "de";
@@ -426,26 +500,31 @@ function setLang(l){
   document.getElementById("langEN").classList.toggle("active", l === "en");
 
   const t = TEXT[l];
-  document.getElementById("tH1").textContent          = t.h1;
-  document.getElementById("tLead").textContent         = t.lead;
-  document.getElementById("tAboBadge").textContent     = t.aboBadge;
-  document.getElementById("tAboName").textContent      = t.aboName;
-  document.getElementById("tAboPer").textContent       = t.aboPer;
-  document.getElementById("tAboSub").textContent       = t.aboSub;
-  btnAbo.textContent                                   = t.aboBtn;
-  document.getElementById("tTopup5Badge").textContent  = t.topup5Badge;
-  document.getElementById("tTopup5Name").textContent   = t.topup5Name;
-  document.getElementById("tTopup5Sub").textContent    = t.topup5Sub;
-  btnTopup5.textContent                                = t.topup5Btn;
-  document.getElementById("tMoreTime").textContent     = t.moreTime;
-  document.getElementById("tSophieTime10").textContent = t.sophieTime;
-  document.getElementById("tSophieTime20").textContent = t.sophieTime;
-  document.getElementById("tLegal1").innerHTML         = t.legal1;
-  document.getElementById("tLegal2").innerHTML         = t.legal2;
-  document.getElementById("tPrivacy").textContent      = t.privacy;
-  document.getElementById("tLoginHint").textContent    = t.loginHint;
-  btnLogin.textContent                                 = t.loginLink;
-  document.getElementById("backBtn").textContent       = l === "de" ? "← Zurück" : "← Back";
+  document.getElementById("tH1").textContent            = t.h1;
+  document.getElementById("tLead").textContent           = t.lead;
+  document.getElementById("tStartBadge").textContent     = t.startBadge;
+  document.getElementById("tStartName").textContent      = t.startName;
+  document.getElementById("tStartPer").textContent       = t.startPer;
+  document.getElementById("tStartSub").textContent       = t.startSub;
+  btnStart.textContent                                   = t.startBtn;
+  document.getElementById("tTopup5Badge").textContent    = t.topup5Badge;
+  document.getElementById("tTopup5Name").textContent     = t.topup5Name;
+  document.getElementById("tTopup5Sub").textContent      = t.topup5Sub;
+  btnTopup5.textContent                                  = t.topup5Btn;
+  document.getElementById("tUpgradeLabel").textContent   = t.upgradeLabel;
+  document.getElementById("tPlusName").textContent       = t.plusName;
+  document.getElementById("tPlusTokens").textContent     = t.plusTokens;
+  document.getElementById("tPremiumName").textContent    = t.premiumName;
+  document.getElementById("tPremiumTokens").textContent  = t.premiumTokens;
+  document.getElementById("tMoreTokens").textContent     = t.moreTokens;
+  document.getElementById("tTokens10").textContent       = t.tokens10;
+  document.getElementById("tTokens20").textContent       = t.tokens20;
+  document.getElementById("tLegal1").innerHTML           = t.legal1;
+  document.getElementById("tLegal2").innerHTML           = t.legal2;
+  document.getElementById("tPrivacy").textContent        = t.privacy;
+  document.getElementById("tLoginHint").textContent      = t.loginHint;
+  btnLogin.textContent                                   = t.loginLink;
+  document.getElementById("backBtn").textContent         = l === "de" ? "← Zurück" : "← Back";
   updateEnabled();
 }
 
@@ -459,10 +538,7 @@ document.getElementById("backBtn").addEventListener("click", e => {
 
 function updateEnabled(){
   const ok = c1.checked && c2.checked;
-  btnAbo.disabled     = !ok;
-  btnTopup5.disabled  = !ok;
-  btnTopup10.disabled = !ok;
-  btnTopup20.disabled = !ok;
+  allBtns.forEach(b => b.disabled = !ok);
 }
 c1.onchange = updateEnabled;
 c2.onchange = updateEnabled;
@@ -483,26 +559,24 @@ function legalPayload(){
   return { termsAccepted:true, privacyAccepted:true, waiverAccepted:true, lang:currentLang, at:new Date().toISOString() };
 }
 
-function setAllDisabled(v){ btnAbo.disabled = btnTopup5.disabled = btnTopup10.disabled = btnTopup20.disabled = v; }
+function setAllDisabled(v){ allBtns.forEach(b => b.disabled = v); }
 
-async function startCheckout(){
+async function startCheckout(plan){
   msg.textContent = "";
   if (!(c1.checked && c2.checked)){ msg.textContent = TEXT[currentLang].legalMissing; return; }
   setAllDisabled(true);
-  const prev = btnAbo.textContent;
-  btnAbo.textContent = TEXT[currentLang].loading;
   try {
     const token = await getTokenOrLogin(); if (!token) return;
     const res = await fetch("/api/billing?action=checkout", {
       method:"POST",
       headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-      body:JSON.stringify({ plan:"plus", legal:legalPayload() }),
+      body:JSON.stringify({ plan, legal:legalPayload() }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.url){ msg.textContent = data?.error ? `Error: ${data.error}` : TEXT[currentLang].checkoutErr; return; }
     window.location.href = data.url;
   } catch { msg.textContent = TEXT[currentLang].checkoutErr; }
-  finally { btnAbo.textContent = prev; updateEnabled(); }
+  finally { updateEnabled(); }
 }
 
 async function startTopup(pack){
@@ -524,7 +598,9 @@ async function startTopup(pack){
   finally { msg.textContent = ""; updateEnabled(); }
 }
 
-btnAbo.onclick     = startCheckout;
+btnStart.onclick   = () => startCheckout("start");
+btnPlus.onclick    = () => startCheckout("plus");
+btnPremium.onclick = () => startCheckout("premium");
 btnTopup5.onclick  = () => startTopup(5);
 btnTopup10.onclick = () => startTopup(10);
 btnTopup20.onclick = () => startTopup(20);
