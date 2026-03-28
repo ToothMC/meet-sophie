@@ -602,7 +602,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-realtime",
+        model: "gpt-4o-realtime-preview",
         voice: "shimmer",
         modalities: ["audio", "text"],
         temperature: 0.85,
