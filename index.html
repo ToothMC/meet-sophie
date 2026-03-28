@@ -1227,6 +1227,32 @@
       padding-left:4px;
     }
 
+    .chat-upload{
+      width:32px;height:32px;border-radius:50%;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+      color:rgba(246,247,251,.5);font-size:18px;font-weight:600;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;transition:all .15s ease;font-family:inherit;
+      line-height:1;padding:0;
+    }
+    .chat-upload:hover{background:rgba(255,255,255,.14);color:rgba(246,247,251,.8);border-color:rgba(255,255,255,.2)}
+    .chat-upload:disabled{opacity:.3;cursor:not-allowed}
+    .chat-file-preview{
+      display:flex;gap:6px;padding:4px 8px 0;flex-wrap:wrap;
+      border-top:1px solid rgba(255,255,255,.035);
+    }
+    .chat-file-chip{
+      display:flex;align-items:center;gap:4px;
+      padding:4px 8px;border-radius:8px;
+      background:rgba(142,178,255,.12);border:1px solid rgba(142,178,255,.2);
+      font-size:11px;color:rgba(246,247,251,.7);max-width:180px;
+    }
+    .chat-file-chip img{width:28px;height:28px;border-radius:4px;object-fit:cover}
+    .chat-file-chip .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .chat-file-chip .remove{
+      cursor:pointer;opacity:.5;font-size:13px;line-height:1;padding:0 2px;
+    }
+    .chat-file-chip .remove:hover{opacity:1}
     .chat-footer textarea::placeholder{color:rgba(246,247,251,.34)}
     .chat-footer textarea:focus{border-color:rgba(142,178,255,.38)}
     .chat-send{
@@ -1337,7 +1363,10 @@
                 <button id="challengeBtn" class="challenge-btn" title="KIs diskutieren untereinander für beste Antwort (höherer Verbrauch)">🏆 Challenge</button>
               </div>
               <div id="tokenCounter" style="display:none;text-align:right;padding:0 12px 2px;font-size:11px;opacity:.55;color:#c8d8ff"></div>
+              <div class="chat-file-preview" id="chatFilePreview" style="display:none"></div>
               <div class="chat-footer">
+                <button class="chat-upload" id="chatUploadBtn" type="button" aria-label="Upload file" title="Datei anhängen">+</button>
+                <input type="file" id="chatFileInput" multiple accept="image/png,image/jpeg,image/webp,.pdf,.docx,.txt,.pptx,.ppt" style="display:none">
                 <textarea id="chatInput" placeholder="Type your message..." rows="1"></textarea>
                 <button class="chat-send" id="chatSendBtn" type="button" aria-label="Send">➤</button>
               </div>
@@ -2046,6 +2075,67 @@
     let sessionStarted = false;
     let demoCleared    = false;
     let sending        = false;
+
+    // ── File upload ──
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_FILES = 3;
+    const ALLOWED_TYPES = new Set(["image/png","image/jpeg","image/webp","application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.openxmlformats-officedocument.presentationml.presentation","application/vnd.ms-powerpoint","text/plain"]);
+    const ALLOWED_EXT = new Set(["png","jpg","jpeg","webp","pdf","docx","txt","pptx","ppt"]);
+    let pendingFiles = [];
+
+    const uploadBtn = document.getElementById("chatUploadBtn");
+    const fileInput = document.getElementById("chatFileInput");
+    const filePreview = document.getElementById("chatFilePreview");
+
+    if (uploadBtn && fileInput) {
+      uploadBtn.addEventListener("click", () => { fileInput.value = ""; fileInput.click(); });
+      fileInput.addEventListener("change", async (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const f of files) {
+          if (pendingFiles.length >= MAX_FILES) {
+            alert(`Max ${MAX_FILES} Dateien pro Nachricht.`);
+            break;
+          }
+          const ext = (f.name.split(".").pop() || "").toLowerCase();
+          if (!ALLOWED_TYPES.has(f.type) && !ALLOWED_EXT.has(ext)) {
+            alert(`Dateityp nicht unterstützt: ${f.name}`);
+            continue;
+          }
+          if (f.size > MAX_FILE_SIZE) {
+            alert(`Datei zu groß (max 5MB): ${f.name}`);
+            continue;
+          }
+          const dataUrl = await readFileAsDataUrl(f);
+          pendingFiles.push({ name: f.name, type: f.type, size: f.size, dataUrl });
+        }
+        renderFilePreview();
+      });
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    function renderFilePreview() {
+      if (!filePreview) return;
+      if (!pendingFiles.length) { filePreview.style.display = "none"; filePreview.innerHTML = ""; return; }
+      filePreview.style.display = "flex";
+      filePreview.innerHTML = pendingFiles.map((f, i) => {
+        const isImg = f.type.startsWith("image/");
+        const thumb = isImg ? `<img src="${f.dataUrl}" alt="">` : "";
+        const sizeKb = Math.round(f.size / 1024);
+        return `<div class="chat-file-chip">${thumb}<span class="name">${f.name} (${sizeKb}KB)</span><span class="remove" onclick="window._removeFile(${i})">✕</span></div>`;
+      }).join("");
+    }
+    window._removeFile = function(idx) {
+      pendingFiles.splice(idx, 1);
+      renderFilePreview();
+    };
     let awaitingVoiceConfirmation = false;
     let chatState      = "chat_idle";
 
@@ -2703,10 +2793,31 @@
       openai: "GPT", anthropic: "Claude", google: "Gemini", mistral: "Mistral",
     };
 
-    function appendBubble(role, text, providers, secondOpinion) {
+    function appendBubble(role, text, providers, secondOpinion, files) {
       const wrap   = document.createElement("div");
       wrap.className = `chat-msg ${role}`;
       if (role === "sophie" && secondOpinion) wrap.classList.add("verified");
+
+      // Show file attachments for user messages
+      if (role === "user" && files && files.length > 0) {
+        const fileWrap = document.createElement("div");
+        fileWrap.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px";
+        for (const f of files) {
+          if (f.type.startsWith("image/")) {
+            const img = document.createElement("img");
+            img.src = f.dataUrl;
+            img.style.cssText = "width:60px;height:60px;border-radius:8px;object-fit:cover";
+            fileWrap.appendChild(img);
+          } else {
+            const chip = document.createElement("span");
+            chip.style.cssText = "display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.1);font-size:11px;color:rgba(246,247,251,.6)";
+            chip.textContent = f.name;
+            fileWrap.appendChild(chip);
+          }
+        }
+        wrap.appendChild(fileWrap);
+      }
+
       const bubble = document.createElement("div");
       bubble.className = "chat-msg-bubble";
       bubble.textContent = text;
@@ -3168,6 +3279,12 @@
       inputEl.value = "";
       inputEl.style.height = "auto";
       sendBtn.disabled = true;
+
+      // Capture pending files before clearing
+      const filesToSend = pendingFiles.length > 0 ? [...pendingFiles] : null;
+      pendingFiles = [];
+      renderFilePreview();
+
       // Clear demo on first real interaction
       clearDemoAndStartReal();
       if (!sessionStarted) {
@@ -3182,8 +3299,10 @@
           return;
         }
       }
-      appendBubble("user", text);
-      history.push({ role: "user", content: text });
+      appendBubble("user", text, null, null, filesToSend);
+      const msgObj = { role: "user", content: text };
+      if (filesToSend) msgObj.files = filesToSend.map(f => ({ name: f.name, type: f.type, size: f.size, dataUrl: f.dataUrl }));
+      history.push(msgObj);
       if (chatState !== "voice_transitioning") chatState = "chat_active";
       saveChatState();
       show(typingEl);

@@ -504,11 +504,45 @@ async function handleMessage(req, res) {
     ? "[INTERNAL] Turn 5. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
     : null;
 
+  // Build messages — support multimodal (files with images/documents)
+  const buildContent = (m) => {
+    const text = String(m.content || "").slice(0, 4000);
+    if (!m.files || !Array.isArray(m.files) || m.files.length === 0) return text;
+
+    // Validate file sizes server-side (5MB base64 ≈ 6.7MB string)
+    const MAX_DATAURL_LEN = 7 * 1024 * 1024;
+    const parts = [{ type: "text", text: text || "Analysiere diese Datei(en):" }];
+
+    for (const f of m.files.slice(0, 3)) {
+      if (!f.dataUrl || f.dataUrl.length > MAX_DATAURL_LEN) continue;
+      const isImage = f.type?.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(f.name || "");
+      if (isImage) {
+        // OpenAI Vision format — works with gpt-4o and gpt-4o-mini
+        parts.push({ type: "image_url", image_url: { url: f.dataUrl, detail: "low" } });
+      } else {
+        // Documents (PDF/DOCX/PPT/TXT) — send as image for Vision extraction
+        // GPT-4o can read rendered PDFs/docs from base64 images
+        // For text files, extract content directly
+        if (f.type === "text/plain" && f.dataUrl.startsWith("data:text/")) {
+          try {
+            const b64 = f.dataUrl.split(",")[1] || "";
+            const decoded = Buffer.from(b64, "base64").toString("utf-8").slice(0, 8000);
+            parts.push({ type: "text", text: `[FILE: ${f.name}]\n${decoded}\n[/FILE]` });
+          } catch { parts.push({ type: "text", text: `[Datei: ${f.name} — konnte nicht gelesen werden]` }); }
+        } else {
+          // PDF/DOCX/PPT — send as image_url, GPT-4o Vision can extract text
+          parts.push({ type: "image_url", image_url: { url: f.dataUrl, detail: "low" } });
+        }
+      }
+    }
+    return parts.length > 1 ? parts : text;
+  };
+
   const routerMessages = [
     { role: "system", content: system_prompt || "" },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
+      .map(m => ({ role: m.role, content: m.role === "user" ? buildContent(m) : String(m.content || "").slice(0, 4000) })),
     ...(historyContext ? [{ role: "system", content: historyContext }] : []),
     ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
@@ -596,9 +630,18 @@ async function handleMessage(req, res) {
     routerMessages.push({ role: "system", content: "[CRITICAL] The user should have given their name. Use it once. Then ask: 'Nutzt du schon eine andere KI — ChatGPT, Claude oder so?' Do NOT skip this." });
   }
 
+  // Check if any message has file attachments (multimodal)
+  const hasFiles = messages.some(m => m.files?.length > 0);
+
   // Classify and route (authenticated users only)
   const ctx = classify({ messages: routerMessages }, { userTier, channel: "text" });
   const decision = route(ctx);
+
+  // Force vision-capable model if files are attached
+  if (hasFiles) {
+    decision.primary = { provider: "openai", model: "gpt-4o-mini" };
+    if (decision.fallback) decision.fallback = { provider: "openai", model: "gpt-4o" };
+  }
 
   // Budget check — degrade if over cap
   if (user) {
@@ -692,7 +735,8 @@ async function handleMessage(req, res) {
   let tokenDeduction = null;
   if (user) {
     try {
-      tokenDeduction = await deductChatTokens(supabase, user.id, TOKEN_COSTS.chat_message);
+      const chatCost = hasFiles ? (TOKEN_COSTS.chat_file_upload || 2) : TOKEN_COSTS.chat_message;
+      tokenDeduction = await deductChatTokens(supabase, user.id, chatCost);
       if (tokenDeduction.exhausted) {
         // Still return this response but signal exhaustion
         console.log(`[chat] tokens exhausted for user ${user.id.slice(0, 8)}`);
