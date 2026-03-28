@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a1714">
+<title>Sophie Admin</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:#1a1714;color:#e8e0d6;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.topbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;
+  background:rgba(26,23,20,.95);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.topbar .back{color:#a09080;text-decoration:none;font-size:14px}
+.topbar .back:hover{color:#e8e0d6}
+.topbar .title{flex:1;font-size:15px;font-weight:600;color:#c4a882}
+.topbar .refresh-btn{
+  background:none;border:1px solid rgba(255,255,255,.1);
+  color:#a09080;font-size:11px;padding:5px 12px;
+  border-radius:8px;cursor:pointer;font-family:inherit;
+}
+.topbar .refresh-btn:hover{color:#e8e0d6;border-color:#c4a882}
+.loading{text-align:center;padding:80px 20px;color:#a09080;font-size:14px}
+.forbidden{text-align:center;padding:80px 20px;color:#ef4444;font-size:16px;font-weight:600}
+main{max-width:900px;margin:0 auto;padding:16px}
+
+/* Alerts */
+.alerts{margin-bottom:16px}
+.alert{
+  padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;
+  margin-bottom:6px;display:flex;align-items:center;gap:8px;
+}
+.alert-error{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.alert-warn{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
+
+/* KPI Cards */
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  margin-bottom:20px;
+}
+.kpi{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;padding:16px;
+}
+.kpi .k-label{font-size:11px;color:#a09080;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.kpi .k-value{font-size:26px;font-weight:700;line-height:1}
+.kpi .k-sub{font-size:11px;color:#7a6a5a;margin-top:4px}
+.kpi.green .k-value{color:#22c55e}
+.kpi.red .k-value{color:#ef4444}
+.kpi.gold .k-value{color:#c4a882}
+
+/* Sections */
+.section{
+  margin-bottom:12px;border-radius:14px;overflow:hidden;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+}
+.section-header{
+  padding:14px 16px;font-size:14px;font-weight:600;color:#c4a882;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.section-body{padding:16px}
+
+/* Chart */
+.chart{display:flex;align-items:flex-end;gap:3px;height:120px;padding:0 4px}
+.chart-bar{
+  flex:1;min-width:0;border-radius:3px 3px 0 0;
+  background:#c4a882;position:relative;cursor:pointer;
+  transition:opacity .15s;
+}
+.chart-bar:hover{opacity:.8}
+.chart-bar .tip{
+  display:none;position:absolute;bottom:calc(100% + 6px);left:50%;
+  transform:translateX(-50%);white-space:nowrap;
+  background:#2a2420;color:#e8e0d6;font-size:10px;
+  padding:4px 8px;border-radius:6px;z-index:5;
+  pointer-events:none;
+}
+.chart-bar:hover .tip{display:block}
+.chart-legend{display:flex;gap:16px;font-size:11px;color:#7a6a5a;margin-top:8px;justify-content:space-between}
+
+/* Provider grid */
+.prov-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.prov-card{
+  padding:12px;border-radius:10px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  text-align:center;
+}
+.prov-card .p-name{font-size:12px;font-weight:600;margin-bottom:4px}
+.prov-card .p-cost{font-size:18px;font-weight:700;color:#c4a882}
+.prov-card .p-meta{font-size:10px;color:#7a6a5a;margin-top:4px}
+.prov-card .p-dot{
+  display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;
+}
+.dot-healthy{background:#22c55e}
+.dot-degraded{background:#f59e0b}
+.dot-down{background:#ef4444}
+
+/* User table */
+.user-table{width:100%;border-collapse:collapse;font-size:12px}
+.user-table th{
+  text-align:left;padding:8px 10px;color:#7a6a5a;font-weight:600;
+  border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;
+  text-transform:uppercase;letter-spacing:.04em;cursor:pointer;
+}
+.user-table th:hover{color:#c4a882}
+.user-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.03)}
+.user-table tr:hover td{background:rgba(255,255,255,.02)}
+.badge-sm{
+  display:inline-block;font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em;
+}
+.b-active{background:rgba(34,197,94,.15);color:#22c55e}
+.b-inactive{background:rgba(239,68,68,.12);color:#ef4444}
+.b-free{background:rgba(255,255,255,.06);color:#7a6a5a}
+
+@media(max-width:600px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .prov-grid{grid-template-columns:1fr 1fr}
+  main{padding:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back">&larr; Back</a>
+  <span class="title">Sophie Admin</span>
+  <button class="refresh-btn" id="refreshBtn">Refresh</button>
+</div>
+
+<div class="loading" id="loadingEl">Loading...</div>
+<div class="forbidden hidden" id="forbiddenEl">403 — Access Denied</div>
+
+<main id="mainContent" class="hidden">
+  <div class="alerts" id="alerts"></div>
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="section">
+    <div class="section-header">AI-Kosten (30 Tage)</div>
+    <div class="section-body">
+      <div class="chart" id="chart"></div>
+      <div class="chart-legend" id="chartLegend"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Provider</div>
+    <div class="section-body">
+      <div class="prov-grid" id="provGrid"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Users</div>
+    <div class="section-body" style="padding:0;overflow-x:auto">
+      <table class="user-table" id="userTable">
+        <thead><tr>
+          <th data-sort="name">Name</th>
+          <th data-sort="plan">Plan</th>
+          <th data-sort="costMonth">Kosten/Mo</th>
+          <th data-sort="remaining">Remaining</th>
+          <th data-sort="active">Status</th>
+        </tr></thead>
+        <tbody id="userBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = id => document.getElementById(id);
+const loadingEl = $("loadingEl");
+const forbiddenEl = $("forbiddenEl");
+const mainContent = $("mainContent");
+
+let session = null;
+let sortKey = "costMonth";
+let sortAsc = false;
+let usersData = [];
+
+try {
+  const { data } = await supabase.auth.getSession();
+  session = data?.session;
+} catch {}
+
+if (!session?.user) {
+  window.location.href = "/login";
+} else {
+  loadAll();
+}
+
+async function api(action) {
+  const res = await fetch(`/api/admin?action=${action}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (res.status === 403) {
+    loadingEl.classList.add("hidden");
+    forbiddenEl.classList.remove("hidden");
+    throw new Error("Forbidden");
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function loadAll() {
+  try {
+    const [overview, costs, users] = await Promise.all([
+      api("overview"),
+      api("costs"),
+      api("users"),
+    ]);
+    loadingEl.classList.add("hidden");
+    mainContent.classList.remove("hidden");
+    renderAlerts(overview.alerts);
+    renderKPIs(overview);
+    renderChart(costs.daily);
+    renderProviders(overview.providers, costs.providers);
+    usersData = users.users;
+    renderUsers(usersData);
+  } catch (e) {
+    if (e.message !== "Forbidden") {
+      loadingEl.textContent = "Error: " + e.message;
+    }
+  }
+}
+
+function renderAlerts(alerts) {
+  $("alerts").innerHTML = (alerts || []).map(a =>
+    `<div class="alert alert-${a.level}">${a.level === "error" ? "\u26a0" : "\u26a0"} ${a.msg}</div>`
+  ).join("");
+}
+
+function renderKPIs(ov) {
+  const margin = ov.margin;
+  const marginClass = margin === null ? "" : margin > 50 ? "green" : margin > 20 ? "gold" : "red";
+
+  $("kpiGrid").innerHTML = `
+    <div class="kpi gold">
+      <div class="k-label">MRR</div>
+      <div class="k-value">\u20ac${ov.revenue.mrr.toFixed(2)}</div>
+      <div class="k-sub">${ov.users.active} active subs</div>
+    </div>
+    <div class="kpi">
+      <div class="k-label">Users</div>
+      <div class="k-value">${ov.users.total}</div>
+      <div class="k-sub">${ov.users.plans.starter || 0} Starter \u00b7 ${ov.users.plans.plus || 0} Plus \u00b7 ${ov.users.free} Free</div>
+    </div>
+    <div class="kpi ${ov.costs.today > 5 ? "red" : ""}">
+      <div class="k-label">AI-Kosten heute</div>
+      <div class="k-value">$${ov.costs.today.toFixed(2)}</div>
+      <div class="k-sub">Woche: $${ov.costs.week.toFixed(2)} \u00b7 Monat: $${ov.costs.month.toFixed(2)}</div>
+    </div>
+    <div class="kpi ${marginClass}">
+      <div class="k-label">Marge</div>
+      <div class="k-value">${margin !== null ? margin + "%" : "\u2014"}</div>
+      <div class="k-sub">Revenue \u2212 AI-Kosten</div>
+    </div>
+  `;
+}
+
+function renderChart(daily) {
+  if (!daily?.length) {
+    $("chart").innerHTML = '<span style="color:#7a6a5a;font-size:12px">Keine Daten</span>';
+    return;
+  }
+  const maxCost = Math.max(...daily.map(d => d.cost), 0.01);
+  const totalReqs = daily.reduce((s, d) => s + d.requests, 0);
+  const totalCost = daily.reduce((s, d) => s + d.cost, 0);
+  const avg = totalCost / daily.length;
+
+  $("chart").innerHTML = daily.map(d => {
+    const h = Math.max(2, (d.cost / maxCost) * 100);
+    const date = d.date.slice(5); // MM-DD
+    return `<div class="chart-bar" style="height:${h}%">
+      <div class="tip">${date}: $${d.cost.toFixed(3)} \u00b7 ${d.requests} req</div>
+    </div>`;
+  }).join("");
+
+  $("chartLegend").innerHTML = `
+    <span>${daily[0]?.date?.slice(5)} \u2014 ${daily[daily.length-1]?.date?.slice(5)}</span>
+    <span>Total: $${totalCost.toFixed(2)} \u00b7 ${totalReqs} req \u00b7 Avg: $${avg.toFixed(3)}/day</span>
+  `;
+}
+
+function renderProviders(health, costBreakdown) {
+  const NAMES = { openai: "OpenAI", anthropic: "Anthropic", google: "Google", mistral: "Mistral" };
+  const allProviders = new Set([...health.map(h => h.provider), ...Object.keys(costBreakdown || {})]);
+
+  const healthMap = Object.fromEntries(health.map(h => [h.provider, h]));
+
+  $("provGrid").innerHTML = [...allProviders].map(p => {
+    const h = healthMap[p];
+    const cost = costBreakdown?.[p] || 0;
+    const status = h?.status || "unknown";
+    const latency = h?.latency_ms;
+    return `<div class="prov-card">
+      <div class="p-name"><span class="p-dot dot-${status}"></span>${NAMES[p] || p}</div>
+      <div class="p-cost">$${cost.toFixed(2)}</div>
+      <div class="p-meta">${status}${latency ? ` \u00b7 ${latency}ms` : ""}</div>
+    </div>`;
+  }).join("");
+}
+
+function fmtSec(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.round(s % 60);
+  return m + ":" + String(sec).padStart(2, "0");
+}
+
+function renderUsers(users) {
+  const sorted = [...users].sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (typeof va === "string") { va = va.toLowerCase(); vb = (vb || "").toLowerCase(); }
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  $("userBody").innerHTML = sorted.map(u => `<tr>
+    <td>${u.name}</td>
+    <td><span class="badge-sm ${u.plan === "free" ? "b-free" : "b-active"}">${u.plan}</span></td>
+    <td>$${u.costMonth.toFixed(3)}</td>
+    <td>${fmtSec(u.remaining)}</td>
+    <td><span class="badge-sm ${u.active ? "b-active" : "b-inactive"}">${u.active ? "active" : "inactive"}</span></td>
+  </tr>`).join("");
+}
+
+// Sort table
+document.querySelectorAll(".user-table th[data-sort]").forEach(th => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.sort;
+    if (sortKey === key) sortAsc = !sortAsc;
+    else { sortKey = key; sortAsc = false; }
+    renderUsers(usersData);
+  });
+});
+
+// Refresh
+$("refreshBtn").addEventListener("click", loadAll);
+
+// Logout
+const logoutAction = async () => { await supabase.auth.signOut(); window.location.href = "/login"; };
+
+// Hidden class helper
+document.querySelectorAll(".hidden").forEach(el => el.style.display = "none");
+mainContent.style.display = "";
+mainContent.classList.add("hidden");
+mainContent.style.display = "none";
+
+// Fix hidden state
+const style = document.createElement("style");
+style.textContent = ".hidden{display:none!important}";
+document.head.appendChild(style);
+</script>
+</body>
+</html>
