@@ -3679,11 +3679,11 @@ function attachChannel(ch) {
 
         partialAssistant = "";
 
-        // Sales Pitch: Sophie announced report → end call now (audio already played)
+        // Sales Pitch: Sophie announced report → end call gracefully (NOT as time limit!)
         if (pitchReportSignaled && !limitTriggered && !softEndFinalizing) {
           pitchReportSignaled = false;
-          console.log(`[${runId}] [salespitch] ending call after report announcement`);
-          setTimeout(() => { void handleTimeLimitReached(); }, 1500);
+          console.log(`[${runId}] [salespitch] ending call after report announcement — normal end (not time limit)`);
+          setTimeout(() => { void stopVoice(false); }, 1500);
           return;
         }
 

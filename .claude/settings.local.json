@@ -141,7 +141,10 @@
       "Bash(grep -l \"conversation_outputs\\\\|user_sessions\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -r \"report_style\\\\|report_html\\\\|report_status\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -l \"ALTER TABLE.*conversation_outputs\\\\|ADD.*report_style\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "Bash(cat /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(cat /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -l \"deduct_tokens\\\\|acquire_realtime_lock\\\\|reserve_free_seconds\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"CREATE.*FUNCTION\\\\|DROP.*FUNCTION\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/ --include=*.sql)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name talk -o -path *talk* -name *.html -o -path *talk* -name *.jsx -o -path *talk* -name *.ts)"
     ]
   },
   "hooks": {
