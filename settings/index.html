@@ -543,18 +543,8 @@ async function loadUsage() {
     const remaining = d.remainingTokens || 0;
     const total = d.totalTokens || 0;
 
-    // Estimate breakdown: 10 tokens = 1 min voice, 1 token = 1 chat message
-    const estVoiceMin = Math.floor(remaining / 10);
-    const estChatMsgs = remaining;
-
     // Subtitle update
     sub.textContent = remaining + " Tokens \u00fcbrig";
-
-    // Build breakdown
-    const parts = [];
-    if (d.freeRemaining > 0) parts.push("Free: " + d.freeRemaining + " Tokens");
-    if (d.paidRemaining > 0) parts.push("Abo: " + d.paidRemaining + " Tokens");
-    if (d.topupRemaining > 0) parts.push("Top-up: " + d.topupRemaining + " Tokens");
 
     // Daily cost bar
     const costPct = d.dailyCap > 0 ? Math.min(100, Math.round((d.dailyCost / d.dailyCap) * 100)) : 0;
@@ -570,8 +560,6 @@ async function loadUsage() {
       <div class="usage-bar-wrap">
         <div class="usage-bar ${barColor}" style="width:${Math.min(pct, 100)}%"></div>
       </div>
-      <div class="usage-detail" style="font-size:11px;opacity:.7;margin-top:4px">~${estVoiceMin} Min Voice / ~${estChatMsgs} Chat-Nachrichten</div>
-      ${parts.length > 1 ? '<div class="usage-detail">' + parts.join(" &middot; ") + '</div>' : ''}
       <div class="usage-cost">
         <div class="usage-cost-label">AI-Budget heute: $${parseFloat(d.dailyCost).toFixed(2)} / $${parseFloat(d.dailyCap).toFixed(2)}</div>
         <div class="usage-cost-bar-wrap">
