@@ -684,6 +684,8 @@ async function openReportDetail(sessionId, source = 'talk') {
   }
 }
 window.openReportDetail = openReportDetail;
+window.updateDeleteBar = updateDeleteBar;
+window.deleteSelectedReports = deleteSelectedReports;
 
 function closeReportDetail() {
   document.getElementById("reportDetailOverlay").style.display = "none";
