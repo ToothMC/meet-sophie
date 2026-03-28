@@ -304,13 +304,24 @@ body{
 .export-bar{
   display:flex;gap:8px;margin-top:12px;
 }
-.export-btn{
-  padding:8px 14px;font-size:12px;font-weight:600;border-radius:8px;
-  cursor:pointer;font-family:inherit;border:1px solid #ede8e2;
-  background:rgba(0,0,0,.03);color:#5a4a40;
-  transition:all .2s;
+/* Export section labels */
+.report-export-title{
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:#b0a090;font-weight:600;text-align:center;margin:12px 0 6px;
 }
-.export-btn:hover{background:rgba(0,0,0,.06);color:#2a2420}
+.export-row{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+}
+.export-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 18px;border-radius:20px;
+  background:none;border:1px solid #ddd6cc;color:#6a5a50;
+  font-size:13px;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .18s ease;
+}
+.export-btn:hover{background:#f0ece6;border-color:#c4a882;color:#2c2420}
+.export-btn.primary{background:#2c2420;color:#faf9f6;border-color:#2c2420}
+.export-btn.primary:hover{background:#3d3028;border-color:#3d3028;color:#faf9f6}
 
 /* ---- LOADING ---- */
 .loading-screen{
@@ -434,20 +445,29 @@ body{
     <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
       <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
     </div>
-    <div id="reportOptions" class="hidden" style="display:flex;gap:12px;margin-top:10px;align-items:center;flex-wrap:wrap">
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7a6a5a;cursor:pointer;user-select:none">
-        <input type="checkbox" id="optLeanCheck" checked style="accent-color:#c4a882"> Lean Check
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7a6a5a;cursor:pointer;user-select:none">
-        <input type="checkbox" id="optTranscript" style="accent-color:#c4a882"> Gesprächsverlauf
-      </label>
-    </div>
-    <div id="reportActions" class="hidden" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-      <button class="export-btn" id="reportPrintBtn">🖨 PDF</button>
-      <button class="export-btn" id="reportDownloadFullBtn">⬇ Download</button>
-      <button class="export-btn" id="reportCopyBtn">📋 Kopieren</button>
-      <button class="export-btn" id="reportTemplateBtn">💾 Vorlage</button>
-      <button class="export-btn" id="reportRegenerateBtn">🔄 Neu</button>
+    <div id="reportActions" class="hidden">
+      <div class="report-export-title">Export</div>
+      <div class="export-row">
+        <button class="export-btn" id="reportCopyBtn"><span>Kopieren</span></button>
+        <button class="export-btn" id="reportPrintBtn"><span>PDF</span></button>
+        <button class="export-btn primary" id="reportDownloadFullBtn"><span>Herunterladen</span></button>
+      </div>
+
+      <div class="report-export-title">Layout</div>
+      <div class="export-row">
+        <button class="export-btn" id="reportTemplateBtn"><span>Als Vorlage</span></button>
+        <button class="export-btn" id="reportRegenerateBtn"><span>Neu generieren</span></button>
+      </div>
+
+      <div id="reportOptions" class="report-export-title" style="margin-top:14px">Inhalt</div>
+      <div id="reportOptionsRow" class="export-row" style="gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
+          <input type="checkbox" id="optLeanCheck" checked style="accent-color:#c4a882;width:16px;height:16px"> Lean Check
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
+          <input type="checkbox" id="optTranscript" style="accent-color:#c4a882;width:16px;height:16px"> Gesprächsverlauf
+        </label>
+      </div>
     </div>
   </div>
 </div>
@@ -1416,10 +1436,8 @@ function showMeetingReport(html) {
   const reportFrame = $("reportFrame");
 
   reportPreview.classList.remove("hidden");
-  $("reportOptions").classList.remove("hidden");
-  $("reportOptions").style.display = "flex";
   reportActions.classList.remove("hidden");
-  reportActions.style.display = "flex";
+  reportActions.style.display = "block";
 
   // Write HTML into iframe
   const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
@@ -1519,8 +1537,6 @@ function showMeetingReport(html) {
     if (!meetingReportSessionId) return;
     $("reportRegenerateBtn").disabled = true;
     reportPreview.classList.add("hidden");
-    $("reportOptions").classList.add("hidden");
-    $("reportOptions").style.display = "none";
     reportActions.classList.add("hidden");
     reportActions.style.display = "none";
 
