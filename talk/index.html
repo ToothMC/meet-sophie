@@ -3910,6 +3910,7 @@ async function startVoice(){
     showReadyStatus();
     headline.textContent = t("sophie_listening");
     showLiveBadge(true);
+    showVoiceChat(true);
 
     setTimeout(() => {
       playReadySound();
