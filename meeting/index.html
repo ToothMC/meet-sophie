@@ -769,20 +769,19 @@ async function showSetup() {
     if (opt?.value) {
       selectedParentId = opt.value;
       $("meetingTitle").value = opt.dataset.title || "";
-      // Load parent meeting data to prefill agenda + participants
+      // Pre-load parent data — store for after createMeeting
       try {
         const parentData = await api("get", { id: opt.value }, "GET");
         const contexts = parentData.context || [];
         const parentParticipants = contexts.find(c => c.context_type === "participants");
         const summary = parentData.summary;
 
-        // Prefill participants from parent
+        window.__parentPrefill = {};
+
         if (parentParticipants?.content) {
-          $("ctxParticipants").value = parentParticipants.content;
-          autoResizeTextarea($("ctxParticipants"));
+          window.__parentPrefill.participants = parentParticipants.content;
         }
 
-        // Build agenda from follow-ups / open items — short bullet points only
         if (summary?.report_html) {
           const tmp = document.createElement("div");
           tmp.innerHTML = summary.report_html;
@@ -793,17 +792,13 @@ async function showSetup() {
             if (hText.includes("action") || hText.includes("nächste") || hText.includes("next") || hText.includes("offen") || hText.includes("open") || hText.includes("follow")) {
               let el = h.closest("div, section") || h.parentElement;
               el?.querySelectorAll("li").forEach(li => {
-                // Extract first sentence or max 60 chars — keep it short
                 let text = li.textContent.trim().split(/[.!?]/)[0].trim();
                 if (text.length > 60) text = text.slice(0, 57) + "…";
                 if (text) items.push("• " + text);
               });
             }
           }
-          if (items.length) {
-            $("ctxAgenda").value = items.join("\n");
-            autoResizeTextarea($("ctxAgenda"));
-          }
+          if (items.length) window.__parentPrefill.agenda = items.join("\n");
         }
       } catch (e) {
         console.log("Could not load parent meeting data:", e);
@@ -811,8 +806,7 @@ async function showSetup() {
     } else {
       selectedParentId = null;
       $("meetingTitle").value = "";
-      $("ctxAgenda").value = "";
-      $("ctxParticipants").value = "";
+      window.__parentPrefill = null;
     }
   };
 }
@@ -874,6 +868,19 @@ async function loadMeeting(id) {
     if (agendaCtx) $("ctxAgenda").value = agendaCtx.content;
     if (partCtx) $("ctxParticipants").value = partCtx.content;
     if (goalCtx) $("ctxGoal").value = goalCtx.content;
+
+    // Apply parent meeting prefill (stored during setup)
+    if (window.__parentPrefill) {
+      if (window.__parentPrefill.agenda && !agendaCtx) {
+        $("ctxAgenda").value = window.__parentPrefill.agenda;
+        autoResizeTextarea($("ctxAgenda"));
+      }
+      if (window.__parentPrefill.participants && !partCtx) {
+        $("ctxParticipants").value = window.__parentPrefill.participants;
+        autoResizeTextarea($("ctxParticipants"));
+      }
+      window.__parentPrefill = null;
+    }
 
     // Load existing uploaded files
     const fileContexts = contexts.filter(c => c.context_type === "file");
