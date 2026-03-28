@@ -33,6 +33,7 @@ body{
 .topbar .refresh-btn:hover{color:#e8e0d6;border-color:#c4a882}
 .loading{text-align:center;padding:80px 20px;color:#a09080;font-size:14px}
 .forbidden{text-align:center;padding:80px 20px;color:#ef4444;font-size:16px;font-weight:600}
+.hidden{display:none!important}
 main{max-width:900px;margin:0 auto;padding:16px}
 
 /* Alerts */
@@ -356,20 +357,6 @@ document.querySelectorAll(".user-table th[data-sort]").forEach(th => {
 
 // Refresh
 $("refreshBtn").addEventListener("click", loadAll);
-
-// Logout
-const logoutAction = async () => { await supabase.auth.signOut(); window.location.href = "/login"; };
-
-// Hidden class helper
-document.querySelectorAll(".hidden").forEach(el => el.style.display = "none");
-mainContent.style.display = "";
-mainContent.classList.add("hidden");
-mainContent.style.display = "none";
-
-// Fix hidden state
-const style = document.createElement("style");
-style.textContent = ".hidden{display:none!important}";
-document.head.appendChild(style);
 </script>
 </body>
 </html>
