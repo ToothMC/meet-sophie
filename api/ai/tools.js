@@ -25,6 +25,9 @@ export default async function handler(req, res) {
       case 'news':
         result = await getNews(params.topic);
         break;
+      case 'wiki':
+        result = await getWikipedia(params.query);
+        break;
       default:
         return res.status(400).json({ error: `Unknown tool: ${tool}` });
     }
