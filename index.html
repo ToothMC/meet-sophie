@@ -1330,13 +1330,11 @@
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
             <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
-            <div class="bs-mode-toggle" id="bsModeToggle" style="display:none">
-              <button class="bs-mode-btn active" data-val="solo">Solo</button>
-              <button class="bs-mode-btn" data-val="group">Team</button>
-            </div>
           </div>
           <div class="hero-mode-bar" id="heroModeBar">
-            <button class="hero-mode-pill" data-mode="brainstorm">✦ Brainstorm</button>
+            <button class="hero-mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
+            <button class="hero-mode-pill bs-split" data-mode="brainstorm" data-bs="solo" style="display:none">✦ Solo</button>
+            <button class="hero-mode-pill bs-split" data-mode="brainstorm" data-bs="group" style="display:none">Team</button>
             <button class="hero-mode-pill" data-mode="meeting">◉ Meeting</button>
             <button class="hero-mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
           </div>
