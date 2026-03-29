@@ -153,7 +153,8 @@
       "Bash(ls ~/.nvm/versions/node/*/bin/node)",
       "Bash(ls /opt/homebrew/bin/node*)",
       "Bash(ls /usr/local/opt/node*/bin/node)",
-      "Read(//opt/**)"
+      "Read(//opt/**)",
+      "Bash(grep -rn \"brainstorm.*topic\\\\|brainstorm.*config\\\\|brainstorm.*setup\\\\|topic.*input\\\\|goal.*input\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js --include=*.tsx)"
     ]
   },
   "hooks": {
