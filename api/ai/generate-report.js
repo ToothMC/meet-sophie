@@ -266,20 +266,18 @@ REGELN:
 
           if (prevPitches?.length) {
             const prev = prevPitches[0];
+            const pc = prev.scores_content || {};
+            const pd = prev.scores_delivery || {};
             prevPitchContext = `\n\nVORHERIGER PITCH (v${prev.version || 1}) — "${prev.topic}":
 Overall Score: ${prev.score || 0}/100
-Content Scores: ${JSON.stringify(prev.scores_content || {})}
-Delivery Scores: ${JSON.stringify(prev.scores_delivery || {})}
-Stärken: ${(prev.strengths || []).join(', ')}
-Schwächen: ${(prev.weaknesses || []).join(', ')}
+Content Scores: clarity=${pc.clarity||0}, problem_sharpness=${pc.problem_sharpness||0}, value_proposition=${pc.value_proposition||pc.value_prop||0}, structure=${pc.structure||0}, differentiation=${pc.differentiation||0}, credibility=${pc.credibility||0}, audience_fit=${pc.audience_fit||0}
+Delivery Scores: opening=${pd.opening||0}, closing=${pd.closing||0}, voice_rhythm=${pd.voice_rhythm||0}, rhetoric_language=${pd.rhetoric_language||0}, authenticity=${pd.authenticity||0}, persuasiveness=${pd.persuasiveness||0}
 
-WICHTIG — VERSION COMPARISON:
-Wenn das Thema dieses Pitches zum vorherigen passt, füge am Ende des Reports einen VERGLEICHS-ABSCHNITT ein:
-- Pro Kriterium: ▲ verbessert / ● gleich / ▼ verschlechtert (mit Score-Delta)
-- Stärkste Verbesserung hervorheben
-- Größte verbleibende Schwäche
-- Neue Schwäche (falls entstanden)
-Verwende das gleiche HTML-Design wie die Score-Bars, aber mit Trend-Pfeilen.\n`;
+WICHTIG — VERGLEICH IM SCORE-BAR:
+Dies ist ein Folge-Pitch. Für JEDES Kriterium hast du den vorherigen Score oben.
+Verwende das VERGLEICHS-BAR-DESIGN (siehe HTML-Vorlage unten) statt der einfachen Bars.
+Jeder Score-Balken zeigt: Ghost-Bar (alter Score, halbtransparent) + neuer Balken + Delta-Badge.
+Das Delta-Badge zeigt die Veränderung: grün ▲ +X.X bei Verbesserung, rot ▼ -X.X bei Verschlechterung, grau ● bei gleich.\n`;
           }
         }
       } catch (e) { console.error('[report] prev pitch load failed:', e?.message); }
