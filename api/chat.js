@@ -360,6 +360,7 @@ async function handleStart(req, res) {
       relationship: rel,
     },
     channel: "chat",
+    brainstormConfig,
   });
 
   // Append imported context to system prompt
