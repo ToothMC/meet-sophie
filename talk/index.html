@@ -3804,6 +3804,9 @@ function attachChannel(ch) {
             // Instead: snapshot transcript read-only → create session row → fire generate-report
             pitchReportBgPromise = (async () => {
               try {
+                // Wait 3s before starting API calls — let Sophie's audio stream stabilize first
+                await new Promise(r => setTimeout(r, 3000));
+
                 // Read-only snapshot — do NOT touch partialAssistant or convoLog
                 const snapshot = [...convoLog];
                 const partial = (partialAssistant || "").trim();
