@@ -2461,7 +2461,17 @@ function configurePostCallCta(triggeredByLimit = false) {
       const handover = buildPitchRetryHandover();
       handover.pitchRetry = false;
       handover.pitchDemo = true;
-      handover.summary = `DEMO PITCH: Sophie soll "${pitchTopic}" selbst pitchen als Beispiel. Schwächen: ${pitchWeaknesses.join(', ')}.`;
+      // Include the actual pitch transcript so Sophie knows EXACTLY what was pitched
+      const transcriptFromSession = (window._lastReportContext?.transcriptLog || [])
+        .filter(m => m.text?.trim())
+        .map(m => `[${m.role}]: ${m.text}`)
+        .join('\n')
+        .slice(0, 5000);
+      handover.pitchTranscript = transcriptFromSession;
+      // Include report text
+      const reportEl = document.getElementById("postCallSummary");
+      if (reportEl?.textContent) handover.reportSummary = reportEl.textContent.slice(0, 3000);
+      handover.summary = `DEMO PITCH: Sophie soll "${pitchTopic}" pitchen — basierend auf dem echten Transcript.`;
       localStorage.setItem("sophie_session_mode", "salespitch");
       sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
       window.location.reload();
