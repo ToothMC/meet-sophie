@@ -557,8 +557,8 @@ async function handleMessage(req, res) {
           // PDF — use OpenAI inline file format (supported by gpt-4o / gpt-4o-mini)
           parts.push({ type: "file", file: { filename: f.name || "document.pdf", file_data: f.dataUrl } });
         } else {
-          // DOCX/PPTX — not natively supported, hint to user
-          parts.push({ type: "text", text: `[Datei: ${f.name} hochgeladen — für beste Ergebnisse bitte als PDF senden]` });
+          // DOCX/PPTX/other — send as inline file (GPT-4o supports various formats)
+          parts.push({ type: "file", file: { filename: f.name || "document", file_data: f.dataUrl } });
         }
       }
     }
