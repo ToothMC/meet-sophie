@@ -536,18 +536,63 @@ export default async function handler(req, res) {
       handoverContext: hasHandoverContext ? handover : null,
       pitchRetry: handover?.pitchRetry === true,
       pitchDemo: handover?.pitchDemo === true,
-      pitchContext: handover?.pitchRetry || handover?.pitchDemo ? {
-        topic: handover.pitchTopic || "",
-        audience: handover.audience || "",
-        previousScores: handover.previousScores || null,
-        previousWeaknesses: handover.previousWeaknesses || [],
-        previousStrengths: handover.previousStrengths || [],
-        previousVersion: handover.previousVersion || 1,
-        previousDemoTranscript: handover.previousDemoTranscript || "",
-        previousDemoSelfCritique: handover.previousDemoSelfCritique || "",
-        pitchTranscript: handover.pitchTranscript || "",
-        reportSummary: handover.reportSummary || "",
-      } : null,
+      pitchContext: await (async () => {
+        if (!handover?.pitchRetry && !handover?.pitchDemo) return null;
+        const ctx = {
+          topic: handover.pitchTopic || "",
+          audience: handover.audience || "",
+          previousScores: handover.previousScores || null,
+          previousWeaknesses: handover.previousWeaknesses || [],
+          previousStrengths: handover.previousStrengths || [],
+          previousVersion: handover.previousVersion || 1,
+          previousDemoTranscript: handover.previousDemoTranscript || "",
+          previousDemoSelfCritique: handover.previousDemoSelfCritique || "",
+          pitchTranscript: "",
+          reportSummary: "",
+        };
+
+        // Load transcript + report SERVER-SIDE (avoids HTTP header size limits)
+        if (handover.pitchDemo) {
+          const sid = handover.previousPitchSessionId || null;
+          if (sid) {
+            try {
+              // Load conversation transcript
+              const { data: msgs } = await supabase
+                .from('conversation_messages')
+                .select('role, text')
+                .eq('session_id', sid)
+                .order('seq', { ascending: true })
+                .limit(100);
+              if (msgs?.length) {
+                ctx.pitchTranscript = msgs
+                  .filter(m => m.text?.trim())
+                  .map(m => `[${m.role}]: ${m.text}`)
+                  .join('\n')
+                  .slice(0, 6000);
+              }
+
+              // Load report text
+              const { data: output } = await supabase
+                .from('conversation_outputs')
+                .select('report_html')
+                .eq('session_id', sid)
+                .maybeSingle();
+              if (output?.report_html) {
+                ctx.reportSummary = output.report_html
+                  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim()
+                  .slice(0, 4000);
+              }
+
+              console.log(`[session] loaded demo context for ${sid}: transcript=${ctx.pitchTranscript.length}c, report=${ctx.reportSummary.length}c`);
+            } catch (e) { console.error('[session] demo context load failed:', e?.message); }
+          }
+        }
+
+        return ctx;
+      })(),
       customRules: Array.isArray(profile.custom_rules) ? profile.custom_rules : [],
       language: preferredLanguage,
       user: {
