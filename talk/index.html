@@ -1264,46 +1264,54 @@ let pausedElapsedMs = 0;        // elapsed session time before pause
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
 
-// ── Brainstorm Solo/Team toggle logic ──────────────────────
-(function() {
-  const toggle = document.getElementById("bsModeToggle");
-  let _bsMode = "solo";
+// ── Brainstorm split-pill logic ────────────────────────────
+let _bsMode = "solo";
+const bsPillMain  = document.getElementById("bsPillMain");
+const bsSplitBtns = document.querySelectorAll("#modeBar .bs-split");
 
-  toggle.querySelectorAll(".bs-mode-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      toggle.querySelectorAll(".bs-mode-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      _bsMode = btn.dataset.val;
-    });
+function showBsSplit() {
+  bsPillMain.style.display = "none";
+  bsSplitBtns.forEach(b => {
+    b.style.display = "";
+    b.classList.toggle("active", b.dataset.bs === "solo");
   });
+  _bsMode = "solo";
+}
+function hideBsSplit() {
+  bsPillMain.style.display = "";
+  bsSplitBtns.forEach(b => { b.style.display = "none"; b.classList.remove("active"); });
+}
 
-  window._getBrainstormConfig = function() {
-    const durMap = { solo: 20, group: 30 };
-    return {
-      topic: null,
-      goal: null,
-      mode: _bsMode,
-      depth: "standard",
-      duration_minutes: durMap[_bsMode] || 20,
-      facilitation_style: "guided",
-      silent_hints: true,
-    };
+window._getBrainstormConfig = function() {
+  const durMap = { solo: 20, group: 30 };
+  return {
+    topic: null, goal: null, mode: _bsMode,
+    depth: "standard", duration_minutes: durMap[_bsMode] || 20,
+    facilitation_style: "guided", silent_hints: true,
   };
+};
 
-  window._showBrainstormToggle = function() {
-    _bsMode = "solo";
-    toggle.querySelectorAll(".bs-mode-btn").forEach(b => b.classList.toggle("active", b.dataset.val === "solo"));
-    toggle.style.display = "inline-flex";
-  };
-
-  window._hideBrainstormToggle = function() {
-    toggle.style.display = "none";
-  };
-})();
+// Split pill click — toggle Solo/Team
+bsSplitBtns.forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (btn.dataset.bs === _bsMode) {
+      // deselect brainstorm entirely
+      selectedVoiceMode = null;
+      brainstormVoiceConfig = null;
+      hideBsSplit();
+      localStorage.removeItem("sophie_session_mode");
+    } else {
+      // switch Solo ↔ Team
+      _bsMode = btn.dataset.bs;
+      bsSplitBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+    }
+  });
+});
 // ──────────────────────────────────────────────────────────
 
 // Mode pill toggle (voice page)
-document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
+document.querySelectorAll("#modeBar .mode-pill:not(.bs-split)").forEach(btn => {
   btn.addEventListener("click", () => {
     const mode = btn.dataset.mode;
     if (selectedVoiceMode === mode) {
@@ -1311,17 +1319,16 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
       brainstormVoiceConfig = null;
       btn.classList.remove("active");
       localStorage.removeItem("sophie_session_mode");
-      window._hideBrainstormToggle();
+      if (mode === "brainstorm") hideBsSplit();
     } else if (mode === "brainstorm") {
-      brainstormVoiceConfig = null; // built on startVoice
+      brainstormVoiceConfig = null;
       selectedVoiceMode = "brainstorm";
-      document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
+      document.querySelectorAll("#modeBar .mode-pill:not(.bs-split)").forEach(b => b.classList.remove("active"));
       localStorage.setItem("sophie_session_mode", "brainstorm");
-      window._showBrainstormToggle();
+      showBsSplit();
     } else {
       brainstormVoiceConfig = null;
-      window._hideBrainstormToggle();
+      hideBsSplit();
       selectedVoiceMode = mode;
       document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
