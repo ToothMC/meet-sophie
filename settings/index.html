@@ -922,6 +922,76 @@ function pitchAgain() {
 }
 window.pitchAgain = pitchAgain;
 
+// Pitch again from Journey card — loads pitch memory data for handover
+async function pitchAgainFromJourney(topic) {
+  try {
+    const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
+    const handover = {
+      funnelMode: "salespitch",
+      language: document.documentElement.lang || "de",
+      pitchRetry: true,
+      pitchTopic: topic,
+      previousScores: {
+        content: data.scores_content || {},
+        delivery: data.scores_delivery || {},
+        overall: data.score || 0,
+      },
+      previousWeaknesses: data.weaknesses || [],
+      previousStrengths: data.strengths || [],
+      previousVersion: data.version || 1,
+      audience: data.target_audience || "",
+      pitchType: data.pitch_type || "",
+      goalType: data.goal_type || "",
+      summary: `PITCH RETRY v${(data.version || 1) + 1}: "${topic}". Vorheriger Score: ${data.score || 0}/100. Schwächen: ${(data.weaknesses || []).join(', ')}. Phase A NICHT nochmal stellen.`,
+      recentMessages: [{ role: "user", content: `Ich möchte meinen Pitch "${topic}" nochmal machen.` }],
+      userName: "",
+    };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  } catch (e) {
+    console.error("pitchAgainFromJourney failed:", e);
+    // Fallback: simple retry without scores
+    const handover = { funnelMode: "salespitch", language: document.documentElement.lang || "de", pitchRetry: true, pitchTopic: topic, summary: `PITCH RETRY: "${topic}". Phase A NICHT nochmal stellen.`, recentMessages: [{ role: "user", content: `Nochmal "${topic}".` }], userName: "" };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  }
+}
+window.pitchAgainFromJourney = pitchAgainFromJourney;
+
+// Sophie Demo Pitch — Sophie pitches FOR the user as an example
+async function pitchDemoFromJourney(topic) {
+  try {
+    const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
+    const handover = {
+      funnelMode: "salespitch",
+      language: document.documentElement.lang || "de",
+      pitchDemo: true,
+      pitchTopic: topic,
+      audience: data.target_audience || "",
+      pitchType: data.pitch_type || "",
+      goalType: data.goal_type || "",
+      previousScores: {
+        content: data.scores_content || {},
+        delivery: data.scores_delivery || {},
+        overall: data.score || 0,
+      },
+      previousWeaknesses: data.weaknesses || [],
+      previousStrengths: data.strengths || [],
+      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen als Beispiel. Audience: ${data.target_audience || 'unbekannt'}. User-Schwächen: ${(data.weaknesses || []).join(', ')}.`,
+      recentMessages: [{ role: "user", content: `Zeig mir wie du "${topic}" pitchen würdest.` }],
+      userName: "",
+    };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  } catch (e) {
+    alert("Nicht genug Pitch-Daten vorhanden. Pitche mindestens einmal, damit Sophie dir zeigen kann wie es geht.");
+  }
+}
+window.pitchDemoFromJourney = pitchDemoFromJourney;
+
 // ── Section: Meine Vorlagen ──
 const MODE_LABELS = { default: "Standard Report", brainstorm: "Brainstorm", salespitch: "Sales Pitch", meeting: "Meeting" };
 
