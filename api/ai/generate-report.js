@@ -149,6 +149,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
           .update({ report_progress: 80, report_status_detail: 'Extrahiere Beschlüsse & Action Items...' })
           .eq('session_id', session_id);
 
+        reportHtml = reportHtml.replace(/\[Datum\]/g, todayDate);
         const titleMatch = reportHtml.match(/<(?:h1|h2)[^>]*>([^<]+)/i);
         const reportTitle = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Meeting Report';
         const { error: saveErr } = await supabase.from('conversation_outputs').update({
