@@ -536,6 +536,17 @@ async function handleMessage(req, res) {
   // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
 
+  // Brainstorm phase injection — injected as system message on every turn
+  let brainstormPhaseInjection = null;
+  if (session.brainstorm_config && session.created_at) {
+    try {
+      const { phase, progress } = calcBrainstormPhase(session.brainstorm_config, session.created_at);
+      brainstormPhaseInjection = buildBrainstormPhaseInjection(phase, progress);
+    } catch (e) {
+      console.warn("[chat] brainstorm phase calc error:", e?.message);
+    }
+  }
+
   // Turn-aware routing nudge — injected as system message
   // Fires on turns 4–5 to give Sophie time for natural conversation first
   const voiceNudge = turnNumber === 4
