@@ -2151,7 +2151,8 @@ function getDatePrefix() {
 async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
-  stopFakeReportLoader();
+  // Stop fake loader interval but DON'T hide the bar — we're taking over with real progress
+  stopFakeReportLoader(false);
   inlineReportProgress.style.display = "block";
   inlineReportProgressBar.style.width = "5%";
   const softHint = document.getElementById("softHint");
