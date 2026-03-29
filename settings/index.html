@@ -789,18 +789,10 @@ async function openReportDetail(sessionId, source = 'talk') {
       const isSalespitch = data.report_style === 'salespitch' || data.report_style === 'pitch';
       pitchBar.style.display = isSalespitch ? 'block' : 'none';
 
-      // Enable demo button for all salespitch reports (generates from transcript)
       if (isSalespitch && demoBtn) {
         demoBtn.disabled = false;
         demoBtn.style.opacity = '1';
         demoBtn.style.cursor = 'pointer';
-        // Legacy 3+ pitch check removed — demo works from any single pitch report
-        if (false) { // kept for reference
-            demoBtn.disabled = false;
-            demoBtn.style.opacity = '1';
-            demoBtn.style.cursor = 'pointer';
-          }
-        }).catch(() => {});
       }
     }
 
