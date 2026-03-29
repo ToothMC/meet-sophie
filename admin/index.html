@@ -232,10 +232,12 @@ async function api(action) {
 
 async function loadAll() {
   try {
-    const [overview, costs, users] = await Promise.all([
+    const [overview, costs, users, budgetStatus, alertsData] = await Promise.all([
       api("overview"),
       api("costs"),
       api("users"),
+      api("budget-status").catch(() => ({ providers: [], unacknowledgedAlerts: 0 })),
+      api("alerts").catch(() => ({ alerts: [] })),
     ]);
     loadingEl.classList.add("hidden");
     mainContent.classList.remove("hidden");
@@ -243,6 +245,7 @@ async function loadAll() {
     renderKPIs(overview);
     renderChart(costs.daily);
     renderProviders(overview.providers, costs.providers);
+    renderBudgetMonitor(budgetStatus.providers, alertsData.alerts, budgetStatus.unacknowledgedAlerts);
     usersData = users.users;
     renderUsers(usersData);
   } catch (e) {
