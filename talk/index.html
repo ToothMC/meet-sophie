@@ -2954,7 +2954,7 @@ ${(voiceHandover.recentMessages || [])
       const pitchLang = voiceHandover?.language || _uiLang || "en";
       const isPitchRetry = voiceHandover?.pitchRetry === true;
       const isPitchDemo = voiceHandover?.pitchDemo === true;
-      const pitchTopic = voiceHandover?.pitchTopic || "";
+      const pitchTopic = voiceHandover?.pitchTopic || voiceHandover?.summary?.match(/"([^"]+)"/)?.[1] || "deinen Pitch";
 
       const langLock = pitchLang === "de"
         ? "Speak GERMAN. All questions and feedback in German."
