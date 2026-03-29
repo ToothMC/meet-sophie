@@ -2953,6 +2953,7 @@ ${(voiceHandover.recentMessages || [])
     if (selectedVoiceMode === "salespitch") {
       const pitchLang = voiceHandover?.language || _uiLang || "en";
       const isPitchRetry = voiceHandover?.pitchRetry === true;
+      const isPitchDemo = voiceHandover?.pitchDemo === true;
       const pitchTopic = voiceHandover?.pitchTopic || "";
 
       const langLock = pitchLang === "de"
