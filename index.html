@@ -2397,14 +2397,13 @@
           setFunnelMode(null);
           applyHeroMode(null);
         } else if (mode === "brainstorm") {
-          // open setup modal first, activate only on confirm
-          window._openBrainstormModal((config) => {
-            brainstormChatConfig = config;
-            document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            setFunnelMode("brainstorm");
-            applyHeroMode("brainstorm");
-          });
+          // Show Solo/Team toggle + activate brainstorm mode immediately
+          brainstormChatConfig = null; // will be built on start
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          setFunnelMode("brainstorm");
+          applyHeroMode("brainstorm");
+          window._showBrainstormToggle();
         } else {
           // select other modes directly
           brainstormChatConfig = null;
