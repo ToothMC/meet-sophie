@@ -809,12 +809,31 @@ async function handleMessage(req, res) {
   const voice_offer     = !!detected_mode; // backwards compat: mode detection triggers the CTA
   const voice_confirmed = rawReply.includes("[VOICE_CONFIRMED]");
   const import_hint = rawReply.includes("[IMPORT_HINT]");
+
+  // Detect and save learned rules
+  const learnRuleMatch = rawReply.match(/\[LEARN_RULE:\s*(.+?)\]/);
+  if (learnRuleMatch && user) {
+    const newRule = learnRuleMatch[1].trim();
+    if (newRule.length > 5 && newRule.length < 500) {
+      try {
+        const { data: prof } = await supabase.from('user_profile').select('custom_rules').eq('user_id', user.id).maybeSingle();
+        const rules = Array.isArray(prof?.custom_rules) ? prof.custom_rules : [];
+        if (rules.length < 20 && !rules.some(r => r.rule === newRule)) {
+          rules.push({ rule: newRule, context: '', created_at: new Date().toISOString() });
+          await supabase.from('user_profile').update({ custom_rules: rules }).eq('user_id', user.id);
+          console.log(`[chat] learned rule for ${user.id.slice(0, 8)}: "${newRule}"`);
+        }
+      } catch (e) { console.error('[chat] save rule failed:', e?.message); }
+    }
+  }
+
   const reply = rawReply
     .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
     .replace(/\s*signal_mode\([^)]*\)\s*/g, "")
     .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
     .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
     .replace(/\s*\[IMPORT_HINT\]\s*/g, "")
+    .replace(/\s*\[LEARN_RULE:[^\]]*\]\s*/g, "")
     .trim();
 
   // Increment turn count + link user if just authenticated
