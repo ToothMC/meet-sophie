@@ -3923,7 +3923,7 @@ function attachChannel(ch) {
           setTimeout(() => {
             console.log(`[${runId}] [salespitch] audio drain complete — transitioning to report`);
             stopVoicePitchClean();
-          }, 8000); // 8s buffer for remaining audio — report has been generating in parallel
+          }, 25000); // 25s — Sophie's feedback can be 20-30s speech. response.done fires when API is done, NOT when speakers finish. Report generates in parallel so this doesn't delay it.
           return;
         }
 
