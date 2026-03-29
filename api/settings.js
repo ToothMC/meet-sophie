@@ -476,6 +476,31 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  // ── GET: Pitch transcript by session_id (fallback for old pitches without pitch_memory) ──
+  if (action === 'pitch-transcript' && req.method === 'GET') {
+    const sid = req.query?.session_id;
+    if (!sid) return res.status(400).json({ error: 'Missing session_id' });
+
+    // Verify session belongs to user
+    const { data: sess } = await supabase.from('user_sessions').select('id').eq('id', sid).eq('user_id', user.id).maybeSingle();
+    if (!sess) return res.status(404).json({ error: 'Session not found' });
+
+    let transcript = '';
+    try {
+      const { data: msgs } = await supabase
+        .from('conversation_messages')
+        .select('role, text')
+        .eq('session_id', sid)
+        .order('seq', { ascending: true })
+        .limit(100);
+      if (msgs?.length) {
+        transcript = msgs.filter(m => m.text?.trim()).map(m => `[${m.role}]: ${m.text}`).join('\n').slice(0, 6000);
+      }
+    } catch (_) {}
+
+    return res.status(200).json({ transcript });
+  }
+
   // ── GET: Report template (single) ──
   if (action === 'get-report-template' && req.method === 'GET') {
     const mode = req.query?.mode || 'default';
