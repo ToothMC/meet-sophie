@@ -3004,7 +3004,7 @@ After your pitch + explanation, ask: "${pitchLang === "de" ? "Willst du es jetzt
 
 Rufe NICHT signal_pitch_report auf. Das ist eine Demonstration, keine Bewertung.
 WICHTIG: Sprich dein Gegenüber IMMER mit "du" an, niemals in dritter Person ("der User", "er/sie").`;
-      } else if (isPitchRetry && pitchTopic) {
+      } else if (isPitchRetry) {
         // RETRY: Skip Phase A — pass previous scores + weaknesses for targeted coaching
         const prevScores = voiceHandover.previousScores || null;
         const prevWeaknesses = voiceHandover.previousWeaknesses || [];
