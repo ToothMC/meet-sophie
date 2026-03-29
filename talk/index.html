@@ -3002,7 +3002,8 @@ ${pitchLang === "de"
 
 After your pitch + explanation, ask: "${pitchLang === "de" ? "Willst du es jetzt selbst versuchen?" : pitchLang === "fr" ? "Tu veux essayer maintenant ?" : "Want to try it yourself now?"}"
 
-Do NOT call signal_pitch_report. This is a demonstration, not an evaluation.`;
+Rufe NICHT signal_pitch_report auf. Das ist eine Demonstration, keine Bewertung.
+WICHTIG: Sprich dein Gegenüber IMMER mit "du" an, niemals in dritter Person ("der User", "er/sie").`;
       } else if (isPitchRetry && pitchTopic) {
         // RETRY: Skip Phase A — pass previous scores + weaknesses for targeted coaching
         const prevScores = voiceHandover.previousScores || null;
