@@ -3235,17 +3235,24 @@ Then go DIRECTLY to Phase B (listen to pitch). Be warm, specific, brief.
 WICHTIG: Sprich IMMER mit "du" — niemals "der User" oder dritte Person.`;
       } else {
         // FIRST PITCH: Normal Phase A with 3 setup questions
+        const uploadedFiles = voiceHandover?.uploadedFiles || [];
         const chatContext = voiceHandover ? `
-CHAT CONTEXT (use this info, do NOT ask again what you already know):
+CHAT CONTEXT — CRITICAL: Use this info. Do NOT ask again what you already know.
 Known user name: ${voiceHandover.userName || "(unknown)"}
 Language: ${pitchLang}
 Summary: ${voiceHandover.summary || "(none)"}
+${uploadedFiles.length ? `Hochgeladene Dateien im Chat: ${uploadedFiles.join(', ')}` : ''}
 Recent messages:
 ${(voiceHandover.recentMessages || [])
-  .map(m => `- ${m.role}: ${m.content}`)
+  .map(m => {
+    let line = `- ${m.role}: ${m.content}`;
+    if (m.fileNames?.length) line += ` [Dateien: ${m.fileNames.join(', ')}]`;
+    return line;
+  })
   .join("\n")}
 
-If the user already told you what they're pitching or who the audience is, acknowledge it and skip that question.
+WICHTIG: Wenn aus dem Chat-Kontext BEREITS hervorgeht was der User präsentiert, vor wem, oder was das Ziel ist — überspringe die entsprechende Phase A Frage und gehe zur nächsten.
+Wenn der User eine Datei (PDF/PPT) hochgeladen hat, ist der Inhalt in Sophies Antwort im Chat-Verlauf enthalten. Nutze diese Info!
 ` : "";
 
         pitchInstructions = `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first.
