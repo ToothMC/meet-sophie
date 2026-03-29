@@ -1334,61 +1334,10 @@
 </head>
 <body>
 
-<!-- Brainstorm Setup Modal -->
-<div class="bs-overlay" id="bsModal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="bsModalTitle">
-  <div class="bs-modal">
-    <!-- Step 1: Solo / Team -->
-    <div id="bsStep1">
-      <div class="bs-head">
-        <span class="bs-title" id="bsModalTitle">✦ Brainstorm</span>
-        <button class="bs-close" id="bsClose" aria-label="Close">✕</button>
-      </div>
-      <div class="bs-lbl" style="margin-top:4px">How do you want to brainstorm?</div>
-      <div class="bs-cards">
-        <button class="bs-card" data-mode="solo">
-          <span class="bs-card-icon">◎</span>
-          <span class="bs-card-label">Solo</span>
-          <span class="bs-card-desc">You + Sophie as sparring partner</span>
-        </button>
-        <button class="bs-card" data-mode="group">
-          <span class="bs-card-icon">◎◎</span>
-          <span class="bs-card-label">Team</span>
-          <span class="bs-card-desc">Group session — Sophie moderates</span>
-        </button>
-      </div>
-    </div>
-    <!-- Step 2: Config -->
-    <div id="bsStep2" style="display:none">
-      <div class="bs-head">
-        <button class="bs-back" id="bsBack" aria-label="Back">←</button>
-        <span class="bs-title" id="bsStep2Title">✦ Solo Brainstorm</span>
-        <button class="bs-close" id="bsClose2" aria-label="Close">✕</button>
-      </div>
-      <label class="bs-lbl" for="bsTopic">Topic <span class="bs-req">*</span></label>
-      <input class="bs-inp" id="bsTopic" type="text" placeholder="e.g. New pricing strategy" maxlength="500" autocomplete="off">
-      <label class="bs-lbl" for="bsGoal">Goal <span style="font-style:italic;text-transform:none;font-weight:400">(optional)</span></label>
-      <input class="bs-inp" id="bsGoal" type="text" placeholder="e.g. 3 concrete options" maxlength="500" autocomplete="off">
-      <div class="bs-row">
-        <div>
-          <div class="bs-lbl" style="margin-top:0">Depth</div>
-          <div class="bs-toggle" id="bsDepth">
-            <button class="bs-opt" data-val="short">Short</button>
-            <button class="bs-opt active" data-val="standard">Standard</button>
-            <button class="bs-opt" data-val="deep">Deep</button>
-          </div>
-        </div>
-        <div>
-          <div class="bs-lbl" style="margin-top:0">Facilitation</div>
-          <div class="bs-toggle" id="bsFacilitation">
-            <button class="bs-opt active" data-val="open">Open</button>
-            <button class="bs-opt" data-val="guided">Guided</button>
-            <button class="bs-opt" data-val="challenge">Challenge</button>
-          </div>
-        </div>
-      </div>
-      <button class="bs-go" id="bsGo" disabled>Start Brainstorming →</button>
-    </div>
-  </div>
+<!-- Brainstorm Solo/Team toggle — shown inline next to CTA when brainstorm mode selected -->
+<div class="bs-mode-toggle" id="bsModeToggle" style="display:none">
+  <button class="bs-mode-btn active" data-val="solo">Solo</button>
+  <button class="bs-mode-btn" data-val="group">Team</button>
 </div>
   <div class="chat-foreground-backdrop" id="chatBackdrop"></div>
   <header class="site-header">
