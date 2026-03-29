@@ -1347,8 +1347,14 @@ async function sendMemoryUpdate(secondsUsed) {
   }
 }
 
-const startBtn = document.getElementById("start");
-const endBtn   = document.getElementById("end");
+const startBtn  = document.getElementById("start");
+const endBtn    = document.getElementById("end");
+const pauseBtn  = document.getElementById("pauseBtn");
+
+let isPaused = false;
+let pausedConvoLog = null;      // transcript snapshot preserved across pause
+let pausedElapsedMs = 0;        // elapsed session time before pause
+let pausedTalkStartedAt = null; // for correct elapsed-time tracking
 
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
