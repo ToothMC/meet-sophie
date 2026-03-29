@@ -938,10 +938,7 @@ async function pitchDemoFromReport() {
 
   try {
     // Generate the demo pitch SERVER-SIDE (text AI, no hallucination)
-    const result = await api("generate-demo-pitch", {
-      method: "POST",
-      body: JSON.stringify({ session_id: sessionId }),
-    });
+    const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
 
     if (!result?.demoPitch) {
       alert("Demo-Pitch konnte nicht erstellt werden. Versuche es nochmal.");
