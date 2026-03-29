@@ -4183,9 +4183,22 @@ async function stopVoicePitchClean() {
   // Charge only wallclock seconds (NOT entire balance)
   try { await reportUsage(wallclockSeconds); } catch(_) {}
 
-  // Build transcript and trigger report
-  const transcriptLog = convoLog.map(m => ({ role: m.role, text: m.text }));
-  showPostCallResults({}, transcriptLog, { triggeredByLimit: false });
+  // Save session + transcript via memory-update (creates conversation_outputs row)
+  const transcriptSnapshot = [...convoLog];
+  const memoryResult = await sendMemoryUpdate(wallclockSeconds);
+
+  // Trigger report generation + poll progress (same as normal flow)
+  const pitchSessionId = memoryResult?.session?.id || sessionId;
+  if (pitchSessionId) {
+    const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
+    await pollReportProgress(pitchSessionId, transcriptLog, { triggeredByLimit: false });
+  } else {
+    stopFakeReportLoader();
+    const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
+    showPostCallResults({
+      output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+    }, transcriptLog, { triggeredByLimit: false });
+  }
 }
 
 async function stopVoice(triggeredByLimit = false){
