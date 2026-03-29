@@ -2518,8 +2518,9 @@
     // Mode pills always visible — users need them to start Meeting/Sales Pitch/Brainstorm
 
     // Restore previous mode selection on page load
+    // Brainstorm is excluded — config is not persisted, so restoring without context is useless
     const storedMode = localStorage.getItem("sophie_session_mode");
-    if (storedMode && SESSION_MODES.includes(storedMode)) {
+    if (storedMode && SESSION_MODES.includes(storedMode) && storedMode !== "brainstorm") {
       selectedChatMode = storedMode;
       funnelMode = storedMode;
       const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${storedMode}"]`);
