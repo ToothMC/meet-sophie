@@ -3266,17 +3266,18 @@ async function resumeSession() {
     convoLog = savedLog;
 
     // Inject resume context into the Realtime session so Sophie knows what happened
+    // Use sendWhenChannelOpen to wait for DataChannel to be ready (avoids race condition)
     const summaryLines = savedLog.slice(-10).map(m => `[${m.role}]: ${m.text}`).join("\n");
     try {
-      dcSend({
+      await sendWhenChannelOpen({
         type: "conversation.item.create",
         item: {
           type: "message",
           role: "user",
           content: [{ type: "input_text", text: `[RESUME] Session was paused and resumed. Here is the conversation so far:\n${summaryLines}\n\nContinue where we left off.` }],
         }
-      });
-      dcSend({ type: "response.create" });
+      }, 5000);
+      await sendWhenChannelOpen({ type: "response.create" }, 3000);
     } catch (e) {
       console.warn("[pause] resume context inject failed:", e?.message);
     }
