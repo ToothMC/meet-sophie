@@ -342,7 +342,46 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (!latest) return res.status(404).json({ error: 'No pitch found for topic' });
-    return res.status(200).json(latest);
+
+    // Load the actual pitch transcript + report for demo context
+    let pitchTranscript = '';
+    let reportSummary = '';
+    if (latest.conversation_id) {
+      try {
+        // Get transcript from conversation_messages
+        const { data: msgs } = await supabase
+          .from('conversation_messages')
+          .select('role, text')
+          .eq('session_id', latest.conversation_id)
+          .order('seq', { ascending: true })
+          .limit(100);
+        if (msgs?.length) {
+          pitchTranscript = msgs
+            .filter(m => m.text?.trim())
+            .map(m => `[${m.role}]: ${m.text}`)
+            .join('\n')
+            .slice(0, 6000); // Cap at 6k chars
+        }
+
+        // Get report text (strip HTML)
+        const { data: output } = await supabase
+          .from('conversation_outputs')
+          .select('report_html, title')
+          .eq('session_id', latest.conversation_id)
+          .maybeSingle();
+        if (output?.report_html) {
+          // Simple HTML strip for text extraction
+          reportSummary = output.report_html
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 4000);
+        }
+      } catch (e) { console.error('[pitch-journey-detail] transcript load error:', e?.message); }
+    }
+
+    return res.status(200).json({ ...latest, pitchTranscript, reportSummary });
   }
 
   // ── POST: Save Sophie's demo pitch transcript for iterative improvement ──
