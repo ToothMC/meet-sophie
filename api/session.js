@@ -534,6 +534,16 @@ export default async function handler(req, res) {
       isFirstSession,
       hasHandover: hasHandoverContext,
       handoverContext: hasHandoverContext ? handover : null,
+      pitchRetry: handover?.pitchRetry === true,
+      pitchDemo: handover?.pitchDemo === true,
+      pitchContext: handover?.pitchRetry || handover?.pitchDemo ? {
+        topic: handover.pitchTopic || "",
+        audience: handover.audience || "",
+        previousScores: handover.previousScores || null,
+        previousWeaknesses: handover.previousWeaknesses || [],
+        previousStrengths: handover.previousStrengths || [],
+        previousVersion: handover.previousVersion || 1,
+      } : null,
       language: preferredLanguage,
       user: {
         name: effectivePreferredName,
