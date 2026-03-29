@@ -4845,6 +4845,10 @@ async function startVoice(){
     startBtn.disabled = false;
     startBtn.textContent = t("end");
     startBtn.onclick = () => stopVoice(false);
+    pauseBtn.textContent = t("pause");
+    pauseBtn.classList.remove("is-paused");
+    pauseBtn.style.display = "";
+    pauseBtn.onclick = () => { isPaused ? resumeSession() : pauseSession(); };
     showReadyStatus();
     headline.textContent = t("sophie_listening");
     showLiveBadge(true);
