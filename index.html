@@ -2406,6 +2406,74 @@
     const chatBackdrop = document.getElementById("chatBackdrop");
     if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
+    // ── Brainstorm Modal logic ─────────────────────────────────
+    (function() {
+      const modal = document.getElementById("bsModal");
+      const topicEl = document.getElementById("bsTopic");
+      const goalEl  = document.getElementById("bsGoal");
+      const goBtn   = document.getElementById("bsGo");
+
+      // Enable/disable Start button based on topic input
+      topicEl.addEventListener("input", () => {
+        goBtn.disabled = topicEl.value.trim().length === 0;
+      });
+
+      // Toggle group logic
+      modal.querySelectorAll(".bs-toggle").forEach(group => {
+        group.addEventListener("click", e => {
+          const btn = e.target.closest(".bs-opt");
+          if (!btn) return;
+          group.querySelectorAll(".bs-opt").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+      });
+
+      // Close handlers
+      document.getElementById("bsClose").addEventListener("click", _bsClose);
+      modal.addEventListener("click", e => { if (e.target === modal) _bsClose(); });
+
+      function _bsClose() {
+        modal.style.display = "none";
+        // Deselect brainstorm pill if user cancelled without confirming
+        if (selectedChatMode !== "brainstorm") {
+          document.querySelectorAll("#heroModeBar .hero-mode-pill[data-mode='brainstorm']")
+            .forEach(b => b.classList.remove("active"));
+        }
+      }
+
+      window._openBrainstormModal = function(onConfirm) {
+        // Reset form
+        topicEl.value = "";
+        goalEl.value  = "";
+        goBtn.disabled = true;
+        modal.querySelectorAll("#bsMode .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "solo"));
+        modal.querySelectorAll("#bsDepth .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "standard"));
+        modal.querySelectorAll("#bsFacilitation .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "open"));
+        modal.style.display = "flex";
+        setTimeout(() => topicEl.focus(), 50);
+
+        goBtn.onclick = () => {
+          const topic = topicEl.value.trim();
+          if (!topic) { topicEl.focus(); return; }
+          const mode        = modal.querySelector("#bsMode .bs-opt.active")?.dataset.val || "solo";
+          const depth       = modal.querySelector("#bsDepth .bs-opt.active")?.dataset.val || "standard";
+          const facilitation = modal.querySelector("#bsFacilitation .bs-opt.active")?.dataset.val || "open";
+          const durMap = { solo:{short:12,standard:20,deep:30}, group:{short:17,standard:30,deep:45} };
+          const config = {
+            topic,
+            goal: goalEl.value.trim() || null,
+            mode, depth,
+            duration_minutes: durMap[mode]?.[depth] || 20,
+            facilitation_style: facilitation,
+            silent_hints: true,
+          };
+          modal.style.display = "none";
+          onConfirm(config);
+        };
+      };
+    })();
+    // ──────────────────────────────────────────────────────────
+
     // Mode pills — toggle active state + update button label/color
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -2413,11 +2481,22 @@
         if (selectedChatMode === mode) {
           // deselect
           selectedChatMode = null;
+          brainstormChatConfig = null;
           btn.classList.remove("active");
           setFunnelMode(null);
           applyHeroMode(null);
+        } else if (mode === "brainstorm") {
+          // open setup modal first, activate only on confirm
+          window._openBrainstormModal((config) => {
+            brainstormChatConfig = config;
+            document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            setFunnelMode("brainstorm");
+            applyHeroMode("brainstorm");
+          });
         } else {
-          // select
+          // select other modes directly
+          brainstormChatConfig = null;
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
           setFunnelMode(mode);
