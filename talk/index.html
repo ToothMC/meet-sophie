@@ -3178,6 +3178,8 @@ async function triggerClosingResponse() {
 async function maybeTriggerSoftEnding(){
   if (!softEndEnabled || softEndFinalizing) return;
   if (!dc || dc.readyState !== "open") return;
+  // Sales Pitch: Sophie controls session end via signal_pitch_report — NEVER soft-end
+  if (selectedVoiceMode === "salespitch") return;
 
   if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
     softEndWarningTriggered = true;
