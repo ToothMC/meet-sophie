@@ -1310,8 +1310,68 @@ const startBtn = document.getElementById("start");
 const endBtn   = document.getElementById("end");
 
 let selectedVoiceMode = null;
+let brainstormVoiceConfig = null;
 
+// ── Brainstorm Modal logic ─────────────────────────────────
+(function() {
+  const modal   = document.getElementById("bsModal");
+  const topicEl = document.getElementById("bsTopic");
+  const goalEl  = document.getElementById("bsGoal");
+  const goBtn   = document.getElementById("bsGo");
 
+  topicEl.addEventListener("input", () => { goBtn.disabled = topicEl.value.trim().length === 0; });
+
+  modal.querySelectorAll(".bs-toggle").forEach(group => {
+    group.addEventListener("click", e => {
+      const btn = e.target.closest(".bs-opt");
+      if (!btn) return;
+      group.querySelectorAll(".bs-opt").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
+
+  document.getElementById("bsClose").addEventListener("click", _bsClose);
+  modal.addEventListener("click", e => { if (e.target === modal) _bsClose(); });
+
+  function _bsClose() {
+    modal.style.display = "none";
+    if (selectedVoiceMode !== "brainstorm") {
+      document.querySelectorAll("#modeBar .mode-pill[data-mode='brainstorm']")
+        .forEach(b => b.classList.remove("active"));
+    }
+  }
+
+  window._openBrainstormModal = function(onConfirm) {
+    topicEl.value = "";
+    goalEl.value  = "";
+    goBtn.disabled = true;
+    modal.querySelectorAll("#bsMode .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "solo"));
+    modal.querySelectorAll("#bsDepth .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "standard"));
+    modal.querySelectorAll("#bsFacilitation .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "open"));
+    modal.style.display = "flex";
+    setTimeout(() => topicEl.focus(), 50);
+
+    goBtn.onclick = () => {
+      const topic = topicEl.value.trim();
+      if (!topic) { topicEl.focus(); return; }
+      const mode         = modal.querySelector("#bsMode .bs-opt.active")?.dataset.val || "solo";
+      const depth        = modal.querySelector("#bsDepth .bs-opt.active")?.dataset.val || "standard";
+      const facilitation = modal.querySelector("#bsFacilitation .bs-opt.active")?.dataset.val || "open";
+      const durMap = { solo:{short:12,standard:20,deep:30}, group:{short:17,standard:30,deep:45} };
+      const config = {
+        topic,
+        goal: goalEl.value.trim() || null,
+        mode, depth,
+        duration_minutes: durMap[mode]?.[depth] || 20,
+        facilitation_style: facilitation,
+        silent_hints: true,
+      };
+      modal.style.display = "none";
+      onConfirm(config);
+    };
+  };
+})();
+// ──────────────────────────────────────────────────────────
 
 // Mode pill toggle (voice page)
 document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
@@ -1319,9 +1379,19 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     const mode = btn.dataset.mode;
     if (selectedVoiceMode === mode) {
       selectedVoiceMode = null;
+      brainstormVoiceConfig = null;
       btn.classList.remove("active");
       localStorage.removeItem("sophie_session_mode");
+    } else if (mode === "brainstorm") {
+      window._openBrainstormModal((config) => {
+        brainstormVoiceConfig = config;
+        selectedVoiceMode = "brainstorm";
+        document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem("sophie_session_mode", "brainstorm");
+      });
     } else {
+      brainstormVoiceConfig = null;
       selectedVoiceMode = mode;
       document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
