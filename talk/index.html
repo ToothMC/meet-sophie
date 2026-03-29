@@ -3098,6 +3098,10 @@ ${(voiceHandover.recentMessages || [])
       let pitchInstructions;
 
       if (isPitchDemo) {
+        // DEMO: Mute mic IMMEDIATELY — Sophie will speak for 2-3 min, mic echo would trigger VAD loop
+        muteMic();
+        console.log(`[${runId}] [salespitch] demo mode — mic muted at kickoff start`);
+
         // DEMO: Sophie pitches FOR the user as an optimized example
         const demoWeaknesses = voiceHandover.previousWeaknesses || [];
         const demoStrengths = voiceHandover.previousStrengths || [];
