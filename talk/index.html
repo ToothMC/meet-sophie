@@ -3953,7 +3953,10 @@ function attachChannel(ch) {
           // Guard: only honour if user has actually pitched (at least 2 user turns = setup answer + pitch)
           if (hasUserSpoken && convoLog.filter(m => m.role === "user").length >= 2) {
             pitchReportSignaled = true;
-            console.log(`[${runId}] [salespitch] signal_pitch_report received — starting report generation NOW (parallel to Phase D audio)`);
+            // Phase D feedback: raise mic threshold so Sophie speaks uninterrupted
+            // Only deliberate, loud speech from user can interrupt
+            setMicSensitivity("guarded");
+            console.log(`[${runId}] [salespitch] signal_pitch_report received — mic guarded, starting bg report`);
 
             // Start report generation in background WHILE Sophie is still speaking
             // CRITICAL: Do NOT call sendMemoryUpdate() here — it modifies partialAssistant
