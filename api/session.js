@@ -1,6 +1,7 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+// calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN } from "../lib/billing-constants.js";
 
 export default async function handler(req, res) {
