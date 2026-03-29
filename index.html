@@ -2346,92 +2346,41 @@
     const chatBackdrop = document.getElementById("chatBackdrop");
     if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
-    // ── Brainstorm Modal logic (two-step: Solo/Team → Config) ──
+    // ── Brainstorm Solo/Team toggle logic ──────────────────────
     (function() {
-      const modal   = document.getElementById("bsModal");
-      const step1   = document.getElementById("bsStep1");
-      const step2   = document.getElementById("bsStep2");
-      const topicEl = document.getElementById("bsTopic");
-      const goalEl  = document.getElementById("bsGoal");
-      const goBtn   = document.getElementById("bsGo");
-      const step2Title = document.getElementById("bsStep2Title");
-      let _bsSelectedMode = "solo";
+      const toggle = document.getElementById("bsModeToggle");
+      let _bsMode = "solo";
 
-      // Enable/disable Start button based on topic input
-      topicEl.addEventListener("input", () => {
-        goBtn.disabled = topicEl.value.trim().length === 0;
-      });
-
-      // Toggle group logic for option buttons
-      modal.querySelectorAll(".bs-toggle").forEach(group => {
-        group.addEventListener("click", e => {
-          const btn = e.target.closest(".bs-opt");
-          if (!btn) return;
-          group.querySelectorAll(".bs-opt").forEach(b => b.classList.remove("active"));
+      toggle.querySelectorAll(".bs-mode-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          toggle.querySelectorAll(".bs-mode-btn").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
+          _bsMode = btn.dataset.val;
         });
       });
 
-      // Step 1: Solo/Team card click → go to step 2
-      modal.querySelectorAll(".bs-card").forEach(card => {
-        card.addEventListener("click", () => {
-          _bsSelectedMode = card.dataset.mode;
-          step2Title.textContent = _bsSelectedMode === "group" ? "✦ Team Brainstorm" : "✦ Solo Brainstorm";
-          step1.style.display = "none";
-          step2.style.display = "block";
-          setTimeout(() => topicEl.focus(), 50);
-        });
-      });
-
-      // Back button → return to step 1
-      document.getElementById("bsBack").addEventListener("click", () => {
-        step2.style.display = "none";
-        step1.style.display = "block";
-      });
-
-      // Close handlers — both close buttons + backdrop
-      document.getElementById("bsClose").addEventListener("click", _bsClose);
-      document.getElementById("bsClose2").addEventListener("click", _bsClose);
-      modal.addEventListener("click", e => { if (e.target === modal) _bsClose(); });
-
-      function _bsClose() {
-        modal.style.display = "none";
-        if (selectedChatMode !== "brainstorm") {
-          document.querySelectorAll("#heroModeBar .hero-mode-pill[data-mode='brainstorm']")
-            .forEach(b => b.classList.remove("active"));
-        }
-      }
-
-      window._openBrainstormModal = function(onConfirm) {
-        // Reset to step 1
-        step1.style.display = "block";
-        step2.style.display = "none";
-        topicEl.value = "";
-        goalEl.value  = "";
-        goBtn.disabled = true;
-        _bsSelectedMode = "solo";
-        modal.querySelectorAll("#bsDepth .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "standard"));
-        modal.querySelectorAll("#bsFacilitation .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "open"));
-        modal.style.display = "flex";
-
-        goBtn.onclick = () => {
-          const topic = topicEl.value.trim();
-          if (!topic) { topicEl.focus(); return; }
-          const depth        = modal.querySelector("#bsDepth .bs-opt.active")?.dataset.val || "standard";
-          const facilitation = modal.querySelector("#bsFacilitation .bs-opt.active")?.dataset.val || "open";
-          const durMap = { solo:{short:12,standard:20,deep:30}, group:{short:17,standard:30,deep:45} };
-          const config = {
-            topic,
-            goal: goalEl.value.trim() || null,
-            mode: _bsSelectedMode,
-            depth,
-            duration_minutes: durMap[_bsSelectedMode]?.[depth] || 20,
-            facilitation_style: facilitation,
-            silent_hints: true,
-          };
-          modal.style.display = "none";
-          onConfirm(config);
+      // Expose selected mode for startSession/quickStartChat
+      window._getBrainstormConfig = function() {
+        const durMap = { solo: 20, group: 30 };
+        return {
+          topic: null,   // Sophie asks via voice/chat in Phase 0
+          goal: null,    // Sophie asks via voice/chat in Phase 0
+          mode: _bsMode,
+          depth: "standard",
+          duration_minutes: durMap[_bsMode] || 20,
+          facilitation_style: "guided",
+          silent_hints: true,
         };
+      };
+
+      window._showBrainstormToggle = function() {
+        _bsMode = "solo";
+        toggle.querySelectorAll(".bs-mode-btn").forEach(b => b.classList.toggle("active", b.dataset.val === "solo"));
+        toggle.style.display = "inline-flex";
+      };
+
+      window._hideBrainstormToggle = function() {
+        toggle.style.display = "none";
       };
     })();
     // ──────────────────────────────────────────────────────────
