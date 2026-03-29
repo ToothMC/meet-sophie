@@ -4106,13 +4106,33 @@ function attachChannel(ch) {
             } catch (_) {}
 
             // After Sophie finishes her demo (~90s), unmute mic + enable auto-responses
-            // so user can respond to "Willst du es selbst versuchen?"
+            // Also save Sophie's demo transcript for iterative improvement
             setTimeout(async () => {
-              console.log(`[${runId}] [startmode] demo done — unmuting mic, enabling auto responses`);
+              console.log(`[${runId}] [startmode] demo done — unmuting mic, enabling auto responses, saving demo transcript`);
               try {
                 if (stream) stream.getTracks().forEach(t => { t.enabled = true; });
                 await setAutoResponses(true);
               } catch(_) {}
+
+              // Save Sophie's demo transcript to pitch memory for iterative improvement
+              try {
+                const demoTranscript = convoLog
+                  .filter(m => m.role === "assistant" && m.text?.trim())
+                  .map(m => m.text)
+                  .join("\n");
+                if (demoTranscript.length > 50) {
+                  const { data: { session: authSession } } = await supabase.auth.getSession();
+                  if (authSession?.access_token) {
+                    const pitchTopic = voiceHandover?.pitchTopic || "Demo Pitch";
+                    await fetch("/api/settings?action=save-demo-pitch", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authSession.access_token}` },
+                      body: JSON.stringify({ topic: pitchTopic, transcript: demoTranscript }),
+                    });
+                    console.log(`[${runId}] [demo] saved demo transcript (${demoTranscript.length} chars) for "${pitchTopic}"`);
+                  }
+                }
+              } catch (e) { console.error(`[${runId}] [demo] save failed:`, e?.message); }
             }, 90000); // 90s — Sophie's demo is 2-3 min max
           } else {
             console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
