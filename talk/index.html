@@ -3018,6 +3018,26 @@ function muteMic() {
   } catch (_) {}
 }
 
+// Sensitivity modes for turn detection:
+// "normal"  — default conversation (threshold 0.5, responsive to normal speech)
+// "guarded" — Sophie says something important (threshold 0.85, only deliberate loud interruption)
+// "locked"  — no interruption possible (demo pitch, closing)
+async function setMicSensitivity(mode = "normal") {
+  const configs = {
+    normal:  { threshold: 0.5,  silence_duration_ms: 400,  create_response: true,  interrupt_response: true },
+    guarded: { threshold: 0.85, silence_duration_ms: 800,  create_response: true,  interrupt_response: false },
+    locked:  { threshold: 0.95, silence_duration_ms: 1200, create_response: false, interrupt_response: false },
+  };
+  const cfg = configs[mode] || configs.normal;
+  try {
+    await sendWhenChannelOpen({
+      type: "session.update",
+      session: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } }
+    }, 2000);
+    console.log(`[${runId}] [mic] sensitivity → ${mode} (threshold: ${cfg.threshold})`);
+  } catch (_) {}
+}
+
 async function setTurnBehavior({ createResponse, interruptResponse }) {
   try{
     await sendWhenChannelOpen({
