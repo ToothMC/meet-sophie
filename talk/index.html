@@ -4083,9 +4083,22 @@ function attachChannel(ch) {
         }
 
         if (kickoffInProgress) {
-          console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
           kickoffInProgress = false;
-          await setAutoResponses(true);
+          const isDemoKickoff = voiceHandover?.pitchDemo === true;
+          if (isDemoKickoff) {
+            // Demo pitch: Sophie may need multiple responses to complete her pitch.
+            // Do NOT enable auto-responses yet — she'll be interrupted by VAD.
+            // Instead, send response.create to let Sophie continue if she was cut short.
+            console.log(`[${runId}] [startmode] demo kickoff response.done — keeping VAD off, Sophie continues`);
+            // Enable auto-responses after a delay so Sophie can finish her demo uninterrupted
+            setTimeout(async () => {
+              console.log(`[${runId}] [startmode] demo done — enabling auto responses for user pitch`);
+              try { await setAutoResponses(true); } catch(_) {}
+            }, 60000); // 60s — demo pitch is 2-3 minutes, enable after Sophie is done
+          } else {
+            console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
+            await setAutoResponses(true);
+          }
           return;
         }
       }
