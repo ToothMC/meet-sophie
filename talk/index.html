@@ -4246,24 +4246,32 @@ async function stopVoicePitchClean() {
     return;
   }
 
-  // Charge only wallclock seconds (NOT entire balance)
-  try { await reportUsage(wallclockSeconds); } catch(_) {}
+  // Check if report generation was already started in background (parallel flow)
+  const bgCtx = pitchReportBgPromise ? await pitchReportBgPromise.catch(() => null) : null;
+  pitchReportBgPromise = null;
 
-  // Save session + transcript via memory-update (creates conversation_outputs row)
-  const transcriptSnapshot = [...convoLog];
-  const memoryResult = await sendMemoryUpdate(wallclockSeconds);
-
-  // Trigger report generation + poll progress (same as normal flow)
-  const pitchSessionId = memoryResult?.session?.id || sessionId;
-  if (pitchSessionId) {
-    const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
-    await pollReportProgress(pitchSessionId, transcriptLog, { triggeredByLimit: false });
+  if (bgCtx?.sessionId) {
+    // Report was pre-fired — charge usage + just poll (report has had 30-60s head start)
+    console.log(`[${runId}] [salespitch] report already generating in bg — polling session ${bgCtx.sessionId}`);
+    try { await reportUsage(bgCtx.wallclock || wallclockSeconds); } catch(_) {}
+    await pollReportProgress(bgCtx.sessionId, bgCtx.transcriptLog, { triggeredByLimit: false });
   } else {
-    stopFakeReportLoader();
-    const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
-    showPostCallResults({
-      output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
-    }, transcriptLog, { triggeredByLimit: false });
+    // Fallback: no background generation (e.g. DC dropped, emergency path) — start from scratch
+    console.log(`[${runId}] [salespitch] no bg report — generating from scratch`);
+    try { await reportUsage(wallclockSeconds); } catch(_) {}
+    const transcriptSnapshot = [...convoLog];
+    const memoryResult = await sendMemoryUpdate(wallclockSeconds);
+    const pitchSessionId = memoryResult?.session?.id || sessionId;
+    if (pitchSessionId) {
+      const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
+      await pollReportProgress(pitchSessionId, transcriptLog, { triggeredByLimit: false });
+    } else {
+      stopFakeReportLoader();
+      const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
+      showPostCallResults({
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+      }, transcriptLog, { triggeredByLimit: false });
+    }
   }
 }
 
