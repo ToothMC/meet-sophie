@@ -4546,7 +4546,15 @@ async function startVoice(){
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
         ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
-        ...(brainstormVoiceConfig ? { "X-Sophie-Brainstorm-Config": btoa(unescape(encodeURIComponent(JSON.stringify(brainstormVoiceConfig)))) } : {}),
+        ...((function() {
+          // Build brainstorm config on-the-fly from toggle if not already set
+          if (selectedVoiceMode === "brainstorm" && !brainstormVoiceConfig && window._getBrainstormConfig) {
+            brainstormVoiceConfig = window._getBrainstormConfig();
+          }
+          return brainstormVoiceConfig
+            ? { "X-Sophie-Brainstorm-Config": btoa(unescape(encodeURIComponent(JSON.stringify(brainstormVoiceConfig)))) }
+            : {};
+        })()),
       }
     });
 
