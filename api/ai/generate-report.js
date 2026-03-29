@@ -326,7 +326,7 @@ BERECHNUNG:
 
 TRANSCRIPT:
 ${transcript_text}
-
+${prevPitchContext}
 AUFGABE:
 Erstelle den kompletten Sales Pitch Report als HTML. Verwende das EXAKTE Design unten.
 Ersetze ALLE Platzhalter mit echten Werten aus deiner Bewertung.
