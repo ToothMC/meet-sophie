@@ -544,18 +544,21 @@ async function handleMessage(req, res) {
         // OpenAI Vision format — works with gpt-4o and gpt-4o-mini
         parts.push({ type: "image_url", image_url: { url: f.dataUrl, detail: "low" } });
       } else {
-        // Documents (PDF/DOCX/PPT/TXT) — send as image for Vision extraction
-        // GPT-4o can read rendered PDFs/docs from base64 images
-        // For text files, extract content directly
+        // Documents — route by type
+        const isPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name || "");
         if (f.type === "text/plain" && f.dataUrl.startsWith("data:text/")) {
+          // Plain text — decode and inline
           try {
             const b64 = f.dataUrl.split(",")[1] || "";
             const decoded = Buffer.from(b64, "base64").toString("utf-8").slice(0, 8000);
             parts.push({ type: "text", text: `[FILE: ${f.name}]\n${decoded}\n[/FILE]` });
           } catch { parts.push({ type: "text", text: `[Datei: ${f.name} — konnte nicht gelesen werden]` }); }
+        } else if (isPdf) {
+          // PDF — use OpenAI inline file format (supported by gpt-4o / gpt-4o-mini)
+          parts.push({ type: "file", file: { filename: f.name || "document.pdf", file_data: f.dataUrl } });
         } else {
-          // PDF/DOCX/PPT — send as image_url, GPT-4o Vision can extract text
-          parts.push({ type: "image_url", image_url: { url: f.dataUrl, detail: "low" } });
+          // DOCX/PPTX — not natively supported, hint to user
+          parts.push({ type: "text", text: `[Datei: ${f.name} hochgeladen — für beste Ergebnisse bitte als PDF senden]` });
         }
       }
     }
