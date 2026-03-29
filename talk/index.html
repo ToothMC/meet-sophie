@@ -1679,6 +1679,7 @@ const _i18n = {
   paused_hint:        { en: "Press Resume to continue.",     de: "Drücke Fortsetzen um weiterzumachen.", fr: "Appuie sur Reprendre pour continuer." },
 };
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
+function resetStartBtnStyle() { startBtn.style.background = ""; startBtn.style.color = ""; }
 
 // Patch static HTML elements that were rendered with defaults
 const _authLoadTxt = document.getElementById("authLoadingText");
