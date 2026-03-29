@@ -3550,7 +3550,9 @@ function startCountdown(){
 
     void maybeTriggerSoftEnding();
 
-    if (remainingSeconds <= 0 && !softEndSummaryTriggered) {
+    // Don't kill session during demo pitch — Sophie is speaking, let her finish
+    const isDemoActive = voiceHandover?.pitchDemo === true && !hasUserSpoken;
+    if (remainingSeconds <= 0 && !softEndSummaryTriggered && !isDemoActive) {
       void handleTimeLimitReached();
     }
   }, 1000);
