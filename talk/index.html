@@ -3435,7 +3435,8 @@ function attachChannel(ch) {
         hideReadyStatus();
 
         // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
-        if (softEndSummaryTriggered && !closingResponseExpected && !softEndFinalizing && !limitTriggered) {
+        // NEVER cancel during salespitch — Sophie's feedback (Phase D) must play fully
+        if (softEndSummaryTriggered && !closingResponseExpected && !softEndFinalizing && !limitTriggered && selectedVoiceMode !== "salespitch") {
           console.log(`[${runId}] [softend] unexpected response.created during closing — cancelling before audio`);
           try { dcSend({ type: "response.cancel" }); } catch(_) {}
           // Do NOT set sophieIsResponding = false here — our closing response may still be playing
