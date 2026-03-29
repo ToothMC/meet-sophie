@@ -941,10 +941,85 @@ body{
     padding-bottom:max(0px, env(safe-area-inset-bottom));
   }
 }
+
+/* ── Brainstorm Setup Modal ──────────────────────────────── */
+.bs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;
+  display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:600px){.bs-overlay{align-items:center;padding:20px}}
+.bs-modal{background:#0d1018;border:1px solid rgba(255,255,255,.13);
+  border-radius:24px 24px 0 0;width:100%;max-width:460px;padding:24px;
+  animation:bsSlideUp .22s ease}
+@media(min-width:600px){.bs-modal{border-radius:22px;animation:bsFadeIn .18s ease}}
+@keyframes bsSlideUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes bsFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.bs-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.bs-title{font-size:15px;font-weight:600;color:rgba(246,247,251,.95)}
+.bs-close{background:none;border:none;color:rgba(246,247,251,.35);cursor:pointer;
+  font-size:18px;padding:2px 6px;line-height:1;font-family:inherit}
+.bs-close:hover{color:rgba(246,247,251,.7)}
+.bs-lbl{display:block;font-size:11px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(246,247,251,.4);margin:14px 0 6px}
+.bs-req{color:rgba(255,80,80,.5)}
+.bs-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:11px;padding:10px 13px;color:rgba(246,247,251,.9);
+  font-family:inherit;font-size:14px;outline:none;transition:border-color .15s}
+.bs-inp:focus{border-color:rgba(255,255,255,.28)}
+.bs-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.bs-toggle{display:flex;gap:5px;flex-wrap:wrap}
+.bs-opt{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:9px;padding:6px 11px;color:rgba(246,247,251,.45);
+  font-family:inherit;font-size:12px;cursor:pointer;transition:all .13s}
+.bs-opt:hover{border-color:rgba(255,255,255,.2);color:rgba(246,247,251,.75)}
+.bs-opt.active{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.28);
+  color:rgba(246,247,251,.95)}
+.bs-go{margin-top:18px;width:100%;background:rgba(255,255,255,.88);color:#06070b;
+  border:none;border-radius:13px;padding:13px;font-family:inherit;
+  font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.bs-go:disabled{opacity:.35;cursor:default}
+.bs-go:not(:disabled):hover{background:#fff}
+/* ─────────────────────────────────────────────────────────── */
 </style>
 </head>
 
 <body>
+
+<!-- Brainstorm Setup Modal -->
+<div class="bs-overlay" id="bsModal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="bsModalTitle">
+  <div class="bs-modal">
+    <div class="bs-head">
+      <span class="bs-title" id="bsModalTitle">✦ Brainstorm Setup</span>
+      <button class="bs-close" id="bsClose" aria-label="Close">✕</button>
+    </div>
+    <label class="bs-lbl" for="bsTopic">Topic <span class="bs-req">*</span></label>
+    <input class="bs-inp" id="bsTopic" type="text" placeholder="e.g. New pricing strategy" maxlength="500" autocomplete="off">
+    <label class="bs-lbl" for="bsGoal">Goal <span style="font-style:italic;text-transform:none;font-weight:400">(optional)</span></label>
+    <input class="bs-inp" id="bsGoal" type="text" placeholder="e.g. 3 concrete options" maxlength="500" autocomplete="off">
+    <div class="bs-row">
+      <div>
+        <div class="bs-lbl" style="margin-top:0">Session</div>
+        <div class="bs-toggle" id="bsMode">
+          <button class="bs-opt active" data-val="solo">Solo</button>
+          <button class="bs-opt" data-val="group">Group</button>
+        </div>
+      </div>
+      <div>
+        <div class="bs-lbl" style="margin-top:0">Depth</div>
+        <div class="bs-toggle" id="bsDepth">
+          <button class="bs-opt" data-val="short">Short</button>
+          <button class="bs-opt active" data-val="standard">Standard</button>
+          <button class="bs-opt" data-val="deep">Deep</button>
+        </div>
+      </div>
+    </div>
+    <div class="bs-lbl">Facilitation</div>
+    <div class="bs-toggle" id="bsFacilitation">
+      <button class="bs-opt active" data-val="open">Open</button>
+      <button class="bs-opt" data-val="guided">Guided</button>
+      <button class="bs-opt" data-val="challenge">Challenge</button>
+    </div>
+    <button class="bs-go" id="bsGo" disabled>Start Brainstorming →</button>
+  </div>
+</div>
 
 <div class="bg" id="bg"></div>
 <div class="overlay" id="overlay"></div>
