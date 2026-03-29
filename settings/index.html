@@ -900,13 +900,25 @@ window.saveReportAsTemplate = saveReportAsTemplate;
 function pitchAgain() {
   if (!_reportDetailData) return;
   const title = _reportDetailData.title || "Sales Pitch";
-
-  // Extract pitch context from report HTML for the retry handover
-  // Sophie should NOT ask Phase A questions again — she already knows everything
   const html = _reportDetailData.report_html || "";
-  // Try to extract pitch topic from H1 in report
   const h1Match = html.match(/<h1[^>]*>([^<]+)/i);
-  const pitchTopic = h1Match ? h1Match[1].trim() : title;
+  const pitchTopic = (h1Match ? h1Match[1].trim() : title) || "deinen Pitch";
+
+  // Parse scores from report HTML for coaching context
+  const extractScore = (criterion) => {
+    const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
+    const m = html.match(re);
+    return m ? parseFloat(m[1]) : 0;
+  };
+  const tmpDiv = document.createElement("div");
+  tmpDiv.innerHTML = html;
+  const allText = tmpDiv.textContent || "";
+  const weakMatch = allText.match(/(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)[:\s]*([\s\S]*?)(?:Nächste|Next|Prochaines|Verdict|$)/i);
+  const weaknesses = weakMatch ? weakMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+  const strMatch = allText.match(/(?:Stärken|Strengths|Forces)[:\s]*([\s\S]*?)(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)/i);
+  const strengths = strMatch ? strMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+  const overallMatch = html.match(/font-size:\s*48px[^>]*>(\d+\.?\d*)/);
+  const overall = overallMatch ? Math.round(parseFloat(overallMatch[1]) * 20) : 0;
 
   const handover = {
     funnelMode: "salespitch",
@@ -914,7 +926,24 @@ function pitchAgain() {
     pitchRetry: true,
     pitchTopic: pitchTopic,
     previousPitchSessionId: _reportDetailData.session_id || null,
-    summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht und möchtest es nochmal versuchen. Phase A Fragen NICHT nochmal stellen — direkt zum Pitch.`,
+    previousScores: {
+      content: {
+        clarity: extractScore("Clarity"), problem_sharpness: extractScore("Problem Sharpness"),
+        value_proposition: extractScore("Value Proposition"), structure: extractScore("Structure"),
+        differentiation: extractScore("Differentiation"), credibility: extractScore("Credibility"),
+        audience_fit: extractScore("Audience Fit"),
+      },
+      delivery: {
+        opening: extractScore("Opening"), closing: extractScore("Closing"),
+        voice_rhythm: extractScore("Voice.*Rhythm"), rhetoric_language: extractScore("Rhetoric.*Language"),
+        authenticity: extractScore("Authenticity"), persuasiveness: extractScore("Persuasiveness"),
+      },
+      overall: overall,
+    },
+    previousWeaknesses: weaknesses,
+    previousStrengths: strengths,
+    previousVersion: 1,
+    summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht. Score: ${overall}/100. Schwächen: ${weaknesses.join(', ')}. Phase A NICHT nochmal stellen.`,
     recentMessages: [
       { role: "user", content: `Ich möchte meinen Pitch "${pitchTopic}" nochmal machen und verbessern.` }
     ],
