@@ -296,6 +296,21 @@ async function handleStart(req, res) {
   const rawSessionMode = String(body.session_mode || "").toLowerCase().trim();
   const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
 
+  // Brainstorm config (only relevant when sessionMode === "brainstorm")
+  let brainstormConfig = null;
+  if (sessionMode === "brainstorm" && body.brainstorm_config && typeof body.brainstorm_config === "object") {
+    const raw = body.brainstorm_config;
+    brainstormConfig = {
+      topic:              String(raw.topic || "").slice(0, 500) || null,
+      goal:               raw.goal ? String(raw.goal).slice(0, 500) : null,
+      mode:               ["solo", "group"].includes(raw.mode) ? raw.mode : "solo",
+      depth:              ["short", "standard", "deep"].includes(raw.depth) ? raw.depth : "standard",
+      duration_minutes:   Number.isFinite(raw.duration_minutes) && raw.duration_minutes > 0 ? raw.duration_minutes : null,
+      facilitation_style: ["open", "guided", "challenge"].includes(raw.facilitation_style) ? raw.facilitation_style : "open",
+      silent_hints:       raw.silent_hints !== false,
+    };
+  }
+
   // Prefer request lang; fall back to profile setting
   let preferredLanguage = ["en", "de", "fr"].includes(lang) ? lang : (profile.preferred_language || "en").toLowerCase().trim();
   if (!["en", "de", "fr"].includes(preferredLanguage)) preferredLanguage = "en";
