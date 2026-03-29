@@ -2466,7 +2466,9 @@ function configurePostCallCta(triggeredByLimit = false) {
         if (!sid) throw new Error("Keine Session-ID");
 
         // Generate demo pitch SERVER-SIDE (reliable text AI, no hallucination)
-        const token = await getToken();
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        const token = authSess?.access_token;
+        if (!token) throw new Error("Nicht eingeloggt");
         const resp = await fetch("/api/settings?action=generate-demo-pitch", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
