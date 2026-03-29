@@ -939,32 +939,49 @@ window.pitchAgain = pitchAgain;
 async function pitchDemoFromReport() {
   if (!_reportDetailData) return;
   const title = _reportDetailData.title || "Sales Pitch";
-  const html = _reportDetailData.report_html || "";
-  const h1Match = html.match(/<h1[^>]*>([^<]+)/i);
-  const pitchTopic = h1Match ? h1Match[1].trim() : title;
   const sessionId = _reportDetailData.session_id;
+  if (!sessionId) { alert("Keine Session-Daten gefunden."); return; }
 
-  // Load transcript from conversation_messages for this session
-  let pitchTranscript = '';
-  let reportSummary = '';
+  // Show loading state
+  const btn = document.getElementById("pitchDemoBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Wird vorbereitet..."; }
+
   try {
-    // Strip HTML to get report text
-    const tmpDiv = document.createElement("div");
-    tmpDiv.innerHTML = html;
-    reportSummary = (tmpDiv.textContent || '').slice(0, 3000);
+    // Generate the demo pitch SERVER-SIDE (text AI, no hallucination)
+    const result = await api("generate-demo-pitch", {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId }),
+    });
 
-    // Try loading transcript — first via pitch-journey-detail, fallback to direct session lookup
-    const journeyData = await api("pitch-journey-detail&topic=" + encodeURIComponent(pitchTopic)).catch(() => null);
-    if (journeyData?.pitchTranscript) {
-      pitchTranscript = journeyData.pitchTranscript;
-    } else if (sessionId) {
-      // Fallback for old pitches without pitch_memory — load transcript directly by session_id
-      const transcriptData = await api("pitch-transcript&session_id=" + encodeURIComponent(sessionId)).catch(() => null);
-      if (transcriptData?.transcript) pitchTranscript = transcriptData.transcript;
+    if (!result?.demoPitch) {
+      alert("Demo-Pitch konnte nicht erstellt werden. Versuche es nochmal.");
+      if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
+      return;
     }
-  } catch (_) {}
 
-  // Parse scores from report HTML
+    // Pass the PRE-WRITTEN pitch text to Sophie — she just reads it aloud
+    const handover = {
+      funnelMode: "salespitch",
+      language: document.documentElement.lang || "de",
+      pitchDemo: true,
+      pitchTopic: title,
+      // THE KEY: pre-generated pitch text — Sophie reads this, doesn't improvise
+      prewrittenDemoPitch: result.demoPitch,
+      summary: `DEMO PITCH: Vorab generierter Text — Sophie liest ihn vor.`,
+      recentMessages: [],
+      userName: "",
+    };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  } catch (e) {
+    console.error("pitchDemoFromReport failed:", e);
+    alert("Fehler: " + (e?.message || "Unbekannt"));
+    if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
+  }
+}
+// Keep old score parsing for pitchAgain (not demo)
+function _parsePitchScores(html) {
   const extractScore = (criterion) => {
     const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
     const m = html.match(re);
