@@ -1003,6 +1003,8 @@ function updatePhaseUI(phase) {
 
   // Mute toggle: visible in live + post phases
   muteToggle.style.display = (phase === "live" || phase === "post") ? "inline-flex" : "none";
+  // Pause button: visible in live phase only
+  if (meetingPauseBtn) meetingPauseBtn.style.display = (phase === "live") ? "inline-flex" : "none";
 
   // Participants bar: visible when meeting is loaded
   updateParticipantsBar();
