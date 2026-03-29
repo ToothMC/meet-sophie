@@ -3353,7 +3353,8 @@
       await authReadyPromise;
       const startData = await callChat("start", {
         language: getCurrentLang(),
-        ...(selectedChatMode ? { session_mode: selectedChatMode } : {})
+        ...(selectedChatMode ? { session_mode: selectedChatMode } : {}),
+        ...(brainstormChatConfig ? { brainstorm_config: brainstormChatConfig } : {}),
       });
       sessionId    = startData.session_id;
       systemPrompt = startData.system_prompt || "";
