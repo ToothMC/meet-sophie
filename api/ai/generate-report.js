@@ -253,6 +253,37 @@ REGELN:
         .update({ report_progress: 30, report_status_detail: 'Bewerte Pitch...' })
         .eq('session_id', session_id);
 
+      // Load previous pitch data for version comparison (if exists)
+      let prevPitchContext = '';
+      try {
+        const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+        if (sess?.user_id) {
+          const { data: prevPitches } = await supabase.from('sophie_pitch_memory')
+            .select('topic, score, scores_content, scores_delivery, strengths, weaknesses, version, created_at')
+            .eq('user_id', sess.user_id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (prevPitches?.length) {
+            const prev = prevPitches[0];
+            prevPitchContext = `\n\nVORHERIGER PITCH (v${prev.version || 1}) — "${prev.topic}":
+Overall Score: ${prev.score || 0}/100
+Content Scores: ${JSON.stringify(prev.scores_content || {})}
+Delivery Scores: ${JSON.stringify(prev.scores_delivery || {})}
+Stärken: ${(prev.strengths || []).join(', ')}
+Schwächen: ${(prev.weaknesses || []).join(', ')}
+
+WICHTIG — VERSION COMPARISON:
+Wenn das Thema dieses Pitches zum vorherigen passt, füge am Ende des Reports einen VERGLEICHS-ABSCHNITT ein:
+- Pro Kriterium: ▲ verbessert / ● gleich / ▼ verschlechtert (mit Score-Delta)
+- Stärkste Verbesserung hervorheben
+- Größte verbleibende Schwäche
+- Neue Schwäche (falls entstanden)
+Verwende das gleiche HTML-Design wie die Score-Bars, aber mit Trend-Pfeilen.\n`;
+          }
+        }
+      } catch (e) { console.error('[report] prev pitch load failed:', e?.message); }
+
       const pitchPrompt = `Du bist ein STRENGER, EHRLICHER Pitch-Evaluator. Du bewertest einen Sales Pitch aus einem Voice-Transcript.
 
 WICHTIG — STRENGE BEWERTUNG:
