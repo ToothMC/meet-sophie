@@ -1489,6 +1489,7 @@ let closingResponseActive = false; // true only while OUR closing response is pl
 let closingResponseId = null; // ID of our closing response — prevents cancelled responses from triggering session end
 let endCleanlyAfterResponse = false; // Sophie was mid-sentence at 22s — just end after she finishes
 let pitchReportSignaled = false;    // Sales Pitch: Sophie announced report → end call after response
+let pitchReportBgPromise = null;    // Background report generation (starts at signal_pitch_report, parallel to Phase D audio)
 
 let hasUserSpoken = false;
 
