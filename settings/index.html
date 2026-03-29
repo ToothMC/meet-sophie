@@ -705,6 +705,7 @@ async function loadReports() {
 
           html += `<div class="card" style="padding:12px;margin:6px 0;border:1px solid #f0ece6;border-radius:10px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <input type="checkbox" class="report-cb" data-id="${j.latest.conversationId || ''}" data-source="talk" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
               <div style="text-align:center;line-height:1">
                 <div style="font-size:22px;font-weight:800;color:${sc};letter-spacing:-0.02em">${score}</div>
                 <div style="font-size:8px;font-weight:600;color:#a09080;letter-spacing:.05em">/100</div>
