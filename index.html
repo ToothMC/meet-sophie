@@ -3434,6 +3434,13 @@
         }
       } catch (e) {
         console.error("[chat message failed]", { message: e?.message, sessionId, turnCount, historyLength: history.length });
+        // Strip file attachments from failed message so they don't poison subsequent requests
+        const lastUserMsg = [...history].reverse().find(m => m.role === "user");
+        if (lastUserMsg?.files) {
+          console.warn("[chat] stripping files from failed message to prevent permanent chat breakage");
+          delete lastUserMsg.files;
+          saveChatState();
+        }
         if (isFreeLimitError(e)) {
           hide(typingEl);
           sessionEnded = true;
