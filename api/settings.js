@@ -249,6 +249,102 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...data, source: 'talk' });
   }
 
+  // ── GET: Pitch Journey — consolidated pitch progress per topic ──
+  if (action === 'pitch-journey' && req.method === 'GET') {
+    const { data: pitches } = await supabase
+      .from('sophie_pitch_memory')
+      .select('id, topic, target_audience, pitch_type, goal_type, score, scores_content, scores_delivery, strengths, weaknesses, version, parent_pitch_id, conversation_id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+
+    if (!pitches || pitches.length === 0) {
+      return res.status(200).json({ journeys: [] });
+    }
+
+    // Group by topic
+    const byTopic = {};
+    for (const p of pitches) {
+      const key = (p.topic || 'Untitled').trim();
+      if (!byTopic[key]) byTopic[key] = [];
+      byTopic[key].push(p);
+    }
+
+    const journeys = Object.entries(byTopic).map(([topic, versions]) => {
+      const latest = versions[versions.length - 1];
+      const first = versions[0];
+      const overallLatest = latest.score || 0;
+      const overallFirst = first.score || 0;
+
+      // Compute per-criterion trends (latest vs first)
+      const trends = {};
+      if (versions.length > 1 && latest.scores_content && first.scores_content) {
+        for (const k of Object.keys(latest.scores_content)) {
+          const cur = latest.scores_content[k] || 0;
+          const prev = first.scores_content[k] || 0;
+          trends[k] = cur > prev + 0.3 ? '▲' : cur < prev - 0.3 ? '▼' : '●';
+        }
+      }
+      if (versions.length > 1 && latest.scores_delivery && first.scores_delivery) {
+        for (const k of Object.keys(latest.scores_delivery)) {
+          const cur = latest.scores_delivery[k] || 0;
+          const prev = first.scores_delivery[k] || 0;
+          trends[k] = cur > prev + 0.3 ? '▲' : cur < prev - 0.3 ? '▼' : '●';
+        }
+      }
+
+      // Score history for sparkline
+      const scoreHistory = versions.map(v => ({ version: v.version || 1, score: v.score || 0, date: v.created_at }));
+
+      return {
+        topic,
+        pitchType: latest.pitch_type,
+        goalType: latest.goal_type,
+        audience: latest.target_audience,
+        versionCount: versions.length,
+        latest: {
+          id: latest.id,
+          version: latest.version || versions.length,
+          score: overallLatest,
+          scoresContent: latest.scores_content,
+          scoresDelivery: latest.scores_delivery,
+          strengths: latest.strengths || [],
+          weaknesses: latest.weaknesses || [],
+          conversationId: latest.conversation_id,
+          date: latest.created_at,
+        },
+        first: {
+          score: overallFirst,
+          date: first.created_at,
+        },
+        scoreDelta: overallLatest - overallFirst,
+        trends,
+        scoreHistory,
+      };
+    });
+
+    // Sort by most recent activity
+    journeys.sort((a, b) => new Date(b.latest.date) - new Date(a.latest.date));
+    return res.status(200).json({ journeys });
+  }
+
+  // ── GET: Single pitch journey detail (for handover) ──
+  if (action === 'pitch-journey-detail' && req.method === 'GET') {
+    const topic = req.query?.topic;
+    if (!topic) return res.status(400).json({ error: 'Missing topic' });
+
+    const { data: latest } = await supabase
+      .from('sophie_pitch_memory')
+      .select('id, topic, target_audience, pitch_type, goal_type, score, scores_content, scores_delivery, strengths, weaknesses, version, created_at')
+      .eq('user_id', user.id)
+      .eq('topic', topic)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!latest) return res.status(404).json({ error: 'No pitch found for topic' });
+    return res.status(200).json(latest);
+  }
+
   // ── GET: Report template (single) ──
   if (action === 'get-report-template' && req.method === 'GET') {
     const mode = req.query?.mode || 'default';
