@@ -66,7 +66,25 @@ const CHAT_OPENERS_PAID = {
     "Écris, je suis là.",
   ],
 };
-function getOpener(lang, isPaid = false) {
+// Brainstorm openers — Sophie announces the session type, then asks for topic
+const CHAT_OPENERS_BRAINSTORM = {
+  solo: {
+    de: "Willkommen zum Solo-Brainstorming! Worüber sollen wir heute Ideen entwickeln?",
+    en: "Welcome to your Solo Brainstorming session! What topic should we explore today?",
+    fr: "Bienvenue dans ta session de brainstorming solo ! Sur quel sujet veux-tu travailler aujourd'hui ?",
+  },
+  group: {
+    de: "Willkommen zum Team-Brainstorming! Was ist euer Thema heute?",
+    en: "Welcome to the Team Brainstorming session! What's your topic today?",
+    fr: "Bienvenue dans la session de brainstorming en équipe ! Quel est votre sujet aujourd'hui ?",
+  },
+};
+function getOpener(lang, isPaid = false, sessionMode = null, brainstormConfig = null) {
+  // Brainstorm mode: fixed opener announcing session type
+  if (sessionMode === "brainstorm") {
+    const bsMode = brainstormConfig?.mode || "solo";
+    return CHAT_OPENERS_BRAINSTORM[bsMode]?.[lang] || CHAT_OPENERS_BRAINSTORM[bsMode]?.en;
+  }
   const pool = isPaid
     ? (CHAT_OPENERS_PAID[lang] || CHAT_OPENERS_PAID.en)
     : (CHAT_OPENERS_FREE[lang] || CHAT_OPENERS_FREE.en);
