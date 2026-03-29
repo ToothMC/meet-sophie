@@ -1274,22 +1274,22 @@ let pausedElapsedMs = 0;        // elapsed session time before pause
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
 
-// ── Brainstorm split-pill logic ────────────────────────────
+// ── Brainstorm segmented control logic ─────────────────────
 let _bsMode = "solo";
-const bsPillMain  = document.getElementById("bsPillMain");
-const bsSplitBtns = document.querySelectorAll("#modeBar .bs-split");
+const bsPillMain = document.getElementById("bsPillMain");
+const bsSeg      = document.getElementById("bsSeg");
+const bsSegBtns  = bsSeg.querySelectorAll(".bs-seg-btn");
 
-function showBsSplit() {
+function showBsSeg() {
   bsPillMain.style.display = "none";
-  bsSplitBtns.forEach(b => {
-    b.style.display = "";
-    b.classList.toggle("active", b.dataset.bs === "solo");
-  });
+  bsSeg.style.display = "inline-flex";
+  bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === "solo"));
   _bsMode = "solo";
 }
-function hideBsSplit() {
+function hideBsSeg() {
+  bsSeg.style.display = "none";
   bsPillMain.style.display = "";
-  bsSplitBtns.forEach(b => { b.style.display = "none"; b.classList.remove("active"); });
+  bsPillMain.classList.remove("active");
 }
 
 window._getBrainstormConfig = function() {
@@ -1301,27 +1301,24 @@ window._getBrainstormConfig = function() {
   };
 };
 
-// Split pill click — toggle Solo/Team
-bsSplitBtns.forEach(btn => {
+bsSegBtns.forEach(btn => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (btn.dataset.bs === _bsMode) {
-      // deselect brainstorm entirely
       selectedVoiceMode = null;
       brainstormVoiceConfig = null;
-      hideBsSplit();
+      hideBsSeg();
       localStorage.removeItem("sophie_session_mode");
     } else {
-      // switch Solo ↔ Team
       _bsMode = btn.dataset.bs;
-      bsSplitBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+      bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
     }
   });
 });
 // ──────────────────────────────────────────────────────────
 
 // Mode pill toggle (voice page)
-document.querySelectorAll("#modeBar .mode-pill:not(.bs-split)").forEach(btn => {
+document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
   btn.addEventListener("click", () => {
     const mode = btn.dataset.mode;
     if (selectedVoiceMode === mode) {
@@ -1329,16 +1326,16 @@ document.querySelectorAll("#modeBar .mode-pill:not(.bs-split)").forEach(btn => {
       brainstormVoiceConfig = null;
       btn.classList.remove("active");
       localStorage.removeItem("sophie_session_mode");
-      if (mode === "brainstorm") hideBsSplit();
+      if (mode === "brainstorm") hideBsSeg();
     } else if (mode === "brainstorm") {
       brainstormVoiceConfig = null;
       selectedVoiceMode = "brainstorm";
-      document.querySelectorAll("#modeBar .mode-pill:not(.bs-split)").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       localStorage.setItem("sophie_session_mode", "brainstorm");
-      showBsSplit();
+      showBsSeg();
     } else {
       brainstormVoiceConfig = null;
-      hideBsSplit();
+      hideBsSeg();
       selectedVoiceMode = mode;
       document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
