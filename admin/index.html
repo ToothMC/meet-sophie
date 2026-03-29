@@ -165,6 +165,14 @@ main{max-width:900px;margin:0 auto;padding:16px}
   </div>
 
   <div class="section">
+    <div class="section-header" style="display:flex;align-items:center;gap:8px">Budget Monitor <span id="alertBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px"></span></div>
+    <div class="section-body">
+      <div id="budgetGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div>
+      <div id="alertFeed" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-header">Users</div>
     <div class="section-body" style="padding:0;overflow-x:auto">
       <table class="user-table" id="userTable">
