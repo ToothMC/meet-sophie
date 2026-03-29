@@ -959,15 +959,16 @@ async function pitchDemoFromReport() {
       return;
     }
 
-    // Pass the PRE-WRITTEN pitch text to Sophie — she just reads it aloud
+    // Store pitch text separately (too large for HTTP header as Base64)
+    sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
+
     const handover = {
       funnelMode: "salespitch",
       language: document.documentElement.lang || "de",
       pitchDemo: true,
       pitchTopic: title,
-      // THE KEY: pre-generated pitch text — Sophie reads this, doesn't improvise
-      prewrittenDemoPitch: result.demoPitch,
-      summary: `DEMO PITCH: Vorab generierter Text — Sophie liest ihn vor.`,
+      hasDemoPitch: true, // flag — actual text in sessionStorage.SOPHIE_DEMO_PITCH
+      summary: `DEMO PITCH: Vorab generierter Text.`,
       recentMessages: [],
       userName: "",
     };
