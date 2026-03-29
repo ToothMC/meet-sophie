@@ -953,10 +953,14 @@ async function pitchDemoFromReport() {
     tmpDiv.innerHTML = html;
     reportSummary = (tmpDiv.textContent || '').slice(0, 3000);
 
-    // Try loading transcript via pitch-journey-detail (if pitch_memory exists)
+    // Try loading transcript — first via pitch-journey-detail, fallback to direct session lookup
     const journeyData = await api("pitch-journey-detail&topic=" + encodeURIComponent(pitchTopic)).catch(() => null);
     if (journeyData?.pitchTranscript) {
       pitchTranscript = journeyData.pitchTranscript;
+    } else if (sessionId) {
+      // Fallback for old pitches without pitch_memory — load transcript directly by session_id
+      const transcriptData = await api("pitch-transcript&session_id=" + encodeURIComponent(sessionId)).catch(() => null);
+      if (transcriptData?.transcript) pitchTranscript = transcriptData.transcript;
     }
   } catch (_) {}
 
