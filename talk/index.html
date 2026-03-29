@@ -1503,7 +1503,7 @@ let endCleanlyAfterResponse = false; // Sophie was mid-sentence at 22s — just 
 let pitchReportSignaled = false;    // Sales Pitch: Sophie announced report → end call after response
 let pitchReportBgPromise = null;    // Background report generation (starts at signal_pitch_report, parallel to Phase D audio)
 let pitchInactivityTimer = null;    // Auto-end salespitch after silence
-const PITCH_INACTIVITY_SECONDS = 30; // End session after 30s of no speech
+const PITCH_INACTIVITY_SECONDS = 60; // End session after 60s of no speech
 
 let hasUserSpoken = false;
 
