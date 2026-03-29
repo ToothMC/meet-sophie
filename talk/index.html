@@ -3191,7 +3191,9 @@ ${(voiceHandover.recentMessages || [])
         setMicSensitivity("locked");
         console.log(`[${runId}] [salespitch] demo mode — mic locked at kickoff start`);
 
-        const prewrittenPitch = voiceHandover.prewrittenDemoPitch || "";
+        // Read pitch text from separate sessionStorage key (not from handover header — too large)
+        const prewrittenPitch = sessionStorage.getItem("SOPHIE_DEMO_PITCH") || voiceHandover.prewrittenDemoPitch || "";
+        if (prewrittenPitch) sessionStorage.removeItem("SOPHIE_DEMO_PITCH"); // clean up after reading
 
         if (prewrittenPitch) {
           // Pre-generated pitch text exists — Sophie performs it
