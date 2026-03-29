@@ -324,15 +324,16 @@ BERECHNUNG:
 - Delivery Score = gewichteter Durchschnitt der 6 Delivery-Kriterien
 - Overall = (Content Score × 0.6) + (Delivery Score × 0.4)
 
+${prevPitchContext}
 TRANSCRIPT:
 ${transcript_text}
-${prevPitchContext}
+
 AUFGABE:
 Erstelle den kompletten Sales Pitch Report als HTML. Verwende das EXAKTE Design unten.
 Ersetze ALLE Platzhalter mit echten Werten aus deiner Bewertung.
 Jeder Score-Balken muss die korrekte Breite haben (Score/5 × 100 = Prozent).
 Farben: >= 4.0 = #22c55e (grün), 2.5-3.9 = #eab308 (gelb), < 2.5 = #ef4444 (rot).
-
+${prevPitchContext ? `WICHTIG: Dies ist ein FOLGE-PITCH. Du MUSST das Vergleichs-Bar-Design verwenden (Ghost-Bar + Delta-Badge) für JEDES Kriterium. Ohne Vergleich ist der Report UNVOLLSTÄNDIG.` : ''}
 Schreibe in der gleichen Sprache wie das Transcript.
 Antworte NUR mit HTML. Kein Markdown, kein Text davor/danach.
 
