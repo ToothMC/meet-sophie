@@ -3122,6 +3122,18 @@
     // Fallback: if no auth event fires within 2s (e.g. no session), resolve anyway
     setTimeout(() => _authReady(false), 2000);
 
+    // Close this tab when auth completes in callback tab — prevent duplicate windows
+    try {
+      const bc = new BroadcastChannel("sophie_auth");
+      bc.onmessage = (e) => {
+        if (e.data?.type === "auth_complete") {
+          bc.close();
+          try { window.close(); } catch (_) {}
+          setTimeout(() => { window.location.replace(e.data.target || "/talk"); }, 300);
+        }
+      };
+    } catch (_) {}
+
     // Also kick off getSession to populate the cache
     getToken().catch(() => {});
 
