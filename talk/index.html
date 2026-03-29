@@ -2151,28 +2151,32 @@ function getDatePrefix() {
 async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
-  // Stop fake loader interval but DON'T hide the bar — we're taking over with real progress
-  stopFakeReportLoader(false);
+  // Keep fake loader running for smooth animation — don't reset bar position
+  // Fake loader provides continuous visual feedback between real progress updates
+  if (!window.__sophieLoaderInterval) {
+    // If no fake loader running, start one
+    startFakeReportLoader();
+  }
   inlineReportProgress.style.display = "block";
-  inlineReportProgressBar.style.width = "5%";
   const softHint = document.getElementById("softHint");
+  const percentEl = document.getElementById("inlineReportPercent");
+
+  // Track minimum progress — bar only goes UP, never backwards
+  let minProgress = parseFloat(inlineReportProgressBar.style.width) || 5;
 
   // Skip firing generate-report if already started in background (parallel pitch flow)
   if (!opts.skipGenerate) {
-    // Build transcript text for the report generator
     const transcriptText = transcriptLog
       .filter(m => m.text && m.text.trim())
       .map(m => `[${m.role}]: ${m.text}`)
       .join("\n");
 
-    // Start report generation (this runs for ~30-60s)
     const genHeaders = { "Content-Type": "application/json" };
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
     } catch (_) {}
 
-    // Fire generate-report (don't await — poll instead)
     fetch("/api/ai/generate-report", {
       method: "POST",
       headers: genHeaders,
@@ -2186,8 +2190,8 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
     console.log(`[report] skipping generate — already started in background`);
   }
 
-  // Poll for progress while generate-report runs
-  const maxAttempts = 90; // 90 * 2s = 3 minutes max
+  // Poll for progress — fake loader keeps bar moving between real updates
+  const maxAttempts = 90;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await new Promise(r => setTimeout(r, 2000));
 
@@ -2196,11 +2200,14 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
       if (!res.ok) continue;
       const data = await res.json();
 
-      const progress = Math.max(5, Math.min(98, data.progress || 0));
-      inlineReportProgressBar.style.width = progress + "%";
-      const percentEl = document.getElementById("inlineReportPercent");
+      // Only update bar if real progress is HIGHER than current position
+      const realProgress = Math.max(5, Math.min(98, data.progress || 0));
+      if (realProgress > minProgress) {
+        minProgress = realProgress;
+        inlineReportProgressBar.style.width = realProgress + "%";
+      }
+
       if (percentEl && data.detail) percentEl.textContent = data.detail;
-      else if (percentEl) percentEl.textContent = Math.round(progress) + "%";
 
       if (softHint && data.detail) {
         softHint.textContent = data.detail;
@@ -2208,9 +2215,15 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
       }
 
       if (data.status === "done" && data.report_html) {
+        // Smooth finish: stop fake loader, animate to 100%, brief pause, then show report
+        stopFakeReportLoader(false);
         inlineReportProgressBar.style.width = "100%";
+        if (percentEl) percentEl.textContent = "Report fertig!";
         if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
-        setTimeout(() => { inlineReportProgress.style.display = "none"; }, 500);
+
+        // Brief pause at 100% so user sees completion before report slides in
+        await new Promise(r => setTimeout(r, 800));
+        inlineReportProgress.style.display = "none";
 
         showPostCallResults({
           session: { id: sessionId },
@@ -2224,8 +2237,8 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
       }
 
       if (data.status === "failed") {
+        stopFakeReportLoader(true);
         if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
-        inlineReportProgress.style.display = "none";
         showPostCallResults({
           output: { short_summary: data.detail || "Report konnte nicht erstellt werden.", key_insights: [], action_plan: [] }
         }, transcriptLog, opts);
