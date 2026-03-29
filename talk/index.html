@@ -4558,8 +4558,11 @@ async function stopVoicePitchClean() {
   // Calculate actual wallclock duration only — no time-limit inflation
   const wallclockSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
 
-  const hasRealConversation = hasUserSpoken && wallclockSeconds >= 10 &&
-    convoLog.some(item => String(item?.text || "").trim());
+  // Demo pitch: Sophie spoke (not user), so check for assistant turns instead
+  const isDemoSession = voiceHandover?.pitchDemo === true;
+  const hasRealConversation = wallclockSeconds >= 10 &&
+    convoLog.some(item => String(item?.text || "").trim()) &&
+    (hasUserSpoken || isDemoSession);
 
   // Null references BEFORE closing to prevent DC close handler from re-triggering
   const _dc = dc; dc = null;
