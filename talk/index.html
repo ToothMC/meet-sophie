@@ -1006,9 +1006,13 @@ body{
   </div>
 
   <div class="mode-bar" id="modeBar">
-    <button class="mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
-    <button class="mode-pill bs-split" data-mode="brainstorm" data-bs="solo" style="display:none">✦ Solo</button>
-    <button class="mode-pill bs-split" data-mode="brainstorm" data-bs="group" style="display:none">Team</button>
+    <div class="bs-pill-wrap">
+      <button class="mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
+      <div class="bs-seg" id="bsSeg" style="display:none">
+        <button class="bs-seg-btn active" data-bs="solo">Solo</button>
+        <button class="bs-seg-btn" data-bs="group">Team</button>
+      </div>
+    </div>
     <button class="mode-pill" data-mode="meeting">◉ Meeting</button>
     <button class="mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
   </div>
