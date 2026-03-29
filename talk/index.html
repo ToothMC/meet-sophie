@@ -2390,7 +2390,7 @@ function startFakeReportLoader() {
 function resetPostCallUI() {
   // Report was disabled — skip report panel, reset to ready state
   startBtn.disabled = false;
-  startBtn.textContent = t("start");
+  startBtn.textContent = t("start"); resetStartBtnStyle();
   startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
   headline.textContent = t("sophie_waiting");
@@ -4577,7 +4577,7 @@ async function startVoice(){
 
       showBackground(false);
       startBtn.disabled = false;
-      startBtn.textContent = t("start");
+      startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       logoutBtn.disabled = false;
       headline.textContent = premiumActive
@@ -4636,7 +4636,7 @@ async function startVoice(){
         : "Sophie is busy right now. Please try again in a moment.";
       setStatus(busyMsg);
       headline.textContent = t("sophie_waiting");
-      startBtn.textContent = t("start");
+      startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -4653,7 +4653,7 @@ async function startVoice(){
         : `Access denied (HTTP ${tokenRes.status}).`);
       setStatus(msg);
       headline.textContent = t("sophie_waiting");
-      startBtn.textContent = t("start");
+      startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -4771,7 +4771,7 @@ async function startVoice(){
     showVoiceChat(false);
 
     startBtn.disabled = false;
-    startBtn.textContent = t("start");
+    startBtn.textContent = t("start"); resetStartBtnStyle();
     startBtn.onclick = startVoice;
     endBtn.disabled = true;
     logoutBtn.disabled = false;
@@ -4864,7 +4864,7 @@ async function stopVoicePitchClean() {
     showBackground(false);
     statusEl.style.visibility = "visible";
     startBtn.disabled = false;
-    startBtn.textContent = t("start");
+    startBtn.textContent = t("start"); resetStartBtnStyle();
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
     headline.textContent = t("sophie_waiting");
@@ -5022,7 +5022,7 @@ if (!hasRealConversation) {
 
   statusEl.style.visibility = "visible";
   startBtn.disabled = false;
-  startBtn.textContent = t("start");
+  startBtn.textContent = t("start"); resetStartBtnStyle();
   startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
   headline.textContent = t("sophie_waiting");
@@ -5174,7 +5174,7 @@ if (!hasRealConversation) {
 
     statusEl.style.visibility = "visible";
     startBtn.disabled = false;
-    startBtn.textContent = t("start");
+    startBtn.textContent = t("start"); resetStartBtnStyle();
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
     headline.textContent = t("sophie_waiting");
@@ -5281,7 +5281,7 @@ function showMobileStartFallback() {
   headline.textContent = t("sophie_waiting");
   setStatus(t("tap_to_start"));
   startBtn.disabled = false;
-  startBtn.textContent = t("start");
+  startBtn.textContent = t("start"); resetStartBtnStyle();
   startBtn.onclick = startVoice;
   showBackground(false);
 }
