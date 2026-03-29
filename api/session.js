@@ -559,6 +559,7 @@ export default async function handler(req, res) {
       handoverContext: hasHandoverContext ? handover : null,
       pitchRetry: handover?.pitchRetry === true,
       pitchDemo: handover?.pitchDemo === true,
+      brainstormConfig,
       pitchContext: await (async () => {
         if (!handover?.pitchRetry && !handover?.pitchDemo) return null;
         const ctx = {
