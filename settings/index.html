@@ -1033,6 +1033,47 @@ async function pitchDemoFromJourney(topic) {
 }
 window.pitchDemoFromJourney = pitchDemoFromJourney;
 
+// ── Section: Meine Regeln ──
+async function loadRules() {
+  const list = document.getElementById("rulesList");
+  try {
+    const data = await api("custom-rules");
+    const rules = data.rules || [];
+    if (!rules.length) {
+      list.innerHTML = '<p class="msg">Sophie hat noch keine Regeln von dir gelernt. Sage ihr im Chat z.B. "Merk dir: fass immer zuerst zusammen" — sie lernt mit der Zeit.</p>';
+      return;
+    }
+    list.innerHTML = rules.map((r, i) => {
+      const d = new Date(r.created_at);
+      const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+      return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 0">
+        <div style="flex:1">
+          <div style="font-size:13px;color:#2a2420">${r.rule}</div>
+          <div style="font-size:10px;color:#a09080;margin-top:2px">${date}${r.context ? ' · ' + r.context : ''}</div>
+        </div>
+        <button onclick="deleteRule(${i})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px" title="Regel löschen">&times;</button>
+      </div>`;
+    }).join('');
+  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+async function deleteRule(index) {
+  try {
+    await api("delete-custom-rule", { method: "POST", body: JSON.stringify({ index }) });
+    loadRules();
+  } catch (e) { console.error("delete rule failed:", e); }
+}
+window.deleteRule = deleteRule;
+
+async function resetAllRules() {
+  if (!confirm("Alle gelernten Regeln zurücksetzen? Sophie vergisst alle individuellen Anweisungen.")) return;
+  try {
+    await api("reset-custom-rules", { method: "POST", body: "{}" });
+    loadRules();
+  } catch (e) { console.error("reset rules failed:", e); }
+}
+window.resetAllRules = resetAllRules;
+
 // ── Section: Meine Vorlagen ──
 const MODE_LABELS = { default: "Standard Report", brainstorm: "Brainstorm", salespitch: "Sales Pitch", meeting: "Meeting" };
 
