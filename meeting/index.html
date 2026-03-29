@@ -1773,9 +1773,9 @@ function pauseMeeting() {
     toggleSophieMute(); // disconnects Sophie
   }
 
-  // Pause timer — save elapsed
+  // Pause timer — save total elapsed (replace, not accumulate — liveStartTime is already backdated on resume)
   if (liveStartTime) {
-    meetingPausedElapsed += Date.now() - liveStartTime;
+    meetingPausedElapsed = Date.now() - liveStartTime;
   }
   stopLiveTimer();
 
