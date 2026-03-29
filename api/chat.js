@@ -598,6 +598,7 @@ async function handleMessage(req, res) {
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.role === "user" ? buildContent(m) : String(m.content || "").slice(0, 4000) })),
     ...(historyContext ? [{ role: "system", content: historyContext }] : []),
+    ...(brainstormPhaseInjection ? [{ role: "system", content: brainstormPhaseInjection }] : []),
     ...(voiceNudge ? [{ role: "system", content: voiceNudge }] : []),
   ];
 
