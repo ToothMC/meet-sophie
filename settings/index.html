@@ -1018,7 +1018,10 @@ window.pitchAgainFromJourney = pitchAgainFromJourney;
 // Sophie Demo Pitch — Sophie pitches FOR the user as an example
 async function pitchDemoFromJourney(topic) {
   try {
-    const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
+    const [data, prevDemo] = await Promise.all([
+      api("pitch-journey-detail&topic=" + encodeURIComponent(topic)),
+      api("get-demo-pitch&topic=" + encodeURIComponent(topic)).catch(() => ({ found: false })),
+    ]);
     const handover = {
       funnelMode: "salespitch",
       language: document.documentElement.lang || "de",
@@ -1034,7 +1037,10 @@ async function pitchDemoFromJourney(topic) {
       },
       previousWeaknesses: data.weaknesses || [],
       previousStrengths: data.strengths || [],
-      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen als Beispiel. Audience: ${data.target_audience || 'unbekannt'}. Bisherige Schwächen: ${(data.weaknesses || []).join(', ')}.`,
+      // Previous demo for iterative improvement
+      previousDemoTranscript: prevDemo?.found ? (prevDemo.transcript || '').slice(0, 4000) : '',
+      previousDemoSelfCritique: prevDemo?.found ? (prevDemo.selfCritique || '') : '',
+      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen.${prevDemo?.found ? ' VORHERIGES DEMO EXISTIERT — verbessere dich basierend auf deiner eigenen Selbstkritik.' : ''}`,
       recentMessages: [{ role: "user", content: `Zeig mir wie du "${topic}" pitchen würdest.` }],
       userName: "",
     };
