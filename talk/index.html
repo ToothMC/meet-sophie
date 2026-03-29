@@ -4115,26 +4115,15 @@ function attachChannel(ch) {
           const isDemoKickoff = voiceHandover?.pitchDemo === true;
           if (isDemoKickoff) {
             // Demo pitch: Sophie speaks for 2-3 minutes uninterrupted.
-            // MUTE MIC to prevent echo feedback (speaker → mic → VAD → new response → loop)
-            muteMic();
-            console.log(`[${runId}] [startmode] demo kickoff response.done — mic muted, VAD off, Sophie continues`);
+            // Mic already locked at kickoff (setMicSensitivity("locked"))
+            console.log(`[${runId}] [startmode] demo kickoff response.done — mic stays locked, Sophie continues`);
 
-            // Also disable turn detection entirely during demo
-            try {
-              await sendWhenChannelOpen({
-                type: "session.update",
-                session: {
-                  turn_detection: { type: "server_vad", create_response: false, interrupt_response: false }
-                }
-              }, 2000);
-            } catch (_) {}
-
-            // After Sophie finishes her demo (~90s), unmute mic + enable auto-responses
+            // After Sophie finishes her demo (~90s), restore normal sensitivity + enable auto-responses
             // Also save Sophie's demo transcript for iterative improvement
             setTimeout(async () => {
-              console.log(`[${runId}] [startmode] demo done — unmuting mic, enabling auto responses, saving demo transcript`);
+              console.log(`[${runId}] [startmode] demo done — restoring mic to normal, enabling auto responses`);
               try {
-                if (stream) stream.getTracks().forEach(t => { t.enabled = true; });
+                await setMicSensitivity("normal");
                 await setAutoResponses(true);
               } catch(_) {}
 
