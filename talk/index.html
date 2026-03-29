@@ -1318,13 +1318,12 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
       btn.classList.remove("active");
       localStorage.removeItem("sophie_session_mode");
     } else if (mode === "brainstorm") {
-      window._openBrainstormModal((config) => {
-        brainstormVoiceConfig = config;
-        selectedVoiceMode = "brainstorm";
-        document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        localStorage.setItem("sophie_session_mode", "brainstorm");
-      });
+      brainstormVoiceConfig = null; // built on startVoice
+      selectedVoiceMode = "brainstorm";
+      document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      localStorage.setItem("sophie_session_mode", "brainstorm");
+      window._showBrainstormToggle();
     } else {
       brainstormVoiceConfig = null;
       selectedVoiceMode = mode;
