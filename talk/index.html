@@ -1356,13 +1356,8 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
         selectedVoiceMode = ho.funnelMode;
         if (ho.funnelMode === "brainstorm") {
           // Restore Solo/Team from handover config
-          if (ho.brainstormConfig?.mode) {
-            _bsMode = ho.brainstormConfig.mode;
-          }
           brainstormVoiceConfig = ho.brainstormConfig || null;
-          showBsSeg();
-          // Set correct active button in segmented control
-          bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+          showBsSeg(ho.brainstormConfig?.mode || "solo");
         } else {
           const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${ho.funnelMode}"]`);
           if (pill) pill.classList.add("active");
