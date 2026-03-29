@@ -3110,6 +3110,13 @@ async function handleTimeLimitReached(){
 
   try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
 
+  // Sales Pitch: use clean teardown that preserves audio + generates report
+  if (selectedVoiceMode === "salespitch") {
+    console.log(`[${runId}] [salespitch] handleTimeLimitReached → using stopVoicePitchClean instead of stopVoice`);
+    try { await stopVoicePitchClean(); } catch (_) {}
+    return;
+  }
+
   try {
     await stopVoice(true);
   } catch (_) {}
