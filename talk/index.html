@@ -3173,6 +3173,8 @@ function cleanupLiveSession() {
   stopCountdown();
   clearClosingTimers();
   stopFakeReportLoader();
+  pauseBtn.style.display = "none";
+  isPaused = false;
 
   if (dc) {
     try { dc.close(); } catch(e){}
