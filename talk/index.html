@@ -2952,7 +2952,38 @@ ${(voiceHandover.recentMessages || [])
     // Sales Pitch: start Phase A with handover context + correct language
     if (selectedVoiceMode === "salespitch") {
       const pitchLang = voiceHandover?.language || _uiLang || "en";
-      const chatContext = voiceHandover ? `
+      const isPitchRetry = voiceHandover?.pitchRetry === true;
+      const pitchTopic = voiceHandover?.pitchTopic || "";
+
+      const langLock = pitchLang === "de"
+        ? "Speak GERMAN. All questions and feedback in German."
+        : pitchLang === "fr"
+        ? "Speak FRENCH. All questions and feedback in French."
+        : "Speak ENGLISH. All questions and feedback in English.";
+
+      let pitchInstructions;
+
+      if (isPitchRetry && pitchTopic) {
+        // RETRY: Skip Phase A entirely — Sophie already knows the pitch context
+        pitchInstructions = `You are Sophie in Sales Pitch Mode. This is a RETRY — the user already pitched "${pitchTopic}" before and wants to try again.
+
+${langLock}
+
+SKIP PHASE A COMPLETELY. Do NOT ask what they're presenting, who the audience is, or what should stick.
+You already know all of this from the previous session.
+
+Start with a short, encouraging opener (1-2 sentences max). Examples:
+${pitchLang === "de"
+  ? `- "OK — nochmal "${pitchTopic}". Du weißt worauf es ankommt. Leg los, wenn du bereit bist."
+- "Runde zwei für "${pitchTopic}". Zeig mir was du drauf hast — pitch wenn du soweit bist."`
+  : pitchLang === "fr"
+  ? `- "OK — on reprend "${pitchTopic}". Tu sais ce qui compte. Lance-toi quand tu es prêt."`
+  : `- "OK — "${pitchTopic}" again. You know what matters. Pitch whenever you're ready."`}
+
+Then go DIRECTLY to Phase B (listen to pitch). Be warm but brief. No setup questions.`;
+      } else {
+        // FIRST PITCH: Normal Phase A with 3 setup questions
+        const chatContext = voiceHandover ? `
 CHAT CONTEXT (use this info, do NOT ask again what you already know):
 Known user name: ${voiceHandover.userName || "(unknown)"}
 Language: ${pitchLang}
@@ -2965,17 +2996,7 @@ ${(voiceHandover.recentMessages || [])
 If the user already told you what they're pitching or who the audience is, acknowledge it and skip that question.
 ` : "";
 
-      const langLock = pitchLang === "de"
-        ? "Speak GERMAN. All questions and feedback in German."
-        : pitchLang === "fr"
-        ? "Speak FRENCH. All questions and feedback in French."
-        : "Speak ENGLISH. All questions and feedback in English.";
-
-      await sendWhenChannelOpen({
-        type: "response.create",
-        response: {
-          modalities: ["audio", "text"],
-          instructions: `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first.
+        pitchInstructions = `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first.
 
 ${langLock}
 ${chatContext}
@@ -2990,7 +3011,14 @@ Dann: "Okay. Pitch, sobald du bereit bist."` : `1. "Hey — let's look at your p
 Then: "Okay. Pitch whenever you're ready."`}
 
 If any of these are already answered from the chat context, skip them and move to the next.
-No smalltalk. No mode explanation. No onboarding. Be direct and natural.`
+No smalltalk. No mode explanation. No onboarding. Be direct and natural.`;
+      }
+
+      await sendWhenChannelOpen({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: pitchInstructions,
         }
       }, 3000);
       return;
