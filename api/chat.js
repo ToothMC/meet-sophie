@@ -331,8 +331,8 @@ async function handleStart(req, res) {
   // Create chat session
   const { data: session, error: sessErr } = await supabase
     .from("chat_sessions")
-    .insert({ user_id: user?.id || null, status: "open", mode: "text" })
-    .select("id, turn_count")
+    .insert({ user_id: user?.id || null, status: "open", mode: "text", brainstorm_config: brainstormConfig || null })
+    .select("id, turn_count, created_at")
     .single();
 
   if (sessErr || !session) {
