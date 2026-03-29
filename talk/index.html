@@ -2355,46 +2355,90 @@ function configurePostCallCta(triggeredByLimit = false) {
   if (selectedVoiceMode === "salespitch") {
     postCallCtaTitle.textContent = "";
 
-    // Extract pitch topic from report title for retry handover
+    // Extract pitch topic + scores from the just-generated report for retry handover
     const reportTitle = document.querySelector(".postCallTitle")?.textContent || "";
     const pitchTopic = reportTitle || voiceHandover?.pitchTopic || "deinen Pitch";
 
-    postCallPrimaryBtn.textContent = _uiLang === "de" ? "▲ Pitch again" : _uiLang === "fr" ? "▲ Pitcher à nouveau" : "▲ Pitch again";
-    postCallPrimaryBtn.onclick = () => {
-      const handover = {
+    // Parse scores from report HTML for retry context
+    const reportEl = document.getElementById("postCallSummary");
+    const reportHtml = reportEl?.innerHTML || "";
+    const extractScoreFromHtml = (criterion) => {
+      const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
+      const m = reportHtml.match(re);
+      return m ? parseFloat(m[1]) : 0;
+    };
+    const pitchScores = {
+      content: {
+        clarity: extractScoreFromHtml("Clarity"),
+        problem_sharpness: extractScoreFromHtml("Problem Sharpness"),
+        value_proposition: extractScoreFromHtml("Value Proposition"),
+        structure: extractScoreFromHtml("Structure"),
+        differentiation: extractScoreFromHtml("Differentiation"),
+        credibility: extractScoreFromHtml("Credibility"),
+        audience_fit: extractScoreFromHtml("Audience Fit"),
+      },
+      delivery: {
+        opening: extractScoreFromHtml("Opening"),
+        closing: extractScoreFromHtml("Closing"),
+        voice_rhythm: extractScoreFromHtml("Voice.*Rhythm"),
+        rhetoric_language: extractScoreFromHtml("Rhetoric.*Language"),
+        authenticity: extractScoreFromHtml("Authenticity"),
+        persuasiveness: extractScoreFromHtml("Persuasiveness"),
+      },
+      overall: 0,
+    };
+    // Extract overall from large number in report
+    const overallMatch = reportHtml.match(/font-size:\s*48px[^>]*>(\d+\.?\d*)/);
+    if (overallMatch) pitchScores.overall = Math.round(parseFloat(overallMatch[1]) * 20);
+
+    // Extract strengths/weaknesses from report text
+    const tmpDiv = document.createElement("div");
+    tmpDiv.innerHTML = reportHtml;
+    const allText = tmpDiv.textContent || "";
+    const weaknessSection = allText.match(/(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)[:\s]*([\s\S]*?)(?:Nächste|Next|Prochaines|Verdict|$)/i);
+    const pitchWeaknesses = weaknessSection ? weaknessSection[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+    const strengthSection = allText.match(/(?:Stärken|Strengths|Forces)[:\s]*([\s\S]*?)(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)/i);
+    const pitchStrengths = strengthSection ? strengthSection[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+
+    function buildPitchRetryHandover() {
+      return {
         funnelMode: "salespitch",
         language: _uiLang || "de",
         pitchRetry: true,
         pitchTopic: pitchTopic,
-        summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht. Phase A NICHT nochmal stellen.`,
+        previousScores: pitchScores,
+        previousWeaknesses: pitchWeaknesses,
+        previousStrengths: pitchStrengths,
+        previousVersion: (voiceHandover?.previousVersion || 1),
+        audience: voiceHandover?.audience || "",
+        summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht. Score: ${pitchScores.overall}/100. Schwächen: ${pitchWeaknesses.join(', ')}. Phase A NICHT nochmal stellen.`,
         recentMessages: [{ role: "user", content: `Nochmal "${pitchTopic}".` }],
         userName: "",
       };
+    }
+
+    postCallPrimaryBtn.textContent = _uiLang === "de" ? "▲ Pitch again" : _uiLang === "fr" ? "▲ Pitcher à nouveau" : "▲ Pitch again";
+    postCallPrimaryBtn.onclick = () => {
       localStorage.setItem("sophie_session_mode", "salespitch");
-      sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+      sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(buildPitchRetryHandover()));
       window.location.reload();
     };
 
     postCallSecondaryBtn.textContent = _uiLang === "de" ? "Zurück zum Start" : _uiLang === "fr" ? "Retour" : "Back to start";
     postCallSecondaryBtn.onclick = goHome;
 
-    // Add "Sophie pitcht für dich" button between primary and secondary
+    // Add "Sophie pitcht für dich" button
     const demoBtn = document.createElement("button");
     demoBtn.id = "postCallDemoBtn";
     demoBtn.type = "button";
     demoBtn.className = "smallBtn secondary";
     demoBtn.style.cssText = "background:linear-gradient(135deg,#c4a882,#a08060);color:#fff;border:none;";
-    demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht für dich";
+    demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
     demoBtn.onclick = () => {
-      const handover = {
-        funnelMode: "salespitch",
-        language: _uiLang || "de",
-        pitchDemo: true,
-        pitchTopic: pitchTopic,
-        summary: `DEMO PITCH: Sophie soll "${pitchTopic}" selbst pitchen als Beispiel.`,
-        recentMessages: [{ role: "user", content: `Zeig mir wie du "${pitchTopic}" pitchen würdest.` }],
-        userName: "",
-      };
+      const handover = buildPitchRetryHandover();
+      handover.pitchRetry = false;
+      handover.pitchDemo = true;
+      handover.summary = `DEMO PITCH: Sophie soll "${pitchTopic}" selbst pitchen als Beispiel. Schwächen: ${pitchWeaknesses.join(', ')}.`;
       localStorage.setItem("sophie_session_mode", "salespitch");
       sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
       window.location.reload();
