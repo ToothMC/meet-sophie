@@ -347,7 +347,7 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
       <div style="font-size:12px;color:#888;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;">Overall Score</div>
     </div>
     <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Content (60%)</div>
-    <!-- FÜR JEDES Content-Kriterium: -->
+    <!-- FÜR JEDES Content-Kriterium — WENN kein Vergleich (erster Pitch): -->
     <div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
         <span style="font-size:13px;font-weight:500;color:#333;">[Kriterium]</span>
@@ -358,6 +358,28 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
       </div>
       <div style="font-size:12px;color:#888;margin-top:2px;">[1-Satz Begründung]</div>
     </div>
+    <!-- WENN Vergleich vorhanden (Folge-Pitch) — verwende DIESES Design stattdessen: -->
+    <!-- Ghost-Bar = alter Score halbtransparent, neuer Balken darüber, Delta-Badge rechts -->
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:500;color:#333;">[Kriterium]</span>
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;font-weight:700;color:#111;">[NEU X.X] / 5</span>
+          <!-- Delta-Badge: grün bei Verbesserung, rot bei Verschlechterung, grau bei gleich -->
+          <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;background:[DELTA_BG];color:[DELTA_COLOR];">[▲+0.5 oder ▼-0.3 oder ●]</span>
+        </span>
+      </div>
+      <div style="position:relative;height:12px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+        <!-- Ghost-Bar: vorheriger Score (halbtransparent, gestreift) -->
+        <div style="position:absolute;top:0;left:0;height:100%;width:[ALT_PROZENT]%;background:repeating-linear-gradient(90deg,[ALT_FARBE]33 0,transparent 0,transparent 3px,[ALT_FARBE]33 3px,[ALT_FARBE]33 6px);border-radius:4px;"></div>
+        <!-- Neuer Score-Balken (solid, darüber) -->
+        <div style="position:relative;height:100%;width:[NEU_PROZENT]%;background:[NEU_FARBE];border-radius:4px;"></div>
+      </div>
+      <div style="font-size:12px;color:#888;margin-top:2px;">[1-Satz Begründung]</div>
+    </div>
+    <!-- DELTA-BADGE Farben: Verbesserung (>=+0.3): background:rgba(34,197,94,.12) color:#22c55e -->
+    <!-- Verschlechterung (<=-0.3): background:rgba(239,68,68,.12) color:#ef4444 -->
+    <!-- Gleich: background:rgba(0,0,0,.06) color:#999 -->
     <div style="text-align:right;font-size:13px;font-weight:600;color:#555;margin:14px 0 20px;">Content Score: [X.X] / 5.0</div>
 
     <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Delivery (40%)</div>
