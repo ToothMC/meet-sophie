@@ -2457,24 +2457,43 @@ function configurePostCallCta(triggeredByLimit = false) {
     demoBtn.className = "smallBtn secondary";
     demoBtn.style.cssText = "background:linear-gradient(135deg,#c4a882,#a08060);color:#fff;border:none;";
     demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
-    demoBtn.onclick = () => {
-      const handover = buildPitchRetryHandover();
-      handover.pitchRetry = false;
-      handover.pitchDemo = true;
-      // Include the actual pitch transcript so Sophie knows EXACTLY what was pitched
-      const transcriptFromSession = (window._lastReportContext?.transcriptLog || [])
-        .filter(m => m.text?.trim())
-        .map(m => `[${m.role}]: ${m.text}`)
-        .join('\n')
-        .slice(0, 5000);
-      handover.pitchTranscript = transcriptFromSession;
-      // Include report text
-      const reportEl = document.getElementById("postCallSummary");
-      if (reportEl?.textContent) handover.reportSummary = reportEl.textContent.slice(0, 3000);
-      handover.summary = `DEMO PITCH: Sophie soll "${pitchTopic}" pitchen — basierend auf dem echten Transcript.`;
-      localStorage.setItem("sophie_session_mode", "salespitch");
-      sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
-      window.location.reload();
+    demoBtn.onclick = async () => {
+      demoBtn.disabled = true;
+      demoBtn.textContent = "Wird vorbereitet...";
+      try {
+        const ctx = window._lastReportContext;
+        const sid = ctx?.sessionId || sessionId;
+        if (!sid) throw new Error("Keine Session-ID");
+
+        // Generate demo pitch SERVER-SIDE (reliable text AI, no hallucination)
+        const token = await getToken();
+        const resp = await fetch("/api/settings?action=generate-demo-pitch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ session_id: sid }),
+        });
+        const result = await resp.json();
+        if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
+
+        const handover = {
+          funnelMode: "salespitch",
+          language: _uiLang || "de",
+          pitchDemo: true,
+          pitchTopic: pitchTopic,
+          prewrittenDemoPitch: result.demoPitch,
+          summary: `DEMO PITCH: Vorab generierter Text — Sophie liest ihn vor.`,
+          recentMessages: [],
+          userName: "",
+        };
+        localStorage.setItem("sophie_session_mode", "salespitch");
+        sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+        window.location.reload();
+      } catch (e) {
+        console.error("demo generation failed:", e);
+        demoBtn.disabled = false;
+        demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+        alert("Demo-Pitch konnte nicht vorbereitet werden: " + (e?.message || "Unbekannt"));
+      }
     };
     postCallPrimaryBtn.parentNode.insertBefore(demoBtn, postCallSecondaryBtn);
 
