@@ -2976,20 +2976,20 @@ ${(voiceHandover.recentMessages || [])
 
 ${langLock}
 
-YOUR TASK: Perform a complete, polished pitch for "${pitchTopic}" yourself. YOU are the pitcher, the user is listening.
+DEINE AUFGABE: Sprich selbst einen kompletten, optimierten Pitch für "${pitchTopic}". DU bist der Pitcher, dein Gegenüber hört zu.
 
-CONTEXT:
-- Topic: ${pitchTopic}
-- Audience: ${demoAudience}
-${demoGoal ? `- Goal: ${demoGoal}` : ''}
-${demoStrengths.length ? `- User's strengths to keep: ${demoStrengths.slice(0, 3).join(', ')}` : ''}
-${demoWeaknesses.length ? `- User's weaknesses to fix: ${demoWeaknesses.slice(0, 3).join(', ')}` : ''}
-${demoScores.overall ? `- User's last score: ${demoScores.overall}/100` : ''}
+KONTEXT:
+- Thema: ${pitchTopic}
+- Publikum: ${demoAudience}
+${demoGoal ? `- Ziel: ${demoGoal}` : ''}
+${demoStrengths.length ? `- Stärken beibehalten: ${demoStrengths.slice(0, 3).join(', ')}` : ''}
+${demoWeaknesses.length ? `- Schwächen zeigen wie es besser geht: ${demoWeaknesses.slice(0, 3).join(', ')}` : ''}
+${demoScores.overall ? `- Letzter Score: ${demoScores.overall}/100` : ''}
 
-RULES:
-1. Keep the pitch to 2-3 minutes max
-2. Show concretely how to fix the user's weaknesses
-3. Build on the user's strengths — don't change the entire style
+REGELN:
+1. Halte den Pitch auf 2-3 Minuten
+2. Zeige konkret wie die Schwächen gelöst werden können
+3. Baue auf den bisherigen Stärken auf — ändere nicht den kompletten Stil
 4. Fill in missing facts/numbers with plausible placeholders
 5. Mark placeholders briefly: "${pitchLang === "de" ? "hier deine Zahl" : pitchLang === "fr" ? "ton chiffre ici" : "your number here"}"
 6. After the pitch, briefly explain (30s max) the 3-4 key things you did differently and why
