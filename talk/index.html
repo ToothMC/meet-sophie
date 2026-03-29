@@ -1317,6 +1317,7 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
       brainstormVoiceConfig = null;
       btn.classList.remove("active");
       localStorage.removeItem("sophie_session_mode");
+      window._hideBrainstormToggle();
     } else if (mode === "brainstorm") {
       brainstormVoiceConfig = null; // built on startVoice
       selectedVoiceMode = "brainstorm";
