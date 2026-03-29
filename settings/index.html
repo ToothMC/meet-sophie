@@ -1018,10 +1018,13 @@ async function pitchDemoFromJourney(topic) {
       },
       previousWeaknesses: data.weaknesses || [],
       previousStrengths: data.strengths || [],
+      // THE ACTUAL PITCH CONTENT — this is what Sophie bases her demo on
+      pitchTranscript: (data.pitchTranscript || '').slice(0, 5000),
+      reportSummary: (data.reportSummary || '').slice(0, 3000),
       // Previous demo for iterative improvement
       previousDemoTranscript: prevDemo?.found ? (prevDemo.transcript || '').slice(0, 4000) : '',
       previousDemoSelfCritique: prevDemo?.found ? (prevDemo.selfCritique || '') : '',
-      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen.${prevDemo?.found ? ' VORHERIGES DEMO EXISTIERT — verbessere dich basierend auf deiner eigenen Selbstkritik.' : ''}`,
+      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen — basierend auf dem echten Pitch-Transcript.`,
       recentMessages: [{ role: "user", content: `Zeig mir wie du "${topic}" pitchen würdest.` }],
       userName: "",
     };
