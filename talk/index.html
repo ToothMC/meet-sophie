@@ -4721,8 +4721,13 @@ async function startVoice(){
 
     endBtn.disabled = false;
     startBtn.disabled = false;
-    startBtn.textContent = t("end");
+    startBtn.textContent = selectedVoiceMode === "brainstorm" ? t("end_brainstorm") : t("end");
     startBtn.onclick = () => stopVoice(false);
+    // Brainstorm: yellow end button
+    if (selectedVoiceMode === "brainstorm") {
+      startBtn.style.background = "linear-gradient(180deg, #f5c842 0%, #d4a017 100%)";
+      startBtn.style.color = "#1a1200";
+    }
     pauseBtn.textContent = t("pause");
     pauseBtn.classList.remove("is-paused");
     pauseBtn.style.display = "";
