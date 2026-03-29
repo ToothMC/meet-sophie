@@ -3410,6 +3410,20 @@ function attachChannel(ch) {
     }
   });
 
+  // Connection lost — if we're in a salespitch session with real conversation, save transcript + generate report
+  dc.addEventListener("close", () => {
+    console.warn(`[${runId}] [dc] closed unexpectedly`);
+    if (selectedVoiceMode === "salespitch" && hasUserSpoken && !limitTriggered && talkStartedAt) {
+      console.log(`[${runId}] [salespitch] DC closed — triggering emergency report generation`);
+      limitTriggered = true; // prevent double-trigger
+      stopVoicePitchClean();
+    }
+  });
+
+  dc.addEventListener("error", (e) => {
+    console.error(`[${runId}] [dc] error:`, e);
+  });
+
   dc.addEventListener("message", async (ev) => {
     try {
       const msg = JSON.parse(ev.data);
