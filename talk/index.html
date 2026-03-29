@@ -3443,24 +3443,41 @@ function attachChannel(ch) {
         }];
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
-        // signal_pitch_report: Sophie calls this at the end of Phase D to trigger call end + report generation
-        sessionUpdate.session.tools = [{
-          type: "function",
-          name: "signal_pitch_report",
-          description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
-          parameters: { type: "object", properties: {} }
-        }, {
-          type: "function",
-          name: "send_chat_note",
-          description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
-          parameters: {
-            type: "object",
-            properties: {
-              note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
-            },
-            required: ["note"]
-          }
-        }];
+        const isDemoMode = voiceHandover?.pitchDemo === true;
+        if (isDemoMode) {
+          // Demo pitch: Sophie speaks, no report generation — only send_chat_note
+          sessionUpdate.session.tools = [{
+            type: "function",
+            name: "send_chat_note",
+            description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+            parameters: {
+              type: "object",
+              properties: {
+                note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+              },
+              required: ["note"]
+            }
+          }];
+        } else {
+          // Normal pitch: signal_pitch_report triggers call end + report generation
+          sessionUpdate.session.tools = [{
+            type: "function",
+            name: "signal_pitch_report",
+            description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
+            parameters: { type: "object", properties: {} }
+          }, {
+            type: "function",
+            name: "send_chat_note",
+            description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+            parameters: {
+              type: "object",
+              properties: {
+                note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+              },
+              required: ["note"]
+            }
+          }];
+        }
         sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       } else {
