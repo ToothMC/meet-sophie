@@ -415,7 +415,7 @@ async function handleMessage(req, res) {
   // Load session
   const { data: session, error: sessErr } = await supabase
     .from("chat_sessions")
-    .select("id, user_id, status, turn_count")
+    .select("id, user_id, status, turn_count, brainstorm_config, created_at")
     .eq("id", session_id)
     .maybeSingle();
 
