@@ -979,7 +979,7 @@ async function pitchDemoFromJourney(topic) {
       },
       previousWeaknesses: data.weaknesses || [],
       previousStrengths: data.strengths || [],
-      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen als Beispiel. Audience: ${data.target_audience || 'unbekannt'}. User-Schwächen: ${(data.weaknesses || []).join(', ')}.`,
+      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen als Beispiel. Audience: ${data.target_audience || 'unbekannt'}. Bisherige Schwächen: ${(data.weaknesses || []).join(', ')}.`,
       recentMessages: [{ role: "user", content: `Zeig mir wie du "${topic}" pitchen würdest.` }],
       userName: "",
     };
