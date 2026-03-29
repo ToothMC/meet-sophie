@@ -705,7 +705,10 @@ async function loadReports() {
 
           html += `<div class="card" style="padding:12px;margin:6px 0;border:1px solid #f0ece6;border-radius:10px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-              <div style="font-size:22px;font-weight:800;color:${sc};letter-spacing:-0.02em;line-height:1">${score}</div>
+              <div style="text-align:center;line-height:1">
+                <div style="font-size:22px;font-weight:800;color:${sc};letter-spacing:-0.02em">${score}</div>
+                <div style="font-size:8px;font-weight:600;color:#a09080;letter-spacing:.05em">/100</div>
+              </div>
               <div style="flex:1">
                 <div style="font-size:13px;font-weight:700;color:#2a2420">${j.topic} ${vLabel ? `<span style="font-size:10px;color:#a09080;font-weight:500">${vLabel}</span>` : ''}</div>
                 <div style="font-size:11px;color:#a09080">${date} ${delta ? ' · ' + trendArrow(delta) + ' vs. Start' : ''}</div>
