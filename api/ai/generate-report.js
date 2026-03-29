@@ -843,6 +843,12 @@ ${analysesBlock}`;
       reportHtml = `<div style="padding:20px;"><h2>${session_mode || 'Session'} Report</h2><p>${analyses[0].text}</p></div>`;
     }
 
+    // Replace unfilled placeholders with real data
+    reportHtml = reportHtml
+      .replace(/\[Datum\]/g, todayDate)
+      .replace(/\[X\] Ideen gesammelt/g, '')
+      .replace(/\[X\] AIs/g, `${analyses.length} AIs`);
+
     // Extract title from HTML
     const titleMatch = reportHtml.match(/<h[12][^>]*>(.*?)<\/h[12]>/i);
     const reportTitle = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : 'Session Report';
