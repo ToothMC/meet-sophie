@@ -1280,11 +1280,12 @@ const bsPillMain = document.getElementById("bsPillMain");
 const bsSeg      = document.getElementById("bsSeg");
 const bsSegBtns  = bsSeg.querySelectorAll(".bs-seg-btn");
 
-function showBsSeg() {
+function showBsSeg(defaultMode) {
   bsPillMain.style.display = "none";
   bsSeg.style.display = "inline-flex";
-  bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === "solo"));
-  _bsMode = "solo";
+  if (defaultMode) _bsMode = defaultMode;
+  else _bsMode = "solo";
+  bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
 }
 function hideBsSeg() {
   bsSeg.style.display = "none";
