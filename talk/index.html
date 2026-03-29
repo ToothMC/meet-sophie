@@ -2347,6 +2347,63 @@ function configurePostCallCta(triggeredByLimit = false) {
 
   function goHome() { window.location.href = "/"; }
 
+  // Remove any previously added demo button
+  const oldDemo = document.getElementById("postCallDemoBtn");
+  if (oldDemo) oldDemo.remove();
+
+  // Sales Pitch: show "Pitch again" + "Sophie pitcht für dich"
+  if (selectedVoiceMode === "salespitch") {
+    postCallCtaTitle.textContent = "";
+
+    // Extract pitch topic from report title for retry handover
+    const reportTitle = document.querySelector(".postCallTitle")?.textContent || "";
+    const pitchTopic = reportTitle || voiceHandover?.pitchTopic || "deinen Pitch";
+
+    postCallPrimaryBtn.textContent = _uiLang === "de" ? "▲ Pitch again" : _uiLang === "fr" ? "▲ Pitcher à nouveau" : "▲ Pitch again";
+    postCallPrimaryBtn.onclick = () => {
+      const handover = {
+        funnelMode: "salespitch",
+        language: _uiLang || "de",
+        pitchRetry: true,
+        pitchTopic: pitchTopic,
+        summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht. Phase A NICHT nochmal stellen.`,
+        recentMessages: [{ role: "user", content: `Nochmal "${pitchTopic}".` }],
+        userName: "",
+      };
+      localStorage.setItem("sophie_session_mode", "salespitch");
+      sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+      window.location.reload();
+    };
+
+    postCallSecondaryBtn.textContent = _uiLang === "de" ? "Zurück zum Start" : _uiLang === "fr" ? "Retour" : "Back to start";
+    postCallSecondaryBtn.onclick = goHome;
+
+    // Add "Sophie pitcht für dich" button between primary and secondary
+    const demoBtn = document.createElement("button");
+    demoBtn.id = "postCallDemoBtn";
+    demoBtn.type = "button";
+    demoBtn.className = "smallBtn secondary";
+    demoBtn.style.cssText = "background:linear-gradient(135deg,#c4a882,#a08060);color:#fff;border:none;";
+    demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht für dich";
+    demoBtn.onclick = () => {
+      const handover = {
+        funnelMode: "salespitch",
+        language: _uiLang || "de",
+        pitchDemo: true,
+        pitchTopic: pitchTopic,
+        summary: `DEMO PITCH: Sophie soll "${pitchTopic}" selbst pitchen als Beispiel.`,
+        recentMessages: [{ role: "user", content: `Zeig mir wie du "${pitchTopic}" pitchen würdest.` }],
+        userName: "",
+      };
+      localStorage.setItem("sophie_session_mode", "salespitch");
+      sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+      window.location.reload();
+    };
+    postCallPrimaryBtn.parentNode.insertBefore(demoBtn, postCallSecondaryBtn);
+
+    return;
+  }
+
   if (triggeredByLimit) {
     if (isPremium || plan) {
       postCallCtaTitle.textContent = t("session_ended");
