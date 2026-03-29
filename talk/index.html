@@ -4153,10 +4153,12 @@ function attachChannel(ch) {
             // After Sophie finishes her demo (~90s), restore normal sensitivity + enable auto-responses
             // Also save Sophie's demo transcript for iterative improvement
             setTimeout(async () => {
-              console.log(`[${runId}] [startmode] demo done — restoring mic to normal, enabling auto responses`);
+              console.log(`[${runId}] [startmode] demo done — restoring mic to normal, enabling auto responses + inactivity timer`);
               try {
                 await setMicSensitivity("normal");
                 await setAutoResponses(true);
+                // NOW start inactivity timer — if user doesn't respond within 60s, end session
+                resetPitchInactivity();
               } catch(_) {}
 
               // Save Sophie's demo transcript to pitch memory for iterative improvement
