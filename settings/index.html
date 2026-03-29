@@ -789,15 +789,13 @@ async function openReportDetail(sessionId, source = 'talk') {
       const isSalespitch = data.report_style === 'salespitch' || data.report_style === 'pitch';
       pitchBar.style.display = isSalespitch ? 'block' : 'none';
 
-      // Check pitch count to enable/disable demo button (requires 3+ pitches)
+      // Enable demo button for all salespitch reports (generates from transcript)
       if (isSalespitch && demoBtn) {
-        demoBtn.disabled = true;
-        demoBtn.style.opacity = '.4';
-        demoBtn.style.cursor = 'default';
-        const title = data.title || '';
-        api("pitch-journey").then(jData => {
-          const journey = (jData.journeys || []).find(j => j.topic === title || j.versionCount >= 3);
-          if (journey && journey.versionCount >= 3) {
+        demoBtn.disabled = false;
+        demoBtn.style.opacity = '1';
+        demoBtn.style.cursor = 'pointer';
+        // Legacy 3+ pitch check removed — demo works from any single pitch report
+        if (false) { // kept for reference
             demoBtn.disabled = false;
             demoBtn.style.opacity = '1';
             demoBtn.style.cursor = 'pointer';
