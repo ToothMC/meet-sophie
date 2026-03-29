@@ -3738,7 +3738,7 @@ function attachChannel(ch) {
             console.log(`[${runId}] [salespitch] audio drain complete — ending session cleanly`);
             // Skip the response.cancel + goodbye in stopVoice — go straight to session teardown
             stopVoicePitchClean();
-          }, 20000);
+          }, 30000); // 30s — Sophie's feedback can be 20-30s of speech
           return;
         }
 
