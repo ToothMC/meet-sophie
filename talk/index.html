@@ -3749,6 +3749,8 @@ function attachChannel(ch) {
         }
 
         sophieIsResponding = true;
+        // Sophie is speaking — stop inactivity timer
+        if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
       }
 
