@@ -545,6 +545,8 @@ export default async function handler(req, res) {
         previousVersion: handover.previousVersion || 1,
         previousDemoTranscript: handover.previousDemoTranscript || "",
         previousDemoSelfCritique: handover.previousDemoSelfCritique || "",
+        pitchTranscript: handover.pitchTranscript || "",
+        reportSummary: handover.reportSummary || "",
       } : null,
       customRules: Array.isArray(profile.custom_rules) ? profile.custom_rules : [],
       language: preferredLanguage,
