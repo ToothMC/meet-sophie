@@ -615,12 +615,18 @@ async function loadReports() {
   const list = document.getElementById("reportsList");
   try {
     const data = await api("reports");
-    if (!data.reports?.length) { list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return; }
+    // Load pitch journey data in parallel with reports
+    let journeyData = null;
+    try { journeyData = await api("pitch-journey"); } catch (_) {}
+
+    if (!data.reports?.length && !journeyData?.journeys?.length) {
+      list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return;
+    }
 
     // Group by category
     const groups = { meeting: [], salespitch: [], brainstorm: [], talk: [] };
     const groupLabels = { meeting: "Meeting", salespitch: "Sales Pitch", brainstorm: "Brainstorming", talk: "Gespräche" };
-    for (const r of data.reports) {
+    for (const r of (data.reports || [])) {
       const cat = (r.source === 'meeting' || r.report_style === 'meeting') ? 'meeting'
         : (r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
         : r.report_style === 'brainstorm' ? 'brainstorm'
@@ -642,54 +648,110 @@ async function loadReports() {
       </div>`;
     };
 
-    for (const [cat, reports] of Object.entries(groups)) {
-      if (!reports.length) continue;
-      const groupId = 'reportGroup_' + cat;
+    // Helper: score color
+    const scoreColor = (s) => s >= 70 ? '#22c55e' : s >= 45 ? '#eab308' : '#ef4444';
+    const trendArrow = (delta) => delta > 0 ? `<span style="color:#22c55e">+${delta}</span>` : delta < 0 ? `<span style="color:#ef4444">${delta}</span>` : '';
 
-      // Group by cleaned title within category
-      const titleGroups = {};
-      for (const r of reports) {
-        const cleanTitle = (r.title || 'Report').replace(/_\d+$/, '').trim();
-        if (!titleGroups[cleanTitle]) titleGroups[cleanTitle] = [];
-        titleGroups[cleanTitle].push(r);
-      }
+    for (const [cat, reports] of Object.entries(groups)) {
+      // Skip salespitch reports if we have journey data — journey replaces them
+      const hasJourneys = cat === 'salespitch' && journeyData?.journeys?.length > 0;
+      if (!reports.length && !hasJourneys) continue;
+
+      const groupId = 'reportGroup_' + cat;
+      const count = hasJourneys ? journeyData.journeys.length : reports.length;
 
       html += `<div style="margin-bottom:8px;border:1px solid #ede8e2;border-radius:12px;overflow:hidden">
         <div onclick="document.getElementById('${groupId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;background:#fff">
           <span style="font-size:10px;color:#c4a882">&#9660;</span>
           <span style="font-size:12px;font-weight:600;color:#2a2420;flex:1">${groupLabels[cat]}</span>
-          <span style="font-size:11px;color:#a09080">${reports.length}</span>
+          <span style="font-size:11px;color:#a09080">${count}</span>
         </div>
         <div id="${groupId}" class="hidden" style="padding:0 14px 12px">`;
 
-      for (const [title, items] of Object.entries(titleGroups)) {
-        if (items.length === 1) {
-          // Single report — show directly with title + date
-          const r = items[0];
-          const d = new Date(r.created_at);
+      if (hasJourneys) {
+        // ── Pitch Journey Cards ──
+        for (const j of journeyData.journeys) {
+          const score = j.latest.score || 0;
+          const sc = scoreColor(score);
+          const d = new Date(j.latest.date);
           const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
-          const source = r.source || 'talk';
-          html += `<div class="card" style="display:flex;align-items:center;gap:10px">
-            <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
-            <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
-              <div style="font-size:13px;font-weight:600;color:#2a2420">${title}</div>
+          const delta = j.scoreDelta || 0;
+          const vLabel = j.versionCount > 1 ? `v${j.latest.version}` : '';
+
+          // Sparkline dots
+          let sparkline = '';
+          if (j.scoreHistory?.length > 1) {
+            const dots = j.scoreHistory.map(h => {
+              const c = scoreColor(h.score);
+              return `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${c};margin:0 1px" title="v${h.version}: ${h.score}"></span>`;
+            }).join('');
+            sparkline = `<div style="margin:4px 0">${dots}</div>`;
+          }
+
+          // Top weaknesses
+          const weaknesses = (j.latest.weaknesses || []).slice(0, 3);
+          const weakHtml = weaknesses.map(w => `<div style="font-size:11px;color:#a09080;padding:1px 0">&#9679; ${w}</div>`).join('');
+
+          // Trend badges
+          const improvements = Object.entries(j.trends || {}).filter(([,v]) => v === '▲').map(([k]) => k);
+          const impHtml = improvements.slice(0, 3).map(k =>
+            `<span style="display:inline-block;font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;padding:2px 6px;border-radius:8px;margin:1px 2px">▲ ${k}</span>`
+          ).join('');
+
+          const topicSafe = j.topic.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+          html += `<div class="card" style="padding:12px;margin:6px 0;border:1px solid #f0ece6;border-radius:10px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <div style="font-size:22px;font-weight:800;color:${sc};letter-spacing:-0.02em;line-height:1">${score}</div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700;color:#2a2420">${j.topic} ${vLabel ? `<span style="font-size:10px;color:#a09080;font-weight:500">${vLabel}</span>` : ''}</div>
+                <div style="font-size:11px;color:#a09080">${date} ${delta ? ' · ' + trendArrow(delta) + ' vs. Start' : ''}</div>
+              </div>
             </div>
-            <div style="font-size:11px;color:#a09080">${date}</div>
+            ${sparkline}
+            ${impHtml ? `<div style="margin:4px 0">${impHtml}</div>` : ''}
+            ${weakHtml ? `<div style="margin:4px 0;padding:4px 0;border-top:1px solid #f5f0ea">${weakHtml}</div>` : ''}
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <button onclick="pitchAgainFromJourney('${topicSafe}')" style="flex:1;padding:6px 0;font-size:11px;font-weight:600;background:#2a2420;color:#fff;border:none;border-radius:8px;cursor:pointer">Pitch again</button>
+              <button onclick="pitchDemoFromJourney('${topicSafe}')" style="flex:1;padding:6px 0;font-size:11px;font-weight:600;background:rgba(196,168,130,.15);color:#2a2420;border:1px solid #e5ddd3;border-radius:8px;cursor:pointer">Sophie zeigt wie</button>
+            </div>
+            ${j.latest.conversationId ? `<div style="text-align:center;margin-top:6px"><a onclick="openReportDetail('${j.latest.conversationId}','talk')" style="font-size:10px;color:#a09080;cursor:pointer;text-decoration:underline">Letzten Report anzeigen</a></div>` : ''}
           </div>`;
-        } else {
-          // Multiple reports with same title — group them
-          const subId = 'titleGroup_' + cat + '_' + Math.random().toString(36).slice(2, 8);
-          html += `<div style="margin:4px 0;border:1px solid #f0ece6;border-radius:8px;overflow:hidden">
-            <div onclick="document.getElementById('${subId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;background:#faf9f6">
-              <span style="font-size:9px;color:#c4a882">&#9660;</span>
-              <span style="font-size:13px;font-weight:600;color:#2a2420;flex:1">${title}</span>
-              <span style="font-size:11px;color:#a09080">${items.length}×</span>
-            </div>
-            <div id="${subId}" class="hidden" style="padding:0 10px 6px">`;
-          // Sort newest first within group
-          items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          html += items.map(renderCard).join('');
-          html += '</div></div>';
+        }
+      } else {
+        // Standard report list (meetings, brainstorm, talk)
+        const titleGroups = {};
+        for (const r of reports) {
+          const cleanTitle = (r.title || 'Report').replace(/_\d+$/, '').trim();
+          if (!titleGroups[cleanTitle]) titleGroups[cleanTitle] = [];
+          titleGroups[cleanTitle].push(r);
+        }
+        for (const [title, items] of Object.entries(titleGroups)) {
+          if (items.length === 1) {
+            const r = items[0];
+            const d = new Date(r.created_at);
+            const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+            const source = r.source || 'talk';
+            html += `<div class="card" style="display:flex;align-items:center;gap:10px">
+              <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
+              <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+                <div style="font-size:13px;font-weight:600;color:#2a2420">${title}</div>
+              </div>
+              <div style="font-size:11px;color:#a09080">${date}</div>
+            </div>`;
+          } else {
+            const subId = 'titleGroup_' + cat + '_' + Math.random().toString(36).slice(2, 8);
+            html += `<div style="margin:4px 0;border:1px solid #f0ece6;border-radius:8px;overflow:hidden">
+              <div onclick="document.getElementById('${subId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;background:#faf9f6">
+                <span style="font-size:9px;color:#c4a882">&#9660;</span>
+                <span style="font-size:13px;font-weight:600;color:#2a2420;flex:1">${title}</span>
+                <span style="font-size:11px;color:#a09080">${items.length}×</span>
+              </div>
+              <div id="${subId}" class="hidden" style="padding:0 10px 6px">`;
+            items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            html += items.map(renderCard).join('');
+            html += '</div></div>';
+          }
         }
       }
 
