@@ -3690,7 +3690,47 @@ function attachChannel(ch) {
           // Guard: only honour if user has actually pitched (at least 2 user turns = setup answer + pitch)
           if (hasUserSpoken && convoLog.filter(m => m.role === "user").length >= 2) {
             pitchReportSignaled = true;
-            console.log(`[${runId}] [salespitch] signal_pitch_report received — letting Sophie finish, then ending`);
+            console.log(`[${runId}] [salespitch] signal_pitch_report received — starting report generation NOW (parallel to Phase D audio)`);
+
+            // Start report generation in background WHILE Sophie is still speaking
+            // This gives the report 30-60s head start — by the time audio finishes, report is likely done
+            pitchReportBgPromise = (async () => {
+              try {
+                const transcriptSnapshot = [...convoLog];
+                const wallclock = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+
+                // Save session + transcript (creates conversation_outputs row needed by generate-report)
+                const memResult = await sendMemoryUpdate(wallclock);
+                const sid = memResult?.session?.id || sessionId;
+                if (!sid) return null;
+
+                // Build transcript text
+                const transcriptText = transcriptSnapshot
+                  .filter(m => m.text && m.text.trim())
+                  .map(m => `[${m.role}]: ${m.text}`)
+                  .join("\n");
+
+                // Fire generate-report (don't await completion — it runs for 30-60s)
+                const genHeaders = { "Content-Type": "application/json" };
+                try {
+                  const { data: { session: authSession } } = await supabase.auth.getSession();
+                  if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
+                } catch (_) {}
+
+                fetch("/api/ai/generate-report", {
+                  method: "POST",
+                  headers: genHeaders,
+                  body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch" }),
+                }).catch(e => console.error("[report] bg generate fetch failed:", e?.message));
+
+                console.log(`[${runId}] [salespitch] background report generation fired for session ${sid}`);
+                return { sessionId: sid, transcriptLog: transcriptSnapshot.map(m => ({ role: m.role, text: m.text })), wallclock };
+              } catch (e) {
+                console.error(`[${runId}] [salespitch] background report setup failed:`, e?.message);
+                return null;
+              }
+            })();
+
             // Do NOT send response.create — let any remaining audio finish playing
             // The session ends in response.done handler after Sophie is done speaking
           } else {
