@@ -55,6 +55,28 @@ export default async function handler(req, res) {
     const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
     const meetingId = String(req.headers["x-sophie-meeting-id"] || "").trim() || null;
 
+    // Brainstorm config — base64-encoded JSON header, only relevant when sessionMode === "brainstorm"
+    let brainstormConfig = null;
+    if (sessionMode === "brainstorm") {
+      try {
+        const rawBs = req.headers["x-sophie-brainstorm-config"];
+        if (rawBs) {
+          const parsed = JSON.parse(Buffer.from(String(rawBs), "base64").toString("utf8"));
+          brainstormConfig = {
+            topic:              String(parsed.topic || "").slice(0, 500) || null,
+            goal:               parsed.goal ? String(parsed.goal).slice(0, 500) : null,
+            mode:               ["solo", "group"].includes(parsed.mode) ? parsed.mode : "solo",
+            depth:              ["short", "standard", "deep"].includes(parsed.depth) ? parsed.depth : "standard",
+            duration_minutes:   Number.isFinite(parsed.duration_minutes) && parsed.duration_minutes > 0 ? parsed.duration_minutes : null,
+            facilitation_style: ["open", "guided", "challenge"].includes(parsed.facilitation_style) ? parsed.facilitation_style : "open",
+            silent_hints:       parsed.silent_hints !== false,
+          };
+        }
+      } catch (e) {
+        console.warn("[session] Invalid brainstorm config header:", e?.message);
+      }
+    }
+
     // ---------------------------
     // Session ending config
     // ---------------------------
