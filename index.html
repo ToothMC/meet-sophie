@@ -1282,53 +1282,14 @@
       color:rgba(142,178,255,.95);
     }
 
-    /* ── Brainstorm Setup Modal ──────────────────────────────── */
-    .bs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;
-      display:flex;align-items:flex-end;justify-content:center}
-    @media(min-width:600px){.bs-overlay{align-items:center;padding:20px}}
-    .bs-modal{background:#0d1018;border:1px solid rgba(255,255,255,.13);
-      border-radius:24px 24px 0 0;width:100%;max-width:460px;padding:24px;
-      animation:bsSlideUp .22s ease}
-    @media(min-width:600px){.bs-modal{border-radius:22px;animation:bsFadeIn .18s ease}}
-    @keyframes bsSlideUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
-    @keyframes bsFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .bs-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-    .bs-title{font-size:15px;font-weight:600;color:rgba(246,247,251,.95)}
-    .bs-close{background:none;border:none;color:rgba(246,247,251,.35);cursor:pointer;
-      font-size:18px;padding:2px 6px;line-height:1;font-family:inherit}
-    .bs-close:hover{color:rgba(246,247,251,.7)}
-    .bs-lbl{display:block;font-size:11px;font-weight:500;letter-spacing:.06em;
-      text-transform:uppercase;color:rgba(246,247,251,.4);margin:14px 0 6px}
-    .bs-lbl:first-of-type{margin-top:0}
-    .bs-req{color:rgba(255,80,80,.5)}
-    .bs-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
-      border-radius:11px;padding:10px 13px;color:rgba(246,247,251,.9);
-      font-family:inherit;font-size:14px;outline:none;transition:border-color .15s}
-    .bs-inp:focus{border-color:rgba(255,255,255,.28)}
-    .bs-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-    .bs-toggle{display:flex;gap:5px;flex-wrap:wrap}
-    .bs-opt{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
-      border-radius:9px;padding:6px 11px;color:rgba(246,247,251,.45);
-      font-family:inherit;font-size:12px;cursor:pointer;transition:all .13s}
-    .bs-opt:hover{border-color:rgba(255,255,255,.2);color:rgba(246,247,251,.75)}
-    .bs-opt.active{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.28);
-      color:rgba(246,247,251,.95)}
-    .bs-go{margin-top:18px;width:100%;background:rgba(255,255,255,.88);color:#06070b;
-      border:none;border-radius:13px;padding:13px;font-family:inherit;
-      font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
-    .bs-go:disabled{opacity:.35;cursor:default}
-    .bs-go:not(:disabled):hover{background:#fff}
-    .bs-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-    .bs-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-      border-radius:14px;padding:20px 16px;cursor:pointer;text-align:center;
-      display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .15s;font-family:inherit}
-    .bs-card:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.25)}
-    .bs-card-icon{font-size:20px;color:rgba(246,247,251,.5);letter-spacing:-4px}
-    .bs-card-label{font-size:16px;font-weight:600;color:rgba(246,247,251,.95)}
-    .bs-card-desc{font-size:11px;color:rgba(246,247,251,.4);line-height:1.4}
-    .bs-back{background:none;border:none;color:rgba(246,247,251,.45);cursor:pointer;
-      font-size:18px;padding:2px 8px 2px 0;line-height:1;font-family:inherit}
-    .bs-back:hover{color:rgba(246,247,251,.8)}
+    /* ── Brainstorm Solo/Team Toggle ───────────────────────── */
+    .bs-mode-toggle{display:inline-flex;gap:4px;vertical-align:middle;margin-left:10px}
+    .bs-mode-btn{font-size:13px;font-weight:600;padding:8px 16px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.15);background:transparent;
+      color:rgba(246,247,251,.45);cursor:pointer;font-family:inherit;transition:all .15s}
+    .bs-mode-btn:hover{border-color:rgba(255,255,255,.3);color:rgba(246,247,251,.75)}
+    .bs-mode-btn.active{background:rgba(245,200,66,.15);border-color:rgba(245,200,66,.5);
+      color:#f5c842}
     /* ─────────────────────────────────────────────────────────── */
   </style>
 </head>
