@@ -6,7 +6,7 @@
 // ?action=usage   — Free-Limit prüfen (Turns)
 
 import { createClient } from "@supabase/supabase-js";
-import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { buildSophiePrompt, mapPlanToTier, calcBrainstormPhase, buildBrainstormPhaseInjection } from "../lib/sophie-core.js";
 import { classify, route, shouldTriggerSecondOpinion } from "../lib/ai/classifier.js";
 import { getAdapter } from "../lib/ai/adapters/index.js";
 import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
