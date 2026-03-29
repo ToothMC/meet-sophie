@@ -4338,8 +4338,8 @@ function attachChannel(ch) {
           lastAssistantFinal = final;
 
           // Show settings link toast if Sophie mentions import/Einstellungen
-          // Suppressed in brainstorm mode — "import" appears in normal brainstorm language
-          if (!selectedVoiceMode || selectedVoiceMode === "brainstorm" ? false : final.match(/einstellung|settings|importier|import.*daten/i)) {
+          // Suppressed in brainstorm mode — words like "import" appear in normal brainstorm language
+          if (selectedVoiceMode !== "brainstorm" && final.match(/einstellung|settings|importier|import.*daten/i)) {
             showImportToast();
           }
         }
