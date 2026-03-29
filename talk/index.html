@@ -4289,6 +4289,7 @@ async function startVoice(){
   pitchReportSignaled = false;
   pitchReportBgPromise = null;
   _pitchCleanRunning = false;
+  stopPitchInactivity();
   resetClosingState();
 
   stopDynamicResets();
