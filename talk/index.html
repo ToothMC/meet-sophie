@@ -2243,24 +2243,39 @@ function startFakeReportLoader() {
 
   inlineReportProgress.style.display = "block";
   inlineReportProgressBar.style.width = "0%";
+  const percentEl = document.getElementById("inlineReportPercent");
+
+  const stages = [
+    { at: 0, text: "Transcript wird analysiert..." },
+    { at: 25, text: "Kriterien werden bewertet..." },
+    { at: 50, text: "Scorecard wird erstellt..." },
+    { at: 75, text: "Report wird finalisiert..." },
+    { at: 90, text: "Fast fertig..." },
+  ];
 
   let progress = 8;
   inlineReportProgressBar.style.width = progress + "%";
+  if (percentEl) percentEl.textContent = stages[0].text;
 
   window.__sophieLoaderInterval = setInterval(() => {
     if (progress < 35) {
-      progress += Math.random() * 10;
+      progress += Math.random() * 8;
     } else if (progress < 62) {
-      progress += Math.random() * 7;
+      progress += Math.random() * 5;
     } else if (progress < 84) {
-      progress += Math.random() * 4;
+      progress += Math.random() * 3;
     } else if (progress < 92) {
-      progress += Math.random() * 1.5;
+      progress += Math.random() * 1;
     }
 
     if (progress > 92) progress = 92;
     inlineReportProgressBar.style.width = progress + "%";
-  }, 380);
+
+    if (percentEl) {
+      const stage = [...stages].reverse().find(s => progress >= s.at);
+      if (stage) percentEl.textContent = stage.text;
+    }
+  }, 500);
 }
 
 function resetPostCallUI() {
