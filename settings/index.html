@@ -713,8 +713,9 @@ async function loadReports() {
             ${weakHtml ? `<div style="margin:4px 0;padding:4px 0;border-top:1px solid #f5f0ea">${weakHtml}</div>` : ''}
             <div style="display:flex;gap:6px;margin-top:8px">
               <button onclick="pitchAgainFromJourney('${topicSafe}')" style="flex:1;padding:6px 0;font-size:11px;font-weight:600;background:#2a2420;color:#fff;border:none;border-radius:8px;cursor:pointer">Pitch again</button>
-              <button onclick="pitchDemoFromJourney('${topicSafe}')" style="flex:1;padding:6px 0;font-size:11px;font-weight:600;background:rgba(196,168,130,.15);color:#2a2420;border:1px solid #e5ddd3;border-radius:8px;cursor:pointer">Sophie zeigt wie</button>
+              <button onclick="${j.versionCount >= 2 ? `pitchDemoFromJourney('${topicSafe}')` : 'void(0)'}" style="flex:1;padding:6px 0;font-size:11px;font-weight:600;background:rgba(196,168,130,.15);color:${j.versionCount >= 2 ? '#2a2420' : '#c0b8ae'};border:1px solid #e5ddd3;border-radius:8px;cursor:${j.versionCount >= 2 ? 'pointer' : 'default'};${j.versionCount < 2 ? 'opacity:.5;' : ''}">Sophie zeigt wie</button>
             </div>
+            ${j.versionCount < 2 ? `<div style="text-align:center;font-size:10px;color:#b0a89e;margin-top:4px">Pitche mindestens 2× damit Sophie dir zeigen kann wie es besser geht</div>` : ''}
             ${j.latest.conversationId ? `<div style="text-align:center;margin-top:6px"><a onclick="openReportDetail('${j.latest.conversationId}','talk')" style="font-size:10px;color:#a09080;cursor:pointer;text-decoration:underline">Letzten Report anzeigen</a></div>` : ''}
           </div>`;
         }
