@@ -284,6 +284,8 @@ Das Delta-Badge zeigt die Veränderung: grün ▲ +X.X bei Verbesserung, rot ▼
         }
       } catch (e) { console.error('[report] prev pitch load failed:', e?.message); }
 
+      console.log(`[report] ${session_id} — prevPitchContext: ${prevPitchContext ? `FOUND (${prevPitchContext.length} chars)` : 'NONE (first pitch)'}`);
+
       const pitchPrompt = `Du bist ein STRENGER, EHRLICHER Pitch-Evaluator. Du bewertest einen Sales Pitch aus einem Voice-Transcript.
 
 WICHTIG — STRENGE BEWERTUNG:
