@@ -372,7 +372,10 @@ main{max-width:520px;margin:0 auto;padding:12px}
           </div>
           <div id="reportDetailContent" style="background:#fff;border:1px solid #ede8e2;border-radius:12px;padding:16px;overflow:hidden;color:#1a1a1a"></div>
           <div id="pitchAgainBar" style="display:none;margin-top:12px">
-            <button class="btn btn-primary btn-sm" onclick="pitchAgain()" style="width:100%;padding:12px;font-size:14px;font-weight:600">&#9650; Pitch again</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" onclick="pitchAgain()" style="flex:1;padding:12px;font-size:14px;font-weight:600">&#9650; Pitch again</button>
+              <button class="btn btn-secondary btn-sm" onclick="pitchDemoFromReport()" style="flex:1;padding:12px;font-size:14px;font-weight:600">Sophie zeigt wie</button>
+            </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="copyReportDetail()">Kopieren</button>
