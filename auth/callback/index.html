@@ -20,7 +20,8 @@
 
     // Read mode + language from URL params (passed via emailRedirectTo)
     const urlParams = new URLSearchParams(window.location.search);
-    const detectedMode = urlParams.get("mode") || localStorage.getItem("sophie_detected_mode") || "";
+    // ONLY use URL param — localStorage may have stale mode from previous session
+    const detectedMode = urlParams.get("mode") || "";
     const lang = urlParams.get("lang") || localStorage.getItem("preferredLanguage") || "";
     if (lang && ["de", "en", "fr"].includes(lang)) {
       localStorage.setItem("preferredLanguage", lang);
