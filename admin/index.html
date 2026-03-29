@@ -217,10 +217,12 @@ if (!session?.user) {
   loadAll();
 }
 
-async function api(action) {
-  const res = await fetch(`/api/admin?action=${action}`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
+async function api(action, opts = {}) {
+  const fetchOpts = {
+    headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    ...opts,
+  };
+  const res = await fetch(`/api/admin?action=${action}`, fetchOpts);
   if (res.status === 403) {
     loadingEl.classList.add("hidden");
     forbiddenEl.classList.remove("hidden");
