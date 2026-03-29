@@ -3744,7 +3744,8 @@ function attachChannel(ch) {
 
         // Sales Pitch: Sophie finished her verbal feedback → let audio buffer drain, then end cleanly
         // Do NOT use stopVoice(false) — it sends response.cancel which kills buffered audio mid-sentence.
-        if (pitchReportSignaled && !limitTriggered && !softEndFinalizing) {
+        // Note: salespitch ignores limitTriggered/softEndFinalizing — feedback MUST complete
+        if (pitchReportSignaled && (selectedVoiceMode === "salespitch" || (!limitTriggered && !softEndFinalizing))) {
           pitchReportSignaled = false;
           console.log(`[${runId}] [salespitch] response.done — waiting for audio to finish before ending`);
           // Audio is already streamed to the WebRTC buffer. Wait generously for playback to complete.
