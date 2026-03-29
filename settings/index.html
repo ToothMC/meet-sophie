@@ -833,17 +833,26 @@ window.saveReportAsTemplate = saveReportAsTemplate;
 
 function pitchAgain() {
   if (!_reportDetailData) return;
-  // Extract pitch context from the report title for handover
   const title = _reportDetailData.title || "Sales Pitch";
+
+  // Extract pitch context from report HTML for the retry handover
+  // Sophie should NOT ask Phase A questions again — she already knows everything
+  const html = _reportDetailData.report_html || "";
+  // Try to extract pitch topic from H1 in report
+  const h1Match = html.match(/<h1[^>]*>([^<]+)/i);
+  const pitchTopic = h1Match ? h1Match[1].trim() : title;
+
   const handover = {
     funnelMode: "salespitch",
     language: document.documentElement.lang || "de",
-    summary: `Der User möchte seinen Pitch "${title}" wiederholen und verbessern. Vorheriger Report existiert.`,
+    pitchRetry: true,
+    pitchTopic: pitchTopic,
+    previousPitchSessionId: _reportDetailData.session_id || null,
+    summary: `PITCH RETRY: Der User hat "${pitchTopic}" bereits gepitcht und möchte es nochmal versuchen und verbessern. Phase A Fragen NICHT nochmal stellen — direkt zum Pitch.`,
     recentMessages: [
-      { role: "user", content: `Ich möchte meinen Pitch "${title}" nochmal machen und verbessern.` }
+      { role: "user", content: `Ich möchte meinen Pitch "${pitchTopic}" nochmal machen und verbessern.` }
     ],
     userName: "",
-    previousPitchSessionId: _reportDetailData.session_id || null,
   };
   localStorage.setItem("sophie_session_mode", "salespitch");
   sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
