@@ -258,9 +258,11 @@ REGELN:
       try {
         const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
         if (sess?.user_id) {
+          // Find the most recent PREVIOUS pitch (exclude current session)
           const { data: prevPitches } = await supabase.from('sophie_pitch_memory')
             .select('topic, score, scores_content, scores_delivery, strengths, weaknesses, version, created_at')
             .eq('user_id', sess.user_id)
+            .neq('conversation_id', session_id)
             .order('created_at', { ascending: false })
             .limit(1);
 
