@@ -936,19 +936,55 @@ function pitchAgain() {
 }
 window.pitchAgain = pitchAgain;
 
-function pitchDemoFromReport() {
+async function pitchDemoFromReport() {
   if (!_reportDetailData) return;
   const title = _reportDetailData.title || "Sales Pitch";
   const html = _reportDetailData.report_html || "";
   const h1Match = html.match(/<h1[^>]*>([^<]+)/i);
   const pitchTopic = h1Match ? h1Match[1].trim() : title;
+  const sessionId = _reportDetailData.session_id;
+
+  // Load transcript from conversation_messages for this session
+  let pitchTranscript = '';
+  let reportSummary = '';
+  try {
+    // Strip HTML to get report text
+    const tmpDiv = document.createElement("div");
+    tmpDiv.innerHTML = html;
+    reportSummary = (tmpDiv.textContent || '').slice(0, 3000);
+
+    // Try loading transcript via pitch-journey-detail (if pitch_memory exists)
+    const journeyData = await api("pitch-journey-detail&topic=" + encodeURIComponent(pitchTopic)).catch(() => null);
+    if (journeyData?.pitchTranscript) {
+      pitchTranscript = journeyData.pitchTranscript;
+    }
+  } catch (_) {}
+
+  // Parse scores from report HTML
+  const extractScore = (criterion) => {
+    const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
+    const m = html.match(re);
+    return m ? parseFloat(m[1]) : 0;
+  };
+  const tmpDiv2 = document.createElement("div");
+  tmpDiv2.innerHTML = html;
+  const allText = tmpDiv2.textContent || "";
+  const weakMatch = allText.match(/(?:Schwächen|Weaknesses|Verbesserung)[:\s]*([\s\S]*?)(?:Nächste|Next|Verdict|$)/i);
+  const weaknesses = weakMatch ? weakMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+  const strMatch = allText.match(/(?:Stärken|Strengths)[:\s]*([\s\S]*?)(?:Schwächen|Weaknesses|Verbesserung)/i);
+  const strengths = strMatch ? strMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+
   const handover = {
     funnelMode: "salespitch",
     language: document.documentElement.lang || "de",
     pitchDemo: true,
     pitchTopic: pitchTopic || "deinen Pitch",
-    previousPitchSessionId: _reportDetailData.session_id || null,
-    summary: `DEMO PITCH: Sophie soll "${pitchTopic || title}" selbst pitchen als Beispiel.`,
+    previousPitchSessionId: sessionId,
+    pitchTranscript: pitchTranscript.slice(0, 5000),
+    reportSummary: reportSummary.slice(0, 3000),
+    previousWeaknesses: weaknesses,
+    previousStrengths: strengths,
+    summary: `DEMO PITCH: Sophie soll "${pitchTopic}" pitchen — basierend auf dem echten Transcript.`,
     recentMessages: [{ role: "user", content: `Zeig mir wie du "${pitchTopic || title}" pitchen würdest.` }],
     userName: "",
   };
