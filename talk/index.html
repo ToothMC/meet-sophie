@@ -3118,9 +3118,10 @@ ${(voiceHandover.recentMessages || [])
       let pitchInstructions;
 
       if (isPitchDemo) {
-        // DEMO: Mute mic IMMEDIATELY — Sophie will speak for 2-3 min, mic echo would trigger VAD loop
-        muteMic();
-        console.log(`[${runId}] [salespitch] demo mode — mic muted at kickoff start`);
+        // DEMO: Lock mic — Sophie speaks for 2-3 min uninterrupted
+        // Using locked sensitivity (threshold 0.95) instead of hard mute — cleaner UX
+        setMicSensitivity("locked");
+        console.log(`[${runId}] [salespitch] demo mode — mic locked at kickoff start`);
 
         // DEMO: Sophie pitches FOR the user as an optimized example
         const demoWeaknesses = voiceHandover.previousWeaknesses || [];
