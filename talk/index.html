@@ -2142,29 +2142,34 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   inlineReportProgressBar.style.width = "5%";
   const softHint = document.getElementById("softHint");
 
-  // Build transcript text for the report generator
-  const transcriptText = transcriptLog
-    .filter(m => m.text && m.text.trim())
-    .map(m => `[${m.role}]: ${m.text}`)
-    .join("\n");
+  // Skip firing generate-report if already started in background (parallel pitch flow)
+  if (!opts.skipGenerate) {
+    // Build transcript text for the report generator
+    const transcriptText = transcriptLog
+      .filter(m => m.text && m.text.trim())
+      .map(m => `[${m.role}]: ${m.text}`)
+      .join("\n");
 
-  // Start report generation (this runs for ~30-60s)
-  const genHeaders = { "Content-Type": "application/json" };
-  try {
-    const { data: { session: authSession } } = await supabase.auth.getSession();
-    if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
-  } catch (_) {}
+    // Start report generation (this runs for ~30-60s)
+    const genHeaders = { "Content-Type": "application/json" };
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
+    } catch (_) {}
 
-  // Fire generate-report (don't await — poll instead)
-  const generatePromise = fetch("/api/ai/generate-report", {
-    method: "POST",
-    headers: genHeaders,
-    body: JSON.stringify({
-      session_id: sessionId,
-      transcript_text: transcriptText,
-      session_mode: selectedVoiceMode || null,
-    }),
-  }).catch(e => console.error("[report] generate fetch failed:", e?.message));
+    // Fire generate-report (don't await — poll instead)
+    fetch("/api/ai/generate-report", {
+      method: "POST",
+      headers: genHeaders,
+      body: JSON.stringify({
+        session_id: sessionId,
+        transcript_text: transcriptText,
+        session_mode: selectedVoiceMode || null,
+      }),
+    }).catch(e => console.error("[report] generate fetch failed:", e?.message));
+  } else {
+    console.log(`[report] skipping generate — already started in background`);
+  }
 
   // Poll for progress while generate-report runs
   const maxAttempts = 90; // 90 * 2s = 3 minutes max
