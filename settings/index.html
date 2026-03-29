@@ -672,7 +672,7 @@ async function loadReports() {
         <div id="${groupId}" class="hidden" style="padding:0 14px 12px">`;
 
       if (hasJourneys) {
-        // ── Pitch Journey Cards ──
+        // ── Pitch Journey Cards (from pitch_memory) ──
         for (const j of journeyData.journeys) {
           const score = j.latest.score || 0;
           const sc = scoreColor(score);
