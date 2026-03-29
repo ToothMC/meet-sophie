@@ -3165,7 +3165,24 @@
         "Qu'est-ce qui te préoccupe?",
       ],
     };
+    const BRAINSTORM_OPENERS = {
+      solo: {
+        de: "Willkommen zum Solo-Brainstorming! Worüber sollen wir heute Ideen entwickeln?",
+        en: "Welcome to your Solo Brainstorming session! What topic should we explore today?",
+        fr: "Bienvenue dans ta session de brainstorming solo ! Sur quel sujet veux-tu travailler ?",
+      },
+      group: {
+        de: "Willkommen zum Team-Brainstorming! Was ist euer Thema heute?",
+        en: "Welcome to the Team Brainstorming session! What's your topic today?",
+        fr: "Bienvenue dans la session de brainstorming en équipe ! Quel est votre sujet ?",
+      },
+    };
     function pickOpener(lang) {
+      // Brainstorm mode: fixed opener based on Solo/Team
+      if (selectedChatMode === "brainstorm" && window._getBrainstormConfig) {
+        const bsMode = window._getBrainstormConfig().mode || "solo";
+        return BRAINSTORM_OPENERS[bsMode]?.[lang] || BRAINSTORM_OPENERS[bsMode]?.en;
+      }
       const pool = OPENERS[lang] || OPENERS.en;
       return pool[Math.floor(Math.random() * pool.length)];
     }
