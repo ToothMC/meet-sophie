@@ -391,7 +391,7 @@ async function handleStart(req, res) {
     ? systemPrompt + importedContext
     : systemPrompt;
 
-  const opener = getOpener(preferredLanguage, isPremium);
+  const opener = getOpener(preferredLanguage, isPremium, sessionMode, brainstormConfig);
 
   return res.status(200).json({
     ok: true,
