@@ -3204,6 +3204,88 @@ function cleanupLiveSession() {
   resetClosingState();
 }
 
+// ── Pause / Resume ─────────────────────────────────────────────────────────
+function pauseSession() {
+  if (isPaused || !pc) return;
+  isPaused = true;
+  console.log(`[${runId}] [pause] pausing session`);
+
+  // Snapshot transcript before teardown
+  const partial = (partialAssistant || "").trim();
+  pausedConvoLog = [...convoLog];
+  if (partial) pausedConvoLog.push({ role: "assistant", text: partial });
+
+  // Calculate elapsed time to restore on resume
+  pausedElapsedMs = talkStartedAt ? Date.now() - talkStartedAt : 0;
+
+  // Tear down WebRTC without clearing convoLog or billing
+  stopDynamicResets();
+  stopCountdown();
+  clearClosingTimers();
+
+  if (dc)     { try { dc.close(); } catch(e){} dc = null; }
+  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(e){} stream = null; }
+  if (pc)     { try { pc.close(); } catch(e){} pc = null; }
+  if (audioEl){ try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
+
+  // UI: paused state
+  pauseBtn.textContent = t("resume") || "Resume";
+  pauseBtn.classList.add("is-paused");
+  startBtn.disabled = true;
+  showLiveBadge(false);
+  headline.textContent = t("session_paused") || "Session paused";
+  setStatus(t("paused_hint") || "Press Resume to continue.");
+}
+
+async function resumeSession() {
+  if (!isPaused) return;
+  isPaused = false;
+  console.log(`[${runId}] [pause] resuming session`);
+
+  pauseBtn.textContent = "Pause";
+  pauseBtn.classList.remove("is-paused");
+  pauseBtn.style.display = "none"; // hide during reconnect
+
+  // Reconnect voice — startVoice() handles full WebRTC setup
+  // It will reset convoLog, so we restore it after
+  const savedLog = pausedConvoLog || [];
+  const savedElapsed = pausedElapsedMs || 0;
+  pausedConvoLog = null;
+  pausedElapsedMs = 0;
+
+  await startVoice();
+
+  // Restore transcript + elapsed time
+  if (savedLog.length > 0) {
+    convoLog = savedLog;
+
+    // Inject resume context into the Realtime session so Sophie knows what happened
+    const summaryLines = savedLog.slice(-10).map(m => `[${m.role}]: ${m.text}`).join("\n");
+    try {
+      dcSend({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: `[RESUME] Session was paused and resumed. Here is the conversation so far:\n${summaryLines}\n\nContinue where we left off.` }],
+        }
+      });
+      dcSend({ type: "response.create" });
+    } catch (e) {
+      console.warn("[pause] resume context inject failed:", e?.message);
+    }
+  }
+
+  // Adjust talkStartedAt to account for time spent before pause
+  if (savedElapsed > 0 && talkStartedAt) {
+    talkStartedAt = Date.now() - savedElapsed;
+  }
+
+  // Show pause button again
+  pauseBtn.style.display = "";
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 async function fetchRealtimeAnswerSdp({ offerSdp, clientSecret, maxAttempts = 3 }) {
   const baseUrl = "https://api.openai.com/v1/realtime";
   const model = "gpt-realtime";
