@@ -2350,22 +2350,22 @@
     const chatBackdrop = document.getElementById("chatBackdrop");
     if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
-    // ── Brainstorm split-pill logic ────────────────────────────
+    // ── Brainstorm segmented control logic ─────────────────────
     let _bsMode = "solo";
-    const bsPillMain  = document.getElementById("bsPillMain");
-    const bsSplitBtns = document.querySelectorAll("#heroModeBar .bs-split");
+    const bsPillMain = document.getElementById("bsPillMain");
+    const bsSeg      = document.getElementById("bsSeg");
+    const bsSegBtns  = bsSeg.querySelectorAll(".bs-seg-btn");
 
-    function showBsSplit() {
+    function showBsSeg() {
       bsPillMain.style.display = "none";
-      bsSplitBtns.forEach(b => {
-        b.style.display = "";
-        b.classList.toggle("active", b.dataset.bs === "solo");
-      });
+      bsSeg.style.display = "inline-flex";
+      bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === "solo"));
       _bsMode = "solo";
     }
-    function hideBsSplit() {
+    function hideBsSeg() {
+      bsSeg.style.display = "none";
       bsPillMain.style.display = "";
-      bsSplitBtns.forEach(b => { b.style.display = "none"; b.classList.remove("active"); });
+      bsPillMain.classList.remove("active");
     }
 
     window._getBrainstormConfig = function() {
@@ -2377,49 +2377,45 @@
       };
     };
 
-    // Split pill click — toggle Solo/Team
-    bsSplitBtns.forEach(btn => {
+    // Segmented control click — toggle Solo/Team
+    bsSegBtns.forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (btn.dataset.bs === _bsMode) {
           // deselect brainstorm entirely
           selectedChatMode = null;
           brainstormChatConfig = null;
-          hideBsSplit();
+          hideBsSeg();
           setFunnelMode(null);
           applyHeroMode(null);
         } else {
-          // switch Solo ↔ Team
           _bsMode = btn.dataset.bs;
-          bsSplitBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+          bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
         }
       });
     });
     // ──────────────────────────────────────────────────────────
 
     // Mode pills — toggle active state + update button label/color
-    document.querySelectorAll("#heroModeBar .hero-mode-pill:not(.bs-split)").forEach(btn => {
+    document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
-          // deselect
           selectedChatMode = null;
           brainstormChatConfig = null;
           btn.classList.remove("active");
           setFunnelMode(null);
           applyHeroMode(null);
-          if (mode === "brainstorm") hideBsSplit();
+          if (mode === "brainstorm") hideBsSeg();
         } else if (mode === "brainstorm") {
-          // activate brainstorm — show split pills
           brainstormChatConfig = null;
-          document.querySelectorAll("#heroModeBar .hero-mode-pill:not(.bs-split)").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
           setFunnelMode("brainstorm");
           applyHeroMode("brainstorm");
-          showBsSplit();
+          showBsSeg();
         } else {
-          // select other modes directly
           brainstormChatConfig = null;
-          hideBsSplit();
+          hideBsSeg();
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
           setFunnelMode(mode);
@@ -2435,7 +2431,7 @@
       selectedChatMode = null;
       setFunnelMode(null);
       applyHeroMode(null);
-      hideBsSplit();
+      hideBsSeg();
       document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
     });
 
