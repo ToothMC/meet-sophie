@@ -3040,6 +3040,21 @@ async function setMicSensitivity(mode = "normal") {
   } catch (_) {}
 }
 
+// Salespitch inactivity auto-end: if no one speaks for 30s, end session cleanly
+function resetPitchInactivity() {
+  if (pitchInactivityTimer) { clearTimeout(pitchInactivityTimer); pitchInactivityTimer = null; }
+  if (selectedVoiceMode !== "salespitch" || limitTriggered || _pitchCleanRunning) return;
+  pitchInactivityTimer = setTimeout(() => {
+    if (limitTriggered || _pitchCleanRunning) return;
+    console.log(`[${runId}] [salespitch] ${PITCH_INACTIVITY_SECONDS}s inactivity — auto-ending session`);
+    stopVoicePitchClean();
+  }, PITCH_INACTIVITY_SECONDS * 1000);
+}
+
+function stopPitchInactivity() {
+  if (pitchInactivityTimer) { clearTimeout(pitchInactivityTimer); pitchInactivityTimer = null; }
+}
+
 async function setTurnBehavior({ createResponse, interruptResponse }) {
   try{
     await sendWhenChannelOpen({
