@@ -3788,14 +3788,14 @@ function attachChannel(ch) {
         // Note: salespitch ignores limitTriggered/softEndFinalizing — feedback MUST complete
         if (pitchReportSignaled && (selectedVoiceMode === "salespitch" || (!limitTriggered && !softEndFinalizing))) {
           pitchReportSignaled = false;
-          console.log(`[${runId}] [salespitch] response.done — waiting for audio to finish before ending`);
-          // Audio is already streamed to the WebRTC buffer. Wait generously for playback to complete.
-          // Sophie's feedback is max ~30s of speech. Audio buffer drains in real-time after response.done.
+          console.log(`[${runId}] [salespitch] response.done — audio buffer draining, report already generating in bg`);
+          // Audio streams in real-time via WebRTC. response.done = API finished.
+          // Most audio has already played, just a few seconds of buffer lag remain.
+          // Report generation started at signal_pitch_report → has 20-60s head start.
           setTimeout(() => {
-            console.log(`[${runId}] [salespitch] audio drain complete — ending session cleanly`);
-            // Skip the response.cancel + goodbye in stopVoice — go straight to session teardown
+            console.log(`[${runId}] [salespitch] audio drain complete — transitioning to report`);
             stopVoicePitchClean();
-          }, 30000); // 30s — Sophie's feedback can be 20-30s of speech
+          }, 8000); // 8s buffer for remaining audio — report has been generating in parallel
           return;
         }
 
