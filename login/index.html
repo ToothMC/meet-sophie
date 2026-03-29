@@ -233,8 +233,8 @@
 
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
-      const safePaths = ["/pricing", "/talk"];
-      const target = redirect && safePaths.some(p => redirect.startsWith(p)) ? redirect : "/talk";
+      const safePaths = ["/pricing", "/talk", "/settings", "/meeting"];
+      const target = redirect && safePaths.some(p => redirect.startsWith(p)) ? redirect : "/";
       window.location.href = target;
     }
 
