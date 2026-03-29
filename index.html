@@ -3264,6 +3264,10 @@
       // Wait for auth to be fully restored before starting session
       // This ensures logged-in users always get their full profile/context/routing
       await authReadyPromise;
+      // Build brainstorm config on-the-fly from toggle (no modal)
+      if (selectedChatMode === "brainstorm" && !brainstormChatConfig && window._getBrainstormConfig) {
+        brainstormChatConfig = window._getBrainstormConfig();
+      }
       const startData = await callChat("start", {
         language: getCurrentLang(),
         ...(selectedChatMode ? { session_mode: selectedChatMode } : {}),
