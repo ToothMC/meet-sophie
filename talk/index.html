@@ -4624,6 +4624,16 @@ async function stopVoicePitchClean() {
     return;
   }
 
+  // Charge usage regardless of report toggle
+  try { await reportUsage(wallclockSeconds); } catch(_) {}
+
+  // Report disabled — skip report, just reset UI
+  if (!reportEnabled) {
+    stopFakeReportLoader();
+    resetPostCallUI();
+    return;
+  }
+
   // Check if report generation was already started in background (parallel flow)
   const bgCtx = pitchReportBgPromise ? await pitchReportBgPromise.catch(() => null) : null;
   pitchReportBgPromise = null;
