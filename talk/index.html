@@ -1342,12 +1342,16 @@ const endBtn   = document.getElementById("end");
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
 
-// ── Brainstorm Modal logic ─────────────────────────────────
+// ── Brainstorm Modal logic (two-step: Solo/Team → Config) ──
 (function() {
-  const modal   = document.getElementById("bsModal");
-  const topicEl = document.getElementById("bsTopic");
-  const goalEl  = document.getElementById("bsGoal");
-  const goBtn   = document.getElementById("bsGo");
+  const modal    = document.getElementById("bsModal");
+  const step1    = document.getElementById("bsStep1");
+  const step2    = document.getElementById("bsStep2");
+  const topicEl  = document.getElementById("bsTopic");
+  const goalEl   = document.getElementById("bsGoal");
+  const goBtn    = document.getElementById("bsGo");
+  const step2Title = document.getElementById("bsStep2Title");
+  let _bsSelectedMode = "solo";
 
   topicEl.addEventListener("input", () => { goBtn.disabled = topicEl.value.trim().length === 0; });
 
@@ -1360,7 +1364,26 @@ let brainstormVoiceConfig = null;
     });
   });
 
+  // Step 1: Solo/Team card click → go to step 2
+  modal.querySelectorAll(".bs-card").forEach(card => {
+    card.addEventListener("click", () => {
+      _bsSelectedMode = card.dataset.mode;
+      step2Title.textContent = _bsSelectedMode === "group" ? "✦ Team Brainstorm" : "✦ Solo Brainstorm";
+      step1.style.display = "none";
+      step2.style.display = "block";
+      setTimeout(() => topicEl.focus(), 50);
+    });
+  });
+
+  // Back button → return to step 1
+  document.getElementById("bsBack").addEventListener("click", () => {
+    step2.style.display = "none";
+    step1.style.display = "block";
+  });
+
+  // Close handlers
   document.getElementById("bsClose").addEventListener("click", _bsClose);
+  document.getElementById("bsClose2").addEventListener("click", _bsClose);
   modal.addEventListener("click", e => { if (e.target === modal) _bsClose(); });
 
   function _bsClose() {
@@ -1372,27 +1395,29 @@ let brainstormVoiceConfig = null;
   }
 
   window._openBrainstormModal = function(onConfirm) {
+    // Reset to step 1
+    step1.style.display = "block";
+    step2.style.display = "none";
     topicEl.value = "";
     goalEl.value  = "";
     goBtn.disabled = true;
-    modal.querySelectorAll("#bsMode .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "solo"));
+    _bsSelectedMode = "solo";
     modal.querySelectorAll("#bsDepth .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "standard"));
     modal.querySelectorAll("#bsFacilitation .bs-opt").forEach(b => b.classList.toggle("active", b.dataset.val === "open"));
     modal.style.display = "flex";
-    setTimeout(() => topicEl.focus(), 50);
 
     goBtn.onclick = () => {
       const topic = topicEl.value.trim();
       if (!topic) { topicEl.focus(); return; }
-      const mode         = modal.querySelector("#bsMode .bs-opt.active")?.dataset.val || "solo";
       const depth        = modal.querySelector("#bsDepth .bs-opt.active")?.dataset.val || "standard";
       const facilitation = modal.querySelector("#bsFacilitation .bs-opt.active")?.dataset.val || "open";
       const durMap = { solo:{short:12,standard:20,deep:30}, group:{short:17,standard:30,deep:45} };
       const config = {
         topic,
         goal: goalEl.value.trim() || null,
-        mode, depth,
-        duration_minutes: durMap[mode]?.[depth] || 20,
+        mode: _bsSelectedMode,
+        depth,
+        duration_minutes: durMap[_bsSelectedMode]?.[depth] || 20,
         facilitation_style: facilitation,
         silent_hints: true,
       };
