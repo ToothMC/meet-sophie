@@ -1797,6 +1797,7 @@ function resumeMeeting() {
   // Resume timer from saved position
   liveStartTime = Date.now() - meetingPausedElapsed;
   liveTimerEl.classList.remove("hidden");
+  if (liveTimerInterval) clearInterval(liveTimerInterval); // defensive: prevent leaked intervals
   liveTimerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - liveStartTime) / 1000);
     const m = Math.floor(elapsed / 60).toString().padStart(2, "0");
