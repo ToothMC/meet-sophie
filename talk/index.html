@@ -5028,6 +5028,10 @@ async function stopVoicePitchClean() {
 }
 
 async function stopVoice(triggeredByLimit = false){
+  // Hide pause button + reset pause state on any session end
+  pauseBtn.style.display = "none";
+  isPaused = false;
+
   // Salespitch: always use clean teardown (preserves audio, generates report correctly)
   if (selectedVoiceMode === "salespitch") {
     console.log(`[${runId}] [salespitch] stopVoice → routing to stopVoicePitchClean`);
