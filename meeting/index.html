@@ -1757,6 +1757,63 @@ function resumeAudioRecording() {
   }
 }
 
+// ── Meeting Pause / Resume ──────────────────────────────────────────────────
+function pauseMeeting() {
+  if (meetingIsPaused) return;
+  meetingIsPaused = true;
+  console.log("[meeting] pausing");
+
+  // Pause audio recording
+  pauseAudioRecording();
+
+  // Disconnect Sophie voice if active
+  if (!sophieMuted) {
+    toggleSophieMute(); // disconnects Sophie
+  }
+
+  // Pause timer — save elapsed
+  if (liveStartTime) {
+    meetingPausedElapsed += Date.now() - liveStartTime;
+  }
+  stopLiveTimer();
+
+  // UI
+  meetingPauseBtn.textContent = "▶ Resume";
+  meetingPauseBtn.classList.add("is-paused");
+  liveTimerEl.textContent = "PAUSED";
+  liveTimerEl.classList.remove("hidden");
+}
+
+function resumeMeeting() {
+  if (!meetingIsPaused) return;
+  meetingIsPaused = false;
+  console.log("[meeting] resuming");
+
+  // Resume audio recording
+  resumeAudioRecording();
+
+  // Resume timer from saved position
+  liveStartTime = Date.now() - meetingPausedElapsed;
+  liveTimerEl.classList.remove("hidden");
+  liveTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - liveStartTime) / 1000);
+    const m = Math.floor(elapsed / 60).toString().padStart(2, "0");
+    const s = (elapsed % 60).toString().padStart(2, "0");
+    liveTimerEl.textContent = `LIVE ${m}:${s}`;
+  }, 1000);
+
+  // UI
+  meetingPauseBtn.textContent = "⏸ Pause";
+  meetingPauseBtn.classList.remove("is-paused");
+}
+
+if (meetingPauseBtn) {
+  meetingPauseBtn.addEventListener("click", () => {
+    meetingIsPaused ? resumeMeeting() : pauseMeeting();
+  });
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function stopAudioRecording() {
   return new Promise((resolve) => {
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
