@@ -147,7 +147,8 @@
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name talk -o -path *talk* -name *.html -o -path *talk* -name *.jsx -o -path *talk* -name *.ts)",
       "Bash(niemals der User oder dritte Person.\":*)",
       "Bash(grep -l \"ai_cost_daily\\\\|ai_provider_health\\\\|cost\\\\|provider\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "Bash(grep -E \"\\\\.\\(js|ts|jsx|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js|ts|jsx|tsx\\)$\")",
+      "Bash(mein Bestes.\" Then pitches with plausible assumptions.:*)"
     ]
   },
   "hooks": {
