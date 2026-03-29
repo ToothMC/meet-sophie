@@ -725,6 +725,35 @@ async function loadReports() {
             ${j.latest.conversationId ? `<div style="text-align:center;margin-top:6px"><a onclick="openReportDetail('${j.latest.conversationId}','talk')" style="font-size:10px;color:#a09080;cursor:pointer;text-decoration:underline">Letzten Report anzeigen</a></div>` : ''}
           </div>`;
         }
+
+        // Also show older pitch reports that don't have pitch_memory entries yet
+        // (Reports created before the FK fix)
+        const journeyConvoIds = new Set(journeyData.journeys.map(j => j.latest.conversationId).filter(Boolean));
+        const orphanReports = reports.filter(r => !journeyConvoIds.has(r.session_id));
+        if (orphanReports.length) {
+          const subId = 'oldPitchReports_' + Math.random().toString(36).slice(2, 8);
+          html += `<div style="margin:8px 0;border:1px solid #f0ece6;border-radius:8px;overflow:hidden">
+            <div onclick="document.getElementById('${subId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;background:#faf9f6">
+              <span style="font-size:9px;color:#c4a882">&#9660;</span>
+              <span style="font-size:12px;font-weight:500;color:#a09080;flex:1">Weitere Pitch-Reports</span>
+              <span style="font-size:11px;color:#a09080">${orphanReports.length}×</span>
+            </div>
+            <div id="${subId}" class="hidden" style="padding:0 10px 6px">`;
+          orphanReports.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          orphanReports.forEach(r => {
+            const d = new Date(r.created_at);
+            const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+            const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+            const source = r.source || 'talk';
+            html += `<div class="card" style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+                <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
+                <div style="font-size:11px;color:#a09080">${date}, ${time}</div>
+              </div>
+            </div>`;
+          });
+          html += '</div></div>';
+        }
       } else {
         // Standard report list (meetings, brainstorm, talk)
         const titleGroups = {};
