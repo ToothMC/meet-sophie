@@ -2341,47 +2341,55 @@
     const chatBackdrop = document.getElementById("chatBackdrop");
     if (chatBackdrop) chatBackdrop.addEventListener("click", closeChatForeground);
 
-    // ── Brainstorm Solo/Team toggle logic ──────────────────────
-    (function() {
-      const toggle = document.getElementById("bsModeToggle");
-      let _bsMode = "solo";
+    // ── Brainstorm split-pill logic ────────────────────────────
+    let _bsMode = "solo";
+    const bsPillMain  = document.getElementById("bsPillMain");
+    const bsSplitBtns = document.querySelectorAll("#heroModeBar .bs-split");
 
-      toggle.querySelectorAll(".bs-mode-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          toggle.querySelectorAll(".bs-mode-btn").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          _bsMode = btn.dataset.val;
-        });
+    function showBsSplit() {
+      bsPillMain.style.display = "none";
+      bsSplitBtns.forEach(b => {
+        b.style.display = "";
+        b.classList.toggle("active", b.dataset.bs === "solo");
       });
+      _bsMode = "solo";
+    }
+    function hideBsSplit() {
+      bsPillMain.style.display = "";
+      bsSplitBtns.forEach(b => { b.style.display = "none"; b.classList.remove("active"); });
+    }
 
-      // Expose selected mode for startSession/quickStartChat
-      window._getBrainstormConfig = function() {
-        const durMap = { solo: 20, group: 30 };
-        return {
-          topic: null,   // Sophie asks via voice/chat in Phase 0
-          goal: null,    // Sophie asks via voice/chat in Phase 0
-          mode: _bsMode,
-          depth: "standard",
-          duration_minutes: durMap[_bsMode] || 20,
-          facilitation_style: "guided",
-          silent_hints: true,
-        };
+    window._getBrainstormConfig = function() {
+      const durMap = { solo: 20, group: 30 };
+      return {
+        topic: null, goal: null, mode: _bsMode,
+        depth: "standard", duration_minutes: durMap[_bsMode] || 20,
+        facilitation_style: "guided", silent_hints: true,
       };
+    };
 
-      window._showBrainstormToggle = function() {
-        _bsMode = "solo";
-        toggle.querySelectorAll(".bs-mode-btn").forEach(b => b.classList.toggle("active", b.dataset.val === "solo"));
-        toggle.style.display = "inline-flex";
-      };
-
-      window._hideBrainstormToggle = function() {
-        toggle.style.display = "none";
-      };
-    })();
+    // Split pill click — toggle Solo/Team
+    bsSplitBtns.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (btn.dataset.bs === _bsMode) {
+          // deselect brainstorm entirely
+          selectedChatMode = null;
+          brainstormChatConfig = null;
+          hideBsSplit();
+          setFunnelMode(null);
+          applyHeroMode(null);
+        } else {
+          // switch Solo ↔ Team
+          _bsMode = btn.dataset.bs;
+          bsSplitBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+        }
+      });
+    });
     // ──────────────────────────────────────────────────────────
 
     // Mode pills — toggle active state + update button label/color
-    document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
+    document.querySelectorAll("#heroModeBar .hero-mode-pill:not(.bs-split)").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
@@ -2391,19 +2399,18 @@
           btn.classList.remove("active");
           setFunnelMode(null);
           applyHeroMode(null);
-          window._hideBrainstormToggle();
+          if (mode === "brainstorm") hideBsSplit();
         } else if (mode === "brainstorm") {
-          // Show Solo/Team toggle + activate brainstorm mode immediately
-          brainstormChatConfig = null; // will be built on start
-          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
+          // activate brainstorm — show split pills
+          brainstormChatConfig = null;
+          document.querySelectorAll("#heroModeBar .hero-mode-pill:not(.bs-split)").forEach(b => b.classList.remove("active"));
           setFunnelMode("brainstorm");
           applyHeroMode("brainstorm");
-          window._showBrainstormToggle();
+          showBsSplit();
         } else {
           // select other modes directly
           brainstormChatConfig = null;
-          window._hideBrainstormToggle();
+          hideBsSplit();
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
           setFunnelMode(mode);
@@ -2415,11 +2422,11 @@
     // Click outside pills/CTA → reset mode to Talk
     document.addEventListener("click", (e) => {
       if (!selectedChatMode) return;
-      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat") || e.target.closest("#bsModeToggle")) return;
+      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat")) return;
       selectedChatMode = null;
       setFunnelMode(null);
       applyHeroMode(null);
-      window._hideBrainstormToggle();
+      hideBsSplit();
       document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
     });
 
