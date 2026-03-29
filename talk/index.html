@@ -4621,6 +4621,13 @@ async function stopVoicePitchClean() {
 }
 
 async function stopVoice(triggeredByLimit = false){
+  // Salespitch: always use clean teardown (preserves audio, generates report correctly)
+  if (selectedVoiceMode === "salespitch") {
+    console.log(`[${runId}] [salespitch] stopVoice → routing to stopVoicePitchClean`);
+    try { await stopVoicePitchClean(); } catch (_) {}
+    return;
+  }
+
   clearModeIndicator();
   endBtn.disabled = true;
   startBtn.disabled = true;
