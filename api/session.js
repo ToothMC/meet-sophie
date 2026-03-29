@@ -543,6 +543,8 @@ export default async function handler(req, res) {
         previousWeaknesses: handover.previousWeaknesses || [],
         previousStrengths: handover.previousStrengths || [],
         previousVersion: handover.previousVersion || 1,
+        previousDemoTranscript: handover.previousDemoTranscript || "",
+        previousDemoSelfCritique: handover.previousDemoSelfCritique || "",
       } : null,
       language: preferredLanguage,
       user: {
