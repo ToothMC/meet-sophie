@@ -2195,6 +2195,9 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
 
       const progress = Math.max(5, Math.min(98, data.progress || 0));
       inlineReportProgressBar.style.width = progress + "%";
+      const percentEl = document.getElementById("inlineReportPercent");
+      if (percentEl && data.detail) percentEl.textContent = data.detail;
+      else if (percentEl) percentEl.textContent = Math.round(progress) + "%";
 
       if (softHint && data.detail) {
         softHint.textContent = data.detail;
