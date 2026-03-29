@@ -458,6 +458,7 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
           .update({ report_progress: 80, report_status_detail: 'Speichere Report...' })
           .eq('session_id', session_id);
 
+        reportHtml = reportHtml.replace(/\[Datum\]/g, todayDate);
         const titleMatch = reportHtml.match(/<(?:h1|h2)[^>]*>([^<]+)/i);
         const reportTitle = titleMatch ? titleMatch[1].trim().slice(0, 120) : 'Sales Pitch Report';
         const { error: saveErr } = await supabase.from('conversation_outputs').update({
