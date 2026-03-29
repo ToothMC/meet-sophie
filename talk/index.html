@@ -1312,6 +1312,7 @@ bsSegBtns.forEach(btn => {
       localStorage.removeItem("sophie_session_mode");
     } else {
       _bsMode = btn.dataset.bs;
+      brainstormVoiceConfig = null; // force rebuild on next startVoice()
       bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
     }
   });
