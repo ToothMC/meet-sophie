@@ -2420,10 +2420,11 @@
     // Click outside pills/CTA → reset mode to Talk
     document.addEventListener("click", (e) => {
       if (!selectedChatMode) return;
-      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat")) return;
+      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat") || e.target.closest("#bsModeToggle")) return;
       selectedChatMode = null;
       setFunnelMode(null);
       applyHeroMode(null);
+      window._hideBrainstormToggle();
       document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
     });
 
