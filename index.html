@@ -2359,12 +2359,7 @@
       document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
     });
 
-    // Hide mode pills for returning users — they know Sophie, pills are noise
-    // Sophie detects intent automatically from chat. Pills only help first-time discovery.
-    if (uxFlags.hasStartedVoice) {
-      const heroModeBar = document.getElementById("heroModeBar");
-      if (heroModeBar) heroModeBar.style.display = "none";
-    }
+    // Mode pills always visible — users need them to start Meeting/Sales Pitch/Brainstorm
 
     // Restore previous mode selection on page load
     const storedMode = localStorage.getItem("sophie_session_mode");
