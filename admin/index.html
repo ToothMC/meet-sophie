@@ -356,6 +356,91 @@ function renderUsers(users) {
   </tr>`).join("");
 }
 
+function renderBudgetMonitor(providers, alerts, unackedCount) {
+  const NAMES = { openai: "OpenAI", anthropic: "Anthropic", google: "Google", mistral: "Mistral", all: "Gesamt" };
+  const grid = $("budgetGrid");
+  const feed = $("alertFeed");
+  const badge = $("alertBadge");
+
+  // Badge
+  if (unackedCount > 0) {
+    badge.textContent = unackedCount;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+  }
+
+  // Budget cards per provider
+  const barColor = (pct, thr) => pct >= 100 ? "#ef4444" : pct >= thr ? "#f59e0b" : "#22c55e";
+
+  grid.innerHTML = (providers || []).map(p => {
+    const name = NAMES[p.provider] || p.provider;
+    const dc = barColor(p.daily.pct, p.threshold_pct);
+    const mc = barColor(p.monthly.pct, p.threshold_pct);
+    const statusDot = p.status === "critical" ? "dot-down" : p.status === "warn" ? "dot-degraded" : "dot-healthy";
+
+    return `<div class="prov-card" style="text-align:left">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span class="p-dot ${statusDot}"></span>
+        <span class="p-name">${name}</span>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#7a6a5a;margin-bottom:3px">
+          <span>Tag</span>
+          <span>$${p.daily.cost.toFixed(2)} / $${p.daily.budget.toFixed(0)} ${p.daily.pct ? `(${p.daily.pct}%)` : ''}</span>
+        </div>
+        <div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;position:relative">
+          <div style="height:100%;width:${Math.min(p.daily.pct, 100)}%;background:${dc};border-radius:4px;transition:width .3s"></div>
+          <div style="position:absolute;left:${p.threshold_pct}%;top:0;width:1px;height:100%;background:rgba(255,255,255,.3)"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#7a6a5a;margin-bottom:3px">
+          <span>Monat</span>
+          <span>$${p.monthly.cost.toFixed(2)} / $${p.monthly.budget.toFixed(0)} ${p.monthly.pct ? `(${p.monthly.pct}%)` : ''}</span>
+        </div>
+        <div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;position:relative">
+          <div style="height:100%;width:${Math.min(p.monthly.pct, 100)}%;background:${mc};border-radius:4px;transition:width .3s"></div>
+          <div style="position:absolute;left:${p.threshold_pct}%;top:0;width:1px;height:100%;background:rgba(255,255,255,.3)"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Alert feed
+  if (!alerts?.length) {
+    feed.innerHTML = '<div style="font-size:11px;color:#7a6a5a;text-align:center;padding:8px">Keine Alerts</div>';
+    return;
+  }
+
+  const sevIcon = { critical: "\u{1F6A8}", warn: "\u26a0\ufe0f", info: "\u2139\ufe0f" };
+  const sevColor = { critical: "#ef4444", warn: "#f59e0b", info: "#8eb2ff" };
+
+  feed.innerHTML = `<div style="font-size:11px;font-weight:600;color:#7a6a5a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Alerts</div>` +
+    alerts.slice(0, 20).map(a => {
+      const d = new Date(a.created_at);
+      const time = d.toLocaleString("de-DE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+      const icon = sevIcon[a.severity] || "";
+      const color = sevColor[a.severity] || "#7a6a5a";
+      const acked = a.acknowledged;
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);${acked ? 'opacity:.4' : ''}">
+        <span style="font-size:14px;flex-shrink:0">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:${color};font-weight:600">${a.message}</div>
+          <div style="font-size:10px;color:#5a5045;margin-top:2px">${time} · ${a.provider}</div>
+        </div>
+        ${!acked ? `<button onclick="ackAlert('${a.id}')" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,.1);color:#7a6a5a;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:inherit">OK</button>` : ''}
+      </div>`;
+    }).join("");
+}
+
+window.ackAlert = async function(alertId) {
+  try {
+    await api("alerts", { method: "POST", body: JSON.stringify({ alert_id: alertId }) });
+    loadAll();
+  } catch (e) { console.error("ack failed:", e); }
+};
+
 // Sort table
 document.querySelectorAll(".user-table th[data-sort]").forEach(th => {
   th.addEventListener("click", () => {
