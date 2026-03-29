@@ -392,6 +392,51 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── Custom Rules: Sophie-learned behavioral rules ──
+  if (action === 'custom-rules' && req.method === 'GET') {
+    const { data } = await supabase.from('user_profile').select('custom_rules').eq('user_id', user.id).maybeSingle();
+    return res.status(200).json({ rules: data?.custom_rules || [] });
+  }
+
+  if (action === 'save-custom-rule' && req.method === 'POST') {
+    const { rule, context } = req.body || {};
+    if (!rule) return res.status(400).json({ error: 'Missing rule' });
+
+    // Load existing rules
+    const { data: profile } = await supabase.from('user_profile').select('custom_rules').eq('user_id', user.id).maybeSingle();
+    const rules = Array.isArray(profile?.custom_rules) ? profile.custom_rules : [];
+
+    // Max 20 rules per user
+    if (rules.length >= 20) return res.status(400).json({ error: 'Max 20 rules reached' });
+
+    // Deduplicate — don't add if very similar rule exists
+    const isDuplicate = rules.some(r => r.rule === rule);
+    if (isDuplicate) return res.status(200).json({ ok: true, duplicate: true });
+
+    rules.push({ rule, context: context || '', created_at: new Date().toISOString() });
+    const { error } = await supabase.from('user_profile').update({ custom_rules: rules }).eq('user_id', user.id);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ ok: true, count: rules.length });
+  }
+
+  if (action === 'delete-custom-rule' && req.method === 'POST') {
+    const { index } = req.body || {};
+    if (index == null) return res.status(400).json({ error: 'Missing index' });
+
+    const { data: profile } = await supabase.from('user_profile').select('custom_rules').eq('user_id', user.id).maybeSingle();
+    const rules = Array.isArray(profile?.custom_rules) ? [...profile.custom_rules] : [];
+    if (index >= 0 && index < rules.length) rules.splice(index, 1);
+    const { error } = await supabase.from('user_profile').update({ custom_rules: rules }).eq('user_id', user.id);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ ok: true, count: rules.length });
+  }
+
+  if (action === 'reset-custom-rules' && req.method === 'POST') {
+    const { error } = await supabase.from('user_profile').update({ custom_rules: [] }).eq('user_id', user.id);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ ok: true });
+  }
+
   // ── GET: Report template (single) ──
   if (action === 'get-report-template' && req.method === 'GET') {
     const mode = req.query?.mode || 'default';
