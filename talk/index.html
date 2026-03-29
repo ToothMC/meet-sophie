@@ -2477,13 +2477,15 @@ function configurePostCallCta(triggeredByLimit = false) {
         const result = await resp.json();
         if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
 
+        // Store pitch text separately (too large for HTTP header)
+        sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
         const handover = {
           funnelMode: "salespitch",
           language: _uiLang || "de",
           pitchDemo: true,
           pitchTopic: pitchTopic,
-          prewrittenDemoPitch: result.demoPitch,
-          summary: `DEMO PITCH: Vorab generierter Text — Sophie liest ihn vor.`,
+          hasDemoPitch: true,
+          summary: `DEMO PITCH: Vorab generierter Text.`,
           recentMessages: [],
           userName: "",
         };
