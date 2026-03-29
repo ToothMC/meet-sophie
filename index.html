@@ -3753,6 +3753,9 @@
       inputEl.style.height = "auto";
       inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + "px";
     });
+    authEmail.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); authBtn.click(); }
+    });
     authBtn.addEventListener("click", async () => {
       const email = authEmail.value.trim();
       if (!email) return;
