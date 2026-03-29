@@ -425,21 +425,30 @@ body{
 
 .inlineReportProgress{
   width:100%;
-  max-width:320px;
-  height:6px;
-  margin:8px auto 18px;
-  background:rgba(255,255,255,.08);
+  max-width:360px;
+  margin:12px auto 18px;
+  display:none;
+  text-align:center;
+}
+.inlineReportProgressTrack{
+  height:10px;
+  background:rgba(255,255,255,.1);
   border-radius:999px;
   overflow:hidden;
-  display:none;
+  margin-bottom:8px;
 }
-
 .inlineReportProgressBar{
   width:0%;
   height:100%;
-  background:rgba(255,255,255,.92);
+  background:linear-gradient(90deg,#c4a882,#e0c9a6);
   border-radius:999px;
-  transition:width .35s ease;
+  transition:width .4s ease;
+}
+.inlineReportPercent{
+  font-size:13px;
+  font-weight:600;
+  color:rgba(255,255,255,.7);
+  letter-spacing:.03em;
 }
 
 #postCallPanel{
