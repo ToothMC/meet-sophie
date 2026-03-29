@@ -952,11 +952,17 @@ body{
   }
 }
 
-/* ── Brainstorm split pill (Solo | Team) ────────────────── */
-.mode-pill.bs-split.active{
-  background:rgba(245,200,66,.15);border-color:rgba(245,200,66,.45);
-  color:rgba(245,200,66,.95);
-}
+/* ── Brainstorm segmented control (Solo | Team) ─────────── */
+.bs-pill-wrap{display:inline-flex;min-width:105px}
+.bs-seg{display:inline-flex;border:1px solid rgba(245,200,66,.4);border-radius:20px;
+  overflow:hidden;height:28px;align-items:stretch}
+.bs-seg-btn{border:none;background:transparent;color:rgba(246,247,251,.4);
+  font-family:inherit;font-size:12px;font-weight:500;padding:0 14px;
+  cursor:pointer;transition:all .15s;position:relative}
+.bs-seg-btn:first-child::after{content:"";position:absolute;right:0;top:20%;
+  height:60%;width:1px;background:rgba(245,200,66,.25)}
+.bs-seg-btn:hover{color:rgba(246,247,251,.7)}
+.bs-seg-btn.active{background:rgba(245,200,66,.18);color:rgba(245,200,66,.95)}
 /* ─────────────────────────────────────────────────────────── */
 </style>
 </head>
