@@ -550,12 +550,15 @@ async function handleMessage(req, res) {
   // Turn-aware routing nudge — injected as system message
   // Fires on turns 4–5 to give Sophie time for natural conversation first
   // Suppressed when session is already in a specific mode (brainstorm_config set = brainstorm mode)
+  // voiceNudge is suppressed when session already has an active mode (e.g. brainstorm)
   const sessionAlreadyModed = !!(session.brainstorm_config);
-  const voiceNudge = !sessionAlreadyModed && turnNumber === 4
-    ? "[INTERNAL] Turn 4. If the user's intent is clear by now, end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is still unclear, continue the conversation naturally."
-    : turnNumber === 5
-    ? "[INTERNAL] Turn 5. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
-    : null;
+  const voiceNudge = sessionAlreadyModed
+    ? null
+    : turnNumber === 4
+      ? "[INTERNAL] Turn 4. If the user's intent is clear by now, end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is still unclear, continue the conversation naturally."
+      : turnNumber === 5
+        ? "[INTERNAL] Turn 5. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
+        : null;
 
   // Build messages — support multimodal (files with images/documents)
   const buildContent = (m) => {
