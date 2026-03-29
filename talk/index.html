@@ -4327,7 +4327,13 @@ async function startVoice(){
 }
 
 // Clean pitch session end — no response.cancel, no goodbye, just teardown + report
+let _pitchCleanRunning = false;
 async function stopVoicePitchClean() {
+  // Re-entry guard — DC close handler can trigger this again
+  if (_pitchCleanRunning) { console.log(`[${runId}] [salespitch] stopVoicePitchClean — skipping re-entry`); return; }
+  _pitchCleanRunning = true;
+  limitTriggered = true; // prevent DC close handler from re-triggering
+
   console.log(`[${runId}] [salespitch] stopVoicePitchClean — clean teardown`);
   clearModeIndicator();
   endBtn.disabled = true;
@@ -4351,11 +4357,15 @@ async function stopVoicePitchClean() {
   const hasRealConversation = hasUserSpoken && wallclockSeconds >= 10 &&
     convoLog.some(item => String(item?.text || "").trim());
 
-  // Close connections cleanly (no cancel, no goodbye)
-  if (dc) { try { dc.close(); } catch(_){} dc = null; }
-  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(_){} stream = null; }
-  if (pc) { try { pc.close(); } catch(_){} pc = null; }
-  if (audioEl) { try { audioEl.srcObject = null; } catch(_){} audioEl = null; }
+  // Null references BEFORE closing to prevent DC close handler from re-triggering
+  const _dc = dc; dc = null;
+  const _stream = stream; stream = null;
+  const _pc = pc; pc = null;
+  const _audioEl = audioEl; audioEl = null;
+  if (_dc) { try { _dc.close(); } catch(_){} }
+  if (_stream) { try { _stream.getTracks().forEach(t => t.stop()); } catch(_){} }
+  if (_pc) { try { _pc.close(); } catch(_){} }
+  if (_audioEl) { try { _audioEl.srcObject = null; } catch(_){} }
 
   if (!hasRealConversation) {
     stopFakeReportLoader();
