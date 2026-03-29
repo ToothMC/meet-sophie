@@ -4086,15 +4086,30 @@ function attachChannel(ch) {
           kickoffInProgress = false;
           const isDemoKickoff = voiceHandover?.pitchDemo === true;
           if (isDemoKickoff) {
-            // Demo pitch: Sophie may need multiple responses to complete her pitch.
-            // Do NOT enable auto-responses yet — she'll be interrupted by VAD.
-            // Instead, send response.create to let Sophie continue if she was cut short.
-            console.log(`[${runId}] [startmode] demo kickoff response.done — keeping VAD off, Sophie continues`);
-            // Enable auto-responses after a delay so Sophie can finish her demo uninterrupted
+            // Demo pitch: Sophie speaks for 2-3 minutes uninterrupted.
+            // MUTE MIC to prevent echo feedback (speaker → mic → VAD → new response → loop)
+            muteMic();
+            console.log(`[${runId}] [startmode] demo kickoff response.done — mic muted, VAD off, Sophie continues`);
+
+            // Also disable turn detection entirely during demo
+            try {
+              await sendWhenChannelOpen({
+                type: "session.update",
+                session: {
+                  turn_detection: { type: "server_vad", create_response: false, interrupt_response: false }
+                }
+              }, 2000);
+            } catch (_) {}
+
+            // After Sophie finishes her demo (~90s), unmute mic + enable auto-responses
+            // so user can respond to "Willst du es selbst versuchen?"
             setTimeout(async () => {
-              console.log(`[${runId}] [startmode] demo done — enabling auto responses for user pitch`);
-              try { await setAutoResponses(true); } catch(_) {}
-            }, 60000); // 60s — demo pitch is 2-3 minutes, enable after Sophie is done
+              console.log(`[${runId}] [startmode] demo done — unmuting mic, enabling auto responses`);
+              try {
+                if (stream) stream.getTracks().forEach(t => { t.enabled = true; });
+                await setAutoResponses(true);
+              } catch(_) {}
+            }, 90000); // 90s — Sophie's demo is 2-3 min max
           } else {
             console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
             await setAutoResponses(true);
