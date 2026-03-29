@@ -549,7 +549,7 @@ export default async function handler(req, res) {
           previousDemoSelfCritique: handover.previousDemoSelfCritique || "",
           pitchTranscript: "",
           reportSummary: "",
-          prewrittenDemoPitch: handover.prewrittenDemoPitch || "",
+          prewrittenDemoPitch: "", // passed via kickoff, not header (too large)
         };
 
         // Load transcript + report SERVER-SIDE (avoids HTTP header size limits)
