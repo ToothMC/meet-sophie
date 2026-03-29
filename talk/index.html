@@ -3453,6 +3453,7 @@ async function maybeTriggerSoftEnding(){
     stopDynamicResets();
     stopCountdown();
     muteMic();
+    setMicSensitivity("guarded"); // Sophie's closing summary must not be interrupted by noise
     setSoftHint("");
     // Disable voice chat input during closing
     if (voiceChatInput) voiceChatInput.disabled = true;
