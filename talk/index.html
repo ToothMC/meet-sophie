@@ -4573,8 +4573,14 @@ async function stopVoicePitchClean() {
   showLiveBadge(false);
   showVoiceChat(false);
 
-  headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
-  startFakeReportLoader();
+  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+
+  if (reportEnabled) {
+    headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
+    startFakeReportLoader();
+  } else {
+    headline.textContent = t("see_you_soon");
+  }
   setStatus("");
   setSoftHint("");
   timerEl.style.display = "none";
