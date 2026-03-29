@@ -198,5 +198,99 @@ export default async function handler(req, res) {
     return res.status(200).json({ users });
   }
 
+  // ── Budget Config: GET/POST per-provider budgets ──
+  if (action === 'budget-config') {
+    if (req.method === 'GET') {
+      const { data } = await supabase.from('api_budget_alerts').select('*').order('provider');
+      return res.status(200).json({ budgets: data || [] });
+    }
+    if (req.method === 'POST') {
+      const { provider, daily_budget_usd, monthly_budget_usd, threshold_pct, enabled } = req.body || {};
+      if (!provider) return res.status(400).json({ error: 'Missing provider' });
+      const { error } = await supabase.from('api_budget_alerts').upsert({
+        provider,
+        ...(daily_budget_usd != null ? { daily_budget_usd } : {}),
+        ...(monthly_budget_usd != null ? { monthly_budget_usd } : {}),
+        ...(threshold_pct != null ? { threshold_pct } : {}),
+        ...(enabled != null ? { enabled } : {}),
+      }, { onConflict: 'provider' });
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
+    }
+  }
+
+  // ── Alerts: GET unacknowledged, POST acknowledge ──
+  if (action === 'alerts') {
+    if (req.method === 'GET') {
+      const limit = Math.min(Number(req.query?.limit) || 50, 200);
+      const { data } = await supabase.from('api_alert_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      return res.status(200).json({ alerts: data || [] });
+    }
+    if (req.method === 'POST') {
+      const { alert_id } = req.body || {};
+      if (!alert_id) return res.status(400).json({ error: 'Missing alert_id' });
+      const { error } = await supabase.from('api_alert_log')
+        .update({ acknowledged: true })
+        .eq('id', alert_id);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
+    }
+  }
+
+  // ── Budget Status: current spend vs budgets per provider ──
+  if (action === 'budget-status' && req.method === 'GET') {
+    const today = new Date().toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 8) + '01';
+
+    const [budgetsRes, todayRes, monthRes] = await Promise.all([
+      supabase.from('api_budget_alerts').select('*').eq('enabled', true),
+      supabase.from('ai_cost_daily').select('per_provider, total_cost').eq('date', today),
+      supabase.from('ai_cost_daily').select('per_provider, total_cost').gte('date', monthStart),
+    ]);
+
+    const dailyByProvider = {};
+    let dailyTotal = 0;
+    for (const row of (todayRes.data || [])) {
+      dailyTotal += Number(row.total_cost || 0);
+      for (const [p, cost] of Object.entries(row.per_provider || {})) {
+        dailyByProvider[p] = (dailyByProvider[p] || 0) + Number(cost || 0);
+      }
+    }
+
+    const monthlyByProvider = {};
+    let monthlyTotal = 0;
+    for (const row of (monthRes.data || [])) {
+      monthlyTotal += Number(row.total_cost || 0);
+      for (const [p, cost] of Object.entries(row.per_provider || {})) {
+        monthlyByProvider[p] = (monthlyByProvider[p] || 0) + Number(cost || 0);
+      }
+    }
+
+    const status = (budgetsRes.data || []).map(b => {
+      const p = b.provider;
+      const dailyCost = p === 'all' ? dailyTotal : (dailyByProvider[p] || 0);
+      const monthlyCost = p === 'all' ? monthlyTotal : (monthlyByProvider[p] || 0);
+      const dailyPct = b.daily_budget_usd ? Math.round((dailyCost / Number(b.daily_budget_usd)) * 100) : 0;
+      const monthlyPct = b.monthly_budget_usd ? Math.round((monthlyCost / Number(b.monthly_budget_usd)) * 100) : 0;
+      return {
+        provider: p,
+        daily: { cost: dailyCost, budget: Number(b.daily_budget_usd || 0), pct: dailyPct },
+        monthly: { cost: monthlyCost, budget: Number(b.monthly_budget_usd || 0), pct: monthlyPct },
+        threshold_pct: b.threshold_pct,
+        status: dailyPct >= 100 || monthlyPct >= 100 ? 'critical' : dailyPct >= b.threshold_pct || monthlyPct >= b.threshold_pct ? 'warn' : 'ok',
+      };
+    });
+
+    // Count unacknowledged alerts
+    const { count } = await supabase.from('api_alert_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('acknowledged', false);
+
+    return res.status(200).json({ providers: status, unacknowledgedAlerts: count || 0 });
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }
