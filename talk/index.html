@@ -3188,49 +3188,36 @@ ${(voiceHandover.recentMessages || [])
 
       if (isPitchDemo) {
         // DEMO: Lock mic — Sophie speaks for 2-3 min uninterrupted
-        // Using locked sensitivity (threshold 0.95) instead of hard mute — cleaner UX
         setMicSensitivity("locked");
         console.log(`[${runId}] [salespitch] demo mode — mic locked at kickoff start`);
 
-        // DEMO: Sophie pitches FOR the user as an optimized example
-        const demoWeaknesses = voiceHandover.previousWeaknesses || [];
-        const demoStrengths = voiceHandover.previousStrengths || [];
-        const demoAudience = voiceHandover.audience || "Publikum";
-        const demoGoal = voiceHandover.goalType || "";
-        const demoScores = voiceHandover.previousScores || {};
+        const prewrittenPitch = voiceHandover.prewrittenDemoPitch || "";
 
-        pitchInstructions = `You are Sophie. The user has been practicing their pitch "${pitchTopic}" and wants YOU to demonstrate an optimized version.
+        if (prewrittenPitch) {
+          // Pre-generated pitch text exists — Sophie performs it
+          pitchInstructions = `${langLock}
 
-${langLock}
+Du bist Sophie. Ein optimierter Pitch wurde für dich vorbereitet.
+PRÄSENTIERE ihn jetzt wie eine professionelle Keynote-Sprecherin.
 
-DEINE AUFGABE: Sprich selbst einen kompletten, optimierten Pitch für "${pitchTopic}". DU bist der Pitcher, dein Gegenüber hört zu.
+PERFORMANCE:
+- Betone Schlüsselwörter, variiere Tempo, setze Pausen vor wichtigen Aussagen
+- Hook mit Energie, Closing langsam und klar
+- Ändere KEINE Fakten — nur kleine sprachliche Anpassungen für natürlichen Sprachfluss
 
-KONTEXT:
-- Thema: ${pitchTopic}
-- Publikum: ${demoAudience}
-${demoGoal ? `- Ziel: ${demoGoal}` : ''}
-${demoStrengths.length ? `- Stärken beibehalten: ${demoStrengths.slice(0, 3).join(', ')}` : ''}
-${demoWeaknesses.length ? `- Schwächen zeigen wie es besser geht: ${demoWeaknesses.slice(0, 3).join(', ')}` : ''}
-${demoScores.overall ? `- Letzter Score: ${demoScores.overall}/100` : ''}
+Starte SOFORT mit dem Pitch. Keine Einleitung wie "OK pass auf". Direkt rein.
 
-REGELN:
-1. Halte den Pitch auf 2-3 Minuten
-2. Zeige konkret wie die Schwächen gelöst werden können
-3. Baue auf den bisherigen Stärken auf — ändere nicht den kompletten Stil
-4. Fill in missing facts/numbers with plausible placeholders
-5. Mark placeholders briefly: "${pitchLang === "de" ? "hier deine Zahl" : pitchLang === "fr" ? "ton chiffre ici" : "your number here"}"
-6. After the pitch, briefly explain (30s max) the 3-4 key things you did differently and why
+NACH DEM PITCH: Erkläre kurz (2-3 Sätze) was du rhetorisch bewusst gemacht hast.
+Dann frage: "Willst du es jetzt selbst versuchen?"
 
-${pitchLang === "de"
-  ? `Starte mit: "OK, pass auf. So würde ich ${pitchTopic} pitchen..."`
-  : pitchLang === "fr"
-  ? `Commence par: "OK, écoute bien. Voici comment je pitcherais ${pitchTopic}..."`
-  : `Start with: "OK, watch this. Here's how I'd pitch ${pitchTopic}..."`}
-
-After your pitch + explanation, ask: "${pitchLang === "de" ? "Willst du es jetzt selbst versuchen?" : pitchLang === "fr" ? "Tu veux essayer maintenant ?" : "Want to try it yourself now?"}"
-
-Rufe NICHT signal_pitch_report auf. Das ist eine Demonstration, keine Bewertung.
-WICHTIG: Sprich dein Gegenüber IMMER mit "du" an, niemals in dritter Person ("der User", "er/sie").`;
+═══ DER PITCH ═══
+${prewrittenPitch}
+═══ ENDE ═══`;
+        } else {
+          // No pre-generated text — fallback
+          pitchInstructions = `${langLock}
+Sage: "Der Demo-Pitch konnte leider nicht vorbereitet werden. Lass uns stattdessen gemeinsam an deinem Pitch arbeiten — was möchtest du verbessern?"`;
+        }
       } else if (isPitchRetry) {
         // RETRY: Skip Phase A — pass previous scores + weaknesses for targeted coaching
         const prevScores = voiceHandover.previousScores || null;
