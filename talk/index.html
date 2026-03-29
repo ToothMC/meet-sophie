@@ -3557,8 +3557,9 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
-            silence_duration_ms: 400,
-            threshold: 0.5,
+            // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
+            silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 400,
+            threshold: selectedVoiceMode === "salespitch" ? 0.65 : 0.5,
             prefix_padding_ms: 300,
             create_response: false,
             interrupt_response: true
