@@ -2572,6 +2572,22 @@
     function saveVoiceHandover() {
       try {
         const detectedMode = localStorage.getItem("sophie_detected_mode") || null;
+        // Extract file names from chat (without huge dataUrls)
+        const uploadedFiles = history
+          .filter(m => m.files?.length)
+          .flatMap(m => m.files.map(f => f.name))
+          .filter(Boolean);
+
+        // Build recent messages WITHOUT dataUrl (too large for sessionStorage)
+        const recentMsgs = history
+          .filter(m => m?.content && m.content !== "[CHAT_START]")
+          .slice(-8)
+          .map(m => {
+            const msg = { role: m.role, content: m.content };
+            if (m.files?.length) msg.fileNames = m.files.map(f => f.name);
+            return msg;
+          });
+
         const payload = {
           source: "chat",
           targetMode: "voice",
@@ -2581,9 +2597,8 @@
           summary: buildChatSummary(history),
           funnelMode: funnelMode || "talk",
           detectedMode: detectedMode,
-          recentMessages: history
-            .filter(m => m?.content && m.content !== "[CHAT_START]")
-            .slice(-8),
+          uploadedFiles: uploadedFiles,
+          recentMessages: recentMsgs,
           createdAt: Date.now()
         };
 
