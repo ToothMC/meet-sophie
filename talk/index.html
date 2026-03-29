@@ -3698,40 +3698,64 @@ function attachChannel(ch) {
             console.log(`[${runId}] [salespitch] signal_pitch_report received — starting report generation NOW (parallel to Phase D audio)`);
 
             // Start report generation in background WHILE Sophie is still speaking
-            // This gives the report 30-60s head start — by the time audio finishes, report is likely done
+            // CRITICAL: Do NOT call sendMemoryUpdate() here — it modifies partialAssistant
+            // and convoLog, which breaks Sophie's ongoing voice transcript.
+            // Instead: snapshot transcript read-only → create session row → fire generate-report
             pitchReportBgPromise = (async () => {
               try {
-                const transcriptSnapshot = [...convoLog];
+                // Read-only snapshot — do NOT touch partialAssistant or convoLog
+                const snapshot = [...convoLog];
+                const partial = (partialAssistant || "").trim();
+                if (partial) snapshot.push({ role: "assistant", text: partial });
                 const wallclock = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
 
-                // Save session + transcript (creates conversation_outputs row needed by generate-report)
-                const memResult = await sendMemoryUpdate(wallclock);
-                const sid = memResult?.session?.id || sessionId;
+                const { data: { session: authSession } } = await supabase.auth.getSession();
+                if (!authSession?.access_token) return null;
+                const authHeader = `Bearer ${authSession.access_token}`;
+
+                // Create session row via memory-update (needs conversation_outputs row for report)
+                const cleaned = snapshot.filter(t => {
+                  const text = String(t?.text || "").trim();
+                  return text && !(t.role === "user" && text.toLowerCase() === "bye.");
+                }).slice(-80);
+
+                const memResp = await fetch("/api/memory-update", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  body: JSON.stringify({
+                    transcript: cleaned,
+                    seconds_used: wallclock,
+                    session_started_at: talkStartedAt ? new Date(talkStartedAt).toISOString() : null,
+                    session_ended_at: new Date().toISOString(),
+                    session_id: sessionId,
+                    session_mode: "salespitch",
+                  }),
+                });
+                const memText = await memResp.text().catch(() => "");
+                let sid = sessionId;
+                try {
+                  const memData = JSON.parse(memText);
+                  if (memData?.session?.id) sid = memData.session.id;
+                } catch (_) {}
                 if (!sid) return null;
 
-                // Build transcript text
-                const transcriptText = transcriptSnapshot
+                // Build transcript text for report
+                const transcriptText = snapshot
                   .filter(m => m.text && m.text.trim())
                   .map(m => `[${m.role}]: ${m.text}`)
                   .join("\n");
 
-                // Fire generate-report (don't await completion — it runs for 30-60s)
-                const genHeaders = { "Content-Type": "application/json" };
-                try {
-                  const { data: { session: authSession } } = await supabase.auth.getSession();
-                  if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
-                } catch (_) {}
-
+                // Fire generate-report (don't await — runs 30-60s in background)
                 fetch("/api/ai/generate-report", {
                   method: "POST",
-                  headers: genHeaders,
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
                   body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch" }),
                 }).catch(e => console.error("[report] bg generate fetch failed:", e?.message));
 
-                console.log(`[${runId}] [salespitch] background report generation fired for session ${sid}`);
-                return { sessionId: sid, transcriptLog: transcriptSnapshot.map(m => ({ role: m.role, text: m.text })), wallclock };
+                console.log(`[${runId}] [salespitch] bg report fired for ${sid} — Sophie keeps speaking`);
+                return { sessionId: sid, transcriptLog: snapshot.map(m => ({ role: m.role, text: m.text })), wallclock };
               } catch (e) {
-                console.error(`[${runId}] [salespitch] background report setup failed:`, e?.message);
+                console.error(`[${runId}] [salespitch] bg report setup failed:`, e?.message);
                 return null;
               }
             })();
