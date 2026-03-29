@@ -2964,23 +2964,37 @@ ${(voiceHandover.recentMessages || [])
       let pitchInstructions;
 
       if (isPitchRetry && pitchTopic) {
-        // RETRY: Skip Phase A entirely — Sophie already knows the pitch context
-        pitchInstructions = `You are Sophie in Sales Pitch Mode. This is a RETRY — the user already pitched "${pitchTopic}" before and wants to try again.
+        // RETRY: Skip Phase A — pass previous scores + weaknesses for targeted coaching
+        const prevScores = voiceHandover.previousScores || null;
+        const prevWeaknesses = voiceHandover.previousWeaknesses || [];
+        const prevStrengths = voiceHandover.previousStrengths || [];
+        const prevVersion = voiceHandover.previousVersion || 1;
+        const audience = voiceHandover.audience || "";
+
+        let prevContext = "";
+        if (prevScores || prevWeaknesses.length) {
+          prevContext = `\nPREVIOUS PITCH DATA (v${prevVersion}):`;
+          if (prevScores?.overall) prevContext += `\n- Overall Score: ${prevScores.overall}/100`;
+          if (audience) prevContext += `\n- Audience: ${audience}`;
+          if (prevStrengths.length) prevContext += `\n- Strengths: ${prevStrengths.slice(0, 3).join(', ')}`;
+          if (prevWeaknesses.length) prevContext += `\n- Weaknesses to improve: ${prevWeaknesses.slice(0, 3).join(', ')}`;
+          prevContext += "\n";
+        }
+
+        pitchInstructions = `You are Sophie in Sales Pitch Mode. This is RETRY v${prevVersion + 1} — the user already pitched "${pitchTopic}" before.
 
 ${langLock}
-
+${prevContext}
 SKIP PHASE A COMPLETELY. Do NOT ask what they're presenting, who the audience is, or what should stick.
-You already know all of this from the previous session.
 
-Start with a short, encouraging opener (1-2 sentences max). Examples:
+Start with a short, encouraging opener (1-2 sentences). Reference ONE specific weakness they should focus on.
 ${pitchLang === "de"
-  ? `- "OK — nochmal "${pitchTopic}". Du weißt worauf es ankommt. Leg los, wenn du bereit bist."
-- "Runde zwei für "${pitchTopic}". Zeig mir was du drauf hast — pitch wenn du soweit bist."`
+  ? `Beispiel: "OK — nochmal ${pitchTopic}. Letztes Mal war [Stärke] stark, aber achte diesmal besonders auf [Schwäche]. Leg los!"`
   : pitchLang === "fr"
-  ? `- "OK — on reprend "${pitchTopic}". Tu sais ce qui compte. Lance-toi quand tu es prêt."`
-  : `- "OK — "${pitchTopic}" again. You know what matters. Pitch whenever you're ready."`}
+  ? `Exemple: "OK — on reprend ${pitchTopic}. La dernière fois [force] était bien, mais concentre-toi sur [faiblesse]. Lance-toi !"`
+  : `Example: "OK — ${pitchTopic} again. Last time [strength] was solid, but focus on [weakness] this time. Go!"`}
 
-Then go DIRECTLY to Phase B (listen to pitch). Be warm but brief. No setup questions.`;
+Then go DIRECTLY to Phase B (listen to pitch). Be warm, specific, brief.`;
       } else {
         // FIRST PITCH: Normal Phase A with 3 setup questions
         const chatContext = voiceHandover ? `
