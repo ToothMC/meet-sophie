@@ -4092,15 +4092,8 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.done") {
         sophieIsResponding = false;
-        // Inactivity timer: ONLY after Phase D feedback is done (pitchReportSignaled was true at some point)
-        // NEVER during active pitch phases A-D — user may pause to think
-        // NEVER during demo pitch while Sophie is speaking
-        const isDemoActive = voiceHandover?.pitchDemo === true && !hasUserSpoken;
-        const phasesDone = _pitchCleanRunning || (selectedVoiceMode === "salespitch" && !isDemoActive && pitchReportSignaled === false && convoLog.filter(m => m.role === "user").length >= 4);
-        // Only auto-end if: not demo, and session is winding down (user responded after feedback)
-        if (selectedVoiceMode === "salespitch" && !isDemoActive && !pitchReportSignaled) {
-          // Don't start timer during active pitch — user might pause to think
-        }
+        // NO inactivity timer on response.done — user may pause mid-pitch to think.
+        // Inactivity auto-end is ONLY triggered after mic is unlocked post-demo (90s timeout).
 
         const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
         const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
