@@ -1423,7 +1423,8 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     window.location.href = "/meeting/";
     return;
   }
-  if (stored && ["brainstorm", "salespitch"].includes(stored)) {
+  // Brainstorm excluded — config is transient and lost on page reload
+  if (stored && ["salespitch"].includes(stored)) {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
