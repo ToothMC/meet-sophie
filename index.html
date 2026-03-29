@@ -2676,7 +2676,8 @@
           detectedMode: detectedMode,
           uploadedFiles: uploadedFiles,
           recentMessages: recentMsgs,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          brainstormConfig: funnelMode === "brainstorm" && window._getBrainstormConfig ? window._getBrainstormConfig() : null,
         };
 
         sessionStorage.setItem(HANDOVER_KEY, JSON.stringify(payload));
