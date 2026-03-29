@@ -2300,7 +2300,10 @@
       };
 
       const labels = (QUICK_LABELS[currentLang] || QUICK_LABELS.en)[mode] || (QUICK_LABELS[currentLang] || QUICK_LABELS.en).talk;
-      const msg = QUICK_MSG[currentLang] || QUICK_MSG.en;
+      // Brainstorm: use specific opener instead of generic confirmation
+      const msg = (mode === "brainstorm" && window._getBrainstormConfig)
+        ? (BRAINSTORM_OPENERS[window._getBrainstormConfig().mode]?.[currentLang] || BRAINSTORM_OPENERS.solo.en)
+        : (QUICK_MSG[currentLang] || QUICK_MSG.en);
 
       // Map mode to session mode + button class
       const SESSION_MODE_MAP = {
