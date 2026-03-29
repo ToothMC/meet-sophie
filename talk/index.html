@@ -1327,6 +1327,7 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
       window._showBrainstormToggle();
     } else {
       brainstormVoiceConfig = null;
+      window._hideBrainstormToggle();
       selectedVoiceMode = mode;
       document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
