@@ -813,15 +813,19 @@ async function handleMessage(req, res) {
   // Detect and save learned rules
   const learnRuleMatch = rawReply.match(/\[LEARN_RULE:\s*(.+?)\]/);
   if (learnRuleMatch && user) {
-    const newRule = learnRuleMatch[1].trim();
-    if (newRule.length > 5 && newRule.length < 500) {
+    const rawContent = learnRuleMatch[1].trim();
+    // Parse "Titel | Regel" format, fallback to rule-only
+    const pipeIdx = rawContent.indexOf('|');
+    const title = pipeIdx > 0 ? rawContent.slice(0, pipeIdx).trim() : '';
+    const ruleText = pipeIdx > 0 ? rawContent.slice(pipeIdx + 1).trim() : rawContent;
+    if (ruleText.length > 5 && ruleText.length < 500) {
       try {
         const { data: prof } = await supabase.from('user_profile').select('custom_rules').eq('user_id', user.id).maybeSingle();
         const rules = Array.isArray(prof?.custom_rules) ? prof.custom_rules : [];
-        if (rules.length < 20 && !rules.some(r => r.rule === newRule)) {
-          rules.push({ rule: newRule, context: '', created_at: new Date().toISOString() });
+        if (rules.length < 20 && !rules.some(r => r.rule === ruleText)) {
+          rules.push({ title: title || '', rule: ruleText, context: '', created_at: new Date().toISOString() });
           await supabase.from('user_profile').update({ custom_rules: rules }).eq('user_id', user.id);
-          console.log(`[chat] learned rule for ${user.id.slice(0, 8)}: "${newRule}"`);
+          console.log(`[chat] learned rule for ${user.id.slice(0, 8)}: "${title}" → "${ruleText}"`);
         }
       } catch (e) { console.error('[chat] save rule failed:', e?.message); }
     }
