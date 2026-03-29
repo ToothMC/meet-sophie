@@ -3714,6 +3714,8 @@ function attachChannel(ch) {
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
+        // User is speaking — reset inactivity timer
+        if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
       }
 
