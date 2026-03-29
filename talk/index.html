@@ -2297,22 +2297,29 @@ function resetPostCallUI() {
   showBackground(false);
 }
 
-function stopFakeReportLoader() {
+function stopFakeReportLoader(hideBar = true) {
   if (window.__sophieLoaderInterval) {
     clearInterval(window.__sophieLoaderInterval);
     window.__sophieLoaderInterval = null;
   }
+  // Cancel any pending hide timeout
+  if (window.__sophieLoaderHideTimeout) {
+    clearTimeout(window.__sophieLoaderHideTimeout);
+    window.__sophieLoaderHideTimeout = null;
+  }
 
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
-  inlineReportProgressBar.style.width = "100%";
-  const percentEl = document.getElementById("inlineReportPercent");
-  if (percentEl) percentEl.textContent = "";
-
-  setTimeout(() => {
-    inlineReportProgress.style.display = "none";
-    inlineReportProgressBar.style.width = "0%";
-  }, 420);
+  if (hideBar) {
+    inlineReportProgressBar.style.width = "100%";
+    const percentEl = document.getElementById("inlineReportPercent");
+    if (percentEl) percentEl.textContent = "";
+    window.__sophieLoaderHideTimeout = setTimeout(() => {
+      inlineReportProgress.style.display = "none";
+      inlineReportProgressBar.style.width = "0%";
+      window.__sophieLoaderHideTimeout = null;
+    }, 420);
+  }
 }
 
 function clearClosingTimers() {
