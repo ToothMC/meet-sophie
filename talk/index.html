@@ -4519,7 +4519,8 @@ async function startVoice(){
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
-        ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {})
+        ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
+        ...(brainstormVoiceConfig ? { "X-Sophie-Brainstorm-Config": btoa(unescape(encodeURIComponent(JSON.stringify(brainstormVoiceConfig)))) } : {}),
       }
     });
 
