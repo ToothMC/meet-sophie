@@ -747,6 +747,7 @@ async function loadReports() {
             const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
             const source = r.source || 'talk';
             html += `<div class="card" style="display:flex;align-items:center;gap:10px">
+              <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
               <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
                 <div style="font-size:13px;font-weight:600;color:#2a2420">${r.title || 'Report'}</div>
                 <div style="font-size:11px;color:#a09080">${date}, ${time}</div>
