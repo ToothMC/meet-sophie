@@ -345,6 +345,53 @@ export default async function handler(req, res) {
     return res.status(200).json(latest);
   }
 
+  // ── POST: Save Sophie's demo pitch transcript for iterative improvement ──
+  if (action === 'save-demo-pitch' && req.method === 'POST') {
+    const { topic, transcript } = req.body || {};
+    if (!topic || !transcript) return res.status(400).json({ error: 'Missing topic or transcript' });
+
+    // Extract Sophie's self-critique from the end of the transcript
+    const lines = transcript.split('\n');
+    const critiqueStart = lines.findIndex(l => /anders|besser|unterschied|verbessert|changed|different|improved/i.test(l));
+    const selfCritique = critiqueStart >= 0 ? lines.slice(critiqueStart).join('\n').slice(0, 2000) : '';
+
+    const { error } = await supabase.from('sophie_pitch_memory').insert({
+      user_id: user.id,
+      topic: topic,
+      pitch_type: 'demo',
+      strengths: selfCritique ? [selfCritique] : [],
+      weaknesses: [],
+      score: 0,
+      version: 1,
+      recurring_errors: [transcript.slice(0, 8000)], // Store full demo transcript in recurring_errors field
+    });
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ ok: true });
+  }
+
+  // ── GET: Load latest demo pitch transcript for a topic ──
+  if (action === 'get-demo-pitch' && req.method === 'GET') {
+    const topic = req.query?.topic;
+    if (!topic) return res.status(400).json({ error: 'Missing topic' });
+
+    const { data } = await supabase.from('sophie_pitch_memory')
+      .select('recurring_errors, strengths, created_at')
+      .eq('user_id', user.id)
+      .eq('topic', topic)
+      .eq('pitch_type', 'demo')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) return res.status(200).json({ found: false });
+    return res.status(200).json({
+      found: true,
+      transcript: (data.recurring_errors || [])[0] || '',
+      selfCritique: (data.strengths || [])[0] || '',
+      date: data.created_at,
+    });
+  }
+
   // ── GET: Report template (single) ──
   if (action === 'get-report-template' && req.method === 'GET') {
     const mode = req.query?.mode || 'default';
