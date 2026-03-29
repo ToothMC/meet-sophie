@@ -384,6 +384,75 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...latest, pitchTranscript, reportSummary });
   }
 
+  // ── POST: Generate demo pitch text server-side (Claude/GPT, not Realtime) ──
+  if (action === 'generate-demo-pitch' && req.method === 'POST') {
+    const { session_id } = req.body || {};
+    if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
+
+    // Load transcript + report
+    let transcript = '';
+    let reportText = '';
+    try {
+      const { data: msgs } = await supabase
+        .from('conversation_messages')
+        .select('role, text')
+        .eq('session_id', session_id)
+        .order('seq', { ascending: true })
+        .limit(100);
+      if (msgs?.length) {
+        transcript = msgs.filter(m => m.text?.trim()).map(m => `[${m.role}]: ${m.text}`).join('\n').slice(0, 6000);
+      }
+
+      const { data: output } = await supabase
+        .from('conversation_outputs')
+        .select('report_html')
+        .eq('session_id', session_id)
+        .maybeSingle();
+      if (output?.report_html) {
+        reportText = output.report_html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 4000);
+      }
+    } catch (e) { console.error('[generate-demo] load failed:', e?.message); }
+
+    if (!transcript) return res.status(400).json({ error: 'No transcript found for this session' });
+
+    // Generate optimized pitch via text AI (much more reliable than Realtime)
+    try {
+      const { getAdapter } = await import('../lib/ai/adapters/index.js');
+      const adapter = getAdapter('openai');
+      const resp = await adapter.complete({
+        messages: [{ role: 'user', content: `Du bist ein Pitch-Coach. Unten ist das Transcript eines Sales Pitches.
+
+DEINE AUFGABE: Schreibe eine VERBESSERTE VERSION dieses Pitches.
+- Verwende NUR Fakten und Informationen aus dem Transcript
+- ERFINDE NICHTS NEUES — keine Features, keine Eigenschaften, keine Partnerschaften
+- Verbessere: Struktur (Hook → Problem → Lösung → Beweis → CTA), Rhetorik, Klarheit, roter Faden
+- Wenn der Produktname im Transcript steht, verwende EXAKT diesen Namen
+- Halte den Pitch auf 2-3 Minuten Sprechdauer (ca. 400-500 Wörter)
+- Schreibe ihn so dass er laut vorgelesen werden kann (natürliche Sprache, keine Stichpunkte)
+- Am Ende füge 3-4 Zeilen hinzu die erklären was du strukturell anders gemacht hast
+
+${reportText ? `BEWERTUNG DES ORIGINAL-PITCHES:\n${reportText.slice(0, 2000)}\n` : ''}
+
+ORIGINAL PITCH-TRANSCRIPT:
+${transcript}
+
+Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der verbesserte Pitch". Direkt der Pitch.` }],
+        model: 'gpt-4o', maxTokens: 2000, temperature: 0.4,
+      });
+
+      const demoPitch = (resp.content || '').trim();
+      if (!demoPitch || demoPitch.length < 100) {
+        return res.status(500).json({ error: 'Demo pitch generation failed' });
+      }
+
+      console.log(`[generate-demo] created ${demoPitch.length}c pitch for session ${session_id}`);
+      return res.status(200).json({ demoPitch });
+    } catch (e) {
+      console.error('[generate-demo] AI failed:', e?.message);
+      return res.status(500).json({ error: 'AI generation failed' });
+    }
+  }
+
   // ── POST: Save Sophie's demo pitch transcript for iterative improvement ──
   if (action === 'save-demo-pitch' && req.method === 'POST') {
     const { topic, transcript } = req.body || {};
