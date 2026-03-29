@@ -4639,14 +4639,12 @@ async function stopVoicePitchClean() {
   pitchReportBgPromise = null;
 
   if (bgCtx?.sessionId) {
-    // Report was pre-fired — charge usage + just poll (report has had 30-60s head start)
+    // Report was pre-fired — just poll (report has had 30-60s head start, usage already charged above)
     console.log(`[${runId}] [salespitch] report already generating in bg — polling session ${bgCtx.sessionId}`);
-    try { await reportUsage(bgCtx.wallclock || wallclockSeconds); } catch(_) {}
     await pollReportProgress(bgCtx.sessionId, bgCtx.transcriptLog, { triggeredByLimit: false, skipGenerate: true });
   } else {
     // Fallback: no background generation (e.g. DC dropped, emergency path) — start from scratch
     console.log(`[${runId}] [salespitch] no bg report — generating from scratch`);
-    try { await reportUsage(wallclockSeconds); } catch(_) {}
     const transcriptSnapshot = [...convoLog];
     const memoryResult = await sendMemoryUpdate(wallclockSeconds);
     const pitchSessionId = memoryResult?.session?.id || sessionId;
