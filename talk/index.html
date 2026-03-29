@@ -4080,6 +4080,8 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.done") {
         sophieIsResponding = false;
+        // Start inactivity timer — if nobody speaks for 30s, auto-end
+        if (selectedVoiceMode === "salespitch") resetPitchInactivity();
 
         const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
         const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
