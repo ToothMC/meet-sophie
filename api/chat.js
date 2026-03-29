@@ -685,9 +685,10 @@ async function handleMessage(req, res) {
   const routerStartMs = Date.now();
   try {
     const adapter = getAdapter(decision.primary.provider);
+    const timeoutMs = hasFiles ? 25000 : 5000; // PDFs/images need more time
     aiResponse = await Promise.race([
       adapter.complete({ messages: routerMessages, model: decision.primary.model, maxTokens: 1024, temperature: 0.85 }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs)),
     ]);
   } catch (primaryErr) {
     if (decision.fallback) {
