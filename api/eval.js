@@ -172,8 +172,9 @@ async function sophieRespond(systemPrompt, history, turnNumber, lang) {
 
   // Question Loop Guard (mirrors chat.js guardQuestionLoop)
   if (reply.trim().endsWith("?")) {
-    const recentAssistant = history
-      .filter(m => m.role === "assistant")
+    const allAssistant = history.filter(m => m.role === "assistant");
+    if (allAssistant.length < 2) return reply; // too early — let opener + first response through
+    const recentAssistant = allAssistant
       .slice(-2)
       .filter(m => String(m.content || "").trim().endsWith("?"));
     if (recentAssistant.length >= 1) {
