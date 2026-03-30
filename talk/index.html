@@ -3273,7 +3273,7 @@ function muteMic() {
 // "locked"  — no interruption possible (demo pitch, closing)
 async function setMicSensitivity(mode = "normal") {
   const configs = {
-    normal:  { threshold: 0.5,  silence_duration_ms: 400,  create_response: true,  interrupt_response: true },
+    normal:  { threshold: 0.5,  silence_duration_ms: 200,  create_response: true,  interrupt_response: true },
     guarded: { threshold: 0.85, silence_duration_ms: 800,  create_response: true,  interrupt_response: false },
     locked:  { threshold: 0.95, silence_duration_ms: 1200, create_response: false, interrupt_response: false },
   };
