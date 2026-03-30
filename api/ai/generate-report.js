@@ -464,7 +464,10 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
   <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;">Erstellt mit Sophie · meet-sophie.com</div>
 </div>`;
 
-      const pitchSynthProviders = [
+      const pitchSynthProviders = isEco ? [
+        { provider: 'google', model: 'gemini-2.5-flash' },
+        { provider: 'openai', model: 'gpt-4o-mini' },
+      ] : [
         { provider: 'anthropic', model: 'claude-sonnet-4-6' },
         { provider: 'openai', model: 'gpt-4o' },
       ];
