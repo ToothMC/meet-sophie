@@ -154,6 +154,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
             messages: [{ role: 'user', content: meetingPrompt }],
             model: synth.model, maxTokens: 6000, temperature: 0.15,
           });
+          trackAdapterCost(response, reportUserId, 'report-meeting');
           const text = (response.content || '').trim();
           reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
           if (reportHtml.length > 100) {
