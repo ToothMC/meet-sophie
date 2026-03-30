@@ -3857,6 +3857,28 @@ function attachChannel(ch) {
           }
         }, {
           type: "function",
+          name: "get_airport_arrivals",
+          description: "Get real-time arrivals board for an airport. Use when the user asks what flights are arriving, landing, or coming in at an airport — without knowing a specific flight number. Returns a list of arriving flights with times, status and delays.",
+          parameters: {
+            type: "object",
+            properties: {
+              airport_iata: { type: "string", description: "IATA airport code (e.g. 'FRA', 'PFO', 'MUC', 'JFK')" }
+            },
+            required: ["airport_iata"]
+          }
+        }, {
+          type: "function",
+          name: "get_airport_departures",
+          description: "Get real-time departures board for an airport. Use when the user asks what flights are departing or taking off from an airport — without knowing a specific flight number.",
+          parameters: {
+            type: "object",
+            properties: {
+              airport_iata: { type: "string", description: "IATA airport code (e.g. 'FRA', 'PFO', 'MUC', 'JFK')" }
+            },
+            required: ["airport_iata"]
+          }
+        }, {
+          type: "function",
           name: "send_chat_note",
           description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
           parameters: {
