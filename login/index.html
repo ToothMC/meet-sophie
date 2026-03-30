@@ -247,6 +247,20 @@
       if (session?.user) handleSuccessfulAuth();
     });
 
+    // Close this tab when auth completes in another tab (callback page)
+    try {
+      const bc = new BroadcastChannel("sophie_auth");
+      bc.onmessage = (e) => {
+        if (e.data?.type === "auth_complete") {
+          bc.close();
+          // window.close() only works for script-opened windows; fallback: navigate away
+          try { window.close(); } catch (_) {}
+          // If still open (browser blocked close), redirect to target
+          setTimeout(() => { window.location.replace(e.data.target || "/talk"); }, 300);
+        }
+      };
+    } catch (_) {}
+
     btn.onclick = async () => {
       const email = document.getElementById("email").value.trim();
       if (!email) return setStatus(t.empty, true);

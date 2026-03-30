@@ -20,7 +20,8 @@
 
     // Read mode + language from URL params (passed via emailRedirectTo)
     const urlParams = new URLSearchParams(window.location.search);
-    const detectedMode = urlParams.get("mode") || localStorage.getItem("sophie_detected_mode") || "";
+    // ONLY use URL param — localStorage may have stale mode from previous session
+    const detectedMode = urlParams.get("mode") || "";
     const lang = urlParams.get("lang") || localStorage.getItem("preferredLanguage") || "";
     if (lang && ["de", "en", "fr"].includes(lang)) {
       localStorage.setItem("preferredLanguage", lang);
@@ -51,18 +52,28 @@
     function go(path) {
       if (done) return;
       done = true;
+      // Tell other Sophie tabs (login, landing) to close — only one window should remain
+      try {
+        const bc = new BroadcastChannel("sophie_auth");
+        bc.postMessage({ type: "auth_complete", target: path });
+        bc.close();
+      } catch (_) {}
       window.location.replace(path);
     }
 
+    // Determine default target: /talk only if a specific mode was selected (via "Mit Sophie sprechen")
+    // Otherwise: landing page (user just logged in via "Einloggen")
+    const defaultTarget = detectedMode ? "/talk" : "/";
+
     // PKCE exchange + session detection — redirect as soon as session is ready
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) go(buildTarget("/talk"));
+      if (event === "SIGNED_IN" && session?.user) go(buildTarget(defaultTarget));
     });
 
     // Fallback after 3s
     setTimeout(async () => {
       const { data } = await supabase.auth.getSession();
-      go(data.session?.user ? buildTarget("/talk") : "/login");
+      go(data.session?.user ? buildTarget(defaultTarget) : "/login");
     }, 3000);
   </script>
 </body>

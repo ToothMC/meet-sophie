@@ -1881,6 +1881,18 @@
     const AUTH_NUDGE_AT = 50; // TEST: raised to skip auth nudge during voice conversion testing
     let currentLang = localStorage.getItem("preferredLanguage") || "en";
 
+    // Close this tab when auth completes in callback tab — prevent duplicate windows
+    try {
+      const bc = new BroadcastChannel("sophie_auth");
+      bc.onmessage = (e) => {
+        if (e.data?.type === "auth_complete") {
+          bc.close();
+          try { window.close(); } catch (_) {}
+          setTimeout(() => { window.location.replace(e.data.target || "/talk"); }, 300);
+        }
+      };
+    } catch (_) {}
+
     const UX_FLAGS_KEY = "sophie_ux_flags_v1";
     function readUxFlags() {
       try {
