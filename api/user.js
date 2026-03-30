@@ -106,12 +106,30 @@ async function handleUsage(req, res) {
       return res.status(402).json({ error: "No remaining tokens", remaining_tokens: 0, remaining_seconds: 0 });
     }
 
+    // Check if we should suggest eco mode (1× per account lifetime)
+    let suggestEco = false;
+    const totalTokens = (r.free_tokens_total || 0) + (r.paid_tokens_total || 0) + (r.topup_tokens_balance || 0);
+    if (totalTokens > 0 && r.remaining / totalTokens < 0.10) {
+      try {
+        const { data: prof } = await supabase.from("user_profile")
+          .select("eco_mode, eco_hint_shown")
+          .eq("user_id", user.id).maybeSingle();
+        if (prof && !prof.eco_mode && !prof.eco_hint_shown) {
+          suggestEco = true;
+          await supabase.from("user_profile")
+            .update({ eco_hint_shown: true })
+            .eq("user_id", user.id);
+        }
+      } catch (_) {}
+    }
+
     return res.status(200).json({
       ok: true,
       charged_tokens: r.charged,
       buckets: { free: r.free_charged, paid: r.paid_charged, topup: r.topup_charged },
       remaining_tokens: r.remaining,
       remaining_seconds: r.remaining * SECONDS_PER_TOKEN,
+      suggest_eco: suggestEco,
       usage: {
         free_tokens_total: r.free_tokens_total, free_tokens_used: r.free_tokens_used,
         paid_tokens_total: r.paid_tokens_total, paid_tokens_used: r.paid_tokens_used,
