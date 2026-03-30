@@ -3770,20 +3770,11 @@ function attachChannel(ch) {
           }
         }
       };
-      // Add signal_mode + deep_research tools for normal conversations
+      // No signal_mode tool in voice — it adds latency (function call round-trip before speaking)
+      // Mode indicator defaults to "chill" for normal conversations
       if (!selectedVoiceMode) {
+        updateModeIndicator("chill");
         sessionUpdate.session.tools = [{
-          type: "function",
-          name: "signal_mode",
-          description: "Signal the current thinking mode to the UI. Call this silently at the start of every response.",
-          parameters: {
-            type: "object",
-            properties: {
-              mode: { type: "string", enum: ["explorer", "reflect", "decide", "relax"] }
-            },
-            required: ["mode"]
-          }
-        }, {
           type: "function",
           name: "deep_research",
           description: "Query multiple AI models (Claude, Gemini, Mistral) in parallel to get diverse perspectives on a question. Use when the user asks complex questions, needs fact-checking, a second opinion, or deeper analysis. The result contains answers from all available AI providers.",
