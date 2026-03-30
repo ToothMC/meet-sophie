@@ -34,6 +34,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing messages array' });
   }
 
+  // Check eco mode
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  let isEco = false;
+  if (userId) {
+    try {
+      const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', userId).maybeSingle();
+      isEco = !!prof?.eco_mode;
+    } catch (_) {}
+  }
+  const compareProviders = isEco ? ECO_COMPARE_PROVIDERS : COMPARE_PROVIDERS;
+
   // Build context-aware messages: include prior answer so all providers see it
   const contextMessages = [...messages];
   if (priorAnswer) {
