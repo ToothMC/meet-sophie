@@ -1606,6 +1606,11 @@ let pitchReportBgPromise = null;    // Background report generation (starts at s
 let pitchInactivityTimer = null;    // Auto-end salespitch after silence
 const PITCH_INACTIVITY_SECONDS = 60; // End session after 60s of no speech
 
+let inactivityTimer = null;         // Global inactivity auto-end (all modes)
+let inactivityWarningFired = false; // "Hey, bist du noch da?" already sent
+const INACTIVITY_WARNING_MS = 3 * 60 * 1000; // 3 min → ask if still there
+const INACTIVITY_END_MS     = 4 * 60 * 1000; // 4 min → end session
+
 let hasUserSpoken = false;
 
 let talkStartedAt = null;
