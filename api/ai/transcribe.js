@@ -2,6 +2,7 @@
 // Accepts JSON { audio_base64, filename, language } instead of multipart
 import { createClient } from '@supabase/supabase-js';
 import { SECONDS_PER_TOKEN } from '../../lib/billing-constants.js';
+import { trackCost } from '../../lib/ai/cost-tracker.js';
 
 export const config = { maxDuration: 60, api: { bodyParser: { sizeLimit: '25mb' } } };
 
