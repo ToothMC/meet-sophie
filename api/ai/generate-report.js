@@ -853,6 +853,7 @@ ${analysesBlock}`;
           messages: [{ role: 'user', content: htmlPrompt }],
           model: synth.model, maxTokens, temperature: hasTemplate ? 0.2 : 0.4,
         });
+        trackAdapterCost(response, reportUserId, 'report-synthesis');
         const text = (response.content || '').trim();
         // Strip markdown code fences if present
         reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
