@@ -853,8 +853,11 @@ DIE ${analyses.length} ANALYSEN:
 ${analysesBlock}`;
       }
 
-      // Creative task needs strong model first
-      synthProviders = [
+      // Creative task needs strong model first (eco: cheaper models)
+      synthProviders = isEco ? [
+        { provider: 'google', model: 'gemini-2.5-flash' },
+        { provider: 'openai', model: 'gpt-4o-mini' },
+      ] : [
         { provider: 'anthropic', model: 'claude-sonnet-4-6' },
         { provider: 'openai', model: 'gpt-4o-mini' },
       ];
