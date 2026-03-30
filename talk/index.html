@@ -3766,12 +3766,12 @@ function startInactivityTimer() {
       }));
       dc.send(JSON.stringify({ type: "response.create" }));
     } catch(e) { console.warn('[inactivity] could not send check-in', e?.message); }
-    // If still no activity after 1 more minute → end session
+    // If still no activity after 30s more → end session
     inactivityTimer = setTimeout(() => {
       if (softEndFinalizing || limitTriggered) return;
-      console.log(`[${runId}] [inactivity] 4min total — ending session`);
+      console.log(`[${runId}] [inactivity] 60s total — ending session`);
       void handleTimeLimitReached();
-    }, 60 * 1000);
+    }, INACTIVITY_END_MS);
   }, INACTIVITY_WARNING_MS);
 }
 
