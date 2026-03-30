@@ -558,7 +558,7 @@ const CURATED_TRIGGERS = [
       en: [
         "Try me — ask me something. Preferably something where you need an honest opinion.",
         "Depends. I have opinions on almost everything — music, food, life decisions. Test me.",
-        "I can pull up live weather or news, argue about your favorite dish, or play devil's advocate on a decision. What sounds good?",
+        "Weather, news, flight status — all live. Or we argue about your favorite dish. Or I play devil's advocate on a decision. Your call.",
         "Instead of listing things — tell me what's on your mind and I'll show you.",
       ],
       fr: [
