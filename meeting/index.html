@@ -2160,7 +2160,7 @@ async function reportMeetingVoiceUsage(seconds) {
     const { data: { session: authSession } } = await supabase.auth.getSession();
     if (!authSession?.access_token) return;
 
-    const tokens = Math.ceil(seconds / 6);
+    const tokens = Math.ceil(seconds / 3); // SECONDS_PER_TOKEN = 3
     const res = await fetch("/api/user?action=usage", {
       method: "POST",
       headers: {
