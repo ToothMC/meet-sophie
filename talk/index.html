@@ -4627,6 +4627,7 @@ async function startVoice(){
   pitchReportBgPromise = null;
   _pitchCleanRunning = false;
   stopPitchInactivity();
+  stopInactivityTimer();
   resetClosingState();
 
   stopDynamicResets();
