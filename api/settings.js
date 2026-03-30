@@ -454,7 +454,7 @@ ORIGINAL PITCH-TRANSCRIPT:
 ${transcript}
 
 Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der verbesserte Pitch". Direkt der Pitch.` }],
-        model: 'gpt-4o', maxTokens: 2000, temperature: 0.4,
+        model: isEco ? 'gemini-2.5-flash' : 'gpt-4o', maxTokens: 2000, temperature: 0.4,
       });
 
       // Track demo pitch generation cost
