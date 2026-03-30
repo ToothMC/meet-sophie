@@ -2962,6 +2962,7 @@
     }
 
     function showInlineVoiceCTA(detectedMode) {
+      return; // Disabled — inline pills in chat are too aggressive, distract from conversation
       const mode = detectedMode || funnelMode || "talk";
       // Map detected mode to session mode for handover
       const SESSION_MODE_MAP = {
