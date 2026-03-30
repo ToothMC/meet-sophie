@@ -4793,6 +4793,7 @@ async function startVoice(){
 
     isPremium = !!data?.is_premium;
     plan = data?.plan || null;
+    window._ecoMode = !!data?.eco_mode;
 
     softEndEnabled = data?.soft_end_enabled !== false;
     softEndWarningSeconds = Number.isFinite(data?.soft_end_warning_seconds)
