@@ -4887,23 +4887,20 @@ async function startVoice(){
 
     // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
     audioEl = document.createElement("audio");
+    audioEl.autoplay = true;
     audioEl.playsInline = true;
-    audioEl.muted = true; // mute by default — GainNode handles playback
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") await audioCtx.resume();
     gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
     pc.ontrack = e => {
-      audioEl.srcObject = e.streams[0]; // required for WebRTC stream to stay alive
+      audioEl.srcObject = e.streams[0]; // keeps WebRTC stream alive
       try {
         audioSource = audioCtx.createMediaStreamSource(e.streams[0]);
         audioSource.connect(gainNode);
-        // GainNode handles playback — audioEl stays muted
-      } catch (_) {
-        // Fallback (Safari): unmute audioEl for direct playback
-        audioEl.muted = false;
-        audioEl.autoplay = true;
-      }
+        // GainNode handles playback — mute audioEl to prevent double audio
+        audioEl.muted = true;
+      } catch (_) {} // fallback: audioEl plays directly (unmuted)
     };
 
     const offer = await pc.createOffer();
