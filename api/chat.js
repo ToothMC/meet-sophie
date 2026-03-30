@@ -1112,7 +1112,7 @@ async function handleMessage(req, res) {
   const hasFiles = messages.some(m => m.files?.length > 0);
 
   // Classify and route (authenticated users only)
-  const ctx = classify({ messages: routerMessages }, { userTier, channel: "text" });
+  const ctx = classify({ messages: routerMessages }, { userTier, channel: "text", ecoMode: !!profile.eco_mode });
   const decision = route(ctx);
 
   // Force vision-capable model if files are attached
