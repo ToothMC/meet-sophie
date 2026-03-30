@@ -689,8 +689,11 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
+      const isEco = !!profile.eco_mode;
+      const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-4o-realtime-preview";
+
       body: JSON.stringify({
-        model: "gpt-4o-realtime-preview",
+        model: realtimeModel,
         voice: "shimmer",
         modalities: ["audio", "text"],
         temperature: 0.85,
