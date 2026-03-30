@@ -666,13 +666,18 @@ const CURATED_TRIGGERS = [
   },
 ];
 
-function getCuratedResponse(userMessage, lang) {
+function getCuratedResponse(userMessage) {
   const text = (userMessage || "").trim();
   if (text.length > 80) return null; // only short trigger questions
 
+  // Detect language from the message itself — more reliable than session-level detection
+  const msgLang = /[äöüß]|kannst du|bist du|heisst|gibt es|was kostet|wie teuer|warum sollte|zeig mir|wieder so ein|nichts besonderes/i.test(text) ? "de"
+    : /[éèêëàâùûç]|es-tu|peux-tu/i.test(text) ? "fr"
+    : "en";
+
   for (const trigger of CURATED_TRIGGERS) {
     if (trigger.match.test(text)) {
-      const pool = trigger.responses[lang] || trigger.responses.en || trigger.responses.de;
+      const pool = trigger.responses[msgLang] || trigger.responses.en || trigger.responses.de;
       return pool[Math.floor(Math.random() * pool.length)];
     }
   }
