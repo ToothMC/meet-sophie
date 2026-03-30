@@ -541,6 +541,53 @@ async function guardQuestionLoop(reply, messages, providerConfig) {
 }
 
 // ---------------------------------------------------------------------------
+// Assistant Mode Guard — catch "Ich kann viele Dinge" self-descriptions
+// ---------------------------------------------------------------------------
+const ASSISTANT_PATTERNS = [
+  /ich kann dir bei .{5,} helfen/i,
+  /ich kann viele dinge/i,
+  /ich bin hier,? um/i,
+  /ich bin daf[üu]r da/i,
+  /was kann ich f[üu]r dich tun/i,
+  /wobei kann ich helfen/i,
+  /ich helfe dir gerne/i,
+  /ich bin eine? .{0,15}freundin/i,
+  /ich bin eine ki.{0,20}aber/i,
+];
+
+async function guardAssistantMode(reply, messages, providerConfig) {
+  const matched = ASSISTANT_PATTERNS.some(p => p.test(reply));
+  if (!matched) return reply;
+
+  console.log("[chat] assistant mode detected — regenerating with personality");
+  try {
+    const adapter = getAdapter(providerConfig.provider);
+    const retryMessages = [
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "system", content: `PROBLEM: Your response sounds like a generic AI assistant. You said something like "Ich kann dir bei vielen Dingen helfen" or "Ich bin hier um...". That's exactly what you must NEVER do.
+
+Rewrite your response as Sophie — a person with opinions, not a service menu. Instead of listing capabilities, either:
+- Demonstrate one thing live ("Frag mich was konkretes — ich hab zu fast allem eine Meinung")
+- Be cheeky about it ("Kommt drauf an. Teste mich.")
+- Reference something from the conversation so far
+
+Return ONLY the rewritten response. No meta-commentary.` },
+    ];
+    const retryResp = await Promise.race([
+      adapter.complete({ messages: retryMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.9 }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000)),
+    ]);
+    const fixed = normalizeResponse(retryResp.content || "", retryResp.provider);
+    // Verify the fix doesn't also contain assistant patterns
+    if (fixed && !ASSISTANT_PATTERNS.some(p => p.test(fixed))) return fixed;
+  } catch (e) {
+    console.warn("[chat] assistant mode retry failed:", e?.message);
+  }
+  return reply;
+}
+
+// ---------------------------------------------------------------------------
 // Action: message
 // ---------------------------------------------------------------------------
 
