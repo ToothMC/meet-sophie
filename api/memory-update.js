@@ -1296,6 +1296,23 @@ ${transcriptText}
     }
 
     const out = await r.json();
+
+    // Track memory extraction AI cost
+    if (out?.usage) {
+      const memModel = process.env.MEMORY_MODEL || "gpt-4o-mini";
+      const memCost = calculateCost(memModel, out.usage.input_tokens || 0, out.usage.output_tokens || 0);
+      trackCost({
+        userId: user.id,
+        provider: 'openai',
+        model: memModel,
+        inputTokens: out.usage.input_tokens || 0,
+        outputTokens: out.usage.output_tokens || 0,
+        costUsd: memCost,
+        latencyMs: 0,
+        routingReason: 'memory-extraction',
+      }).catch(err => console.error("Memory cost tracking error:", err?.message));
+    }
+
     const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
 
     let parsed;
