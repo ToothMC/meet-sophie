@@ -3846,6 +3846,17 @@ function attachChannel(ch) {
           }
         }, {
           type: "function",
+          name: "get_flight_status",
+          description: "Get real-time flight status, delays, gates, and arrival times. Use when the user asks about a flight number (e.g. 'LH1234', 'EW 9876', 'UA 456'). Returns departure/arrival times, delays, gate info, and current position if airborne.",
+          parameters: {
+            type: "object",
+            properties: {
+              flight_number: { type: "string", description: "IATA flight number (e.g. 'LH1234', 'EW9876', 'UA456')" }
+            },
+            required: ["flight_number"]
+          }
+        }, {
+          type: "function",
           name: "send_chat_note",
           description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
           parameters: {
