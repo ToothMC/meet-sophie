@@ -4873,7 +4873,7 @@ async function startVoice(){
     audioEl = document.createElement("audio");
     audioEl.autoplay = true;
     audioEl.playsInline = true;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
     if (audioCtx.state === "suspended") await audioCtx.resume();
     gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
