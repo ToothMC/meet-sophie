@@ -696,11 +696,12 @@ export default async function handler(req, res) {
         model: realtimeModel,
         voice: "shimmer",
         modalities: ["audio", "text"],
-        temperature: 0.85,
+        temperature: 0.7,
         speed: 1.0,
         instructions: fullPrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
         input_audio_format: "pcm16",
+        output_audio_format: "pcm16",
         turn_detection: {
           type: "server_vad",
           threshold: 0.6,
