@@ -3648,10 +3648,14 @@
     });
 
     // Show action bar after first assistant message
-    function maybeShowActionBar() {
-      if (history.some(m => m.role === "assistant")) {
-        actionBar.classList.remove("chat-hidden");
-      }
+    async function maybeShowActionBar() {
+      // Only show Compare/Challenge buttons for logged-in users
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token && session?.user && history.some(m => m.role === "assistant")) {
+          actionBar.classList.remove("chat-hidden");
+        }
+      } catch { /* not logged in — hide action bar */ }
     }
     function startPulse() {
       compareBtn.classList.add("pulsing");
