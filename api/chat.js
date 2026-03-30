@@ -781,6 +781,8 @@ async function handleMessage(req, res) {
       else if (toolType === "news") toolData = await getNews(toolParam.trim());
       else if (toolType === "wiki") toolData = await getWikipedia(toolParam.trim());
       else if (toolType === "flight") toolData = await getFlightStatus(toolParam.trim());
+      else if (toolType === "arrivals") toolData = await getAirportFlights(toolParam.trim(), 'arr');
+      else if (toolType === "departures") toolData = await getAirportFlights(toolParam.trim(), 'dep');
 
       if (toolData) {
         // Re-query with tool data injected
