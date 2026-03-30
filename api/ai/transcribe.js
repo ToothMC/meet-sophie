@@ -120,6 +120,19 @@ export default async function handler(req, res) {
 
         await supabase.from('user_usage').update(updates).eq('user_id', user.id);
         console.log(`[transcribe] Usage: ~${estimatedSeconds}s = ${tokensToDeduct} tokens deducted`);
+
+        // Track USD cost — Whisper-1 costs $0.006/min
+        const whisperCostUsd = (estimatedSeconds / 60) * 0.006;
+        trackCost({
+          userId: user.id,
+          provider: 'openai',
+          model: 'whisper-1',
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: whisperCostUsd,
+          latencyMs: 0,
+          routingReason: 'transcription',
+        }).catch(err => console.error("Transcribe cost tracking error:", err?.message));
       }
     } catch (ue) {
       console.error('[transcribe] Usage error:', ue.message);
