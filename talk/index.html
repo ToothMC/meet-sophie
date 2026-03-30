@@ -3739,37 +3739,58 @@ async function maybeTriggerSoftEnding(){
 }
 
 // ── Inactivity auto-end (global, all modes) ──────────────────────────────────
+// Only fires when session is completely idle — no audio, no Sophie response,
+// no closing/summary/report/demo phase running. Salespitch has its own timer.
+function isSessionBusy() {
+  return (
+    sophieIsResponding        || // Sophie is generating/playing audio
+    userIsSpeaking            || // User is currently speaking
+    softEndFinalizing         || // Session-end flow running
+    softEndSummaryTriggered   || // Summary phase active
+    limitTriggered            || // Time limit already triggered
+    closingResponseActive     || // Sophie's closing response playing
+    pendingClosing            || // Waiting for silence to close
+    endCleanlyAfterResponse   || // Sophie finishing sentence before end
+    pitchReportSignaled       || // Sales pitch report generating
+    startModeTriggered        || // Kick-off demo still running
+    isPaused                  || // Session paused
+    selectedVoiceMode === "salespitch" // Has its own inactivity timer
+  );
+}
+
 function resetInactivityTimer() {
-  if (!inactivityTimer && !inactivityWarningFired) return; // not yet started
+  if (!hasUserSpoken) return; // Don't start until user has spoken at least once
   clearTimeout(inactivityTimer);
   inactivityTimer = null;
-  inactivityWarningFired = false;
-  startInactivityTimer();
+  // Don't restart if session is currently busy (Sophie speaking etc.)
+  if (!isSessionBusy()) startInactivityTimer();
 }
 
 function startInactivityTimer() {
+  if (!hasUserSpoken) return; // Never before first user utterance
   clearTimeout(inactivityTimer);
   inactivityWarningFired = false;
   inactivityTimer = setTimeout(() => {
-    // Ignore if session is already ending or in special modes
-    if (softEndFinalizing || limitTriggered || softEndSummaryTriggered) return;
-    if (selectedVoiceMode === "salespitch") return; // salespitch has its own timer
+    if (isSessionBusy()) {
+      // Session got busy while timer was running — restart timer
+      startInactivityTimer();
+      return;
+    }
     inactivityWarningFired = true;
-    console.log(`[${runId}] [inactivity] 3min silence — asking if still there`);
-    // Send a gentle check-in via the realtime API
+    console.log(`[${runId}] [inactivity] 30s silence — asking if still there`);
     try {
       dc.send(JSON.stringify({
         type: "conversation.item.create",
         item: { type: "message", role: "user",
-          content: [{ type: "input_text", text: "[SYSTEM: Der User hat 3 Minuten lang nicht gesprochen. Frag kurz und locker ob er noch da ist. Maximal 1 Satz.]" }]
+          content: [{ type: "input_text", text: "[SYSTEM: Der User hat 30 Sekunden nicht gesprochen. Frag kurz und locker ob er noch da ist — ein Satz, kein Coaching.]" }]
         }
       }));
       dc.send(JSON.stringify({ type: "response.create" }));
     } catch(e) { console.warn('[inactivity] could not send check-in', e?.message); }
-    // If still no activity after 30s more → end session
+    // Grace period: 30s more → end session if still no activity
     inactivityTimer = setTimeout(() => {
-      if (softEndFinalizing || limitTriggered) return;
-      console.log(`[${runId}] [inactivity] 60s total — ending session`);
+      if (isSessionBusy()) return; // Something started — don't end
+      console.log(`[${runId}] [inactivity] 60s total silence — ending session`);
       void handleTimeLimitReached();
     }, INACTIVITY_END_MS);
   }, INACTIVITY_WARNING_MS);
