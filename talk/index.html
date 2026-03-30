@@ -4076,7 +4076,7 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
-        touchActivity(); // Sophie is responding — reset inactivity timestamp
+        if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
         // Fade audio back in for Sophie's new response
         if (gainNode && audioCtx) {
           gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
