@@ -276,6 +276,7 @@ async function handleStart(req, res) {
           conversation_style: (profRes.data.conversation_style || "").trim(),
           topics_like: Array.isArray(profRes.data.topics_like) ? profRes.data.topics_like : [],
           topics_avoid: Array.isArray(profRes.data.topics_avoid) ? profRes.data.topics_avoid : [],
+          eco_mode: !!profRes.data.eco_mode,
         };
       }
       if (relRes.data) rel = relRes.data;
