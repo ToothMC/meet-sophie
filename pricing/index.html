@@ -282,7 +282,7 @@ $("langDE").onclick=()=>setLang("de");
 $("langEN").onclick=()=>setLang("en");
 $("backBtn").addEventListener("click",e=>{e.preventDefault();history.length>1?history.back():location.href="/";});
 
-function updateEnabled(){/* buttons always enabled — validation on click */}
+function updateEnabled(){allBtns.forEach(b=>b.disabled=false);btnFree.disabled=false;}
 function highlightCheckboxes(){
   const labels=document.querySelectorAll(".legal label");
   labels.forEach(l=>{l.classList.remove("highlight");void l.offsetWidth;l.classList.add("highlight");});
