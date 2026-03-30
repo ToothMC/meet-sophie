@@ -8,7 +8,7 @@
 <link rel="icon" href="/favicon.ico">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#0b0f14">
+<meta name="theme-color" content="#faf9f6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Sophie — Meeting Mode</title>
@@ -18,7 +18,7 @@
 html,body{height:100%;margin:0}
 body{
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  color:#fff;background:#0b0f14;
+  color:#2a2420;background:#faf9f6;
   display:flex;flex-direction:column;
   min-height:100vh;min-height:100dvh;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -30,27 +30,23 @@ body{
   display:flex;align-items:center;gap:10px;
   padding:12px 16px;
   padding-top:max(12px, env(safe-area-inset-top));
-  background:rgba(11,15,20,.92);
+  background:rgba(250,249,246,.92);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  border-bottom:1px solid rgba(255,255,255,.08);
+  border-bottom:1px solid #ede8e2;
 }
 .topbar .back{
-  color:rgba(255,255,255,.7);text-decoration:none;font-size:14px;
+  color:#7a6a5a;text-decoration:none;font-size:14px;
   padding:6px 10px;border-radius:8px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  background:rgba(0,0,0,.04);border:1px solid #ede8e2;
   white-space:nowrap;
 }
-.topbar .back:hover{background:rgba(255,255,255,.12)}
-.topbar .title{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.phase-badge{
-  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  padding:4px 10px;border-radius:12px;white-space:nowrap;
-}
-.phase-badge[data-phase="prep"]{background:rgba(63,140,255,.2);color:#6cb4ff}
-.phase-badge[data-phase="live"]{background:rgba(255,90,90,.2);color:#ff5a5a;animation:pulse-live 2s infinite}
-.phase-badge[data-phase="post"]{background:rgba(167,139,250,.2);color:#a78bfa}
-.phase-badge[data-phase="closed"]{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
-@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.6}}
+.topbar .back:hover{background:rgba(0,0,0,.08);color:#2a2420}
+.topbar .title{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#2a2420}
+/* Phase badge, participants bar, recording status — hidden (clean UI) */
+.phase-badge{display:none!important}
+.participants-bar{display:none!important}
+#recordingStatus{display:none!important}
+@keyframes sophiePulse{0%,100%{opacity:.5}50%{opacity:1}}
 
 /* ---- SETUP SCREEN ---- */
 .setup-screen{
@@ -59,27 +55,42 @@ body{
 }
 .setup-card{
   width:100%;max-width:420px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  background:#fff;border:1px solid #ede8e2;
   border-radius:16px;padding:28px 24px;
+  box-shadow:0 4px 20px rgba(0,0,0,.06);
 }
-.setup-card h2{font-size:20px;font-weight:600;margin:0 0 20px;text-align:center}
+.setup-card h2{font-size:20px;font-weight:600;margin:0 0 20px;text-align:center;color:#2a2420}
 .setup-card label{
   display:block;font-size:12px;font-weight:600;letter-spacing:.04em;
-  text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px;margin-top:16px;
+  text-transform:uppercase;color:#a09080;margin-bottom:6px;margin-top:16px;
 }
 .setup-card label:first-of-type{margin-top:0}
-.setup-card select,.setup-card input[type="text"]{
-  width:100%;padding:10px 12px;font-size:14px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-  border-radius:10px;color:#fff;outline:none;
-  font-family:inherit;
+.setup-card input[type="text"]{
+  width:100%;padding:12px 14px;font-size:16px;
+  background:#fff;border:1px solid #ede8e2;
+  border-radius:10px;color:#2a2420;outline:none;
+  font-family:inherit;min-height:48px;
 }
-.setup-card select:focus,.setup-card input[type="text"]:focus{border-color:rgba(255,255,255,.3)}
-.setup-card select option{background:#1a1f28;color:#fff}
+.setup-card input[type="text"]:focus{border-color:#c4a882}
+.type-pill{
+  padding:10px 18px;font-size:14px;font-weight:600;
+  border:1px solid #ede8e2;border-radius:10px;
+  background:#fff;color:#7a6a5a;cursor:pointer;
+  font-family:inherit;transition:all .15s;
+}
+.type-pill:hover{border-color:#c4a882;color:#2a2420}
+.type-pill.active{background:#2a2420;color:#fff;border-color:#2a2420}
+#parentMeetingSelect{
+  width:100%;padding:12px 14px;font-size:14px;
+  border:1px solid #ede8e2;border-radius:10px;
+  background:#fff;color:#2a2420;cursor:pointer;
+  font-family:inherit;appearance:auto;
+  -webkit-appearance:menulist;
+}
 .setup-card .btn-primary{
   display:block;width:100%;margin-top:24px;padding:14px;font-size:16px;font-weight:700;
   border:none;border-radius:12px;cursor:pointer;
-  background:#fff;color:#000;
+  background:#2a2420;color:#fff;
   font-family:inherit;
 }
 .setup-card .btn-primary:disabled{opacity:.5;cursor:not-allowed}
@@ -93,7 +104,7 @@ body{
 
 /* ---- CONTEXT PANEL ---- */
 .context-panel{
-  border-bottom:1px solid rgba(255,255,255,.08);
+  border-bottom:1px solid #ede8e2;
   overflow:hidden;transition:max-height .3s ease;
 }
 .context-panel.collapsed .context-body{display:none}
@@ -101,26 +112,26 @@ body{
   display:flex;align-items:center;gap:8px;
   padding:10px 16px;cursor:pointer;user-select:none;
   font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-  color:rgba(255,255,255,.5);
+  color:#a09080;
 }
-.context-toggle:hover{color:rgba(255,255,255,.7)}
+.context-toggle:hover{color:#2a2420}
 .context-toggle .arrow{transition:transform .2s}
 .context-panel.collapsed .context-toggle .arrow{transform:rotate(-90deg)}
 .context-body{padding:0 16px 12px}
 .context-body textarea{
   width:100%;padding:8px 10px;font-size:13px;line-height:1.5;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-  border-radius:8px;color:#fff;resize:vertical;min-height:60px;
+  background:#fff;border:1px solid #ede8e2;
+  border-radius:8px;color:#2a2420;resize:vertical;min-height:60px;
   font-family:inherit;outline:none;margin-bottom:8px;
 }
-.context-body textarea:focus{border-color:rgba(255,255,255,.2)}
-.context-body textarea::placeholder{color:rgba(255,255,255,.25)}
+.context-body textarea:focus{border-color:#c4a882}
+.context-body textarea::placeholder{color:#b0a090}
 .save-context-btn{
   font-size:12px;padding:5px 12px;border-radius:6px;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
-  color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;
+  background:rgba(0,0,0,.04);border:1px solid #ede8e2;
+  color:#7a6a5a;cursor:pointer;font-family:inherit;
 }
-.save-context-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.save-context-btn:hover{background:rgba(0,0,0,.08);color:#2a2420}
 
 /* ---- CHAT ---- */
 .chat-area{
@@ -136,17 +147,18 @@ body{
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .msg.user{
   align-self:flex-end;
-  background:rgba(255,255,255,.12);color:#fff;
+  background:#2a2420;color:#fff;
   border-bottom-right-radius:4px;
 }
 .msg.assistant{
   align-self:flex-start;
-  background:rgba(52,196,122,.12);color:rgba(255,255,255,.92);
+  background:#fff;color:#2a2420;
+  border:1px solid #ede8e2;
   border-bottom-left-radius:4px;
 }
 .msg.system{
   align-self:center;text-align:center;
-  font-size:12px;color:rgba(255,255,255,.4);
+  font-size:12px;color:#a09080;
   background:none;padding:4px;
 }
 .msg.assistant .typing-dots{display:inline-block}
@@ -158,19 +170,19 @@ body{
   display:flex;align-items:flex-end;gap:8px;
   padding:12px 16px;
   padding-bottom:max(12px, env(safe-area-inset-bottom));
-  border-top:1px solid rgba(255,255,255,.08);
-  background:rgba(11,15,20,.92);
+  border-top:1px solid #ede8e2;
+  background:rgba(250,249,246,.92);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
 .input-bar textarea{
   flex:1;padding:10px 14px;font-size:14px;line-height:1.5;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-  border-radius:12px;color:#fff;resize:none;
+  background:#fff;border:1px solid #ede8e2;
+  border-radius:12px;color:#2a2420;resize:none;
   min-height:42px;max-height:120px;
   font-family:inherit;outline:none;
 }
-.input-bar textarea:focus{border-color:rgba(255,255,255,.25)}
-.input-bar textarea::placeholder{color:rgba(255,255,255,.3)}
+.input-bar textarea:focus{border-color:#c4a882}
+.input-bar textarea::placeholder{color:#b0a090}
 .send-btn{
   padding:10px 16px;font-size:14px;font-weight:600;
   background:#34c47a;color:#000;border:none;border-radius:12px;
@@ -181,60 +193,42 @@ body{
 /* ---- PHASE CTA ---- */
 .phase-cta{
   padding:10px 16px;text-align:center;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid #ede8e2;
 }
 .phase-cta button{
   padding:10px 24px;font-size:14px;font-weight:700;
   border:none;border-radius:10px;cursor:pointer;
   font-family:inherit;
 }
-.phase-cta .cta-live{background:#34c47a;color:#000}
-.phase-cta .cta-post{background:#ff5a5a;color:#fff}
-.phase-cta .cta-close{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.15)}
+.phase-cta .cta-live{background:#34c47a;color:#fff}
+.phase-cta .cta-post{background:#ef4444;color:#fff}
+.phase-cta .cta-close{background:rgba(0,0,0,.06);color:#2a2420;border:1px solid #ede8e2}
 
-/* ---- SUMMARY CARD ---- */
-.summary-card{
+/* ---- REPORT CARD ---- */
+.report-card{
   margin:16px;padding:20px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-  border-radius:14px;
+  background:#fff;border:1px solid #ede8e2;
+  border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.04);
 }
-.summary-card h3{font-size:16px;font-weight:600;margin:0 0 12px}
-.summary-card .summary-text{font-size:14px;line-height:1.6;color:rgba(255,255,255,.8);margin-bottom:16px}
-.summary-section{margin-bottom:14px}
-.summary-section h4{
-  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:rgba(255,255,255,.4);margin:0 0 6px;
-}
-.summary-section ul{margin:0;padding:0;list-style:none}
-.summary-section li{
-  font-size:13px;line-height:1.5;padding:4px 0;
-  color:rgba(255,255,255,.75);
-  border-bottom:1px solid rgba(255,255,255,.04);
-}
-.summary-section li:last-child{border-bottom:none}
-.summary-section li .owner{color:#34c47a;font-weight:500}
-.summary-section li .severity-high{color:#ff5a5a}
-.summary-section li .severity-medium{color:#f5c842}
-.summary-section li .severity-low{color:#34d399}
 
 /* ---- FILE UPLOAD ---- */
 .upload-area{
   margin-top:8px;padding:12px;
-  border:2px dashed rgba(255,255,255,.12);border-radius:10px;
+  border:2px dashed #ede8e2;border-radius:10px;
   text-align:center;cursor:pointer;transition:border-color .2s;
 }
-.upload-area:hover{border-color:rgba(255,255,255,.25)}
+.upload-area:hover{border-color:#c4a882}
 .upload-area input[type="file"]{display:none}
 .upload-area .upload-label{
-  font-size:12px;color:rgba(255,255,255,.4);
+  font-size:12px;color:#a09080;
 }
-.upload-area .upload-label:hover{color:rgba(255,255,255,.6)}
+.upload-area .upload-label:hover{color:#2a2420}
 .file-list{margin-top:8px}
 .file-item{
   display:flex;align-items:center;gap:8px;
   padding:6px 10px;margin-bottom:4px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
-  border-radius:8px;font-size:12px;color:rgba(255,255,255,.6);
+  background:#fff;border:1px solid #ede8e2;
+  border-radius:8px;font-size:12px;color:#5a4a40;
 }
 .file-item .file-icon{font-size:14px;flex-shrink:0}
 .file-item .file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -243,22 +237,22 @@ body{
 
 /* ---- HINT MESSAGES ---- */
 .msg.assistant.hint{
-  border-left:3px solid #f5c842;
-  background:rgba(245,200,66,.08);
+  border-left:3px solid #eab308;
+  background:#fffbeb;
   font-size:13px;
-  color:rgba(255,255,255,.8);
+  color:#5a4a40;
 }
 
 /* ---- FOLLOWUP DIFF ---- */
-.diff-section{margin-top:16px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px}
+.diff-section{margin-top:16px;border-top:1px solid #ede8e2;padding-top:14px}
 .diff-section h4{
   font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:rgba(255,255,255,.4);margin:0 0 8px;
+  color:#a09080;margin:0 0 8px;
 }
 .diff-item{
   font-size:13px;line-height:1.5;padding:4px 0;
-  color:rgba(255,255,255,.75);
-  border-bottom:1px solid rgba(255,255,255,.04);
+  color:#3a3028;
+  border-bottom:1px solid #f0ece6;
   display:flex;align-items:center;gap:8px;
 }
 .diff-item:last-child{border-bottom:none}
@@ -271,30 +265,33 @@ body{
 /* ---- MUTE TOGGLE ---- */
 .mute-toggle{
   padding:6px 10px;font-size:13px;border-radius:8px;cursor:pointer;
-  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.5);transition:all .2s;white-space:nowrap;
+  border:1px solid #ede8e2;background:rgba(0,0,0,.03);
+  color:#a09080;transition:all .2s;white-space:nowrap;
   font-family:inherit;display:none;
 }
-.mute-toggle:hover{background:rgba(255,255,255,.12);color:#fff}
+.mute-toggle:hover{background:rgba(0,0,0,.06);color:#2a2420}
 .mute-toggle.active{
-  background:rgba(52,196,122,.15);border-color:rgba(52,196,122,.3);
-  color:#34c47a;
+  background:rgba(52,196,122,.1);border-color:rgba(52,196,122,.3);
+  color:#22c55e;
 }
 .mute-toggle.active .mute-icon::after{content:"🔊"}
 .mute-toggle .mute-icon::after{content:"🔇"}
+#meetingPauseBtn{display:none;border-color:#e0c070;color:#b89040}
+#meetingPauseBtn:hover{background:rgba(180,140,60,.1);color:#8a6e2a}
+#meetingPauseBtn.is-paused{border-color:rgba(52,196,122,.3);color:#22c55e}
 
 /* ---- PARTICIPANTS BAR ---- */
 .participants-bar{
   display:none;align-items:center;gap:6px;
-  padding:6px 16px;font-size:12px;color:rgba(255,255,255,.4);
-  border-bottom:1px solid rgba(255,255,255,.05);
+  padding:6px 16px;font-size:12px;color:#a09080;
+  border-bottom:1px solid #ede8e2;
   overflow-x:auto;white-space:nowrap;
 }
 .participants-bar.visible{display:flex}
 .participant-chip{
   padding:3px 8px;border-radius:10px;font-size:11px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
-  color:rgba(255,255,255,.6);flex-shrink:0;
+  background:#fff;border:1px solid #ede8e2;
+  color:#5a4a40;flex-shrink:0;
 }
 .participant-chip.sophie{
   background:rgba(52,196,122,.12);border-color:rgba(52,196,122,.2);
@@ -310,18 +307,29 @@ body{
 .export-bar{
   display:flex;gap:8px;margin-top:12px;
 }
-.export-btn{
-  padding:8px 14px;font-size:12px;font-weight:600;border-radius:8px;
-  cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);
-  transition:all .2s;
+/* Export section labels */
+.report-export-title{
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:#b0a090;font-weight:600;text-align:center;margin:12px 0 6px;
 }
-.export-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.export-row{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+}
+.export-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 18px;border-radius:20px;
+  background:none;border:1px solid #ddd6cc;color:#6a5a50;
+  font-size:13px;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .18s ease;
+}
+.export-btn:hover{background:#f0ece6;border-color:#c4a882;color:#2c2420}
+.export-btn.primary{background:#2c2420;color:#faf9f6;border-color:#2c2420}
+.export-btn.primary:hover{background:#3d3028;border-color:#3d3028;color:#faf9f6}
 
 /* ---- LOADING ---- */
 .loading-screen{
   flex:1;display:flex;align-items:center;justify-content:center;
-  font-size:16px;color:rgba(255,255,255,.5);
+  font-size:16px;color:#a09080;
 }
 .hidden{display:none!important}
 
@@ -342,29 +350,25 @@ body{
 <!-- Setup Screen (create new meeting) -->
 <div id="setupScreen" class="setup-screen hidden">
   <div class="setup-card">
-    <h2 id="setupTitle">New Meeting</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <a href="/" style="color:#7a6a5a;text-decoration:none;font-size:20px;line-height:1">&larr;</a>
+      <h2 id="setupTitle" style="margin:0;flex:1">New Meeting</h2>
+    </div>
 
     <label id="lblType">Meeting Type</label>
-    <select id="meetingType">
-      <option value="team">Team</option>
-      <option value="client">Client</option>
-      <option value="strategy">Strategy</option>
-      <option value="other">Other</option>
-    </select>
-
-    <label id="lblRole">Sophie's Role</label>
-    <select id="sophieRole">
-      <option value="co-think">Co-Think (Accompaniment)</option>
-      <option value="prepare">Prepare (Preparation Focus)</option>
-      <option value="document">Document (Protocol Focus)</option>
-    </select>
+    <div id="meetingTypePills" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+      <button type="button" class="type-pill active" data-value="team">Team</button>
+      <button type="button" class="type-pill" data-value="client">Client</button>
+      <button type="button" class="type-pill" data-value="strategy">Strategy</button>
+      <button type="button" class="type-pill" data-value="other">Other</button>
+    </div>
 
     <label id="lblTitle">Title (optional)</label>
     <input type="text" id="meetingTitle" placeholder="e.g. Q2 Planning" />
 
     <label id="lblParent">Previous Meeting (optional)</label>
-    <select id="parentMeeting">
-      <option value="">— None —</option>
+    <select id="parentMeetingSelect">
+      <option value="">—</option>
     </select>
 
     <button class="btn-primary" id="createBtn">Start Preparation</button>
@@ -378,6 +382,7 @@ body{
     <a href="/talk/" class="back" id="backBtn">&larr;</a>
     <span class="title" id="meetingTitleDisplay">Meeting</span>
     <button class="mute-toggle" id="muteToggle"><span class="mute-icon"></span> Sophie</button>
+    <button class="mute-toggle" id="meetingPauseBtn" style="display:none">⏸ Pause</button>
     <span class="phase-badge" id="phaseBadge" data-phase="prep">PREP</span>
   </div>
 
@@ -399,7 +404,7 @@ body{
       <div class="upload-area" id="uploadArea">
         <input type="file" id="fileInput" accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.webp" multiple />
         <span class="upload-label" id="uploadLabel">📎 Drop files or click to upload</span>
-        <div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:4px" id="uploadHint">TXT, DOCX, PDF, Images</div>
+        <div style="font-size:10px;color:#a09080;margin-top:4px" id="uploadHint">TXT, DOCX, PDF, Images</div>
       </div>
       <div class="file-list" id="fileList"></div>
     </div>
@@ -412,9 +417,17 @@ body{
   <div class="live-timer hidden" id="liveTimer"></div>
 
   <!-- Input Bar -->
+  <!-- Sophie status indicator -->
+  <div id="sophieStatus" style="display:none;text-align:center;padding:6px 12px;font-size:12px;color:#c4a882;animation:sophiePulse 2s ease-in-out infinite"></div>
+
   <div class="input-bar" id="inputBar">
     <textarea id="chatInput" placeholder="Type here..." rows="1"></textarea>
     <button class="send-btn" id="sendBtn" disabled>Send</button>
+  </div>
+
+  <!-- Recording Status (visible during live phase) -->
+  <div id="recordingStatus" class="hidden" style="display:none;padding:6px 12px;font-size:11px;font-family:monospace;background:#f0f0f0;border-radius:8px;margin:8px 0;color:#666;line-height:1.6">
+    🔴 REC: <span id="recStatusText">—</span>
   </div>
 
   <!-- Phase CTA -->
@@ -424,15 +437,41 @@ body{
     <button class="cta-close hidden" id="ctaClose">Close</button>
   </div>
 
-  <!-- Summary Card (POST phase) -->
-  <div class="summary-card hidden" id="summaryCard">
-    <h3 id="summaryTitle">Meeting Summary</h3>
-    <div class="summary-text" id="summaryText"></div>
-    <div id="summaryDetails"></div>
-    <div class="export-bar" id="exportBar">
-      <button class="export-btn" id="downloadProtocolBtn">⬇ Download</button>
-      <button class="export-btn" id="copySummaryBtn">📋 Copy</button>
-      <button class="export-btn" id="shareSummaryBtn">📤 Share</button>
+  <!-- Report Card (POST phase) — single source, no separate summary -->
+  <div class="report-card hidden" id="summaryCard">
+    <div id="reportProgress" style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;margin-bottom:10px" id="reportTitle">Erstelle Sitzungsprotokoll...</div>
+      <div style="height:6px;background:#e5e7eb;border-radius:6px;overflow:hidden">
+        <div id="reportProgressBar" style="height:100%;background:linear-gradient(90deg,#c4a882,#8B7355);width:5%;transition:width .6s ease;border-radius:6px"></div>
+      </div>
+      <div style="font-size:12px;color:#a09080;margin-top:8px" id="reportProgressLabel">Daten werden aufbereitet...</div>
+    </div>
+    <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
+      <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
+    </div>
+    <div id="reportActions" class="hidden">
+      <div class="report-export-title">Inhalt</div>
+      <div class="export-row" style="gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
+          <input type="checkbox" id="optLeanCheck" checked onchange="onReportOptionChange()" style="accent-color:#c4a882;width:16px;height:16px"> Lean Check
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6a5a50;cursor:pointer;user-select:none">
+          <input type="checkbox" id="optTranscript" onchange="onReportOptionChange()" style="accent-color:#c4a882;width:16px;height:16px"> Gesprächsverlauf
+        </label>
+        <button class="export-btn" id="reportRegenerateBtn" disabled style="opacity:.4"><span>Aktualisieren</span></button>
+      </div>
+
+      <div class="report-export-title">Export</div>
+      <div class="export-row">
+        <button class="export-btn" id="reportCopyBtn"><span>Kopieren</span></button>
+        <button class="export-btn" id="reportPrintBtn"><span>PDF</span></button>
+        <button class="export-btn primary" id="reportDownloadFullBtn"><span>Herunterladen</span></button>
+      </div>
+
+      <div class="report-export-title">Layout</div>
+      <div class="export-row">
+        <button class="export-btn" id="reportTemplateBtn"><span>Als Vorlage</span></button>
+      </div>
     </div>
   </div>
 </div>
@@ -440,9 +479,9 @@ body{
 <!-- Meeting History (list of past meetings) -->
 <div id="historyScreen" class="hidden" style="padding:20px;max-width:680px;margin:0 auto;width:100%">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <a href="/" style="color:rgba(255,255,255,.7);text-decoration:none;font-size:14px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);white-space:nowrap">&larr;</a>
-    <h2 style="font-size:18px;font-weight:600;margin:0;flex:1" id="historyTitle">Meetings</h2>
-    <button id="newMeetingBtn" style="padding:8px 16px;font-size:13px;font-weight:600;background:#34c47a;color:#000;border:none;border-radius:8px;cursor:pointer;font-family:inherit">+ New</button>
+    <a href="/" style="color:#7a6a5a;text-decoration:none;font-size:14px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.04);border:1px solid #ede8e2;white-space:nowrap">&larr;</a>
+    <h2 style="font-size:18px;font-weight:600;margin:0;flex:1;color:#2a2420" id="historyTitle">Meetings</h2>
+    <button id="newMeetingBtn" style="padding:8px 16px;font-size:13px;font-weight:600;background:#2a2420;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">+ New</button>
   </div>
   <div id="historyList"></div>
 </div>
@@ -469,8 +508,22 @@ let sophieMuted = true; // Sophie starts muted (passive listener)
 let sophieVoicePc = null;     // WebRTC PeerConnection (same as Talk)
 let sophieVoiceStream = null; // Mic stream
 let sophieVoiceAudio = null;  // Audio element for Sophie's voice
+let sophieVoiceDc = null;     // DataChannel for transcript
 let isSpeaking = false;
 let isConnecting = false;
+let sophieVoiceStartTime = null;  // Track when Sophie voice connected
+
+// Voice transcript state (same as Talk)
+let voiceTranscript = [];  // { role: "user"|"assistant", text: "..." }
+let userTranscriptBuffer = new Map();
+let partialAssistant = "";
+let lastAssistantFinal = "";
+
+// Shared mic stream (for Sophie voice)
+let sharedMicStream = null;
+
+// Audio recording transcript (Whisper result or test data)
+let speechTranscript = [];  // Array of strings — transcribed audio from meeting
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -493,6 +546,9 @@ const ctaClose      = $("ctaClose");
 const phaseCta      = $("phaseCta");
 const liveTimerEl   = $("liveTimer");
 const muteToggle    = $("muteToggle");
+const meetingPauseBtn = $("meetingPauseBtn");
+let meetingIsPaused = false;
+let meetingPausedElapsed = 0;
 const participantsBar = $("participantsBar");
 
 // ---------------------------------------------------------------------------
@@ -569,11 +625,11 @@ const t = (key) => (T[lang] || T.en)[key] || (T.en)[key] || key;
 function applyI18n() {
   $("setupTitle").textContent = t("setupTitle");
   $("lblType").textContent = t("lblType");
-  $("lblRole").textContent = t("lblRole");
+  // Role selector removed — Sophie is always co-think
   $("lblTitle").textContent = t("lblTitle");
   $("uploadLabel").textContent = t("uploadLabel");
   $("lblParent").textContent = t("lblParent");
-  $("parentMeeting").options[0].text = t("noParent");
+  // parentMeeting is now pill-based, no options to update
   $("createBtn").textContent = t("startPrep");
   ctaLive.textContent = t("startMeeting");
   ctaPost.textContent = t("endMeeting");
@@ -587,18 +643,16 @@ function applyI18n() {
   sendBtn.textContent = t("send");
   $("historyTitle").textContent = t("meetings");
   $("newMeetingBtn").textContent = "+ " + t("newMeeting");
-  $("summaryTitle").textContent = t("summary");
+  // summaryTitle removed — report card has its own title
   // Role options
-  const roleSelect = $("sophieRole");
-  roleSelect.options[0].text = t("coThink");
-  roleSelect.options[1].text = t("prepare");
-  roleSelect.options[2].text = t("document");
+  // Role selector removed — Sophie is always co-think
   // Type options
-  const typeSelect = $("meetingType");
-  typeSelect.options[0].text = t("team");
-  typeSelect.options[1].text = t("client");
-  typeSelect.options[2].text = t("strategy");
-  typeSelect.options[3].text = t("other");
+  // Meeting type pills i18n
+  const typePills = $("meetingTypePills")?.querySelectorAll(".type-pill");
+  if (typePills) {
+    const types = ["team", "client", "strategy", "other"];
+    typePills.forEach((p, i) => { if (types[i]) p.textContent = t(types[i]); });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -622,8 +676,15 @@ async function api(action, body = null, method = "POST") {
   }
 
   const res = await fetch(url, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status})`); }
+  if (!res.ok) {
+    const err = new Error(data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.redirect = data.redirect;
+    throw err;
+  }
   return data;
 }
 
@@ -639,16 +700,18 @@ async function initAuth() {
   currentUser = session.user;
   accessToken = session.access_token;
 
-  // Check URL for meeting_id
+  // Check URL for meeting_id and test mode
   const params = new URLSearchParams(window.location.search);
   const urlMeetingId = params.get("id");
+  if (params.has("test")) window.__testMode = true;
 
   authLoading.classList.add("hidden");
 
   if (urlMeetingId) {
     await loadMeeting(urlMeetingId);
   } else {
-    await showHistory();
+    // Go directly to setup (new meeting) — history accessible via back button
+    await showSetup();
   }
 }
 
@@ -661,29 +724,42 @@ async function showHistory() {
   historyScreen.classList.remove("hidden");
 
   const list = $("historyList");
-  list.innerHTML = '<p style="color:rgba(255,255,255,.4);font-size:14px">' + t("loading") + '</p>';
+  list.innerHTML = '<p style="color:#a09080;font-size:14px">' + t("loading") + '</p>';
 
   try {
     const data = await api("list", null, "GET");
-    const meetings = data.meetings || [];
+    // Only show meetings with content (summary or notes)
+    const meetings = (data.meetings || []).filter(m => m.has_summary || m.phase === "live");
 
     if (meetings.length === 0) {
-      list.innerHTML = '<p style="color:rgba(255,255,255,.3);font-size:14px;text-align:center;padding:40px 0">No meetings yet.</p>';
+      list.innerHTML = '<p style="color:#a09080;font-size:14px;text-align:center;padding:40px 0">No meetings yet.</p>';
       return;
+    }
+
+    // Clean up titles: remove _XX suffixes and add date for disambiguation
+    function cleanMeetingTitle(m) {
+      let title = m.title || m.meeting_type;
+      // Remove _XX numeric suffix (e.g. "Markteinführung_10" → "Markteinführung")
+      title = title.replace(/_\d+$/, '');
+      // Add date suffix for clarity
+      const d = new Date(m.created_at);
+      const dateStr = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.`;
+      return `${title} (${dateStr})`;
     }
 
     list.innerHTML = meetings.map(m => {
       const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      const phaseColors = { prep: "#6cb4ff", live: "#ff5a5a", post: "#a78bfa", closed: "rgba(255,255,255,.3)" };
+      const phaseColors = { prep: "#3b82f6", live: "#ef4444", post: "#8b5cf6", closed: "#999" };
+      const displayTitle = cleanMeetingTitle(m);
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <a href="/meeting/?id=${m.id}" style="flex:1;display:block;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;text-decoration:none;color:#fff">
+        <a href="/meeting/?id=${m.id}" style="flex:1;display:block;padding:12px 14px;background:#fff;border:1px solid #ede8e2;border-radius:10px;text-decoration:none;color:#2a2420;box-shadow:0 1px 4px rgba(0,0,0,.04)">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:14px;font-weight:500">${m.title || m.meeting_type}</span>
-            <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#fff'};text-transform:uppercase">${m.phase}</span>
+            <span style="font-size:14px;font-weight:500">${escapeHtml(displayTitle)}</span>
+            <span style="font-size:11px;font-weight:600;color:${phaseColors[m.phase] || '#999'};text-transform:uppercase">${escapeHtml(m.phase)}</span>
           </div>
-          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">${date} &middot; ${m.meeting_type}</div>
+          <div style="font-size:12px;color:#a09080;margin-top:4px">${escapeHtml(date)} &middot; ${escapeHtml(m.meeting_type)}</div>
         </a>
-        <button onclick="deleteMeeting('${m.id}',this)" style="padding:8px;font-size:16px;background:none;border:1px solid rgba(255,255,255,.08);border-radius:8px;cursor:pointer;color:rgba(255,255,255,.3);flex-shrink:0" title="${lang === "de" ? "Löschen" : "Delete"}">🗑</button>
+        <button onclick="deleteMeeting('${m.id}',this)" style="padding:8px;font-size:16px;background:none;border:1px solid #ede8e2;border-radius:8px;cursor:pointer;color:#b0a090;flex-shrink:0" title="${lang === "de" ? "Löschen" : "Delete"}">🗑</button>
       </div>`;
     }).join("");
   } catch (e) {
@@ -694,26 +770,83 @@ async function showHistory() {
 // ---------------------------------------------------------------------------
 // Setup / Create
 // ---------------------------------------------------------------------------
+let selectedMeetingType = "team";
+let selectedParentId = null;
+
 async function showSetup() {
   historyScreen.classList.add("hidden");
   meetingArea.classList.remove("active");
   setupScreen.classList.remove("hidden");
 
-  // Load past meetings for parent selector
+  // Type pills click handler
+  $("meetingTypePills").onclick = (e) => {
+    const pill = e.target.closest(".type-pill");
+    if (!pill) return;
+    $("meetingTypePills").querySelectorAll(".type-pill").forEach(p => p.classList.remove("active"));
+    pill.classList.add("active");
+    selectedMeetingType = pill.dataset.value;
+  };
+
+  // Load past meetings for parent selector as dropdown
+  const parentSelect = $("parentMeetingSelect");
   try {
     const data = await api("list", null, "GET");
-    const meetings = (data.meetings || []).filter(m => m.phase === "closed" || m.phase === "post");
-    const select = $("parentMeeting");
-    // Keep first "None" option, clear rest
-    while (select.options.length > 1) select.remove(1);
-    meetings.slice(0, 10).forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      const date = new Date(m.created_at).toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
-      opt.textContent = `${m.title || m.meeting_type} (${date})`;
-      select.appendChild(opt);
-    });
-  } catch { /* ignore, selector stays empty */ }
+    const meetings = (data.meetings || []).filter(m => (m.phase === "closed" || m.phase === "post") && m.has_summary);
+    if (meetings.length) {
+      for (const m of meetings.slice(0, 15)) {
+        const d = new Date(m.created_at);
+        const date = d.toLocaleDateString(lang === "de" ? "de-DE" : lang === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" });
+        const time = d.toLocaleTimeString(lang === "de" ? "de-DE" : "en-US", { hour: "2-digit", minute: "2-digit" });
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = `${m.title || m.meeting_type} — ${date}, ${time}`;
+        opt.dataset.title = m.title || m.meeting_type;
+        parentSelect.appendChild(opt);
+      }
+    }
+  } catch {}
+
+  // Parent select change → prefill title + load context from parent
+  parentSelect.onchange = async () => {
+    const opt = parentSelect.selectedOptions[0];
+    if (opt?.value) {
+      selectedParentId = opt.value;
+      $("meetingTitle").value = opt.dataset.title || "";
+      // Pre-load parent data — store for after createMeeting
+      try {
+        const parentData = await api("get", { id: opt.value }, "GET");
+        const contexts = parentData.context || [];
+        const parentParticipants = contexts.find(c => c.context_type === "participants");
+        const summary = parentData.summary;
+
+        window.__parentPrefill = {};
+
+        if (parentParticipants?.content) {
+          window.__parentPrefill.participants = parentParticipants.content;
+        }
+
+        // Build agenda from structured summary (action_items, open_points)
+        if (summary) {
+          const items = [];
+          const extract = (arr) => (arr || []).forEach(a => {
+            let text = typeof a === "string" ? a : (a.text || "");
+            text = text.trim().split(/[.!?]/)[0].trim();
+            if (text.length > 60) text = text.slice(0, 57) + "…";
+            if (text) items.push("• " + text);
+          });
+          extract(summary.action_items);
+          extract(summary.open_points);
+          if (items.length) window.__parentPrefill.agenda = items.join("\n");
+        }
+      } catch (e) {
+        console.log("Could not load parent meeting data:", e);
+      }
+    } else {
+      selectedParentId = null;
+      $("meetingTitle").value = "";
+      window.__parentPrefill = null;
+    }
+  };
 }
 
 async function createMeeting() {
@@ -721,18 +854,21 @@ async function createMeeting() {
   btn.disabled = true;
 
   try {
-    const parentVal = $("parentMeeting").value || null;
     const data = await api("create", {
-      meeting_type: $("meetingType").value,
-      sophie_role: $("sophieRole").value,
+      meeting_type: selectedMeetingType,
+      sophie_role: "co-think",
       title: $("meetingTitle").value.trim() || null,
-      parent_meeting_id: parentVal,
+      parent_meeting_id: selectedParentId,
     });
 
     meetingId = data.meeting.id;
     window.history.replaceState({}, "", `/meeting/?id=${meetingId}`);
     await loadMeeting(meetingId);
   } catch (e) {
+    if (e.status === 402) {
+      window.location.href = e.redirect || "/pricing";
+      return;
+    }
     alert("Error: " + e.message);
   } finally {
     btn.disabled = false;
@@ -743,6 +879,15 @@ async function createMeeting() {
 // Load meeting
 // ---------------------------------------------------------------------------
 async function loadMeeting(id) {
+  // Reset all transcript state from previous meetings
+  speechTranscript.length = 0;
+  voiceTranscript.length = 0;
+  chatMessages.length = 0;
+  userTranscriptBuffer.clear();
+  partialAssistant = "";
+  lastAssistantFinal = "";
+  audioChunks = [];
+
   setupScreen.classList.add("hidden");
   historyScreen.classList.add("hidden");
   meetingArea.classList.add("active");
@@ -766,6 +911,19 @@ async function loadMeeting(id) {
     if (partCtx) $("ctxParticipants").value = partCtx.content;
     if (goalCtx) $("ctxGoal").value = goalCtx.content;
 
+    // Apply parent meeting prefill (stored during setup)
+    if (window.__parentPrefill) {
+      if (window.__parentPrefill.agenda && !agendaCtx) {
+        $("ctxAgenda").value = window.__parentPrefill.agenda;
+        autoResizeTextarea($("ctxAgenda"));
+      }
+      if (window.__parentPrefill.participants && !partCtx) {
+        $("ctxParticipants").value = window.__parentPrefill.participants;
+        autoResizeTextarea($("ctxParticipants"));
+      }
+      window.__parentPrefill = null;
+    }
+
     // Load existing uploaded files
     const fileContexts = contexts.filter(c => c.context_type === "file");
     const fileListEl = $("fileList");
@@ -785,20 +943,21 @@ async function loadMeeting(id) {
       appendSystemMsg(`[${n.note_type.toUpperCase()}] ${n.content}`);
     });
 
-    // Show summary if exists
-    if (data.summary) {
-      renderSummary(data.summary);
+    // Show report card if meeting has a report session
+    if (meetingData.session_id && (meetingData.phase === "post" || meetingData.phase === "closed")) {
+      meetingReportSessionId = meetingData.session_id;
+      $("summaryCard").classList.remove("hidden");
+      pollMeetingReport(meetingReportSessionId);
     }
 
-    // Auto-send opener in prep phase
+    // Auto-send opener in prep phase — short, no AI call needed
     if (meetingData.phase === "prep" && notes.length === 0) {
-      await sendMessage(lang === "de"
-        ? "Ich bereite mich auf ein Meeting vor. Hilf mir bitte."
+      const openerText = lang === "de"
+        ? "Wenn du Hilfe brauchst, sag Bescheid. Ich bin da!"
         : lang === "fr"
-        ? "Je me pr\u00e9pare pour une r\u00e9union. Aide-moi s'il te pla\u00eet."
-        : "I'm preparing for a meeting. Please help me.",
-        true
-      );
+        ? "Si tu as besoin d'aide, dis-le moi. Je suis là !"
+        : "If you need help, just ask. I'm here!";
+      appendMsg("assistant", openerText);
     }
   } catch (e) {
     chatArea.innerHTML = `<div class="msg system">Error loading meeting: ${e.message}</div>`;
@@ -844,9 +1003,18 @@ function updatePhaseUI(phase) {
 
   // Mute toggle: visible in live + post phases
   muteToggle.style.display = (phase === "live" || phase === "post") ? "inline-flex" : "none";
+  // Pause button: visible in live phase only
+  if (meetingPauseBtn) meetingPauseBtn.style.display = (phase === "live") ? "inline-flex" : "none";
 
   // Participants bar: visible when meeting is loaded
   updateParticipantsBar();
+
+  // Focus: agenda field in prep, chat input in live
+  if (phase === "prep") {
+    setTimeout(() => $("ctxAgenda")?.focus(), 100);
+  } else if (phase === "live") {
+    setTimeout(() => chatInput?.focus(), 100);
+  }
 }
 
 function startLiveTimer() {
@@ -869,6 +1037,11 @@ function stopLiveTimer() {
 // Phase transitions
 // ---------------------------------------------------------------------------
 async function transitionPhase(newPhase) {
+  // Guard: skip if already in this phase
+  if (meetingData?.phase === newPhase) {
+    console.log(`[meeting] skipping transition — already in phase "${newPhase}"`);
+    return;
+  }
   try {
     const data = await api("phase", { meeting_id: meetingId, phase: newPhase });
     meetingData = { ...meetingData, ...data.meeting };
@@ -894,8 +1067,23 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
-    // Disconnect Sophie voice when leaving live phase
+    // When going LIVE: show agenda points or parent summary as Sophie message
+    if (newPhase === "live") {
+      const agenda = $("ctxAgenda")?.value?.trim();
+      const goal = $("ctxGoal")?.value?.trim();
+      let liveOpener = "";
+      if (agenda) {
+        liveOpener = agenda;
+        if (goal) liveOpener += "\n\n" + (lang === "de" ? "Ziel: " : "Goal: ") + goal;
+      } else if (goal) {
+        liveOpener = (lang === "de" ? "Ziel: " : "Goal: ") + goal;
+      }
+      if (liveOpener) appendMsg("assistant", liveOpener);
+    }
+
+    // Disconnect Sophie voice + stop audio recording when leaving live phase
     if (newPhase === "post" || newPhase === "closed") {
+      stopRecStatusUpdates();
       if (!sophieMuted) {
         sophieMuted = true;
         muteToggle.classList.remove("active");
@@ -905,9 +1093,44 @@ async function transitionPhase(newPhase) {
 
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
+      // 1. Stop recording and get audio blob
+      setSophieStatus(lang === "de" ? "Sophie hört sich das Gespräch an …" : "Sophie is reviewing the conversation …");
+      const audioBlob = await stopAudioRecording();
+      cleanupMicStream();
+
+      // 2. Transcribe via Whisper (if we have audio)
+      if (audioBlob && audioBlob.size > 1000) {
+        const whisperText = await transcribeAudioBlob(audioBlob);
+        if (whisperText) {
+          speechTranscript.push(whisperText);
+        }
+      }
+
+      // TEST MODE: inject fake data
+      if (window.__testMode) {
+        appendSystemMsg("🧪 TEST-MODUS: Fake Voice-Daten injiziert");
+        if (speechTranscript.length === 0) {
+          speechTranscript.push(
+            "Wir müssen die Markteinführung von MeetSophie besprechen.",
+            "Der Launch soll nächste Woche Dienstag stattfinden.",
+            "LinkedIn ist der wichtigste Kanal für uns.",
+          );
+        }
+        voiceTranscript.push(
+          { role: "user", text: "Sophie, welcher Social Media Kanal passt am besten für B2B SaaS?" },
+          { role: "assistant", text: "Für MeetSophie empfehle ich LinkedIn als primären Kanal. Twitter/X als Zweitkanal." },
+          { role: "user", text: "Gut, dann nehmen wir LinkedIn." },
+          { role: "assistant", text: "Beschluss festgehalten: LinkedIn als primärer Kanal für die Markteinführung." },
+        );
+      }
+
+      // 3. Generate summary + report
+      setSophieStatus(lang === "de" ? "Sophie erstellt den Report …" : "Sophie is creating the report …");
       await generateSummary();
+      setSophieStatus("");
     }
   } catch (e) {
+    setSophieStatus("");
     alert("Error: " + e.message);
   }
 }
@@ -919,17 +1142,56 @@ function appendMsg(role, content) {
   const div = document.createElement("div");
   const isHint = role === "assistant" && content.trim().startsWith("💡");
   div.className = `msg ${role}${isHint ? " hint" : ""}`;
-  div.textContent = content;
+  // Render bullet points as list, preserve line breaks
+  const escaped = content.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const lines = escaped.split("\n");
+  const hasBullets = lines.some(l => l.trim().startsWith("•") || l.trim().startsWith("-"));
+  if (hasBullets) {
+    let html = "";
+    let inList = false;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("•") || trimmed.startsWith("- ")) {
+        if (!inList) { html += "<ul style='margin:4px 0;padding-left:18px'>"; inList = true; }
+        html += `<li style="margin:2px 0">${trimmed.replace(/^[•\-]\s*/, "")}</li>`;
+      } else {
+        if (inList) { html += "</ul>"; inList = false; }
+        if (trimmed) html += `<div>${trimmed}</div>`;
+      }
+    }
+    if (inList) html += "</ul>";
+    div.innerHTML = html;
+  } else {
+    div.innerHTML = escaped.replace(/\n/g, "<br>");
+  }
   chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 function appendSystemMsg(text) {
-  const div = document.createElement("div");
-  div.className = "msg system";
-  div.textContent = text;
-  chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
+  // System messages are silent — log only, no UI
+  console.log("[meeting-system]", text);
+}
+
+function autoResizeTextarea(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 300) + "px";
+}
+// Auto-resize all context textareas on input
+["ctxAgenda", "ctxParticipants", "ctxGoal"].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener("input", () => autoResizeTextarea(el));
+});
+
+function setSophieStatus(text) {
+  const el = $("sophieStatus");
+  if (!text) {
+    el.style.display = "none";
+    el.textContent = "";
+  } else {
+    el.textContent = text;
+    el.style.display = "block";
+  }
 }
 
 function showTyping() {
@@ -974,39 +1236,20 @@ async function sendMessage(text, isAutoOpener = false) {
   }
   chatMessages.push({ role: "user", content: text });
 
-  // If Sophie is muted in LIVE phase and user is NOT addressing her directly,
-  // just save the note silently (Sophie tracks but doesn't respond)
-  const inLive = meetingData?.phase === "live";
-  if (sophieMuted && inLive && !isAutoOpener && !isAddressingSophie(text)) {
-    // Save as meeting note silently
-    try {
-      await api("note", { meeting_id: meetingId, note_type: "note", content: text });
-    } catch { /* ignore */ }
-    isLoading = false;
-    sendBtn.disabled = false;
-    chatInput.focus();
-    return;
-  }
+  // Chat is always active — Sophie responds to every chat message.
+  // Mute only affects voice (future feature), not the chat channel.
 
   showTyping();
+  setSophieStatus(lang === "de" ? "Sophie denkt nach …" : "Sophie is thinking …");
 
   try {
-    // Add mute state context so Sophie knows her role
-    const muteContext = sophieMuted
-      ? "[SYSTEM: Sophie is muted/passive. Only respond if directly addressed by name.]"
-      : "[SYSTEM: Sophie is unmuted/active participant. Proactively contribute, give hints, track decisions.]";
-
-    const messagesWithContext = [
-      ...chatMessages.slice(0, -1),
-      { role: "user", content: muteContext + "\n" + chatMessages[chatMessages.length - 1].content },
-    ];
-
     const data = await api("message", {
       meeting_id: meetingId,
-      messages: messagesWithContext,
+      messages: chatMessages,
     });
 
     removeTyping();
+    setSophieStatus("");
 
     let reply = data.reply;
 
@@ -1027,11 +1270,13 @@ async function sendMessage(text, isAutoOpener = false) {
 
   } catch (e) {
     removeTyping();
-    appendSystemMsg("Error: " + e.message);
+    setSophieStatus("");
+    console.error("Chat error:", e);
   } finally {
     isLoading = false;
     sendBtn.disabled = false;
-    chatInput.focus();
+    // Only auto-focus chat input during live phase; in prep, agenda field is more relevant
+    if (meetingData?.phase === "live") chatInput.focus();
   }
 }
 
@@ -1070,63 +1315,285 @@ async function generateSummary() {
   appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
 
   try {
-    const data = await api("summarize", { meeting_id: meetingId });
-    renderSummary(data.summary);
+    // Step 1: Speech recognition transcript (already text, no upload needed)
+    const localText = speechTranscript.join(" ");
+
+    // Step 2: Sophie voice transcript (from DataChannel during unmute)
+    const voiceText = voiceTranscript
+      .filter(m => m.text && m.text.trim())
+      .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.text}`)
+      .join("\n");
+
+    // Step 3: Combine all sources — local audio + Sophie voice + chat fallback
+    const allParts = [];
+    if (localText.trim()) allParts.push(`[Aufnahme — Gesprächsinhalt]\n${localText}`);
+    if (voiceText.trim()) allParts.push(`[Sophie Voice Session]\n${voiceText}`);
+
+    let transcriptToSend = allParts.join("\n\n---\n\n");
+    console.log(`[meeting] TRANSCRIPT TO SEND:\n${transcriptToSend}`);
+    appendSystemMsg(`📊 ${speechTranscript.length} Audio-Segmente, ${voiceTranscript.length} Voice-Nachrichten`);
+
+    if (!transcriptToSend.trim()) {
+      appendSystemMsg("⚠️ Kein Transcript vorhanden — Report kann nicht erstellt werden.");
+      return;
+    }
+
+    // Show report card with progress bar immediately
+    $("summaryCard").classList.remove("hidden");
+
+    const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
+    // No renderSummary — report card IS the primary output now
+
+    if (data.report_session_id) {
+      triggerAndPollMeetingReport(data.report_session_id, data.report_transcript || "");
+    } else {
+      appendSystemMsg("⚠️ Report-Session konnte nicht erstellt werden.");
+    }
   } catch (e) {
-    appendSystemMsg("Summary error: " + e.message);
+    appendSystemMsg("Report error: " + e.message);
   }
 }
 
-function renderSummary(summary) {
-  summaryCard.classList.remove("hidden");
-  $("summaryText").textContent = summary.short_summary || "";
+// Poll for HTML report (same pipeline as Talk mode)
+let meetingReportSessionId = null;
+let meetingReportHtml = null;
 
-  const details = $("summaryDetails");
-  details.innerHTML = "";
+async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
+  // Voice transcript only — NO chat fallback
+  const fullTranscript = backendTranscript || "";
 
-  const sections = [
-    { key: "decisions", label: t("decisions"), items: summary.decisions || [] },
-    { key: "action_items", label: t("actions"), items: summary.action_items || [] },
-    { key: "open_points", label: t("openPoints"), items: summary.open_points || [] },
-    { key: "risks", label: t("risks"), items: summary.risks || [] },
-  ];
+  // Fire generate-report (don't await — poll instead)
+  const headers = { "Content-Type": "application/json" };
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+  } catch (_) {}
 
-  sections.forEach(sec => {
-    if (sec.items.length === 0) return;
-    const div = document.createElement("div");
-    div.className = "summary-section";
-    div.innerHTML = `<h4>${sec.label}</h4><ul>${sec.items.map(item => {
-      const text = typeof item === "string" ? item : item.text || JSON.stringify(item);
-      const owner = item.owner ? ` <span class="owner">\u2014 ${item.owner}</span>` : "";
-      const severity = item.severity ? ` <span class="severity-${item.severity}">[${item.severity}]</span>` : "";
-      return `<li>${text}${owner}${severity}</li>`;
-    }).join("")}</ul>`;
-    details.appendChild(div);
-  });
+  fetch("/api/ai/generate-report", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      session_id: sessionId,
+      transcript_text: fullTranscript,
+      session_mode: "meeting",
+    }),
+  }).catch(e => console.error("[meeting-report] generate fetch failed:", e?.message));
 
-  // Render follow-up diff if present
-  if (summary.followup_diff) {
-    const diff = summary.followup_diff;
-    const diffDiv = document.createElement("div");
-    diffDiv.className = "diff-section";
+  // Now poll for progress
+  pollMeetingReport(sessionId);
+}
 
-    const diffItems = [
-      ...(diff.resolved || []).map(i => ({ icon: "✓", cls: "done", text: typeof i === "string" ? i : i.text, label: t("diffDone") })),
-      ...(diff.still_open || []).map(i => ({ icon: "○", cls: "open", text: typeof i === "string" ? i : i.text, label: t("diffOpen") })),
-      ...(diff.escalated || []).map(i => ({ icon: "!", cls: "escalated", text: typeof i === "string" ? i : i.text, label: t("diffEscalated") })),
-      ...(diff.new_items || []).map(i => ({ icon: "★", cls: "new", text: typeof i === "string" ? i : i.text, label: t("diffNew") })),
-    ];
+async function pollMeetingReport(sessionId) {
+  meetingReportSessionId = sessionId;
+  const reportProgress = $("reportProgress");
+  const reportProgressBar = $("reportProgressBar");
+  const reportProgressLabel = $("reportProgressLabel");
+  const reportTitle = $("reportTitle");
+  const isDE = lang === "de";
 
-    if (diffItems.length > 0) {
-      diffDiv.innerHTML = `<h4>${t("diffTitle")}</h4>` + diffItems.map(d =>
-        `<div class="diff-item"><span class="diff-icon ${d.cls}">${d.icon}</span><span>${d.text}</span></div>`
-      ).join("");
-      details.appendChild(diffDiv);
+  reportProgressBar.style.width = "5%";
+
+  const maxAttempts = 90;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise(r => setTimeout(r, 2000));
+
+    try {
+      const headers = {};
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+      } catch (_) {}
+
+      const res = await fetch(`/api/ai/report-status?session_id=${sessionId}`, { headers });
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      const progress = Math.max(5, Math.min(98, data.progress || 0));
+      reportProgressBar.style.width = progress + "%";
+
+      // Descriptive progress labels
+      if (data.detail) {
+        reportProgressLabel.textContent = data.detail;
+      } else if (progress < 20) {
+        reportProgressLabel.textContent = isDE ? "Transcript wird analysiert..." : "Analyzing transcript...";
+      } else if (progress < 50) {
+        reportProgressLabel.textContent = isDE ? "Protokoll wird erstellt..." : "Generating report...";
+      } else if (progress < 85) {
+        reportProgressLabel.textContent = isDE ? "Formatierung & Qualitätsprüfung..." : "Formatting & quality check...";
+      } else {
+        reportProgressLabel.textContent = isDE ? "Fast fertig..." : "Almost done...";
+      }
+
+      if (data.status === "done" && data.report_html) {
+        reportProgressBar.style.width = "100%";
+        reportProgressLabel.textContent = isDE ? "Fertig!" : "Done!";
+        setTimeout(() => { reportProgress.style.display = "none"; }, 800);
+
+        meetingReportHtml = data.report_html;
+        showMeetingReport(data.report_html);
+        return;
+      }
+
+      if (data.status === "failed") {
+        reportTitle.textContent = isDE ? "Protokoll fehlgeschlagen" : "Report failed";
+        reportProgressLabel.textContent = data.detail || (isDE ? "Bitte erneut versuchen." : "Please try again.");
+        reportProgressBar.style.background = "#ef4444";
+        reportProgressBar.style.width = "100%";
+        return;
+      }
+    } catch (e) {
+      console.error("[meeting-report-poll] error:", e?.message);
     }
   }
 
-  chatArea.scrollTop = chatArea.scrollHeight;
+  reportTitle.textContent = isDE ? "Zeitüberschreitung" : "Timeout";
+  reportProgressLabel.textContent = isDE ? "Protokoll konnte nicht erstellt werden." : "Report generation timed out.";
 }
+
+function showMeetingReport(html) {
+  const reportPreview = $("reportPreview");
+  const reportActions = $("reportActions");
+  const reportFrame = $("reportFrame");
+
+  reportPreview.classList.remove("hidden");
+  reportActions.classList.remove("hidden");
+  reportActions.style.display = "block";
+
+  // Write HTML into iframe
+  const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Auto-resize iframe to content
+  setTimeout(() => {
+    try {
+      reportFrame.style.height = doc.documentElement.scrollHeight + "px";
+    } catch (_) {}
+  }, 500);
+
+  // Helper: filter report sections based on toggle options (DOM-based, reliable)
+  function getExportHtml() {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+
+    // Transcript: remove if off, show if on
+    const transcriptEl = tmp.querySelector('[data-section="full-transcript"]');
+    if (transcriptEl) {
+      if (!$("optTranscript")?.checked) {
+        transcriptEl.remove();
+      } else {
+        transcriptEl.style.display = "";
+      }
+    }
+
+    // Lean Check: remove if off
+    const leanEl = tmp.querySelector('[data-section="lean-check"]');
+    if (leanEl && !$("optLeanCheck")?.checked) {
+      leanEl.remove();
+    }
+
+    // Re-assemble: extract style block + body content
+    const styleMatch = html.match(/<style[^>]*>[\s\S]*?<\/style>/i);
+    const styleBlock = styleMatch ? styleMatch[0] : "";
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styleBlock}</head><body>${tmp.innerHTML}</body></html>`;
+  }
+
+  function downloadHtmlFile(content, suffix) {
+    const blob = new Blob([content], { type: "text/html;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `meeting-${suffix}-${new Date().toISOString().slice(0,10)}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Wire up report action buttons
+  // PDF Export — opens print dialog (official protocol without transcript)
+  $("reportPrintBtn").onclick = () => {
+    // Open clean HTML (no transcript) in new window for printing
+    // Cannot use iframe.print() due to sandbox restrictions
+    const cleanHtml = getExportHtml();
+    const printWin = window.open("", "_blank");
+    if (!printWin) { alert(lang === "de" ? "Popup-Blocker aktiv — bitte erlauben." : "Popup blocked — please allow popups."); return; }
+    printWin.document.write(cleanHtml);
+    printWin.document.close();
+    printWin.onload = () => { printWin.focus(); printWin.print(); };
+    // Fallback if onload doesn't fire (already loaded)
+    setTimeout(() => { try { printWin.focus(); printWin.print(); } catch(_) {} }, 500);
+  };
+
+  // Download — respects toggle options
+  $("reportDownloadFullBtn").onclick = () => {
+    downloadHtmlFile(getExportHtml(), "protokoll");
+  };
+
+  $("reportCopyBtn").onclick = async () => {
+    const cleanHtml = getExportHtml();
+    // Parse clean HTML to get plain text without transcript
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = cleanHtml;
+    const plainText = tempDiv.innerText || tempDiv.textContent || "";
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([cleanHtml], { type: "text/html" }),
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+      })]);
+      $("reportCopyBtn").textContent = "✓ Kopiert";
+      setTimeout(() => { $("reportCopyBtn").textContent = "📋 Kopieren"; }, 2000);
+    } catch {
+      await navigator.clipboard.writeText(plainText);
+      $("reportCopyBtn").textContent = "✓ Text kopiert";
+      setTimeout(() => { $("reportCopyBtn").textContent = "📋 Kopieren"; }, 2000);
+    }
+  };
+
+  $("reportTemplateBtn").onclick = async () => {
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const headers = { "Content-Type": "application/json" };
+      if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+
+      const res = await fetch("/api/ai/save-template", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ session_id: meetingReportSessionId, mode: "meeting" }),
+      });
+      if (res.ok) {
+        $("reportTemplateBtn").textContent = "✓ Vorlage gespeichert";
+        setTimeout(() => { $("reportTemplateBtn").textContent = "💾 Als Vorlage"; }, 3000);
+      }
+    } catch (e) {
+      console.error("Save template error:", e);
+    }
+  };
+
+  // "Aktualisieren" — re-render report with current toggle options (no AI call)
+  $("reportRegenerateBtn").onclick = () => {
+    const exportHtml = getExportHtml();
+    const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
+    doc.open();
+    doc.write(exportHtml);
+    doc.close();
+    setTimeout(() => {
+      try { reportFrame.style.height = doc.documentElement.scrollHeight + "px"; } catch(_) {}
+    }, 300);
+    // Reset button to inactive
+    $("reportRegenerateBtn").disabled = true;
+    $("reportRegenerateBtn").style.opacity = ".4";
+  };
+}
+
+// Toggle change → activate "Aktualisieren" button
+window.onReportOptionChange = function() {
+  const btn = document.getElementById("reportRegenerateBtn");
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
+};
+
+// renderSummary removed — report card is the single output now
 
 // ---------------------------------------------------------------------------
 // File Upload
@@ -1216,6 +1683,222 @@ function updateParticipantsBar() {
 }
 
 // ---------------------------------------------------------------------------
+// Recording Status Display (debug + user feedback)
+// ---------------------------------------------------------------------------
+let recStatusInterval = null;
+
+function startRecStatusUpdates() {
+  const el = $("recordingStatus");
+  const txt = $("recStatusText");
+  if (!el || !txt) return;
+  el.classList.remove("hidden");
+  el.style.display = "block";
+
+  recStatusInterval = setInterval(() => {
+    const srActive = mediaRecorder && mediaRecorder.state === "recording" ? "aktiv" : mediaRecorder?.state || "aus";
+    const segments = speechTranscript.length;
+    const voiceMsgs = voiceTranscript.length;
+    const dcState = sophieVoiceDc ? sophieVoiceDc.readyState : "—";
+    txt.textContent = `Sprache: ${srActive} | Segmente: ${segments} | Sophie: ${voiceMsgs} msgs | DC: ${dcState}`;
+  }, 2000);
+}
+
+function stopRecStatusUpdates() {
+  if (recStatusInterval) { clearInterval(recStatusInterval); recStatusInterval = null; }
+  const el = $("recordingStatus");
+  if (el) { el.classList.add("hidden"); el.style.display = "none"; }
+}
+
+// ---------------------------------------------------------------------------
+// Audio Recording (MediaRecorder) + Whisper Transcription at end
+// Works on ALL browsers (no Google dependency like SpeechRecognition)
+// ---------------------------------------------------------------------------
+let mediaRecorder = null;
+let audioChunks = [];
+
+async function startAudioRecording() {
+  try {
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    appendSystemMsg("✅ Mikrofon aktiv — Aufnahme läuft");
+
+    mediaRecorder = new MediaRecorder(sharedMicStream, {
+      mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+              : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
+              : "audio/mp4",
+    });
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onerror = (e) => {
+      appendSystemMsg(`⚠️ Aufnahme-Fehler: ${e.error?.message || "unbekannt"}`);
+    };
+
+    // Record in 10-second chunks (so we don't lose everything on crash)
+    mediaRecorder.start(10000);
+    console.log("[meeting-audio] Recording started, mimeType:", mediaRecorder.mimeType);
+  } catch (e) {
+    appendSystemMsg(`❌ Mikrofon nicht verfügbar: ${e.message}`);
+    console.error("[meeting-audio] getUserMedia failed:", e.message);
+  }
+}
+
+function pauseAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.pause();
+    console.log("[meeting-audio] Paused (Sophie voice active)");
+  }
+}
+
+function resumeAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state === "paused") {
+    mediaRecorder.resume();
+    console.log("[meeting-audio] Resumed");
+  }
+}
+
+// ── Meeting Pause / Resume ──────────────────────────────────────────────────
+function pauseMeeting() {
+  if (meetingIsPaused) return;
+  meetingIsPaused = true;
+  console.log("[meeting] pausing");
+
+  // Pause audio recording
+  pauseAudioRecording();
+
+  // Disconnect Sophie voice if active
+  if (!sophieMuted) {
+    toggleSophieMute(); // disconnects Sophie
+  }
+
+  // Pause timer — save total elapsed (replace, not accumulate — liveStartTime is already backdated on resume)
+  if (liveStartTime) {
+    meetingPausedElapsed = Date.now() - liveStartTime;
+  }
+  stopLiveTimer();
+
+  // UI
+  meetingPauseBtn.textContent = "▶ Resume";
+  meetingPauseBtn.classList.add("is-paused");
+  liveTimerEl.textContent = "PAUSED";
+  liveTimerEl.classList.remove("hidden");
+}
+
+function resumeMeeting() {
+  if (!meetingIsPaused) return;
+  meetingIsPaused = false;
+  console.log("[meeting] resuming");
+
+  // Resume audio recording
+  resumeAudioRecording();
+
+  // Resume timer from saved position
+  liveStartTime = Date.now() - meetingPausedElapsed;
+  liveTimerEl.classList.remove("hidden");
+  if (liveTimerInterval) clearInterval(liveTimerInterval); // defensive: prevent leaked intervals
+  liveTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - liveStartTime) / 1000);
+    const m = Math.floor(elapsed / 60).toString().padStart(2, "0");
+    const s = (elapsed % 60).toString().padStart(2, "0");
+    liveTimerEl.textContent = `LIVE ${m}:${s}`;
+  }, 1000);
+
+  // UI
+  meetingPauseBtn.textContent = "⏸ Pause";
+  meetingPauseBtn.classList.remove("is-paused");
+}
+
+if (meetingPauseBtn) {
+  meetingPauseBtn.addEventListener("click", () => {
+    meetingIsPaused ? resumeMeeting() : pauseMeeting();
+  });
+}
+// ────────────────────────────────────────────────────────────────────────────
+
+function stopAudioRecording() {
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      resolve(null);
+      return;
+    }
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+      console.log(`[meeting-audio] Stopped. ${audioChunks.length} chunks, ${(blob.size / 1024).toFixed(0)}KB`);
+      audioChunks = [];
+      resolve(blob);
+    };
+    mediaRecorder.stop();
+  });
+}
+
+async function transcribeAudioBlob(blob) {
+  if (!blob || blob.size < 1000) {
+    appendSystemMsg("⚠️ Audioaufnahme zu kurz für Transkription");
+    return "";
+  }
+
+  appendSystemMsg(`🔄 Transkribiere ${(blob.size / 1024).toFixed(0)}KB Audio via Whisper...`);
+
+  // Convert blob to base64 using FileReader (no stack overflow)
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      resolve(dataUrl.split(",")[1]); // Remove "data:audio/webm;base64," prefix
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const ext = blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
+
+  let authToken = accessToken;
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.access_token) authToken = s.access_token;
+  } catch (_) {}
+
+  const resp = await fetch("/api/ai/transcribe", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+      audio_base64: base64,
+      filename: ext,
+      language: lang === "de" ? "de" : lang === "fr" ? "fr" : "en",
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    appendSystemMsg(`⚠️ Whisper-Fehler: ${resp.status}`);
+    console.error("[meeting-audio] Whisper error:", err);
+    return "";
+  }
+
+  const data = await resp.json();
+  const text = (data.text || "").trim();
+  if (text) {
+    appendSystemMsg(`✅ Transkription: ${text.length} Zeichen`);
+    console.log(`[meeting-audio] Whisper result: "${text.slice(0, 100)}..."`);
+  } else {
+    appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
+  }
+  return text;
+}
+
+function cleanupMicStream() {
+  if (sharedMicStream) {
+    sharedMicStream.getTracks().forEach(t => t.stop());
+    sharedMicStream = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Sophie Voice — Uses the SAME Talk-Sophie (WebRTC Realtime API)
 // Unmute = Connect Sophie voice session, Mute = Disconnect
 // ---------------------------------------------------------------------------
@@ -1254,22 +1937,87 @@ async function connectSophieVoice() {
   appendSystemMsg(connectMsg);
 
   try {
-    // 1. Get session token from /api/session (same as Talk)
+    // 1. Get fresh auth token
+    let authToken = accessToken;
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.access_token) authToken = authSession.access_token;
+    } catch (_) {}
+
+    if (!authToken) throw new Error("Not authenticated — please reload and login");
+
+    // 2. Get session token from /api/session (same as Talk)
+    console.log("[meeting-voice] Calling /api/session...");
     const tokenRes = await fetch("/api/session", {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${authToken}`,
         "X-Sophie-Session-Mode": "meeting",
+        "X-Sophie-Meeting-Id": meetingId || "",
       },
     });
     const data = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(data?.error || `HTTP ${tokenRes.status}`);
+    console.log("[meeting-voice] Session response:", tokenRes.status, data?.error || "OK");
+
+    if (tokenRes.status === 429) {
+      // Session lock — wait and retry once
+      appendSystemMsg(lang === "de" ? "Sophie ist noch beschäftigt, versuche erneut..." : "Sophie is busy, retrying...");
+      await new Promise(r => setTimeout(r, 3000));
+      const retry = await fetch("/api/session", {
+        headers: { Authorization: `Bearer ${authToken}`, "X-Sophie-Session-Mode": "meeting", "X-Sophie-Meeting-Id": meetingId || "" },
+      });
+      const retryData = await retry.json();
+      if (!retry.ok) throw new Error(retryData?.error || retryData?.message || `HTTP ${retry.status}`);
+      Object.assign(data, retryData);
+    } else if (!tokenRes.ok) {
+      throw new Error(data?.error || data?.message || `HTTP ${tokenRes.status}`);
+    }
 
     // 2. Set up WebRTC (same as Talk)
     sophieVoicePc = new RTCPeerConnection();
 
-    // Get mic access
-    sophieVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    sophieVoiceStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieVoiceStream));
+    // DataChannel for transcript (MUST be created before offer)
+    sophieVoiceDc = sophieVoicePc.createDataChannel("oai-events");
+    sophieVoiceDc.onerror = (e) => {
+      console.error("[meeting-voice] DataChannel error:", e);
+      appendSystemMsg("⚠️ Voice DataChannel Error");
+    };
+    sophieVoiceDc.onclose = () => {
+      console.log("[meeting-voice] DataChannel closed");
+    };
+    sophieVoiceDc.onopen = () => {
+      console.log("[meeting-voice] DataChannel open — enabling auto-response + transcript");
+      appendSystemMsg("✅ Voice Transcript aktiv");
+      // Enable auto-response after user speech + keep transcription
+      sophieVoiceDc.send(JSON.stringify({
+        type: "session.update",
+        session: {
+          turn_detection: {
+            type: "server_vad",
+            threshold: 0.6,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 800,
+            create_response: true,
+            interrupt_response: true,
+          },
+        },
+      }));
+    };
+    sophieVoiceDc.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        handleVoiceTranscriptEvent(msg);
+      } catch (_) {}
+    };
+
+    // Reuse the shared mic stream (created at meeting start — single permission dialog)
+    // Only re-request if stream died (e.g. hardware disconnect)
+    if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
+      console.log("[meeting-voice] sharedMicStream unavailable, requesting new one...");
+      sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+    const sophieStream = sharedMicStream.clone();
+    sophieVoiceStream = sophieStream;
+    sophieStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieStream));
 
     // Sophie's audio output
     sophieVoiceAudio = document.createElement("audio");
@@ -1286,6 +2034,7 @@ async function connectSophieVoice() {
     await sophieVoicePc.setLocalDescription(offer);
 
     // 3. Handshake with OpenAI Realtime (same as Talk)
+    if (!data?.client_secret?.value) throw new Error("No client_secret received from session API");
     const answerSdp = await fetchRealtimeAnswerSdp(offer.sdp, data.client_secret.value);
     await sophieVoicePc.setRemoteDescription({ type: "answer", sdp: answerSdp });
 
@@ -1301,6 +2050,7 @@ async function connectSophieVoice() {
     isSpeaking = true;
     updateParticipantsBar();
 
+    sophieVoiceStartTime = Date.now();
     const joinedMsg = lang === "de" ? "Sophie ist jetzt im Meeting." : lang === "fr" ? "Sophie est dans le meeting." : "Sophie joined the meeting.";
     appendSystemMsg(joinedMsg);
 
@@ -1315,18 +2065,82 @@ async function connectSophieVoice() {
   }
 }
 
-function disconnectSophieVoice(silent = false) {
-  // Stop mic
-  if (sophieVoiceStream) {
-    sophieVoiceStream.getTracks().forEach(t => t.stop());
-    sophieVoiceStream = null;
+// Handle voice transcript events from DataChannel (same logic as Talk)
+function handleVoiceTranscriptEvent(msg) {
+  // User speech transcript (incremental)
+  if (msg?.type === "conversation.item.input_audio_transcription.delta") {
+    const itemId = msg?.item_id;
+    const delta = String(msg?.delta || "");
+    if (itemId && delta) {
+      const prev = userTranscriptBuffer.get(itemId) || "";
+      userTranscriptBuffer.set(itemId, prev + delta);
+    }
+    return;
   }
+
+  // User speech transcript (final)
+  if (msg?.type === "conversation.item.input_audio_transcription.completed") {
+    const itemId = msg?.item_id;
+    const t1 = String(msg?.transcript || "").trim();
+    const tBuf = itemId ? String(userTranscriptBuffer.get(itemId) || "").trim() : "";
+    const text = (t1 || tBuf).trim();
+    if (itemId) userTranscriptBuffer.delete(itemId);
+    if (text) {
+      voiceTranscript.push({ role: "user", text });
+      console.log("[meeting-voice] User:", text.slice(0, 80));
+    }
+    return;
+  }
+
+  // Sophie speech transcript (final)
+  if (msg?.type === "response.audio_transcript.done") {
+    const full = String(msg?.transcript || msg?.text || "").trim();
+    if (full) partialAssistant = full;
+    return;
+  }
+
+  // Response complete — save Sophie's text
+  if (msg?.type === "response.done") {
+    // Strip Sophie's internal JSON tags (structured meeting data) from transcript
+    let final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+    final = final.replace(/\s*\{["']?(?:decisions|actions|risks|open_points)["']?\s*:[\s\S]*$/i, "").trim();
+    const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
+    if (final && final !== last) {
+      voiceTranscript.push({ role: "assistant", text: final });
+      lastAssistantFinal = final;
+      console.log("[meeting-voice] Sophie:", final.slice(0, 80));
+    }
+    partialAssistant = "";
+    return;
+  }
+}
+
+function disconnectSophieVoice(silent = false) {
+  // Report usage for Sophie voice session
+  if (sophieVoiceStartTime) {
+    const secondsUsed = Math.ceil((Date.now() - sophieVoiceStartTime) / 1000);
+    sophieVoiceStartTime = null;
+    if (secondsUsed > 0) {
+      console.log(`[meeting-voice] Session ended: ${secondsUsed}s used`);
+      reportMeetingVoiceUsage(secondsUsed);
+    }
+  }
+
+  // Kill Sophie's cloned stream only — keep sharedMicStream alive for SpeechRecognition reuse
+  if (sophieVoiceStream) {
+    try { sophieVoiceStream.getTracks().forEach(t => t.stop()); } catch {}
+  }
+  sophieVoiceStream = null;
   // Stop audio
   if (sophieVoiceAudio) {
     try { sophieVoiceAudio.srcObject = null; } catch {}
     sophieVoiceAudio = null;
   }
-  // Close WebRTC
+  // Close DataChannel + WebRTC
+  if (sophieVoiceDc) {
+    try { sophieVoiceDc.close(); } catch {}
+    sophieVoiceDc = null;
+  }
   if (sophieVoicePc) {
     sophieVoicePc.close();
     sophieVoicePc = null;
@@ -1341,6 +2155,28 @@ function disconnectSophieVoice(silent = false) {
   }
 }
 
+async function reportMeetingVoiceUsage(seconds) {
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token) return;
+
+    const tokens = Math.ceil(seconds / 6);
+    const res = await fetch("/api/user?action=usage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authSession.access_token}`,
+      },
+      body: JSON.stringify({ tokens_used: tokens }),
+      keepalive: true,
+    });
+    const data = await res.json().catch(() => null);
+    console.log(`[meeting-voice] Usage reported: ${seconds}s (${tokens} tokens)`, res.status, data);
+  } catch (e) {
+    console.error("[meeting-voice] Usage report failed:", e.message);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Mute/Unmute Sophie (Connect/Disconnect Talk-Sophie)
 // ---------------------------------------------------------------------------
@@ -1352,11 +2188,16 @@ async function toggleSophieMute() {
   updateParticipantsBar();
 
   if (!sophieMuted) {
-    // UNMUTE → Connect Sophie voice (same as starting Talk)
+    // UNMUTE → Pause audio recording, connect Sophie voice
+    pauseAudioRecording();
+    setSophieStatus(lang === "de" ? "Sophie kommt dazu …" : "Sophie is joining …");
     await connectSophieVoice();
+    setSophieStatus(lang === "de" ? "Sophie hört zu" : "Sophie is listening");
   } else {
-    // MUTE → Disconnect Sophie voice
+    // MUTE → Disconnect Sophie voice, resume audio recording
     disconnectSophieVoice();
+    resumeAudioRecording();
+    setSophieStatus("");
   }
 }
 
@@ -1402,8 +2243,39 @@ function slugify(str) {
   return str.toLowerCase().replace(/[äÄ]/g,"ae").replace(/[öÖ]/g,"oe").replace(/[üÜ]/g,"ue").replace(/[ß]/g,"ss").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
 }
 
+function stripTranscriptGlobal(rawHtml) {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = rawHtml;
+  const el = tmp.querySelector('[data-section="full-transcript"]');
+  if (el) el.remove();
+  return tmp.innerHTML;
+}
+
 function downloadProtocol() {
   if (!meetingData) return;
+
+  // If we have an AI-generated HTML report, download official version (no transcript)
+  if (meetingReportHtml) {
+    const title = meetingData.title || meetingData.meeting_type || "meeting";
+    const filename = `${getDatePrefix()}_sophie-protokoll_${slugify(title)}.html`;
+    const blob = new Blob([stripTranscriptGlobal(meetingReportHtml)], { type: "text/html;charset=utf-8" });
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (isIOS && navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, { type: "text/html" });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title }).catch(() => {});
+        return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
   const isDE = lang === "de";
   const isFR = lang === "fr";
 
@@ -1508,6 +2380,18 @@ function downloadProtocol() {
     <ul>${sec.items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
   </div>`).join("")}
 
+  ${(speechTranscript.length > 0 || voiceTranscript.length > 0) ? `<div class="section">
+    <p class="section-title">${isDE ? "Vollständiges Gesprächsprotokoll" : isFR ? "Transcription complète" : "Full Transcript"}</p>
+    ${speechTranscript.length > 0 ? `<div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.8;background:#f0ede8;color:#2c2420;">
+      <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;display:block;margin-bottom:6px">${isDE ? "Meeting-Gespräch" : "Meeting Conversation"}</strong>
+      ${escapeHtml(speechTranscript.join(" "))}
+    </div>` : ""}
+    ${voiceTranscript.map(m => `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.7;${m.role === "user" ? "background:#f0ede8;color:#2c2420;" : "background:#fff;border:1px solid #ede8e2;color:#5a4a40;"}">
+      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:${m.role === "user" ? "#1a1210" : "#c4a882"}">${m.role === "user" ? "User" : "Sophie"}</strong><br>
+      ${escapeHtml(m.text)}
+    </div>`).join("")}
+  </div>` : ""}
+
   ${diffItems.length > 0 ? `<div class="section">
     <p class="section-title">${diffLabel}</p>
     ${diffItems.map(d => `<div class="diff-item">${escapeHtml(d)}</div>`).join("")}
@@ -1597,15 +2481,49 @@ function autoResize() {
   chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
 }
 
-ctaLive.addEventListener("click", () => transitionPhase("live"));
-ctaPost.addEventListener("click", () => transitionPhase("post"));
-ctaClose.addEventListener("click", () => transitionPhase("closed"));
+// Geolocation: fire-and-forget when meeting goes live
+function captureLocation() {
+  if (!navigator.geolocation || !meetingId) return;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const { latitude, longitude } = pos.coords;
+      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${lang}`);
+      const geo = await resp.json();
+      const city = geo.address?.city || geo.address?.town || geo.address?.village || '';
+      const country = geo.address?.country || '';
+      const locationStr = [city, country].filter(Boolean).join(', ') || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+      await api("context", { meeting_id: meetingId, context_type: "location", content: locationStr });
+      console.log("[meeting] Location captured:", locationStr);
+    } catch (e) {
+      console.warn("[meeting] Reverse geocoding failed:", e.message);
+    }
+  }, (err) => {
+    console.log("[meeting] Geolocation not available:", err.message);
+  }, { timeout: 10000, maximumAge: 300000 });
+}
+
+ctaLive.addEventListener("click", async () => {
+  // Auto-save context before going live (so Sophie sees the agenda)
+  await saveContext();
+
+  // Start audio recording (getUserMedia + MediaRecorder) — one permission dialog
+  await startAudioRecording();
+
+  startRecStatusUpdates();
+  // No captureLocation() — avoid second permission dialog.
+  // Meeting location only appears in report if explicitly said in transcript.
+  await transitionPhase("live");
+});
+ctaPost.addEventListener("click", async () => { await transitionPhase("post"); });
+ctaClose.addEventListener("click", async () => {
+  await transitionPhase("closed");
+  // Navigate back to home after closing
+  window.location.href = "/";
+});
 
 $("saveContextBtn").addEventListener("click", saveContext);
 muteToggle.addEventListener("click", toggleSophieMute);
-$("downloadProtocolBtn").addEventListener("click", downloadProtocol);
-$("copySummaryBtn").addEventListener("click", copySummary);
-$("shareSummaryBtn").addEventListener("click", shareSummary);
+// Old summary export buttons removed — report card handles all exports now
 
 $("contextToggle").addEventListener("click", () => {
   contextPanel.classList.toggle("collapsed");
@@ -1633,7 +2551,7 @@ $("fileInput").addEventListener("change", (e) => {
 });
 $("uploadArea").addEventListener("dragover", (e) => {
   e.preventDefault();
-  $("uploadArea").style.borderColor = "rgba(255,255,255,.4)";
+  $("uploadArea").style.borderColor = "#c4a882";
 });
 $("uploadArea").addEventListener("dragleave", () => {
   $("uploadArea").style.borderColor = "";
