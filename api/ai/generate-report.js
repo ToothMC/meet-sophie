@@ -3,6 +3,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { DEFAULT_TEMPLATES } from '../../lib/report-templates.js';
+import { trackCost } from '../../lib/ai/cost-tracker.js';
+
+function trackAdapterCost(response, userId, routingReason) {
+  if (!response?.usage || !userId) return;
+  trackCost({
+    userId,
+    provider: response.provider || 'unknown',
+    model: response.model || 'unknown',
+    inputTokens: response.usage.inputTokens || 0,
+    outputTokens: response.usage.outputTokens || 0,
+    costUsd: response.usage.costUsd || 0,
+    latencyMs: response.latencyMs || 0,
+    routingReason,
+  }).catch(err => console.error("Report cost tracking error:", err?.message));
+}
 
 export const config = { maxDuration: 120 };
 
