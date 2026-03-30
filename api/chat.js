@@ -751,12 +751,11 @@ async function handleMessage(req, res) {
 
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
-    // Inject hard onboarding nudge — anonymous = always first session
-    const isFirst = true;
-    if (isFirst && turnNumber === 1) {
-      routerMessages.push({ role: "system", content: "[CRITICAL] This is a FIRST SESSION. After responding to the user, you MUST end with: 'Übrigens — wie soll ich dich nennen?' Do NOT skip this." });
-    } else if (isFirst && turnNumber === 2) {
-      routerMessages.push({ role: "system", content: "[CRITICAL] The user should have given their name. Use it once. Then ask: 'Nutzt du schon eine andere KI — ChatGPT, Claude oder so?' Do NOT skip this." });
+    // Soft onboarding — respond to the user FIRST, then weave in naturally
+    if (turnNumber === 1) {
+      routerMessages.push({ role: "system", content: "First message from this user. Respond naturally to what they said. If it fits, casually ask their name somewhere in your response (e.g. 'Wie soll ich dich nennen?' or 'What's your name?'). If the user asked something specific, answer that FIRST — the name question is secondary." });
+    } else if (turnNumber === 2 && !routerMessages.some(m => m.content?.includes?.("name"))) {
+      routerMessages.push({ role: "system", content: "If you don't know the user's name yet, ask casually. If you do, use it once. Respond naturally to their message first." });
     }
 
     const openaiAdapter = getAdapter("openai");
