@@ -3119,6 +3119,7 @@ function pauseSession() {
   // Tear down WebRTC without clearing convoLog or billing
   stopDynamicResets();
   stopCountdown();
+  stopInactivityTimer();
   clearClosingTimers();
 
   if (dc)     { try { dc.close(); } catch(e){} dc = null; }
