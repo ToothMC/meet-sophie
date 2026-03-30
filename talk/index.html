@@ -4057,7 +4057,8 @@ function attachChannel(ch) {
           gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
           gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
         }
-        // User is speaking — reset inactivity timestamp
+        // User is speaking — reset inactivity (including warning flag if grace period active)
+        inactivityWarningFired = false;
         touchActivity();
         if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
