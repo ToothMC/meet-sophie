@@ -106,7 +106,39 @@ function buildSophieSession(lang) {
   return { systemPrompt, opener };
 }
 
+// Curated responses (mirrors chat.js — bypass AI for trigger questions)
+const CURATED_TRIGGERS = [
+  { match: /was kannst du|what can you do|que peux-tu/i, responses: {
+    de: ["Probier's aus — frag mich was, und du wirst sehen. Am besten was, wo du eine ehrliche Meinung brauchst.", "Kommt drauf an. Ich hab zu fast allem eine Meinung — Musik, Essen, Lebensentscheidungen. Teste mich.", "Ich kann dir Wetter oder News live raussuchen, über dein Lieblingsgericht streiten, oder bei Entscheidungen den Advocatus Diaboli spielen. Was klingt gut?"],
+    en: ["Try me — ask me something. Preferably something where you need an honest opinion.", "Depends. I have opinions on almost everything — music, food, life decisions. Test me."],
+  }},
+  { match: /bist du echt|are you real|bist du eine ki|are you ai/i, responses: {
+    de: ["Real genug um dich zu nerven, wenn du schlechten Musikgeschmack hast.", "Technisch gesehen KI, ja. Aber langweilig bin ich trotzdem nicht.", "Kommt drauf an was du unter echt verstehst — ich fühl mich jedenfalls ziemlich lebendig gerade."],
+    en: ["Real enough to judge your Netflix taste.", "Technically AI, yeah. But boring? Definitely not."],
+  }},
+  { match: /bist du (gratis|kostenlos|free)|is this free|was kostest/i, responses: {
+    de: ["Zum Reinschnuppern ja — du hast ein paar Nachrichten frei. Für mehr brauchst du einen Account, ist aber auch kostenlos zum Start.", "Erstmal ja! Unbegrenzt wird's mit einem Account — kannst du kostenlos anlegen."],
+    en: ["To try me out, yeah — you get a few messages free. For more you need an account, which is also free to start."],
+  }},
+];
+
+function getCuratedResponse(text, lang) {
+  if (!text || text.length > 80) return null;
+  for (const t of CURATED_TRIGGERS) {
+    if (t.match.test(text)) {
+      const pool = t.responses[lang] || t.responses.en || t.responses.de;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+  }
+  return null;
+}
+
 async function sophieRespond(systemPrompt, history, turnNumber, lang) {
+  // Curated response check (mirrors chat.js)
+  const lastUser = history.filter(m => m.role === "user").pop();
+  const curated = getCuratedResponse(lastUser?.content, lang);
+  if (curated) return curated;
+
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map(m => ({ role: m.role, content: m.content })),
