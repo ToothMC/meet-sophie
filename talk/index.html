@@ -4559,7 +4559,8 @@ async function reportUsage(seconds) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
 
-    const tokens = Math.ceil(seconds / 3); // SECONDS_PER_TOKEN = 3
+    const secPerToken = window._ecoMode ? 7.5 : 3; // Eco: 8 tokens/min, Normal: 20 tokens/min
+    const tokens = Math.ceil(seconds / secPerToken);
     const res = await fetch("/api/user?action=usage", {
       method: "POST",
       headers: {
