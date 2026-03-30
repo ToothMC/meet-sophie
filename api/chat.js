@@ -12,7 +12,7 @@ import { getAdapter } from "../lib/ai/adapters/index.js";
 import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
 import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { getSecondOpinion } from "./ai/second-opinion.js";
-import { getWeather, webSearch, getNews, getWikipedia } from "./ai/tools.js";
+import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus } from "./ai/tools.js";
 import { TOKEN_COSTS } from "../lib/billing-constants.js";
 
 const FREE_TURNS_LIMIT = 10;
