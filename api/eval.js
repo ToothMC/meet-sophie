@@ -143,6 +143,31 @@ async function sophieRespond(systemPrompt, history, turnNumber, lang) {
     }
   }
 
+  // Assistant Mode Guard (mirrors chat.js guardAssistantMode)
+  const ASSISTANT_PATTERNS = [
+    /ich kann dir bei .{5,} helfen/i,
+    /ich kann viele dinge/i,
+    /ich bin hier,? um/i,
+    /ich bin daf[üu]r da/i,
+    /was kann ich f[üu]r dich tun/i,
+    /wobei kann ich helfen/i,
+    /ich helfe dir gerne/i,
+    /ich bin eine? .{0,15}freundin/i,
+    /ich bin eine ki.{0,20}aber/i,
+  ];
+  if (ASSISTANT_PATTERNS.some(p => p.test(reply))) {
+    const retryMsgs = [
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "system", content: `PROBLEM: Your response sounds like a generic AI assistant. Rewrite as Sophie — a person with opinions, not a service menu. Instead of listing capabilities, demonstrate or be cheeky. Return ONLY the rewritten response.` },
+    ];
+    try {
+      const fixed = await openaiChat(retryMsgs, "gpt-4o-mini", 1024, 0.9);
+      const cleaned = normalizeResponse(fixed, "openai");
+      if (cleaned && !ASSISTANT_PATTERNS.some(p => p.test(cleaned))) reply = cleaned;
+    } catch { /* fallback */ }
+  }
+
   return reply;
 }
 
