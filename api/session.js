@@ -683,15 +683,15 @@ export default async function handler(req, res) {
     // ---------------------------
     // Realtime session create
     // ---------------------------
+    const isEco = !!profile.eco_mode;
+    const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-4o-realtime-preview";
+
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
-      const isEco = !!profile.eco_mode;
-      const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-4o-realtime-preview";
-
       body: JSON.stringify({
         model: realtimeModel,
         voice: "shimmer",
