@@ -626,12 +626,21 @@ const ASSISTANT_PATTERNS = [
   /ich kann dir bei .{5,} helfen/i,
   /ich kann viele dinge/i,
   /ich bin hier,? um/i,
+  /ich bin hier,? wenn du/i,
   /ich bin daf[üu]r da/i,
   /was kann ich f[üu]r dich tun/i,
   /wobei kann ich helfen/i,
   /ich helfe dir gerne/i,
   /ich bin eine? .{0,15}freundin/i,
   /ich bin eine ki.{0,20}aber/i,
+  /sag.{0,10}bescheid/i,
+  /wenn dir.{0,20}einf[äa]llt/i,
+  /ich bin.{0,5}bereit/i,
+  /i'?m here to/i,
+  /i can help (you )?with/i,
+  /let me know if/i,
+  /go for it!$/i,
+  /just ask!$/i,
 ];
 
 async function guardAssistantMode(reply, messages, providerConfig) {
