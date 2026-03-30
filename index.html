@@ -3672,9 +3672,10 @@
 
       if (isLoggedIn) return true;
 
-      // Show explanation + login prompt
+      // Show explanation + login prompt — add to history so Sophie sees it in context
       const loginMsg = featureDesc + "\n\n🔒 Nur nach dem Einloggen verfügbar.";
       appendBubble("sophie", loginMsg);
+      history.push({ role: "assistant", content: loginMsg });
       show(authEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       // Focus on email field, not chat input
