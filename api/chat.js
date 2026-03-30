@@ -383,6 +383,7 @@ async function handleStart(req, res) {
     },
     channel: "chat",
     brainstormConfig,
+    visitorContext,
   });
 
   // Append imported context to system prompt
