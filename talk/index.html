@@ -3740,60 +3740,48 @@ async function maybeTriggerSoftEnding(){
 }
 
 // ── Inactivity auto-end (global, all modes) ──────────────────────────────────
-// Only fires when session is completely idle — no audio, no Sophie response,
-// no closing/summary/report/demo phase running. Salespitch has its own timer.
-function isSessionBusy() {
-  return (
-    sophieIsResponding        || // Sophie is generating/playing audio
-    userIsSpeaking            || // User is currently speaking
-    softEndFinalizing         || // Session-end flow running
-    softEndSummaryTriggered   || // Summary phase active
-    limitTriggered            || // Time limit already triggered
-    closingResponseActive     || // Sophie's closing response playing
-    pendingClosing            || // Waiting for silence to close
-    endCleanlyAfterResponse   || // Sophie finishing sentence before end
-    pitchReportSignaled       || // Sales pitch report generating
-    startModeTriggered        || // Kick-off demo still running
-    isPaused                  || // Session paused
-    selectedVoiceMode === "salespitch" // Has its own inactivity timer
-  );
-}
-
-function resetInactivityTimer() {
-  if (!hasUserSpoken) return; // Don't start until user has spoken at least once
-  clearTimeout(inactivityTimer);
-  inactivityTimer = null;
-  // Don't restart if session is currently busy (Sophie speaking etc.)
-  if (!isSessionBusy()) startInactivityTimer();
+// Strategy: track lastActivityAt timestamp instead of enumerating busy-flags.
+// Any speech or response event resets it — new features work automatically.
+// Salespitch has its own dedicated timer and is excluded here.
+function touchActivity() {
+  lastActivityAt = Date.now();
 }
 
 function startInactivityTimer() {
-  if (!hasUserSpoken) return; // Never before first user utterance
   clearTimeout(inactivityTimer);
   inactivityWarningFired = false;
-  inactivityTimer = setTimeout(() => {
-    if (isSessionBusy()) {
-      // Session got busy while timer was running — restart timer
-      startInactivityTimer();
+  inactivityTimer = setTimeout(function checkInactivity() {
+    if (selectedVoiceMode === "salespitch") return; // has own timer
+    if (limitTriggered || softEndFinalizing) return; // already ending
+    const idleMs = Date.now() - lastActivityAt;
+    if (idleMs < INACTIVITY_WARNING_MS) {
+      // Not idle long enough yet — reschedule for remaining time
+      inactivityTimer = setTimeout(checkInactivity, INACTIVITY_WARNING_MS - idleMs);
       return;
     }
-    inactivityWarningFired = true;
-    console.log(`[${runId}] [inactivity] 30s silence — asking if still there`);
-    try {
-      dc.send(JSON.stringify({
-        type: "conversation.item.create",
-        item: { type: "message", role: "user",
-          content: [{ type: "input_text", text: "[SYSTEM: Der User hat 30 Sekunden nicht gesprochen. Frag kurz und locker ob er noch da ist — ein Satz, kein Coaching.]" }]
-        }
-      }));
-      dc.send(JSON.stringify({ type: "response.create" }));
-    } catch(e) { console.warn('[inactivity] could not send check-in', e?.message); }
-    // Grace period: 30s more → end session if still no activity
-    inactivityTimer = setTimeout(() => {
-      if (isSessionBusy()) return; // Something started — don't end
+    if (!inactivityWarningFired) {
+      inactivityWarningFired = true;
+      console.log(`[${runId}] [inactivity] ${Math.round(idleMs/1000)}s silence — asking if still there`);
+      try {
+        dc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: { type: "message", role: "user",
+            content: [{ type: "input_text", text: "[SYSTEM: Der User hat 30 Sekunden nicht gesprochen. Frag kurz und locker ob er noch da ist — ein Satz, kein Coaching.]" }]
+          }
+        }));
+        dc.send(JSON.stringify({ type: "response.create" }));
+      } catch(e) { console.warn('[inactivity] check-in failed', e?.message); }
+      // Check again after grace period
+      inactivityTimer = setTimeout(checkInactivity, INACTIVITY_END_MS);
+      return;
+    }
+    // Warning was sent, still no activity → end session
+    const totalIdleMs = Date.now() - lastActivityAt;
+    if (totalIdleMs >= INACTIVITY_WARNING_MS + INACTIVITY_END_MS) {
+      if (limitTriggered || softEndFinalizing) return;
       console.log(`[${runId}] [inactivity] 60s total silence — ending session`);
       void handleTimeLimitReached();
-    }, INACTIVITY_END_MS);
+    }
   }, INACTIVITY_WARNING_MS);
 }
 
@@ -3802,6 +3790,8 @@ function stopInactivityTimer() {
   inactivityTimer = null;
   inactivityWarningFired = false;
 }
+
+// resetInactivityTimer is no longer needed — touchActivity() + startInactivityTimer handles it
 
 function startCountdown(){
   if (countdown) clearInterval(countdown);
