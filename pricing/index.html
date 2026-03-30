@@ -282,7 +282,13 @@ $("langDE").onclick=()=>setLang("de");
 $("langEN").onclick=()=>setLang("en");
 $("backBtn").addEventListener("click",e=>{e.preventDefault();history.length>1?history.back():location.href="/";});
 
-function updateEnabled(){const ok=c1.checked&&c2.checked;allBtns.forEach(b=>b.disabled=!ok);}
+function updateEnabled(){/* buttons always enabled — validation on click */}
+function highlightCheckboxes(){
+  const labels=document.querySelectorAll(".legal label");
+  labels.forEach(l=>{l.classList.remove("highlight");void l.offsetWidth;l.classList.add("highlight");});
+  labels[0]?.scrollIntoView({behavior:"smooth",block:"center"});
+  setTimeout(()=>labels.forEach(l=>l.classList.remove("highlight")),2000);
+}
 c1.onchange=updateEnabled;c2.onchange=updateEnabled;
 
 function goLogin(){location.href=`/login/?redirect=${encodeURIComponent(location.pathname+location.search)}`;}
