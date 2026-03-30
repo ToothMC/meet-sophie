@@ -2578,21 +2578,10 @@ function attachChannel(ch) {
           }
         }
       };
-      // Add signal_mode tool only for normal conversations (not brainstorm/meeting/salespitch)
+      // No signal_mode tool in voice — it adds latency (function call round-trip before speaking)
+      // Mode indicator defaults to "chill" for normal conversations
       if (!selectedVoiceMode) {
-        sessionUpdate.session.tools = [{
-          type: "function",
-          name: "signal_mode",
-          description: "Signal the current thinking mode to the UI. Call this silently at the start of every response.",
-          parameters: {
-            type: "object",
-            properties: {
-              mode: { type: "string", enum: ["explorer", "reflect", "decide", "chill"] }
-            },
-            required: ["mode"]
-          }
-        }];
-        sessionUpdate.session.tool_choice = "auto";
+        updateModeIndicator("chill");
       } else if (selectedVoiceMode === "salespitch") {
         // signal_pitch_report: Sophie calls this at the end of Phase D to trigger call end + report generation
         sessionUpdate.session.tools = [{
