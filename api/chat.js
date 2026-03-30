@@ -979,9 +979,14 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Detect language from system prompt or default
-  const sessionLang = (system_prompt || "").includes("Sprich Deutsch") ? "de"
-    : (system_prompt || "").includes("Parle français") ? "fr" : "en";
+  // Detect language from system prompt, user messages, or default
+  const promptText = (system_prompt || "").toLowerCase();
+  const lastMsgText = (messages.filter(m => m.role === "user").pop()?.content || "").toLowerCase();
+  const sessionLang = (promptText.includes("sprich deutsch") || promptText.includes("sprache: de") || /[äöüß]/.test(lastMsgText))
+    ? "de"
+    : (promptText.includes("parle français") || promptText.includes("langue: fr") || /[éèêëàâùûç]/.test(lastMsgText))
+    ? "fr"
+    : "en";
 
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
