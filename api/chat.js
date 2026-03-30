@@ -576,9 +576,9 @@ async function handleMessage(req, res) {
   const voiceNudge = sessionAlreadyModed
     ? null
     : turnNumber === 4
-      ? "[INTERNAL] Turn 4. If the user's intent is clear by now, end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is still unclear, continue the conversation naturally."
+      ? "[INTERNAL] Turn 4. If the user's intent is clear by now, end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, chill, brainstorm, meeting, salespitch. If intent is still unclear, continue the conversation naturally."
       : turnNumber === 5
-        ? "[INTERNAL] Turn 5. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
+        ? "[INTERNAL] Turn 5. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, chill, brainstorm, meeting, salespitch."
         : null;
 
   // Build messages — support multimodal (files with images/documents)
