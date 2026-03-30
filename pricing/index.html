@@ -97,6 +97,9 @@ body{
 .legal label{display:flex;gap:8px;font-size:11px;color:#7a6a5a;line-height:1.5;margin-bottom:6px;}
 .legal input[type=checkbox]{flex-shrink:0;margin-top:2px;accent-color:#c4a882;}
 .legal a{color:#2a2420;text-decoration:underline;}
+.legal label.highlight{animation:shake .4s ease;color:#c0392b;}
+.legal label.highlight input[type=checkbox]{outline:2px solid #c0392b;outline-offset:2px;border-radius:2px;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
 
 .login-link{display:none;text-align:center;margin-bottom:12px;font-size:12px;color:#7a6a5a;}
 .login-link a{color:#5a4a40;text-decoration:underline;cursor:pointer;}
