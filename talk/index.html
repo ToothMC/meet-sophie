@@ -1148,6 +1148,9 @@ let pc = null;
 let stream = null;
 let audioEl = null;
 let dc = null;
+let audioCtx = null;
+let gainNode = null;
+let audioSource = null;
 // selectedVoiceMode declared above (before mode-pill handlers)
 
 let convoLog = [];
@@ -2621,6 +2624,12 @@ function attachChannel(ch) {
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
+        // Smooth fade-out instead of hard audio cut (prevents click/pop)
+        if (gainNode && audioCtx) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+        }
         return;
       }
 
@@ -2637,6 +2646,12 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+        // Fade audio back in for Sophie's new response
+        if (gainNode && audioCtx) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+        }
 
         // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
         if (softEndSummaryTriggered && !closingResponseExpected && !softEndFinalizing && !limitTriggered) {
@@ -3088,10 +3103,22 @@ async function startVoice(){
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
+    // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
     audioEl = document.createElement("audio");
     audioEl.autoplay = true;
     audioEl.playsInline = true;
-    pc.ontrack = e => audioEl.srcObject = e.streams[0];
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    gainNode = audioCtx.createGain();
+    gainNode.connect(audioCtx.destination);
+    pc.ontrack = e => {
+      audioEl.srcObject = e.streams[0]; // keep for Safari fallback
+      try {
+        audioSource = audioCtx.createMediaStreamSource(e.streams[0]);
+        audioSource.connect(gainNode);
+        audioEl.volume = 0; // mute <audio> element — GainNode handles playback
+      } catch (_) {} // fallback: <audio> element plays directly
+    };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -3364,6 +3391,7 @@ if (!hasRealConversation) {
       if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(e){} stream = null; }
       if (pc) { try { pc.close(); } catch(e){} pc = null; }
       if (audioEl) { try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
+      if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; gainNode = null; audioSource = null; }
     }
 
     // Take transcript AFTER summary (includes summary text in convoLog)
