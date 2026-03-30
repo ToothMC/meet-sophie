@@ -917,6 +917,9 @@ async function handleMessage(req, res) {
 
   if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
+  // Question loop guard — regenerate if 3rd consecutive question
+  rawReply = await guardQuestionLoop(rawReply, routerMessages, decision.primary);
+
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary);
   if (toolResult.toolUsed) {
