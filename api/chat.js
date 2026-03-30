@@ -997,7 +997,7 @@ async function handleMessage(req, res) {
   if (!user) {
     // Curated responses for predictable trigger questions (bypass AI entirely)
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
-    const curatedReply = getCuratedResponse(lastUserMsg?.content, sessionLang);
+    const curatedReply = getCuratedResponse(lastUserMsg?.content);
     if (curatedReply) {
       await supabase.from("chat_sessions").update({
         turn_count: session.turn_count + 1,
