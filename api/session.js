@@ -720,7 +720,8 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    const remainingVoiceSeconds = remaining * SECONDS_PER_TOKEN;
+    const secPerToken = isEco ? SECONDS_PER_TOKEN_ECO : SECONDS_PER_TOKEN;
+    const remainingVoiceSeconds = remaining * secPerToken;
 
     return res.status(200).json({
       ...data,
@@ -729,6 +730,7 @@ export default async function handler(req, res) {
       is_premium: isPremium,
       plan: plan,
       mode: mode,
+      eco_mode: isEco,
       user_id: user.id,
       preferred_language: preferredLanguage,
       is_first_session: isFirstSession,
