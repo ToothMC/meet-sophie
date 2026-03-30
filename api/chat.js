@@ -1028,8 +1028,8 @@ async function handleMessage(req, res) {
     if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
     // Question loop guard — regenerate if 3rd consecutive question
-    rawReply = await guardQuestionLoop(rawReply, routerMessages, { provider: "openai", model: "gpt-4o-mini" });
-    rawReply = await guardAssistantMode(rawReply, routerMessages, { provider: "openai", model: "gpt-4o-mini" });
+    // Guards disabled — caused more harm than good (generic rewrites, language bugs, latency)
+    // Curated responses handle the critical trigger questions instead
 
     // Anonymous users: tools blocked — tease once, then just strip the tag
     const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
