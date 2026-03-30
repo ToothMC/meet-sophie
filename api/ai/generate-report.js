@@ -39,6 +39,13 @@ export default async function handler(req, res) {
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
 
+  // Resolve user_id for cost tracking
+  let reportUserId = null;
+  try {
+    const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+    reportUserId = sess?.user_id || null;
+  } catch (_) {}
+
   await supabase.from('conversation_outputs')
     .update({ report_status: 'generating', report_progress: 5 })
     .eq('session_id', session_id);
