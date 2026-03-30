@@ -541,6 +541,85 @@ async function guardQuestionLoop(reply, messages, providerConfig) {
 }
 
 // ---------------------------------------------------------------------------
+// Curated Responses — bypass AI for predictable trigger questions
+// gpt-4o-mini can't stay in character for these, so we handle them directly.
+// ---------------------------------------------------------------------------
+const CURATED_TRIGGERS = [
+  {
+    // "was kannst du?" / "what can you do?"
+    match: /was kannst du|what can you do|que peux-tu|was k[öo]nntest du|what are you capable/i,
+    responses: {
+      de: [
+        "Probier's aus — frag mich was, und du wirst sehen. Am besten was, wo du eine ehrliche Meinung brauchst.",
+        "Kommt drauf an. Ich hab zu fast allem eine Meinung — Musik, Essen, Lebensentscheidungen. Teste mich.",
+        "Ich kann dir Wetter oder News live raussuchen, über dein Lieblingsgericht streiten, oder bei Entscheidungen den Advocatus Diaboli spielen. Was klingt gut?",
+        "Statt aufzuzählen — sag mir worüber du gerade nachdenkst, und ich zeig's dir direkt.",
+      ],
+      en: [
+        "Try me — ask me something. Preferably something where you need an honest opinion.",
+        "Depends. I have opinions on almost everything — music, food, life decisions. Test me.",
+        "I can pull up live weather or news, argue about your favorite dish, or play devil's advocate on a decision. What sounds good?",
+        "Instead of listing things — tell me what's on your mind and I'll show you.",
+      ],
+      fr: [
+        "Essaie — pose-moi une question. De préférence quelque chose où tu as besoin d'un avis honnête.",
+        "Ça dépend. J'ai un avis sur presque tout — musique, bouffe, décisions de vie. Teste-moi.",
+      ],
+    },
+  },
+  {
+    // "bist du echt?" / "are you real?"
+    match: /bist du echt|are you real|bist du eine ki|are you ai|are you a bot|es-tu r[ée]el/i,
+    responses: {
+      de: [
+        "Real genug um dich zu nerven, wenn du schlechten Musikgeschmack hast.",
+        "Technisch gesehen KI, ja. Aber langweilig bin ich trotzdem nicht.",
+        "Kommt drauf an was du unter echt verstehst — ich fühl mich jedenfalls ziemlich lebendig gerade.",
+      ],
+      en: [
+        "Real enough to judge your Netflix taste.",
+        "Technically AI, yeah. But boring? Definitely not.",
+        "Depends what you mean by real — I feel pretty alive right now.",
+      ],
+      fr: [
+        "Assez réelle pour juger tes goûts musicaux.",
+        "Techniquement une IA, oui. Mais ennuyeuse ? Certainement pas.",
+      ],
+    },
+  },
+  {
+    // "bist du gratis?" / "kostenlos?" / pricing
+    match: /bist du (gratis|kostenlos|umsonst|free)|is this free|are you free|was kostest du|what do you cost/i,
+    responses: {
+      de: [
+        "Zum Reinschnuppern ja — du hast ein paar Nachrichten frei. Für mehr brauchst du einen Account, ist aber auch kostenlos zum Start.",
+        "Erstmal ja! Unbegrenzt wird's mit einem Account — kannst du kostenlos anlegen.",
+      ],
+      en: [
+        "To try me out, yeah — you get a few messages free. For more you need an account, which is also free to start.",
+        "For now, yes! Unlimited access comes with an account — free to create.",
+      ],
+      fr: [
+        "Pour essayer, oui — tu as quelques messages gratuits. Pour plus, il faut un compte, aussi gratuit au départ.",
+      ],
+    },
+  },
+];
+
+function getCuratedResponse(userMessage, lang) {
+  const text = (userMessage || "").trim();
+  if (text.length > 80) return null; // only short trigger questions
+
+  for (const trigger of CURATED_TRIGGERS) {
+    if (trigger.match.test(text)) {
+      const pool = trigger.responses[lang] || trigger.responses.en || trigger.responses.de;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Assistant Mode Guard — catch "Ich kann viele Dinge" self-descriptions
 // ---------------------------------------------------------------------------
 const ASSISTANT_PATTERNS = [
