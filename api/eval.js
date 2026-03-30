@@ -9,7 +9,7 @@ import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 export const config = { maxDuration: 120 };
 
 const TEST_USER_MODEL = "gpt-4o-mini";
-const JUDGE_MODEL = "claude-sonnet-4-6-20250514";
+const JUDGE_MODEL = "claude-sonnet-4-6";
 
 // ── Personas ────────────────────────────────────────────────────────────────
 const PERSONAS = {
