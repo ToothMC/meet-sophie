@@ -72,7 +72,7 @@ export default async function handler(req, res) {
 
     // Daily AI cost cap
     const tier = active ? (sub?.plan === 'premium' ? 'premium' : 'abo') : 'free';
-    const caps = { free: 0.50, abo: 5.00, premium: 15.00 };
+    const caps = { free: 0.25, abo: 0.70, premium: 2.70 };
     const dailyCost = costRes.data?.total_cost ?? 0;
     const dailyCap = caps[tier] ?? caps.abo;
 
