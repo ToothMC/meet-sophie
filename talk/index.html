@@ -3796,6 +3796,7 @@ function stopInactivityTimer() {
 function startCountdown(){
   if (countdown) clearInterval(countdown);
   timerEl.style.display = "none";
+  touchActivity(); // baseline — prevents timer from firing immediately
   startInactivityTimer();
 
   countdown = setInterval(() => {
