@@ -57,7 +57,7 @@ export default async function handler(req, res) {
   // Query all providers in parallel (8s timeout per provider)
   const PER_PROVIDER_TIMEOUT = 8000;
   const results = await Promise.allSettled(
-    COMPARE_PROVIDERS.map(async ({ provider, model }) => {
+    compareProviders.map(async ({ provider, model }) => {
       const start = Date.now();
       try {
         const adapter = getAdapter(provider);
