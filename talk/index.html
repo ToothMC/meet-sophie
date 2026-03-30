@@ -3765,7 +3765,7 @@ function attachChannel(ch) {
           turn_detection: {
             type: "server_vad",
             // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
-            silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 400,
+            silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 200,
             threshold: selectedVoiceMode === "salespitch" ? 0.65 : 0.5,
             prefix_padding_ms: 300,
             create_response: false,
