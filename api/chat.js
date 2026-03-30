@@ -912,6 +912,24 @@ async function handleMessage(req, res) {
 
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
+    // Curated responses for predictable trigger questions (bypass AI entirely)
+    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+    const curatedReply = getCuratedResponse(lastUserMsg?.content, preferredLanguage);
+    if (curatedReply) {
+      await supabase.from("chat_sessions").update({
+        turn_count: session.turn_count + 1,
+        last_message_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("id", session_id);
+      return res.status(200).json({
+        ok: true, reply: curatedReply,
+        voice_offer: false, voice_confirmed: false,
+        detected_mode: null, turn_count: session.turn_count + 1,
+        model: "curated", provider: "curated",
+        routing_reason: "curated-trigger", import_hint: false,
+      });
+    }
+
     // Soft onboarding — respond to the user FIRST, then weave in naturally
     if (turnNumber === 1) {
       routerMessages.push({ role: "system", content: "First message from this user. Respond naturally to what they said. If it fits, casually ask their name somewhere in your response (e.g. 'Wie soll ich dich nennen?' or 'What's your name?'). If the user asked something specific, answer that FIRST — the name question is secondary." });
