@@ -256,7 +256,7 @@ async function handleStart(req, res) {
   if (user) {
     try {
       const [profRes, relRes, subRes, sessRes, importRes] = await Promise.all([
-        supabase.from("user_profile").select("first_name,preferred_name,preferred_addressing,preferred_pronoun,preferred_language,notes,occupation,conversation_style,topics_like,topics_avoid").eq("user_id", user.id).maybeSingle(),
+        supabase.from("user_profile").select("first_name,preferred_name,preferred_addressing,preferred_pronoun,preferred_language,notes,occupation,conversation_style,topics_like,topics_avoid,eco_mode").eq("user_id", user.id).maybeSingle(),
         supabase.from("user_relationship").select("tone_baseline,openness_level,emotional_patterns,last_interaction_summary,communication_style,thinking_pattern").eq("user_id", user.id).maybeSingle(),
         supabase.from("user_subscriptions").select("is_active,status,plan").eq("user_id", user.id).maybeSingle(),
         supabase.from("user_sessions").select("session_date,emotional_tone,stress_level,closeness_level,short_summary").eq("user_id", user.id).order("session_date", { ascending: false }).limit(5),
