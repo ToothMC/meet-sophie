@@ -613,6 +613,7 @@ async function toggleEcoMode(enabled) {
     loadUsage(); // Refresh to update toggle state
   } catch (e) { console.error("Eco toggle failed:", e); }
 }
+window.toggleEcoMode = toggleEcoMode;
 
 // ── Helpers ──
 function toggleSection(id) {
