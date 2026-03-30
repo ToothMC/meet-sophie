@@ -656,8 +656,9 @@ Danach folgt deine strukturierte Analyse.`;
       .update({ report_progress: 10, report_status_detail: hasTemplate ? 'Analysiere Inhalt...' : 'Analysiere mit 4 KIs parallel...' })
       .eq('session_id', session_id);
 
+    const providers = isEco ? ECO_REPORT_PROVIDERS : REPORT_PROVIDERS;
     const analysisResults = await Promise.allSettled(
-      REPORT_PROVIDERS.map(async ({ provider, model }) => {
+      providers.map(async ({ provider, model }) => {
         const adapter = getAdapter(provider);
         const response = await adapter.complete({
           messages: [
