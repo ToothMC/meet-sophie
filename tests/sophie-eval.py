@@ -113,15 +113,22 @@ def anthropic_chat(system, user_msg, model=JUDGE_MODEL, max_tokens=300):
 
 # ── Judge ───────────────────────────────────────────────────────────────────
 def judge_response(user_msg, sophie_reply, recent_history):
-    recent_questions = sum(1 for t in recent_history if t["role"] == "assistant" and t["content"].strip().endswith("?"))
-    history_str = "\n".join(f'{t["role"]}: {t["content"]}' for t in recent_history[-6:]) if recent_history else ""
+    assistant_msgs = [t for t in recent_history if t["role"] == "assistant"]
+    recent_questions = sum(1 for t in assistant_msgs if t["content"].strip().endswith("?"))
+    total_assistant = max(len(assistant_msgs), 1)
 
-    prompt = f"""{"RECENT CONVERSATION:\n" + history_str + "\n" if history_str else ""}
-USER MESSAGE: "{user_msg}"
-SOPHIE'S RESPONSE: "{sophie_reply}"
-CONTEXT: {recent_questions} of last {max(sum(1 for t in recent_history if t['role'] == 'assistant'), 1)} Sophie responses ended with question.
-
-Score this response. Return ONLY valid JSON."""
+    lines = []
+    if recent_history:
+        lines.append("RECENT CONVERSATION:")
+        for t in recent_history[-6:]:
+            lines.append(f"{t['role']}: {t['content']}")
+        lines.append("")
+    lines.append(f'USER MESSAGE: "{user_msg}"')
+    lines.append(f'SOPHIE\'S RESPONSE: "{sophie_reply}"')
+    lines.append(f"CONTEXT: {recent_questions} of last {total_assistant} Sophie responses ended with question.")
+    lines.append("")
+    lines.append("Score this response. Return ONLY valid JSON.")
+    prompt = "\n".join(lines)
 
     raw = anthropic_chat(JUDGE_SYSTEM, prompt)
     try:
