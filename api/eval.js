@@ -210,10 +210,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing OPENAI_API_KEY or ANTHROPIC_API_KEY" });
   }
 
-  // Use own deployment URL as base
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host;
-  const baseUrl = `${proto}://${host}`;
+  // Use own deployment URL, or override with ?url= param
+  const baseUrl = req.query.url
+    || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
 
   try {
     const result = await runPersona(persona, baseUrl);
