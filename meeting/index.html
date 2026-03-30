@@ -1972,6 +1972,8 @@ async function connectSophieVoice() {
       throw new Error(data?.error || data?.message || `HTTP ${tokenRes.status}`);
     }
 
+    window._ecoMode = !!data?.eco_mode;
+
     // 2. Set up WebRTC (same as Talk)
     sophieVoicePc = new RTCPeerConnection();
 
