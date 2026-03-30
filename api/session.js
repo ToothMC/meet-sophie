@@ -707,7 +707,6 @@ NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
         instructions: fullPrompt,
         input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
         input_audio_format: "pcm16",
-        output_audio_format: "pcm16",
         turn_detection: {
           type: "server_vad",
           threshold: 0.6,
