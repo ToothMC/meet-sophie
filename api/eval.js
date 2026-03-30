@@ -117,10 +117,33 @@ async function sophieRespond(systemPrompt, history, turnNumber, lang) {
     messages.push({ role: "system", content: "First message from this user. Respond naturally to what they said. If it fits, casually ask their name somewhere in your response. The user's actual question always has priority." });
   }
 
-  const rawReply = await openaiChat(messages, "gpt-4o-mini", 1024, 0.85);
+  let rawReply = await openaiChat(messages, "gpt-4o-mini", 1024, 0.85);
   // Strip tool tags (anonymous users can't use tools)
-  const reply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").replace(/\[MODE_DETECTED:\w+\]/g, "").replace(/\[IMPORT_HINT\]/g, "").trim();
-  return normalizeResponse(reply, "openai");
+  rawReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").replace(/\[MODE_DETECTED:\w+\]/g, "").replace(/\[IMPORT_HINT\]/g, "").trim();
+  let reply = normalizeResponse(rawReply, "openai");
+
+  // Question Loop Guard (mirrors chat.js guardQuestionLoop)
+  if (reply.trim().endsWith("?")) {
+    const recentAssistant = history
+      .filter(m => m.role === "assistant")
+      .slice(-2)
+      .filter(m => String(m.content || "").trim().endsWith("?"));
+    if (recentAssistant.length >= 2) {
+      // 3rd consecutive question → regenerate
+      const retryMessages = [
+        ...messages,
+        { role: "assistant", content: reply },
+        { role: "system", content: "STOP. Your last 3 responses all ended with a question. That's an interview, not a conversation. Rewrite your last response WITHOUT any question at the end. React, comment, share your take — then STOP. Do not ask anything. Return ONLY the rewritten response." },
+      ];
+      try {
+        const fixed = await openaiChat(retryMessages, "gpt-4o-mini", 1024, 0.85);
+        const cleaned = normalizeResponse(fixed, "openai");
+        if (cleaned && !cleaned.trim().endsWith("?")) reply = cleaned;
+      } catch { /* fallback to original */ }
+    }
+  }
+
+  return reply;
 }
 
 // ── Judge ───────────────────────────────────────────────────────────────────
