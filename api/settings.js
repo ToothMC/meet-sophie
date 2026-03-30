@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { listSources, decoupleSource, deleteRawData, deleteAll } from '../lib/import/source-ledger.js';
 import { TOKEN_COSTS, SECONDS_PER_TOKEN } from '../lib/billing-constants.js';
+import { trackCost } from '../lib/ai/cost-tracker.js';
 
 export default async function handler(req, res) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
