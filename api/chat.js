@@ -765,13 +765,20 @@ async function handleMessage(req, res) {
     let rawReply = normalizeResponse(aiResp.content || "", aiResp.provider);
     if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
-    // Anonymous users: tools blocked — tease capability, nudge login
+    // Anonymous users: tools blocked — tease once, then just strip the tag
     const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
     if (toolMatch) {
-      const [, toolType] = toolMatch;
-      const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge" };
-      const toolName = toolNames[toolType] || toolType;
-      rawReply = `Ich könnte dir das tatsächlich live zeigen — ${toolName} in Echtzeit abrufen. Dafür brauchst du nur einen kostenlosen Account. Dauert 10 Sekunden, kein Abo nötig!`;
+      if (turnNumber <= 2) {
+        // First time: tease the capability once
+        const [, toolType] = toolMatch;
+        const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge" };
+        const toolName = toolNames[toolType] || toolType;
+        rawReply = `Ich könnte dir das tatsächlich live zeigen — ${toolName} in Echtzeit abrufen. Dafür brauchst du nur einen kostenlosen Account. Dauert 10 Sekunden, kein Abo nötig!`;
+      } else {
+        // Already teased — just strip the tool tag, let Sophie answer naturally
+        rawReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
+        if (!rawReply) rawReply = "Dafür bräuchte ich Internetzugriff — den hast du mit einem kostenlosen Account.";
+      }
     }
 
     // Strip signal tags
