@@ -3289,22 +3289,24 @@
       );
     }
     function collectVisitorContext() {
+      // Signal Layer — only harmless, non-identifying browser signals
+      // Raw data is normalized server-side into buckets before reaching the LLM
       const vc = {};
       try {
-        vc.languages = navigator.languages ? [...navigator.languages] : [navigator.language || "en"];
+        vc.language = navigator.language || "en";
+        vc.languages = navigator.languages ? [...navigator.languages].slice(0, 3) : [vc.language];
         vc.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
-        vc.is_mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-        vc.screen_width = window.innerWidth;
-        vc.referrer = document.referrer || null;
-        vc.page_path = window.location.pathname;
+        vc.is_mobile = navigator.userAgentData?.mobile ?? (window.innerWidth < 768);
         vc.local_hour = new Date().getHours();
+        // Referrer: only hostname, not full URL (privacy)
+        try { vc.referrer_host = document.referrer ? new URL(document.referrer).hostname : null; } catch { vc.referrer_host = null; }
+        // UTM: only source bucket, not full campaign details
         const params = new URLSearchParams(window.location.search);
         vc.utm_source = params.get("utm_source") || null;
-        vc.utm_medium = params.get("utm_medium") || null;
-        vc.utm_campaign = params.get("utm_campaign") || null;
-        const visitCount = parseInt(localStorage.getItem("sophie_visit_count") || "0", 10) + 1;
-        localStorage.setItem("sophie_visit_count", String(visitCount));
-        vc.visit_count = visitCount;
+        // Visit count: sessionStorage only (no cross-session tracking without consent)
+        const visitCount = parseInt(sessionStorage.getItem("sophie_page_views") || "0", 10) + 1;
+        sessionStorage.setItem("sophie_page_views", String(visitCount));
+        vc.page_views = visitCount;
       } catch(e) { /* silently degrade */ }
       return vc;
     }
