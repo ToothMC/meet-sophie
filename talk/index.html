@@ -3951,6 +3951,12 @@ function attachChannel(ch) {
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
+        // Smooth fade-out instead of hard audio cut (prevents click/pop)
+        if (gainNode && audioCtx) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+        }
         // User is speaking — reset inactivity timer
         if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
