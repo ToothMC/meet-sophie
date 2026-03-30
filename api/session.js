@@ -739,6 +739,7 @@ NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
       mode: mode,
       eco_mode: isEco,
       user_id: user.id,
+      preferred_name: profile.preferred_name || profile.first_name || "",
       preferred_language: preferredLanguage,
       is_first_session: isFirstSession,
 
