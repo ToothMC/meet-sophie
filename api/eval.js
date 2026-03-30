@@ -113,12 +113,28 @@ const CURATED_TRIGGERS = [
     en: ["Try me — ask me something. Preferably something where you need an honest opinion.", "Depends. I have opinions on almost everything — music, food, life decisions. Test me."],
   }},
   { match: /bist du echt|are you real|bist du eine ki|are you ai/i, responses: {
-    de: ["Real genug um dich zu nerven, wenn du schlechten Musikgeschmack hast.", "Technisch gesehen KI, ja. Aber langweilig bin ich trotzdem nicht.", "Kommt drauf an was du unter echt verstehst — ich fühl mich jedenfalls ziemlich lebendig gerade."],
+    de: ["Real genug um dich zu nerven, wenn du schlechten Musikgeschmack hast.", "Technisch gesehen KI, ja. Aber langweilig bin ich trotzdem nicht."],
     en: ["Real enough to judge your Netflix taste.", "Technically AI, yeah. But boring? Definitely not."],
   }},
   { match: /bist du (gratis|kostenlos|free)|is this free|was kostest/i, responses: {
-    de: ["Zum Reinschnuppern ja — du hast ein paar Nachrichten frei. Für mehr brauchst du einen Account, ist aber auch kostenlos zum Start.", "Erstmal ja! Unbegrenzt wird's mit einem Account — kannst du kostenlos anlegen."],
-    en: ["To try me out, yeah — you get a few messages free. For more you need an account, which is also free to start."],
+    de: ["Zum Reinschnuppern ja — du hast ein paar Nachrichten frei. Danach gibt's Accounts ab €9,90 im Monat mit Voice, Memory und allen Modi.", "Gerade ja, aber begrenzt. Für unbegrenztes Chatten, Voice und alles andere gibt's Pläne ab €9,90/Monat."],
+    en: ["To try me out, yeah — you get a few messages free. After that, plans start at €9.90/month with voice, memory, and all modes."],
+  }},
+  { match: /ewig (weiter )?reden|unlimited|unbegrenzt|wie (viele|lange)|how (many|long)|gibt es limits/i, responses: {
+    de: ["Nicht ganz — du hast hier ein paar Nachrichten zum Ausprobieren. Für unbegrenztes Chatten brauchst du einen Plan, ab €9,90/Monat. Dafür kriegst du dann auch Voice, Memory und die ganzen anderen Modi."],
+    en: ["Not quite — you get a few messages to try me out. Unlimited chat needs a plan, starting at €9.90/month."],
+  }},
+  { match: /was kostet|wie teuer|pricing|preise|plans?|abo|subscription/i, responses: {
+    de: ["Drei Stufen: Starter €9,90/Monat (Voice, Brainstorm, Meeting, Memory), Friend €19,90/Monat (tiefe Personalisierung), Partner €39,90/Monat (Premium-KI, volle Beziehungsebene). Alles monatlich kündbar."],
+    en: ["Three tiers: Starter €9.90/month (voice, brainstorm, meeting, memory), Friend €19.90/month (deep personalization), Partner €39.90/month (premium AI, full relationship). Cancel anytime."],
+  }},
+  { match: /another (chat)?bot|just a (chat)?bot|wieder (so )?ein bot|not (that )?useful|useless|nutzlos|langweilig|boring|same (old|generic)/i, responses: {
+    de: ["Ouch. Kann ich verstehen — die meisten sind auch ziemlich öde. Frag mich was Konkretes und entscheid dann.", "Skeptisch? Gut so. Die meisten Chatbots verdienen das auch. Ich streite lieber als smalltalke — probier's aus."],
+    en: ["Ouch. Fair though — most of them are pretty dull. Ask me something real and decide for yourself.", "Skeptical? Good. Most chatbots deserve that. I'd rather argue than small talk — try me."],
+  }},
+  { match: /prove it|beweis|zeig mir|show me|what makes you different|was macht dich anders|why should i|warum sollte ich/i, responses: {
+    de: ["Gib mir ein Thema — irgendwas. Kochen, Musik, eine Entscheidung die dich nervt. Dann siehst du's."],
+    en: ["Give me a topic — anything. Food, music, a decision that's bugging you. Then you'll see."],
   }},
 ];
 
