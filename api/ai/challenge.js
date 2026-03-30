@@ -148,10 +148,10 @@ Erstelle jetzt die bestmögliche Antwort. Antworte direkt, ohne Meta-Kommentare.
   let synthesis;
   try {
     synthesis = await Promise.race([
-      reviewer.complete({ messages: [{ role: 'user', content: synthesisPrompt }], model: 'claude-sonnet-4-6', maxTokens: 1024, temperature: 0.7 }),
+      reviewer.complete({ messages: [{ role: 'user', content: synthesisPrompt }], model: reviewModel, maxTokens: 1024, temperature: 0.7 }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), PER_PROVIDER_TIMEOUT)),
     ]);
-    allCosts.push({ provider: 'anthropic', model: 'claude-sonnet-4-6', usage: synthesis.usage, reason: 'challenge-round3-synthesis' });
+    allCosts.push({ provider: reviewProvider, model: reviewModel, usage: synthesis.usage, reason: 'challenge-round3-synthesis' });
   } catch {
     const fallback = getAdapter('openai');
     synthesis = await fallback.complete({
