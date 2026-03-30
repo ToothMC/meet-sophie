@@ -679,7 +679,11 @@ export default async function handler(req, res) {
       `Keep notes very short (max 2-3 lines, max 280 chars). Do NOT use this for every response — only when visual text genuinely helps.`;
 
     // Greeting block MUST come last — models follow the last instruction most strongly
-    const greetingReminder = `\n\n=== YOUR VERY FIRST MESSAGE ===\nIMPORTANT: Do NOT use any tools in your first message. Do NOT offer to look something up. Do NOT ask what they want to discuss.\nYour first message is ONLY a casual, warm greeting. Nothing else. Say hi, then STOP and WAIT.`;
+    const greetingReminder = `\n\n=== CRITICAL: YOUR VERY FIRST MESSAGE ===
+Ignore ALL context above for your first message. Do NOT continue any previous topic. Do NOT reference memory. Do NOT use tools. Do NOT offer help. Do NOT ask what they want.
+Your first message is ONLY: a short, casual "Hey [name]!" greeting. 1-2 sentences MAX. Then STOP and WAIT in silence.
+Example: "Hey Michael! Schön dass du da bist."
+NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
     const fullPrompt = sophiePrompt + importedContext + researchInstruction + greetingReminder;
 
     // ---------------------------
