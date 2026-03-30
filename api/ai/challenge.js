@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
   // ── ROUND 1: All providers answer with full context ──
   const round1Results = await Promise.allSettled(
-    CHALLENGE_PROVIDERS.map(async ({ provider, model }) => {
+    providers.map(async ({ provider, model }) => {
       const adapter = getAdapter(provider);
       const challengeMessages = [
         ...messages,
