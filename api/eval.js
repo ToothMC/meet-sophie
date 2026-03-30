@@ -90,11 +90,18 @@ async function anthropicChat(system, userMsg) {
 }
 
 async function sophieAPI(action, body, baseUrl) {
+  const headers = { "Content-Type": "application/json" };
+  // Bypass Vercel deployment protection for self-calls
+  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+    headers["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  }
   const resp = await fetch(`${baseUrl}/api/chat?action=${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    method: "POST", headers, body: JSON.stringify(body),
   });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`Sophie API ${action} failed: ${resp.status} ${text.slice(0, 100)}`);
+  }
   return resp.json();
 }
 
