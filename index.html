@@ -3529,7 +3529,7 @@
           const hasToken = !!(await getToken().catch(() => null));
           const reportTitle = hasToken
             ? (t.chat_tokens_exhausted || "Your tokens are used up.")
-            : (t.chat_report_title || "Want to continue talking with Sophie?");
+            : (t.chat_report_title || "Want to keep talking with Sophie?");
           const reportCTA = hasToken
             ? (t.chat_topup_cta || "Buy more tokens")
             : (t.chat_report_cta || "Create free account");
@@ -3554,7 +3554,7 @@
           const hasToken = !!(await getToken().catch(() => null));
           const reportTitle = hasToken
             ? (t.chat_tokens_exhausted || "Your tokens are used up.")
-            : (t.chat_report_title || "Want to continue talking with Sophie?");
+            : (t.chat_report_title || "Want to keep talking with Sophie?");
           const reportCTA = hasToken
             ? (t.chat_topup_cta || "Buy more tokens")
             : (t.chat_report_cta || "Create free account");
@@ -3599,7 +3599,7 @@
             // if (!authNudgeShown && turnCount >= AUTH_NUDGE_AT) { ... }
             if (retryData.limit_reached) {
               sessionEnded = true;
-              const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
+              const reportTitle = t.chat_report_title || "Want to keep talking with Sophie?";
               const reportCTA   = t.chat_report_cta   || "Create free account";
               reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
               show(reportEl); inputEl.disabled = true; sendBtn.disabled = true; saveChatState();
