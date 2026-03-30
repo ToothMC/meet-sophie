@@ -317,7 +317,7 @@ async function checkout(plan){
 }
 async function topup(pack){
   msg.textContent="";
-  if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;return;}
+  if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
   dis(true);
   try{
     const t=await tok();if(!t)return;
