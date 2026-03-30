@@ -441,6 +441,20 @@ Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der ve
         model: 'gpt-4o', maxTokens: 2000, temperature: 0.4,
       });
 
+      // Track demo pitch generation cost
+      if (resp?.usage) {
+        trackCost({
+          userId: user.id,
+          provider: resp.provider || 'openai',
+          model: resp.model || 'gpt-4o',
+          inputTokens: resp.usage.inputTokens || 0,
+          outputTokens: resp.usage.outputTokens || 0,
+          costUsd: resp.usage.costUsd || 0,
+          latencyMs: resp.latencyMs || 0,
+          routingReason: 'demo-pitch-generation',
+        }).catch(err => console.error("Demo pitch cost tracking error:", err?.message));
+      }
+
       const demoPitch = (resp.content || '').trim();
       if (!demoPitch || demoPitch.length < 100) {
         return res.status(500).json({ error: 'Demo pitch generation failed' });
