@@ -161,7 +161,7 @@ body{
 .mode-indicator[data-mode="explorer"]{ color:#3f8cff; }
 .mode-indicator[data-mode="reflect"]{ color:#a78bfa; }
 .mode-indicator[data-mode="decide"]{ color:#f5c842; }
-.mode-indicator[data-mode="relax"]{ color:#34d399; }
+.mode-indicator[data-mode="chill"]{ color:#34d399; }
 .mode-indicator[data-mode="brainstorm"]{ color:#f5c842; }
 .mode-indicator[data-mode="meeting"]{ color:#34c47a; }
 .mode-indicator[data-mode="salespitch"]{ color:#ff5252; }
@@ -1348,7 +1348,7 @@ function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
 const modeIndicatorEl = document.getElementById("modeIndicator");
-const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", relax: "◆ Relax", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
+const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", chill: "◆ Chill", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
 function updateModeIndicator(mode) {
   if (!modeIndicatorEl) return;
   if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
@@ -2587,7 +2587,7 @@ function attachChannel(ch) {
           parameters: {
             type: "object",
             properties: {
-              mode: { type: "string", enum: ["explorer", "reflect", "decide", "relax"] }
+              mode: { type: "string", enum: ["explorer", "reflect", "decide", "chill"] }
             },
             required: ["mode"]
           }

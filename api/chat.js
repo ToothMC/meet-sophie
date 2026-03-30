@@ -20,25 +20,25 @@ const AUTH_NUDGE_AT_TURN = 3;
 // ---------------------------------------------------------------------------
 const CHAT_OPENERS = {
   de: [
-    "Was beschäftigt dich gerade?",
-    "Was geht dir gerade durch den Kopf?",
-    "Wobei wünschst du dir gerade Klarheit?",
-    "Was fühlt sich im Moment ungelöst an?",
-    "Worüber möchtest du gerade nachdenken?",
+    "Hey! Was geht bei dir?",
+    "Na, was gibt's Neues?",
+    "Hey — wie läuft's?",
+    "Na du, alles klar?",
+    "Hey! Erzähl mal, was los ist.",
   ],
   en: [
-    "What's on your mind right now?",
-    "What are you trying to figure out?",
-    "What feels unresolved for you right now?",
-    "What would you like to think through?",
-    "Where are you stuck?",
+    "Hey! What's up?",
+    "Hey — how's it going?",
+    "What's new with you?",
+    "Hey! Tell me what's going on.",
+    "Yo, what's good?",
   ],
   fr: [
-    "Qu'est-ce qui t'occupe l'esprit en ce moment?",
-    "Sur quoi aimerais-tu avoir plus de clarté?",
-    "Qu'est-ce qui te semble non résolu en ce moment?",
-    "À quoi veux-tu réfléchir?",
-    "Qu'est-ce qui te préoccupe?",
+    "Hey! Quoi de neuf?",
+    "Salut — comment ça va?",
+    "Hey! Raconte, qu'est-ce qui se passe?",
+    "Coucou, ça roule?",
+    "Salut toi! Quoi de beau?",
   ],
 };
 function getOpener(lang) {
@@ -259,9 +259,9 @@ async function handleMessage(req, res) {
   // Turn-aware routing nudge — injected as last system message so it's fresh in context
   // Fires on turns 1–3 to help Sophie identify the user's intent and suggest a mode
   const voiceNudge = turnNumber === 1
-    ? "[INTERNAL] Turn 1. If the user's intent is already clear (especially if a session mode is pre-selected), end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch. If intent is unclear, ask ONE clarifying question."
+    ? "[INTERNAL] Turn 1. If the user's intent is already clear (especially if a session mode is pre-selected), end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, chill, brainstorm, meeting, salespitch. If intent is unclear, ask ONE clarifying question."
     : turnNumber === 2
-    ? "[INTERNAL] Turn 2. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, relax, brainstorm, meeting, salespitch."
+    ? "[INTERNAL] Turn 2. You should now have enough context. Identify the best mode and end your response with [MODE_DETECTED:xxx] where xxx is one of: explore, decide, reflect, chill, brainstorm, meeting, salespitch."
     : turnNumber === 3
     ? "[INTERNAL] Turn 3. If you have not yet emitted a [MODE_DETECTED:xxx] token, you must do so now. Pick the best mode based on everything you've heard."
     : null;
