@@ -2162,7 +2162,8 @@ async function reportMeetingVoiceUsage(seconds) {
     const { data: { session: authSession } } = await supabase.auth.getSession();
     if (!authSession?.access_token) return;
 
-    const tokens = Math.ceil(seconds / 3); // SECONDS_PER_TOKEN = 3
+    const secPerToken = window._ecoMode ? 7.5 : 3; // Eco: 8 tokens/min, Normal: 20 tokens/min
+    const tokens = Math.ceil(seconds / secPerToken);
     const res = await fetch("/api/user?action=usage", {
       method: "POST",
       headers: {
@@ -2174,9 +2175,45 @@ async function reportMeetingVoiceUsage(seconds) {
     });
     const data = await res.json().catch(() => null);
     console.log(`[meeting-voice] Usage reported: ${seconds}s (${tokens} tokens)`, res.status, data);
+
+    if (data?.suggest_eco && !sessionStorage.getItem("eco_suggested")) {
+      sessionStorage.setItem("eco_suggested", "1");
+      showEcoBanner();
+    }
   } catch (e) {
     console.error("[meeting-voice] Usage report failed:", e.message);
   }
+}
+
+function showEcoBanner() {
+  if (document.getElementById("ecoBanner")) return;
+  const banner = document.createElement("div");
+  banner.id = "ecoBanner";
+  banner.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;border:1px solid #ede8e2;border-radius:14px;padding:14px 18px;box-shadow:0 4px 20px rgba(0,0,0,.12);max-width:360px;width:90%;font-family:system-ui,sans-serif";
+  banner.innerHTML = `
+    <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px">Eco-Modus verf\u00fcgbar</div>
+    <div style="font-size:12px;color:#7a6a5a;line-height:1.4;margin-bottom:12px">Ein Wechsel auf Eco kann Ihre Nutzungsdauer um bis zu 150% verl\u00e4ngern.</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="activateEcoFromBanner()" style="flex:1;padding:8px 0;background:#c4a882;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Eco aktivieren</button>
+      <button onclick="document.getElementById('ecoBanner').remove()" style="flex:1;padding:8px 0;background:none;border:1px solid #ede8e2;color:#7a6a5a;border-radius:8px;font-size:12px;cursor:pointer">Verstanden</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+async function activateEcoFromBanner() {
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.access_token) return;
+    await fetch("/api/settings?action=eco-mode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.access_token },
+      body: JSON.stringify({ enabled: true }),
+    });
+    window._ecoMode = true;
+    const b = document.getElementById("ecoBanner");
+    if (b) b.innerHTML = '<div style="text-align:center;padding:8px;font-size:13px;color:#4a8c5c;font-weight:600">\u2713 Eco-Modus aktiviert</div>';
+    setTimeout(() => b?.remove(), 2000);
+  } catch (e) { console.error("Eco activation failed:", e); }
 }
 
 // ---------------------------------------------------------------------------
