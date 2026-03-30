@@ -3753,6 +3753,7 @@ function startInactivityTimer() {
   inactivityTimer = setTimeout(function checkInactivity() {
     if (selectedVoiceMode === "salespitch") return; // has own timer
     if (limitTriggered || softEndFinalizing) return; // already ending
+    if (!hasUserSpoken) { touchActivity(); inactivityTimer = setTimeout(checkInactivity, INACTIVITY_WARNING_MS); return; } // wait for first utterance
     const idleMs = Date.now() - lastActivityAt;
     if (idleMs < INACTIVITY_WARNING_MS) {
       // Not idle long enough yet — reschedule for remaining time
