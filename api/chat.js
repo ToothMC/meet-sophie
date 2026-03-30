@@ -182,6 +182,7 @@ async function handleStart(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === "object" ? body : {};
   const lang = (body.language || "en").toLowerCase().trim();
+  const visitorContext = body.visitor_context && typeof body.visitor_context === "object" ? body.visitor_context : null;
 
   let languageInstruction = "Speak English.";
   if (lang === "de") languageInstruction = "Sprich Deutsch.";
