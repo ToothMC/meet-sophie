@@ -4025,8 +4025,21 @@ function attachChannel(ch) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
     } else if (!isFirstSession) {
-      console.log(`[${runId}] [returning] enabling auto responses`);
-      try { await setAutoResponses(true); } catch(e) { console.log(`[${runId}] [returning] setAutoResponses failed`, e); }
+      console.log(`[${runId}] [returning] forcing casual greeting`);
+      try {
+        await cancelAnyOngoingResponse();
+        const userName = data?.preferred_name || data?.user_name || "";
+        const greetLang = data?.preferred_language || _uiLang || "en";
+        const greetInstruction = greetLang === "de"
+          ? `Sag NUR: "Hey${userName ? " " + userName : ""}! Schön dass du wieder da bist." — NICHTS WEITER. Keine Frage. Kein Angebot. Nur diesen einen Satz, dann Stille.`
+          : `Say ONLY: "Hey${userName ? " " + userName : ""}! Good to see you again." — NOTHING ELSE. No question. No offer. Just this one sentence, then silence.`;
+        dcSend({
+          type: "conversation.item.create",
+          item: { type: "message", role: "user", content: [{ type: "input_text", text: greetInstruction }] },
+        });
+        dcSend({ type: "response.create" });
+        await setAutoResponses(true);
+      } catch(e) { console.log(`[${runId}] [returning] greeting kickoff failed`, e); await setAutoResponses(true); }
     }
   });
 
