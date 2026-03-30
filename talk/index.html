@@ -3752,6 +3752,7 @@ function startInactivityTimer() {
   inactivityWarningFired = false;
   inactivityTimer = setTimeout(function checkInactivity() {
     if (selectedVoiceMode === "salespitch") return; // has own timer
+    if (selectedVoiceMode === "meeting") return;    // meeting: long silence between speakers is normal
     if (limitTriggered || softEndFinalizing) return; // already ending
     if (!hasUserSpoken) { touchActivity(); inactivityTimer = setTimeout(checkInactivity, INACTIVITY_WARNING_MS); return; } // wait for first utterance
     const idleMs = Date.now() - lastActivityAt;
