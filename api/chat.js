@@ -977,11 +977,15 @@ async function handleMessage(req, res) {
     }
   }
 
+  // Detect language from system prompt or default
+  const sessionLang = (system_prompt || "").includes("Sprich Deutsch") ? "de"
+    : (system_prompt || "").includes("Parle français") ? "fr" : "en";
+
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
     // Curated responses for predictable trigger questions (bypass AI entirely)
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
-    const curatedReply = getCuratedResponse(lastUserMsg?.content, preferredLanguage);
+    const curatedReply = getCuratedResponse(lastUserMsg?.content, sessionLang);
     if (curatedReply) {
       await supabase.from("chat_sessions").update({
         turn_count: session.turn_count + 1,
