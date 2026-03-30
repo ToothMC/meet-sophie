@@ -13,6 +13,11 @@ const COMPARE_PROVIDERS = [
   { provider: 'mistral', model: 'mistral-small-latest' },
 ];
 
+const ECO_COMPARE_PROVIDERS = [
+  { provider: 'google', model: 'gemini-2.5-flash-lite' },
+  { provider: 'openai', model: 'gpt-4o-mini' },
+];
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
