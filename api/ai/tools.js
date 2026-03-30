@@ -31,6 +31,12 @@ export default async function handler(req, res) {
       case 'flight':
         result = await getFlightStatus(params.flight_number);
         break;
+      case 'arrivals':
+        result = await getAirportFlights(params.airport_iata, 'arr');
+        break;
+      case 'departures':
+        result = await getAirportFlights(params.airport_iata, 'dep');
+        break;
       default:
         return res.status(400).json({ error: `Unknown tool: ${tool}` });
     }
