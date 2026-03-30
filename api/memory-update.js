@@ -990,7 +990,7 @@ export default async function handler(req, res) {
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
-          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence"
+          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode"
       )
       .eq("user_id", user.id)
       .maybeSingle();
