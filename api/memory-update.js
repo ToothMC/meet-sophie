@@ -899,6 +899,21 @@ export default async function handler(req, res) {
         ? body.session_ended_at.trim()
         : nowIso;
 
+    // ---- Track realtime voice session cost (estimated from duration) ----
+    if (secondsUsed > 0) {
+      const realtimeCostUsd = estimateRealtimeCost(secondsUsed);
+      trackCost({
+        userId: user.id,
+        provider: 'openai',
+        model: 'gpt-realtime',
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: realtimeCostUsd,
+        latencyMs: secondsUsed * 1000,
+        routingReason: `realtime-voice-${sessionMode || 'unknown'}`,
+      }).catch(err => console.error("Realtime cost tracking error:", err?.message));
+    }
+
     // ---- Transcript normalization with strict role mapping ----
     const rawTranscript = body.transcript;
     let transcriptArr = [];
