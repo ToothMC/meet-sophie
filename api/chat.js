@@ -511,13 +511,13 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
 async function guardQuestionLoop(reply, messages, providerConfig) {
   if (!reply.trim().endsWith("?")) return reply; // no question → pass through
 
-  // Count how many of the last 2 assistant messages ended with ?
+  // If ANY of the last 2 assistant messages ended with ?, this is too many questions
   const recentAssistant = messages
     .filter(m => m.role === "assistant")
     .slice(-2)
     .filter(m => String(m.content || "").trim().endsWith("?"));
 
-  if (recentAssistant.length < 2) return reply; // not a loop yet
+  if (recentAssistant.length < 1) return reply; // no recent questions → this one is fine
 
   // 3rd question in a row → regenerate with explicit instruction
   console.log("[chat] question loop detected — regenerating without question");
