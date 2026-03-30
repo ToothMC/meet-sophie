@@ -28,6 +28,9 @@ export default async function handler(req, res) {
       case 'wiki':
         result = await getWikipedia(params.query);
         break;
+      case 'flight':
+        result = await getFlightStatus(params.flight_number);
+        break;
       default:
         return res.status(400).json({ error: `Unknown tool: ${tool}` });
     }
