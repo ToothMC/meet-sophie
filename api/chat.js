@@ -414,6 +414,48 @@ async function handleStart(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Tool execution helper — shared by anonymous and authenticated paths
+// ---------------------------------------------------------------------------
+async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+  if (!toolMatch) return { reply: rawReply, toolUsed: false };
+
+  const [, toolType, toolParam] = toolMatch;
+  let toolData;
+  try {
+    if (toolType === "weather") toolData = await getWeather(toolParam.trim());
+    else if (toolType === "search") toolData = await webSearch(toolParam.trim());
+    else if (toolType === "news") toolData = await getNews(toolParam.trim());
+    else if (toolType === "wiki") toolData = await getWikipedia(toolParam.trim());
+    else if (toolType === "flight") toolData = await getFlightStatus(toolParam.trim());
+    else if (toolType === "arrivals") toolData = await getAirportFlights(toolParam.trim(), "arr");
+    else if (toolType === "departures") toolData = await getAirportFlights(toolParam.trim(), "dep");
+  } catch (e) {
+    console.error(`[chat] tool ${toolType} error:`, e?.message);
+  }
+
+  if (!toolData) return { reply: rawReply, toolUsed: false };
+
+  routerMessages.push({
+    role: "system",
+    content: `[ECHTZEIT-DATEN]\n${toolData}\n\nAntworte jetzt basierend auf diesen aktuellen Daten. Kein Tool-Tag mehr.`,
+  });
+
+  try {
+    const adapter = getAdapter(providerConfig.provider);
+    const retryResponse = await Promise.race([
+      adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
+    ]);
+    const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+    return { reply: retryReply || rawReply, toolUsed: true, toolType, retryResponse };
+  } catch (e) {
+    console.error(`[chat] tool retry error:`, e?.message);
+    return { reply: rawReply, toolUsed: false };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Action: message
 // ---------------------------------------------------------------------------
 
