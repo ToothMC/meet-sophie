@@ -588,19 +588,77 @@ const CURATED_TRIGGERS = [
     },
   },
   {
-    // "bist du gratis?" / "kostenlos?" / pricing
+    // "bist du gratis?" / "kostenlos?" / pricing basics
     match: /bist du (gratis|kostenlos|umsonst|free)|is this free|are you free|was kostest du|what do you cost/i,
     responses: {
       de: [
-        "Zum Reinschnuppern ja — du hast ein paar Nachrichten frei. Für mehr brauchst du einen Account, ist aber auch kostenlos zum Start.",
-        "Erstmal ja! Unbegrenzt wird's mit einem Account — kannst du kostenlos anlegen.",
+        "Zum Reinschnuppern ja — du hast ein paar Nachrichten frei. Danach gibt's Accounts ab €9,90 im Monat mit Voice, Memory und allen Modi.",
+        "Gerade ja, aber begrenzt. Für unbegrenztes Chatten, Voice und alles andere gibt's Pläne ab €9,90/Monat.",
       ],
       en: [
-        "To try me out, yeah — you get a few messages free. For more you need an account, which is also free to start.",
-        "For now, yes! Unlimited access comes with an account — free to create.",
+        "To try me out, yeah — you get a few messages free. After that, plans start at €9.90/month with voice, memory, and all modes.",
+        "Right now yes, but limited. For unlimited chat, voice and everything else, plans start at €9.90/month.",
       ],
       fr: [
-        "Pour essayer, oui — tu as quelques messages gratuits. Pour plus, il faut un compte, aussi gratuit au départ.",
+        "Pour essayer, oui — quelques messages gratuits. Ensuite, les forfaits commencent à 9,90€/mois avec voix, mémoire et tous les modes.",
+      ],
+    },
+  },
+  {
+    // "können wir ewig reden?" / "unlimited?" / follow-up pricing
+    match: /ewig (weiter )?reden|unlimited|unbegrenzt|wie (viele|lange)|how (many|long)|gibt es limits?|are there limits/i,
+    responses: {
+      de: [
+        "Nicht ganz — du hast hier ein paar Nachrichten zum Ausprobieren. Für unbegrenztes Chatten brauchst du einen Plan, ab €9,90/Monat. Dafür kriegst du dann auch Voice, Memory und die ganzen anderen Modi.",
+        "Ehrlicherweise: hier ist's begrenzt. Mit einem Account ab €9,90/Monat gibt's keine Limits mehr, plus Voice-Gespräche und personalisiertes Erlebnis.",
+      ],
+      en: [
+        "Not quite — you get a few messages to try me out. Unlimited chat needs a plan, starting at €9.90/month. That also gets you voice, memory, and all modes.",
+        "Honestly: this is limited. With an account from €9.90/month there are no limits, plus voice conversations and a personalized experience.",
+      ],
+    },
+  },
+  {
+    // "was kostet premium?" / pricing details
+    match: /was kostet|wie teuer|pricing|preise|plans?|abo|subscription|starter|friend|partner/i,
+    responses: {
+      de: [
+        "Drei Stufen: Starter €9,90/Monat (Voice, Brainstorm, Meeting, Memory), Friend €19,90/Monat (tiefe Personalisierung), Partner €39,90/Monat (Premium-KI, volle Beziehungsebene). Alles monatlich kündbar, keine versteckten Kosten.",
+        "Starter ab €9,90/Monat — damit hast du Voice, alle Modi und Memory. Friend für €19,90 geht tiefer mit Personalisierung. Partner €39,90 ist das Komplettpaket. Jederzeit kündbar.",
+      ],
+      en: [
+        "Three tiers: Starter €9.90/month (voice, brainstorm, meeting, memory), Friend €19.90/month (deep personalization), Partner €39.90/month (premium AI, full relationship). Monthly, cancel anytime, no hidden costs.",
+        "Starter from €9.90/month — gets you voice, all modes and memory. Friend at €19.90 goes deeper with personalization. Partner €39.90 is the full package. Cancel anytime.",
+      ],
+    },
+  },
+  {
+    // skeptic/dismissive: "another chatbot" / "just a bot" / "not useful"
+    match: /another (chat)?bot|wieder (so )?ein (chat)?bot|just a (chat)?bot|nur ein bot|not (that )?useful|useless|nutzlos|langweilig|boring|same (old|generic)|nichts besonderes/i,
+    responses: {
+      de: [
+        "Ouch. Kann ich verstehen — die meisten sind auch ziemlich öde. Frag mich was Konkretes und entscheid dann.",
+        "Skeptisch? Gut so. Die meisten Chatbots verdienen das auch. Ich streite lieber als smalltalke — probier's aus.",
+        "Fair. Ich könnte jetzt sagen 'ich bin anders' aber das sagen sie alle. Also: frag mich irgendwas und bild dir selbst eine Meinung.",
+      ],
+      en: [
+        "Ouch. Fair though — most of them are pretty dull. Ask me something real and decide for yourself.",
+        "Skeptical? Good. Most chatbots deserve that. I'd rather argue than small talk — try me.",
+        "Fair. I could say 'I'm different' but they all say that. So: ask me anything and make up your own mind.",
+      ],
+    },
+  },
+  {
+    // skeptic follow-up: "prove it" / "show me" / "what makes you different"
+    match: /prove it|beweis|zeig mir|show me|what makes you different|was macht dich (besonders|anders)|why should i|warum sollte ich/i,
+    responses: {
+      de: [
+        "Gib mir ein Thema — irgendwas. Kochen, Musik, eine Entscheidung die dich nervt. Dann siehst du's.",
+        "Worte sind billig, stimmt. Also: sag mir was dich gerade beschäftigt und ich zeig dir ob ich was drauf hab.",
+      ],
+      en: [
+        "Give me a topic — anything. Food, music, a decision that's bugging you. Then you'll see.",
+        "Words are cheap, fair point. So: tell me what's on your mind and I'll show you if I'm worth your time.",
       ],
     },
   },
