@@ -4189,7 +4189,7 @@ function attachChannel(ch) {
 
       // ── Realtime Tools: Weather, Search, News ──
       if (msg?.type === "response.function_call_arguments.done" &&
-          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status"].includes(msg?.name)) {
+          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures"].includes(msg?.name)) {
         try {
           const args = JSON.parse(msg.arguments || "{}");
           const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight" };
