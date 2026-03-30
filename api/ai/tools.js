@@ -363,3 +363,92 @@ export async function getWikipedia(query) {
 
   return `Keine Wikipedia-Informationen zu "${query}" gefunden.`;
 }
+
+// ── Flight Status: AirLabs API ──
+
+async function getFlightStatus(flightNumber) {
+  if (!flightNumber) return 'Keine Flugnummer angegeben.';
+
+  const apiKey = process.env.AIRLABS_API_KEY;
+  if (!apiKey) return 'Flugstatus nicht verfügbar (API-Key fehlt).';
+
+  // Normalize: "LH 1234" → "LH1234", "lh1234" → "LH1234"
+  const normalized = String(flightNumber).replace(/\s+/g, '').toUpperCase();
+
+  try {
+    const res = await fetch(
+      `https://airlabs.co/api/v9/flight?flight_iata=${encodeURIComponent(normalized)}&api_key=${apiKey}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+
+    if (!res.ok) {
+      console.error(`[tools] AirLabs HTTP ${res.status}`);
+      return `Flugstatus für ${normalized} konnte nicht abgerufen werden.`;
+    }
+
+    const data = await res.json();
+    const f = data?.response;
+
+    if (!f || (Array.isArray(f) && f.length === 0)) {
+      return `Kein aktiver Flug mit der Nummer ${normalized} gefunden. Der Flug ist möglicherweise noch nicht gestartet oder bereits gelandet.`;
+    }
+
+    // Build human-readable summary
+    const flight = Array.isArray(f) ? f[0] : f;
+    const parts = [];
+
+    parts.push(`Flug ${flight.flight_iata || normalized}`);
+    if (flight.airline_name) parts[0] += ` (${flight.airline_name})`;
+
+    // Status
+    const statusMap = {
+      'en-route': 'unterwegs',
+      'landed': 'gelandet',
+      'scheduled': 'geplant',
+      'active': 'aktiv',
+      'cancelled': 'storniert',
+      'incident': 'Zwischenfall',
+      'diverted': 'umgeleitet',
+      'unknown': 'unbekannt',
+    };
+    const status = statusMap[flight.status] || flight.status || 'unbekannt';
+    parts.push(`Status: ${status}`);
+
+    // Route
+    if (flight.dep_iata || flight.arr_iata) {
+      const dep = flight.dep_city || flight.dep_iata || '?';
+      const arr = flight.arr_city || flight.arr_iata || '?';
+      parts.push(`Route: ${dep} → ${arr}`);
+    }
+
+    // Departure info
+    if (flight.dep_time) parts.push(`Abflug (geplant): ${flight.dep_time}`);
+    if (flight.dep_actual) parts.push(`Abflug (tatsächlich): ${flight.dep_actual}`);
+    if (flight.dep_delayed) parts.push(`Abflug-Verspätung: ${flight.dep_delayed} Minuten`);
+    if (flight.dep_terminal) parts.push(`Terminal: ${flight.dep_terminal}`);
+    if (flight.dep_gate) parts.push(`Gate: ${flight.dep_gate}`);
+
+    // Arrival info
+    if (flight.arr_time) parts.push(`Ankunft (geplant): ${flight.arr_time}`);
+    if (flight.arr_estimated) parts.push(`Ankunft (geschätzt): ${flight.arr_estimated}`);
+    if (flight.arr_actual) parts.push(`Ankunft (tatsächlich): ${flight.arr_actual}`);
+    if (flight.arr_delayed) parts.push(`Ankunft-Verspätung: ${flight.arr_delayed} Minuten`);
+    if (flight.arr_terminal) parts.push(`Ankunfts-Terminal: ${flight.arr_terminal}`);
+    if (flight.arr_gate) parts.push(`Ankunfts-Gate: ${flight.arr_gate}`);
+    if (flight.arr_baggage) parts.push(`Gepäckband: ${flight.arr_baggage}`);
+
+    // Position (if en-route)
+    if (flight.alt && flight.speed) {
+      parts.push(`Höhe: ${Math.round(flight.alt * 0.3048)}m (${flight.alt} ft)`);
+      parts.push(`Geschwindigkeit: ${flight.speed} km/h`);
+    }
+
+    // Aircraft
+    if (flight.aircraft_icao) parts.push(`Flugzeugtyp: ${flight.aircraft_icao}`);
+
+    return parts.join('\n');
+  } catch (err) {
+    console.error('[tools] AirLabs error:', err?.message);
+    return `Flugstatus für ${normalized} konnte nicht abgerufen werden.`;
+  }
+}
