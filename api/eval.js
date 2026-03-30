@@ -1,7 +1,10 @@
 // api/eval.js — Sophie Self-Play Evaluation (Serverless)
 // GET /api/eval?persona=curious_newcomer
-// Runs a full conversation: Test-User ↔ Sophie ↔ Judge
-// Uses env vars: OPENAI_API_KEY, ANTHROPIC_API_KEY
+// Runs a full conversation: Test-User ↔ Sophie (inline) ↔ Judge
+// No HTTP self-calls — builds Sophie prompt directly to avoid Vercel auth issues.
+
+import { buildSophiePrompt } from "../lib/sophie-core.js";
+import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 
 export const config = { maxDuration: 120 };
 
@@ -59,15 +62,13 @@ RULES Sophie MUST follow:
 Return ONLY valid JSON: {"score": 7, "violations": ["question_loop"], "reasoning": "..."}`;
 
 // ── API Helpers ─────────────────────────────────────────────────────────────
-async function openaiChat(system, messages) {
+async function openaiChat(messages, model = TEST_USER_MODEL, maxTokens = 150, temp = 0.85) {
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-    body: JSON.stringify({
-      model: TEST_USER_MODEL, messages: [{ role: "system", content: system }, ...messages],
-      max_tokens: 150, temperature: 0.9,
-    }),
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: temp }),
   });
+  if (!resp.ok) throw new Error(`OpenAI ${resp.status}: ${(await resp.text()).slice(0, 100)}`);
   const data = await resp.json();
   return (data.choices?.[0]?.message?.content || "").trim();
 }
@@ -85,24 +86,41 @@ async function anthropicChat(system, userMsg) {
       system, messages: [{ role: "user", content: userMsg }],
     }),
   });
+  if (!resp.ok) throw new Error(`Anthropic ${resp.status}: ${(await resp.text()).slice(0, 100)}`);
   const data = await resp.json();
   return (data.content?.[0]?.text || "").trim();
 }
 
-async function sophieAPI(action, body, baseUrl) {
-  const headers = { "Content-Type": "application/json" };
-  // Bypass Vercel deployment protection for self-calls
-  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-    headers["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  }
-  const resp = await fetch(`${baseUrl}/api/chat?action=${action}`, {
-    method: "POST", headers, body: JSON.stringify(body),
+// ── Sophie (inline, no HTTP) ────────────────────────────────────────────────
+const OPENERS = {
+  de: ["Hey! Was geht bei dir?", "Na, was gibt's Neues?", "Hey — wie läuft's?", "Na du, alles klar?", "Hey! Erzähl mal, was los ist."],
+  en: ["Hey! What's up?", "Hey — how's it going?", "What's new with you?", "Hey! Tell me what's going on.", "Yo, what's good?"],
+};
+
+function buildSophieSession(lang) {
+  const systemPrompt = buildSophiePrompt({
+    tier: "free", isFirstSession: true, language: lang, channel: "chat",
+    user: {}, memory: {},
   });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`Sophie API ${action} failed: ${resp.status} ${text.slice(0, 100)}`);
+  const opener = OPENERS[lang]?.[Math.floor(Math.random() * (OPENERS[lang]?.length || 1))] || OPENERS.en[0];
+  return { systemPrompt, opener };
+}
+
+async function sophieRespond(systemPrompt, history, turnNumber, lang) {
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map(m => ({ role: m.role, content: m.content })),
+  ];
+
+  // Soft onboarding nudges (same as chat.js)
+  if (turnNumber === 1) {
+    messages.push({ role: "system", content: "First message from this user. Respond naturally to what they said. If it fits, casually ask their name somewhere in your response. The user's actual question always has priority." });
   }
-  return resp.json();
+
+  const rawReply = await openaiChat(messages, "gpt-4o-mini", 1024, 0.85);
+  // Strip tool tags (anonymous users can't use tools)
+  const reply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").replace(/\[MODE_DETECTED:\w+\]/g, "").replace(/\[IMPORT_HINT\]/g, "").trim();
+  return normalizeResponse(reply, "openai");
 }
 
 // ── Judge ───────────────────────────────────────────────────────────────────
@@ -146,15 +164,12 @@ async function generateUserMsg(persona, history, turn) {
     content: t.content,
   }));
   msgs.push({ role: "user", content: "Generate your next message. 1-2 sentences max. Return ONLY the message text." });
-  return openaiChat(persona.system, msgs);
+  return openaiChat([{ role: "system", content: persona.system }, ...msgs], TEST_USER_MODEL, 100, 0.9);
 }
 
 // ── Run Persona ─────────────────────────────────────────────────────────────
-async function runPersona(persona, baseUrl) {
-  const start = await sophieAPI("start", { language: persona.lang }, baseUrl);
-  const sessionId = start.session_id;
-  const opener = start.opener || "(no opener)";
-
+async function runPersona(persona) {
+  const { systemPrompt, opener } = buildSophieSession(persona.lang);
   const history = [{ role: "assistant", content: opener }];
   const turns = [];
 
@@ -167,33 +182,26 @@ async function runPersona(persona, baseUrl) {
       const userMsg = await generateUserMsg(persona, history, t);
       history.push({ role: "user", content: userMsg });
 
-      const resp = await sophieAPI("message", { session_id: sessionId, messages: history }, baseUrl);
-      if (resp.limit_reached) {
-        turns.push({ turn: t, type: "limit_reached" });
-        break;
-      }
-
-      const sophieReply = resp.reply || "(empty)";
+      const sophieReply = await sophieRespond(systemPrompt, history, t, persona.lang);
       history.push({ role: "assistant", content: sophieReply });
 
       const judge = await judgeResponse(userMsg, sophieReply, history.slice(-6));
-      turns.push({ turn: t, user: userMsg, sophie: sophieReply, model: resp.model, judge });
+      turns.push({ turn: t, user: userMsg, sophie: sophieReply, judge });
 
     } catch (err) {
       turns.push({ turn: t, error: err.message });
     }
   }
 
-  // Aggregate
   const scores = turns.filter(t => t.judge).map(t => t.judge.score);
-  const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const avg = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
 
   const violations = {};
   turns.forEach(t => {
     (t.judge?.violations || []).forEach(v => { violations[v] = (violations[v] || 0) + 1; });
   });
 
-  return { persona: persona.name, language: persona.lang, average: Math.round(avg * 10) / 10, turns, violations };
+  return { persona: persona.name, language: persona.lang, average: avg, turns, violations };
 }
 
 // ── Handler ─────────────────────────────────────────────────────────────────
@@ -210,14 +218,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing OPENAI_API_KEY or ANTHROPIC_API_KEY" });
   }
 
-  // Use own deployment URL, or override with ?url= param
-  const baseUrl = req.query.url
-    || `${req.headers["x-forwarded-proto"] || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
-
   try {
-    const result = await runPersona(persona, baseUrl);
+    const result = await runPersona(persona);
     return res.status(200).json(result);
   } catch (err) {
-    return res.status(500).json({ error: err.message, stack: err.stack?.split("\n").slice(0, 3) });
+    return res.status(500).json({ error: err.message });
   }
 }
