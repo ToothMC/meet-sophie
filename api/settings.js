@@ -93,6 +93,20 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── GET: Eco Mode ──
+  if (action === 'eco-mode' && req.method === 'GET') {
+    const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', user.id).maybeSingle();
+    return res.status(200).json({ eco_mode: !!prof?.eco_mode });
+  }
+
+  // ── POST: Toggle Eco Mode ──
+  if (action === 'eco-mode' && req.method === 'POST') {
+    const { enabled } = req.body || {};
+    const ecoValue = !!enabled;
+    await supabase.from('user_profile').update({ eco_mode: ecoValue }).eq('user_id', user.id);
+    return res.status(200).json({ ok: true, eco_mode: ecoValue });
+  }
+
   // ── GET: Sources ──
   if (action === 'sources' && req.method === 'GET') {
     const sources = await listSources(user.id);
