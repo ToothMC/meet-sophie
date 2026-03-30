@@ -1071,7 +1071,7 @@ async function handleMessage(req, res) {
 
   // Curated responses for trigger questions (works for all users)
   const lastUserMsgAuth = messages.filter(m => m.role === "user").pop();
-  const curatedReplyAuth = getCuratedResponse(lastUserMsgAuth?.content, preferredLanguage);
+  const curatedReplyAuth = getCuratedResponse(lastUserMsgAuth?.content, sessionLang);
   if (curatedReplyAuth) {
     await supabase.from("chat_sessions").update({
       turn_count: session.turn_count + 1,
