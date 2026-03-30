@@ -2966,7 +2966,7 @@
       // Map detected mode to session mode for handover
       const SESSION_MODE_MAP = {
         brainstorm: "brainstorm", meeting: "meeting", salespitch: "salespitch",
-        explore: "talk", decide: "talk", reflect: "talk", relax: "talk", talk: "talk"
+        explore: "talk", decide: "talk", reflect: "talk", chill: "talk", talk: "talk"
       };
       const sessionMode = SESSION_MODE_MAP[mode] || "talk";
       setFunnelMode(sessionMode === "talk" ? null : sessionMode);
