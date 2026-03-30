@@ -808,12 +808,12 @@ async function handleMessage(req, res) {
     profileFirstName = (prof?.first_name || "").trim();
   }
 
-  // Inject onboarding nudge for authenticated first-session users too
+  // Soft onboarding for authenticated first-session users — user's question has priority
   const isFirstAuth = !profileFirstName;
   if (isFirstAuth && turnNumber === 1) {
-    routerMessages.push({ role: "system", content: "[CRITICAL] This is a FIRST SESSION. After responding to the user, you MUST end with: 'Übrigens — wie soll ich dich nennen?' Do NOT skip this." });
+    routerMessages.push({ role: "system", content: "First session with this user — you don't know their name yet. Respond naturally to what they said. If it fits, casually ask their name somewhere in your response. The user's actual question always has priority." });
   } else if (isFirstAuth && turnNumber === 2) {
-    routerMessages.push({ role: "system", content: "[CRITICAL] The user should have given their name. Use it once. Then ask: 'Nutzt du schon eine andere KI — ChatGPT, Claude oder so?' Do NOT skip this." });
+    routerMessages.push({ role: "system", content: "If you still don't know the user's name, ask casually. If you do, use it once. Always respond to their actual message first." });
   }
 
   // Check if any message has file attachments (multimodal)
