@@ -3288,6 +3288,27 @@
         msg.includes("404") || msg.includes("410") || msg.includes("409")
       );
     }
+    function collectVisitorContext() {
+      const vc = {};
+      try {
+        vc.languages = navigator.languages ? [...navigator.languages] : [navigator.language || "en"];
+        vc.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+        vc.is_mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        vc.screen_width = window.innerWidth;
+        vc.referrer = document.referrer || null;
+        vc.page_path = window.location.pathname;
+        vc.local_hour = new Date().getHours();
+        const params = new URLSearchParams(window.location.search);
+        vc.utm_source = params.get("utm_source") || null;
+        vc.utm_medium = params.get("utm_medium") || null;
+        vc.utm_campaign = params.get("utm_campaign") || null;
+        const visitCount = parseInt(localStorage.getItem("sophie_visit_count") || "0", 10) + 1;
+        localStorage.setItem("sophie_visit_count", String(visitCount));
+        vc.visit_count = visitCount;
+      } catch(e) { /* silently degrade */ }
+      return vc;
+    }
+
     async function startSession() {
       // Wait for auth to be fully restored before starting session
       // This ensures logged-in users always get their full profile/context/routing
@@ -3298,6 +3319,7 @@
       }
       const startData = await callChat("start", {
         language: getCurrentLang(),
+        visitor_context: collectVisitorContext(),
         ...(selectedChatMode ? { session_mode: selectedChatMode } : {}),
         ...(brainstormChatConfig ? { brainstorm_config: brainstormChatConfig } : {}),
       });
