@@ -113,14 +113,16 @@ DIE ANTWORTEN:
 
 ${answersBlock}`;
 
-  const reviewer = getAdapter('anthropic');
+  const reviewProvider = isEco ? 'openai' : 'anthropic';
+  const reviewModel = isEco ? 'gpt-4o-mini' : 'claude-sonnet-4-6';
+  const reviewer = getAdapter(reviewProvider);
   let review;
   try {
     review = await Promise.race([
-      reviewer.complete({ messages: [{ role: 'user', content: reviewPrompt }], model: 'claude-sonnet-4-6', maxTokens: 1024, temperature: 0.3 }),
+      reviewer.complete({ messages: [{ role: 'user', content: reviewPrompt }], model: reviewModel, maxTokens: 1024, temperature: 0.3 }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), PER_PROVIDER_TIMEOUT)),
     ]);
-    allCosts.push({ provider: 'anthropic', model: 'claude-sonnet-4-6', usage: review.usage, reason: 'challenge-round2-review' });
+    allCosts.push({ provider: reviewProvider, model: reviewModel, usage: review.usage, reason: 'challenge-round2-review' });
   } catch {
     const fallbackReviewer = getAdapter('openai');
     review = await fallbackReviewer.complete({
