@@ -284,6 +284,7 @@ export default async function handler(req, res) {
             : [],
           memory_confidence: (prof.memory_confidence || "").trim(),
           last_confirmed_at: prof.last_confirmed_at ?? null,
+          eco_mode: !!prof.eco_mode,
         };
       }
 
