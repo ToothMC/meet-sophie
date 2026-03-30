@@ -4428,8 +4428,8 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.done") {
         sophieIsResponding = false;
-        // Reset global inactivity timer — Sophie just spoke, user has 30s to respond
-        resetInactivityTimer();
+        // Sophie finished speaking — reset inactivity timestamp
+        touchActivity();
         // NO inactivity timer on response.done — user may pause mid-pitch to think.
         // Inactivity auto-end is ONLY triggered after mic is unlocked post-demo (90s timeout).
 
