@@ -3532,7 +3532,7 @@
             : (t.chat_report_title || "Want to continue talking with Sophie?");
           const reportCTA = hasToken
             ? (t.chat_topup_cta || "Buy more tokens")
-            : (t.chat_report_cta || "Start now — €19.90 / month");
+            : (t.chat_report_cta || "Start now — €9.90 / month");
           reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
           show(reportEl);
           inputEl.disabled  = true;
@@ -3557,7 +3557,7 @@
             : (t.chat_report_title || "Want to continue talking with Sophie?");
           const reportCTA = hasToken
             ? (t.chat_topup_cta || "Buy more tokens")
-            : (t.chat_report_cta || "Start now — €19.90 / month");
+            : (t.chat_report_cta || "Start now — €9.90 / month");
           reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
           show(reportEl);
           inputEl.disabled = true;
@@ -3600,7 +3600,7 @@
             if (retryData.limit_reached) {
               sessionEnded = true;
               const reportTitle = t.chat_report_title || "Want to continue talking with Sophie?";
-              const reportCTA   = t.chat_report_cta   || "Start now — €19.90 / month";
+              const reportCTA   = t.chat_report_cta   || "Start now — €9.90 / month";
               reportEl.innerHTML = `<p>${reportTitle}</p><a href="/pricing">${reportCTA}</a>`;
               show(reportEl); inputEl.disabled = true; sendBtn.disabled = true; saveChatState();
             }
