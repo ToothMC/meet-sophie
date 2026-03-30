@@ -304,7 +304,7 @@ function dis(v){allBtns.forEach(b=>b.disabled=v);}
 
 async function checkout(plan){
   msg.textContent="";
-  if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;return;}
+  if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
   dis(true);
   try{
     const t=await tok();if(!t)return;
