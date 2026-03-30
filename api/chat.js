@@ -511,9 +511,11 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
 async function guardQuestionLoop(reply, messages, providerConfig) {
   if (!reply.trim().endsWith("?")) return reply; // no question → pass through
 
-  // If ANY of the last 2 assistant messages ended with ?, this is too many questions
-  const recentAssistant = messages
-    .filter(m => m.role === "assistant")
+  // Check last 2 assistant messages (skip the very first one — opener often has "?")
+  const allAssistant = messages.filter(m => m.role === "assistant");
+  if (allAssistant.length < 2) return reply; // too early — let opener + first response through
+
+  const recentAssistant = allAssistant
     .slice(-2)
     .filter(m => String(m.content || "").trim().endsWith("?"));
 
