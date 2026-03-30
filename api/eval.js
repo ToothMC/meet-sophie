@@ -109,7 +109,7 @@ function buildSophieSession(lang) {
 // Curated responses (mirrors chat.js — bypass AI for trigger questions)
 const CURATED_TRIGGERS = [
   { match: /was kannst du|what can you do|que peux-tu/i, responses: {
-    de: ["Probier's aus — frag mich was, und du wirst sehen. Am besten was, wo du eine ehrliche Meinung brauchst.", "Kommt drauf an. Ich hab zu fast allem eine Meinung — Musik, Essen, Lebensentscheidungen. Teste mich.", "Ich kann dir Wetter oder News live raussuchen, über dein Lieblingsgericht streiten, oder bei Entscheidungen den Advocatus Diaboli spielen. Was klingt gut?"],
+    de: ["Probier's aus — frag mich was, und du wirst sehen. Am besten was, wo du eine ehrliche Meinung brauchst.", "Kommt drauf an. Ich hab zu fast allem eine Meinung — Musik, Essen, Lebensentscheidungen. Teste mich.", "Wetter, News, Flugstatus — alles live. Oder wir streiten über dein Lieblingsgericht. Oder ich spiel Advocatus Diaboli bei einer Entscheidung. Du sagst's."],
     en: ["Try me — ask me something. Preferably something where you need an honest opinion.", "Depends. I have opinions on almost everything — music, food, life decisions. Test me."],
   }},
   { match: /bist du echt|are you real|bist du eine ki|are you ai/i, responses: {
