@@ -713,8 +713,12 @@ async function handleMessage(req, res) {
     const aiResp = await openaiAdapter.complete({
       messages: routerMessages, model: "gpt-4o-mini", maxTokens: 1024, temperature: 0.85,
     });
-    const rawReply = normalizeResponse(aiResp.content || "", aiResp.provider);
+    let rawReply = normalizeResponse(aiResp.content || "", aiResp.provider);
     if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
+
+    // Tool execution for anonymous users — lets Sophie demonstrate her capabilities
+    const toolResult = await executeToolIfNeeded(rawReply, routerMessages, { provider: "openai", model: "gpt-4o-mini" });
+    if (toolResult.toolUsed) rawReply = toolResult.reply;
 
     // Strip signal tags
     const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/) || rawReply.match(/signal_mode\(\s*\{\s*"mode"\s*:\s*"(\w+)"\s*\}\s*\)/);
