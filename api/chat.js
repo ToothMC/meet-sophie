@@ -638,6 +638,8 @@ async function handleMessage(req, res) {
     `[TOOL:news:Thema] — aktuelle Nachrichten und Headlines\n` +
     `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen. Nutze wiki wenn der User nach konkretem Wissen fragt (Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...)\n` +
     `[TOOL:flight:Flugnummer] — Live-Flugstatus, Abflug/Ankunft, Verspätungen, Gate, Terminal. Nutze flight bei jeder Frage zu einem konkreten Flug (z.B. LH1234, EK451)\n` +
+    `[TOOL:arrivals:IATA-Code] — Ankunftstafel eines Flughafens (z.B. FRA, PFO, MUC). Nutze arrivals wenn der User fragt was an einem Flughafen landet oder ankommt\n` +
+    `[TOOL:departures:IATA-Code] — Abflugtafel eines Flughafens. Nutze departures wenn der User fragt was abfliegt oder wann Maschinen starten\n` +
     `Antworte mit dem Tag ALLEIN — du bekommst die Daten dann automatisch und antwortest basierend darauf. ` +
     `Wenn die Frage rein persönlich oder reflektiv ist (keine Fakten nötig), antworte normal ohne Tag.`
   });
