@@ -998,6 +998,24 @@ async function handleMessage(req, res) {
     profileFirstName = (prof?.first_name || "").trim();
   }
 
+  // Curated responses for trigger questions (works for all users)
+  const lastUserMsgAuth = messages.filter(m => m.role === "user").pop();
+  const curatedReplyAuth = getCuratedResponse(lastUserMsgAuth?.content, preferredLanguage);
+  if (curatedReplyAuth) {
+    await supabase.from("chat_sessions").update({
+      turn_count: session.turn_count + 1,
+      last_message_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", session_id);
+    return res.status(200).json({
+      ok: true, reply: curatedReplyAuth,
+      voice_offer: false, voice_confirmed: false,
+      detected_mode: null, turn_count: session.turn_count + 1,
+      model: "curated", provider: "curated",
+      routing_reason: "curated-trigger", import_hint: false,
+    });
+  }
+
   // Soft onboarding for authenticated first-session users — user's question has priority
   const isFirstAuth = !profileFirstName;
   if (isFirstAuth && turnNumber === 1) {
