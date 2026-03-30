@@ -432,8 +432,10 @@ export default async function handler(req, res) {
 
     // Generate optimized pitch via text AI (much more reliable than Realtime)
     try {
+      const { data: ecoProf } = await supabase.from('user_profile').select('eco_mode').eq('user_id', user.id).maybeSingle();
+      const isEco = !!ecoProf?.eco_mode;
       const { getAdapter } = await import('../lib/ai/adapters/index.js');
-      const adapter = getAdapter('openai');
+      const adapter = getAdapter(isEco ? 'google' : 'openai');
       const resp = await adapter.complete({
         messages: [{ role: 'user', content: `Du bist ein Pitch-Coach. Unten ist das Transcript eines Sales Pitches.
 
