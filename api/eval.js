@@ -160,7 +160,7 @@ async function sophieRespond(systemPrompt, history, turnNumber, lang) {
       .filter(m => m.role === "assistant")
       .slice(-2)
       .filter(m => String(m.content || "").trim().endsWith("?"));
-    if (recentAssistant.length >= 2) {
+    if (recentAssistant.length >= 1) {
       // 3rd consecutive question → regenerate
       const retryMessages = [
         ...messages,
