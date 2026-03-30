@@ -3751,9 +3751,11 @@ function startInactivityTimer() {
   clearTimeout(inactivityTimer);
   inactivityWarningFired = false;
   inactivityTimer = setTimeout(function checkInactivity() {
-    if (selectedVoiceMode === "salespitch") return; // has own timer
-    if (selectedVoiceMode === "meeting") return;    // meeting: long silence between speakers is normal
-    if (limitTriggered || softEndFinalizing) return; // already ending
+    if (selectedVoiceMode === "salespitch") return;  // has own timer
+    if (selectedVoiceMode === "meeting") return;     // long silence between speakers is normal
+    if (selectedVoiceMode === "brainstorm") return;  // thinking pauses are normal during brainstorming
+    if (limitTriggered || softEndFinalizing) return;  // already ending
+    if (isPaused) return;                             // session paused — no timeout
     if (!hasUserSpoken) { touchActivity(); inactivityTimer = setTimeout(checkInactivity, INACTIVITY_WARNING_MS); return; } // wait for first utterance
     const idleMs = Date.now() - lastActivityAt;
     if (idleMs < INACTIVITY_WARNING_MS) {
