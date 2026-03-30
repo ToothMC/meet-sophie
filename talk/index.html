@@ -4711,10 +4711,22 @@ async function startVoice(){
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
+    // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
     audioEl = document.createElement("audio");
     audioEl.autoplay = true;
     audioEl.playsInline = true;
-    pc.ontrack = e => audioEl.srcObject = e.streams[0];
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    gainNode = audioCtx.createGain();
+    gainNode.connect(audioCtx.destination);
+    pc.ontrack = e => {
+      audioEl.srcObject = e.streams[0]; // keep for Safari fallback
+      try {
+        audioSource = audioCtx.createMediaStreamSource(e.streams[0]);
+        audioSource.connect(gainNode);
+        audioEl.volume = 0; // mute <audio> element — GainNode handles playback
+      } catch (_) {} // fallback: <audio> element plays directly
+    };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
