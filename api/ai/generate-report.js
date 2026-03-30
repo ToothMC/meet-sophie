@@ -464,6 +464,7 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
             messages: [{ role: 'user', content: pitchPrompt }],
             model: synth.model, maxTokens: 6000, temperature: 0.2,
           });
+          trackAdapterCost(response, reportUserId, 'report-salespitch');
           const text = (response.content || '').trim();
           reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
           if (reportHtml.length > 100) {
