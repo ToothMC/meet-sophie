@@ -3784,6 +3784,7 @@ function stopInactivityTimer() {
 function startCountdown(){
   if (countdown) clearInterval(countdown);
   timerEl.style.display = "none";
+  startInactivityTimer();
 
   countdown = setInterval(() => {
     remainingSeconds -= 1;
