@@ -678,7 +678,9 @@ export default async function handler(req, res) {
       `Example: You explain 5 points verbally in detail → send_chat_note with just "1. Point A\\n2. Point B\\n3. Point C". ` +
       `Keep notes very short (max 2-3 lines, max 280 chars). Do NOT use this for every response — only when visual text genuinely helps.`;
 
-    const fullPrompt = sophiePrompt + importedContext + researchInstruction;
+    // Greeting block MUST come last — models follow the last instruction most strongly
+    const greetingReminder = `\n\n=== YOUR VERY FIRST MESSAGE ===\nIMPORTANT: Do NOT use any tools in your first message. Do NOT offer to look something up. Do NOT ask what they want to discuss.\nYour first message is ONLY a casual, warm greeting. Nothing else. Say hi, then STOP and WAIT.`;
+    const fullPrompt = sophiePrompt + importedContext + researchInstruction + greetingReminder;
 
     // ---------------------------
     // Realtime session create
