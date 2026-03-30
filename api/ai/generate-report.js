@@ -656,6 +656,7 @@ Danach folgt deine strukturierte Analyse.`;
           ],
           model, maxTokens: 2048, temperature: 0.2,
         });
+        trackAdapterCost(response, reportUserId, 'report-analysis');
         return { provider, text: response.content };
       })
     );
