@@ -458,3 +458,64 @@ async function getFlightStatus(flightNumber) {
     return `Flugstatus für ${normalized} konnte nicht abgerufen werden.`;
   }
 }
+
+export async function getAirportFlights(airportIata, direction = 'arr') {
+  if (!airportIata) return 'Kein Flughafen angegeben.';
+
+  const apiKey = process.env.AIRLABS_API_KEY;
+  if (!apiKey) return 'Flugdaten nicht verfügbar (API-Key fehlt).';
+
+  const normalized = String(airportIata).replace(/\s+/g, '').toUpperCase();
+  const param = direction === 'arr' ? 'arr_iata' : 'dep_iata';
+  const label = direction === 'arr' ? 'Ankünfte' : 'Abflüge';
+
+  try {
+    const res = await fetch(
+      `https://airlabs.co/api/v9/flights?${param}=${encodeURIComponent(normalized)}&api_key=${apiKey}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+
+    if (!res.ok) {
+      console.error(`[tools] AirLabs airport HTTP ${res.status}`);
+      return `${label} für ${normalized} konnten nicht abgerufen werden.`;
+    }
+
+    const data = await res.json();
+    const flights = data?.response;
+
+    if (!flights || flights.length === 0) {
+      return `Keine aktuellen ${label} für ${normalized} gefunden.`;
+    }
+
+    // Show up to 8 flights, sorted by scheduled time
+    const sorted = flights
+      .filter(f => f.flight_iata)
+      .sort((a, b) => {
+        const tA = direction === 'arr' ? (a.arr_time || '') : (a.dep_time || '');
+        const tB = direction === 'arr' ? (b.arr_time || '') : (b.dep_time || '');
+        return tA.localeCompare(tB);
+      })
+      .slice(0, 8);
+
+    const statusMap = {
+      'en-route': 'unterwegs', 'landed': 'gelandet', 'scheduled': 'geplant',
+      'active': 'aktiv', 'cancelled': 'storniert', 'diverted': 'umgeleitet', 'unknown': '?',
+    };
+
+    const lines = sorted.map(f => {
+      const status = statusMap[f.status] || f.status || '?';
+      const time = direction === 'arr'
+        ? (f.arr_actual || f.arr_estimated || f.arr_time || '?')
+        : (f.dep_actual || f.dep_estimated || f.dep_time || '?');
+      const origin = direction === 'arr' ? (f.dep_city || f.dep_iata || '?') : (f.arr_city || f.arr_iata || '?');
+      const delay = direction === 'arr' ? f.arr_delayed : f.dep_delayed;
+      const delayStr = delay ? ` (+${delay} Min)` : '';
+      return `${f.flight_iata} | ${origin} | ${time}${delayStr} | ${status}`;
+    });
+
+    return `${label} ${normalized}:\n${lines.join('\n')}`;
+  } catch (err) {
+    console.error('[tools] AirLabs airport error:', err?.message);
+    return `${label} für ${normalized} konnten nicht abgerufen werden.`;
+  }
+}
