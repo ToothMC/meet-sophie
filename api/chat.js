@@ -849,6 +849,7 @@ async function handleMessage(req, res) {
 
     // Question loop guard — regenerate if 3rd consecutive question
     rawReply = await guardQuestionLoop(rawReply, routerMessages, { provider: "openai", model: "gpt-4o-mini" });
+    rawReply = await guardAssistantMode(rawReply, routerMessages, { provider: "openai", model: "gpt-4o-mini" });
 
     // Anonymous users: tools blocked — tease once, then just strip the tag
     const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
