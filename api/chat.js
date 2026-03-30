@@ -766,9 +766,14 @@ async function handleMessage(req, res) {
     let rawReply = normalizeResponse(aiResp.content || "", aiResp.provider);
     if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
-    // Tool execution for anonymous users — lets Sophie demonstrate her capabilities
-    const toolResult = await executeToolIfNeeded(rawReply, routerMessages, { provider: "openai", model: "gpt-4o-mini" });
-    if (toolResult.toolUsed) rawReply = toolResult.reply;
+    // Anonymous users: tools blocked — tease capability, nudge login
+    const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+    if (toolMatch) {
+      const [, toolType] = toolMatch;
+      const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge" };
+      const toolName = toolNames[toolType] || toolType;
+      rawReply = `Ich könnte dir das tatsächlich live zeigen — ${toolName} in Echtzeit abrufen. Dafür brauchst du nur einen kostenlosen Account. Dauert 10 Sekunden, kein Abo nötig!`;
+    }
 
     // Strip signal tags
     const modeMatch = rawReply.match(/\[MODE_DETECTED:(\w+)\]/) || rawReply.match(/signal_mode\(\s*\{\s*"mode"\s*:\s*"(\w+)"\s*\}\s*\)/);
