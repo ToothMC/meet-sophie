@@ -43,6 +43,16 @@ export default async function handler(req, res) {
   const allCosts = [];
   const startTotal = Date.now();
 
+  // Check eco mode
+  let isEco = false;
+  if (userId) {
+    try {
+      const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', userId).maybeSingle();
+      isEco = !!prof?.eco_mode;
+    } catch (_) {}
+  }
+  const providers = isEco ? ECO_CHALLENGE_PROVIDERS : CHALLENGE_PROVIDERS;
+
   // Build context-aware prompt for Round 1
   // Each provider gets the full conversation + the prior answer to improve upon
   const contextBlock = priorAnswer
