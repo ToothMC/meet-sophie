@@ -506,6 +506,41 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
 }
 
 // ---------------------------------------------------------------------------
+// Question Loop Guard — regenerate if Sophie ends with ? too often
+// ---------------------------------------------------------------------------
+async function guardQuestionLoop(reply, messages, providerConfig) {
+  if (!reply.trim().endsWith("?")) return reply; // no question → pass through
+
+  // Count how many of the last 2 assistant messages ended with ?
+  const recentAssistant = messages
+    .filter(m => m.role === "assistant")
+    .slice(-2)
+    .filter(m => String(m.content || "").trim().endsWith("?"));
+
+  if (recentAssistant.length < 2) return reply; // not a loop yet
+
+  // 3rd question in a row → regenerate with explicit instruction
+  console.log("[chat] question loop detected — regenerating without question");
+  try {
+    const adapter = getAdapter(providerConfig.provider);
+    const retryMessages = [
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "system", content: "STOP. Your last 3 responses all ended with a question. That's an interview, not a conversation. Rewrite your last response WITHOUT any question at the end. React, comment, share your take — then STOP. Do not ask anything. Return ONLY the rewritten response." },
+    ];
+    const retryResp = await Promise.race([
+      adapter.complete({ messages: retryMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000)),
+    ]);
+    const fixed = normalizeResponse(retryResp.content || "", retryResp.provider);
+    if (fixed && !fixed.trim().endsWith("?")) return fixed;
+  } catch (e) {
+    console.warn("[chat] question loop retry failed:", e?.message);
+  }
+  return reply; // fallback to original if retry fails
+}
+
+// ---------------------------------------------------------------------------
 // Action: message
 // ---------------------------------------------------------------------------
 
