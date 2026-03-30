@@ -768,7 +768,7 @@ async function handleMessage(req, res) {
   if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
-  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki):([^\]]+)\]/);
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight):([^\]]+)\]/);
   if (toolMatch) {
     const [, toolType, toolParam] = toolMatch;
     try {
@@ -777,6 +777,7 @@ async function handleMessage(req, res) {
       else if (toolType === "search") toolData = await webSearch(toolParam.trim());
       else if (toolType === "news") toolData = await getNews(toolParam.trim());
       else if (toolType === "wiki") toolData = await getWikipedia(toolParam.trim());
+      else if (toolType === "flight") toolData = await getFlightStatus(toolParam.trim());
 
       if (toolData) {
         // Re-query with tool data injected
