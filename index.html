@@ -3515,16 +3515,7 @@
           messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
-        // ── Routing: Sophie detected a mode → show mode-specific CTA ──
-        if (detectedMode) {
-          const prevMode = localStorage.getItem("sophie_detected_mode");
-          // Show CTA if first time OR if mode changed (user changed their mind)
-          if (!funnelVoiceOffered || (prevMode && prevMode !== detectedMode)) {
-            funnelVoiceOffered = true;
-            localStorage.setItem("sophie_detected_mode", detectedMode);
-            showInlineVoiceCTA(detectedMode);
-          }
-        }
+        // Inline mode CTAs disabled — pills in chat removed
         // Client-side funnel detection disabled — inline pills removed from chat
         {
           funnelTurn++;
