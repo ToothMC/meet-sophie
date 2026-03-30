@@ -3975,6 +3975,12 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+        // Fade audio back in for Sophie's new response
+        if (gainNode && audioCtx) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+        }
 
         // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
         // NEVER cancel during salespitch — Sophie's feedback (Phase D) must play fully
