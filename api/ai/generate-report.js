@@ -150,8 +150,11 @@ DESIGN-REGELN (WICHTIG):
 
 ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
-      // Use strong model — Claude first, GPT-4o fallback
-      const meetingSynthProviders = [
+      // Use strong model — Claude first, GPT-4o fallback (eco: gemini + gpt-4o-mini)
+      const meetingSynthProviders = isEco ? [
+        { provider: 'google', model: 'gemini-2.5-flash' },
+        { provider: 'openai', model: 'gpt-4o-mini' },
+      ] : [
         { provider: 'anthropic', model: 'claude-sonnet-4-6' },
         { provider: 'openai', model: 'gpt-4o' },
       ];
