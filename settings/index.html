@@ -558,7 +558,8 @@ async function loadUsage() {
   const el = document.getElementById("usageContent");
   const sub = document.getElementById("usageSub");
   try {
-    const d = await api("usage");
+    const [d, ecoRes] = await Promise.all([api("usage"), api("eco-mode")]);
+    const ecoOn = !!ecoRes?.eco_mode;
     const pct = d.usagePercent || 0;
     const barColor = pct < 80 ? "green" : pct < 95 ? "orange" : "red";
     const remaining = d.remainingTokens || 0;
@@ -587,11 +588,30 @@ async function loadUsage() {
           <div class="usage-cost-bar" style="width:${costPct}%"></div>
         </div>
       </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f0ece6">
+        <label style="position:relative;width:40px;height:22px;flex-shrink:0">
+          <input type="checkbox" id="ecoToggle" ${ecoOn ? 'checked' : ''} style="opacity:0;width:0;height:0"
+            onchange="toggleEcoMode(this.checked)">
+          <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${ecoOn ? '#4a8c5c' : '#ccc'};border-radius:11px;transition:.3s"></span>
+          <span style="position:absolute;height:18px;width:18px;left:${ecoOn ? '20px' : '2px'};bottom:2px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#2a2420">Eco-Modus ${ecoOn ? '<span style="color:#4a8c5c;font-size:11px;margin-left:4px">aktiv</span>' : ''}</div>
+          <div style="font-size:11px;color:#a09080;margin-top:1px">G\u00fcnstigere KI-Modelle. 2.5\u00d7 mehr Gespr\u00e4chszeit, Antwortqualit\u00e4t kann variieren.</div>
+        </div>
+      </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
         <a href="/pricing" class="btn btn-secondary btn-sm">${lowBalance ? 'Tokens auftanken' : 'Pläne & Tokens'}</a>
       </div>
     `;
   } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+
+async function toggleEcoMode(enabled) {
+  try {
+    await api("eco-mode", { enabled }, "POST");
+    loadUsage(); // Refresh to update toggle state
+  } catch (e) { console.error("Eco toggle failed:", e); }
 }
 
 // ── Helpers ──
