@@ -86,7 +86,13 @@ export default async function handler(req, res) {
     // Deduct usage in tokens — use Whisper's reported duration, fallback to file size estimate
     const actualDuration = result.duration || null;
     const estimatedSeconds = actualDuration ? Math.ceil(actualDuration) : Math.max(1, Math.ceil(audioBuffer.length / 16000));
-    const tokensToDeduct = Math.ceil(estimatedSeconds / SECONDS_PER_TOKEN);
+    // Check eco mode for token rate
+    let secPerToken = SECONDS_PER_TOKEN;
+    try {
+      const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', user.id).maybeSingle();
+      if (prof?.eco_mode) secPerToken = SECONDS_PER_TOKEN_ECO;
+    } catch (_) {}
+    const tokensToDeduct = Math.ceil(estimatedSeconds / secPerToken);
     try {
       const { data: usage } = await supabase
         .from('user_usage')
