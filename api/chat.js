@@ -19,6 +19,55 @@ const FREE_TURNS_LIMIT = 10;
 const AUTH_NUDGE_AT_TURN = 3;
 
 // ---------------------------------------------------------------------------
+// Signal Normalization + Decision Engine
+// Converts raw browser signals into deterministic conversation policy.
+// The LLM never sees raw data — only the policy output.
+// ---------------------------------------------------------------------------
+function categorizeReferrer(referrerHost, utmSource) {
+  if (utmSource) {
+    if (/linkedin|xing|facebook|instagram|twitter|tiktok/i.test(utmSource)) return "social";
+    if (/google|bing|duckduckgo|yahoo/i.test(utmSource)) return "search";
+    return "campaign";
+  }
+  if (!referrerHost) return "direct";
+  if (/google|bing|duckduckgo|yahoo|ecosia|baidu/i.test(referrerHost)) return "search";
+  if (/linkedin|xing|facebook|instagram|twitter|tiktok|reddit/i.test(referrerHost)) return "social";
+  if (/producthunt|hackernews|news\.ycombinator/i.test(referrerHost)) return "tech_community";
+  return "referral";
+}
+
+function inferGoal(device, timeSlot, source) {
+  // Search traffic → user has a specific need → discover and demonstrate
+  if (source === "search") return "discover_need_and_demonstrate";
+  // Social/tech community → curious, exploring → show personality first
+  if (source === "social" || source === "tech_community") return "show_personality_then_capability";
+  // Campaign → targeted audience → align with campaign intent
+  if (source === "campaign") return "demonstrate_core_value";
+  // Direct/returning → already interested → deepen engagement
+  return "natural_conversation";
+}
+
+function buildConversationPolicy(signals) {
+  const device = signals.is_mobile ? "mobile" : "desktop";
+  const hour = typeof signals.local_hour === "number" ? signals.local_hour : 12;
+  const timeSlot = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const source = categorizeReferrer(signals.referrer_host, signals.utm_source);
+  const isFirstVisit = (signals.page_views || 1) <= 1;
+  const goal = inferGoal(device, timeSlot, source);
+
+  return {
+    device,
+    time_slot: timeSlot,
+    traffic_source: source,
+    is_first_visit: isFirstVisit,
+    goal,
+    pitch_mode: isFirstVisit ? "listen_first" : "soft",
+    max_discovery_questions: 1,
+    suppress_upgrade_pitch: isFirstVisit,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Chat Opener Pool — returned directly from action=start, no AI call needed
 // ---------------------------------------------------------------------------
 // Free/anonymous: casual, welcoming — same vibe as paid but slightly different pool
