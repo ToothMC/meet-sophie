@@ -21,25 +21,28 @@ const AUTH_NUDGE_AT_TURN = 3;
 // ---------------------------------------------------------------------------
 // Chat Opener Pool — returned directly from action=start, no AI call needed
 // ---------------------------------------------------------------------------
-// Free/anonymous: thinking partner openers (structured, reflective)
+// Free/anonymous: casual, welcoming — same vibe as paid but slightly different pool
 const CHAT_OPENERS_FREE = {
   de: [
-    "Was beschäftigt dich gerade?",
-    "Was geht dir gerade durch den Kopf?",
-    "Wobei wünschst du dir gerade Klarheit?",
-    "Worüber möchtest du gerade nachdenken?",
+    "Hey! Was geht bei dir?",
+    "Na, was gibt's Neues?",
+    "Hey — wie läuft's?",
+    "Na du, alles klar?",
+    "Hey! Erzähl mal, was los ist.",
   ],
   en: [
-    "What's on your mind right now?",
-    "What are you trying to figure out?",
-    "What would you like to think through?",
-    "Where are you stuck?",
+    "Hey! What's up?",
+    "Hey — how's it going?",
+    "What's new with you?",
+    "Hey! Tell me what's going on.",
+    "Yo, what's good?",
   ],
   fr: [
-    "Qu'est-ce qui t'occupe l'esprit en ce moment?",
-    "Sur quoi aimerais-tu avoir plus de clarté?",
-    "À quoi veux-tu réfléchir?",
-    "Qu'est-ce qui te préoccupe?",
+    "Hey! Quoi de neuf?",
+    "Salut — comment ça va?",
+    "Hey! Raconte, qu'est-ce qui se passe?",
+    "Coucou, ça roule?",
+    "Salut toi! Quoi de beau?",
   ],
 };
 // Paid users: casual, relaxed, open — no pressure, no coaching vibe
