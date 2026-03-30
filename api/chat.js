@@ -552,7 +552,7 @@ const CURATED_TRIGGERS = [
       de: [
         "Probier's aus — frag mich was, und du wirst sehen. Am besten was, wo du eine ehrliche Meinung brauchst.",
         "Kommt drauf an. Ich hab zu fast allem eine Meinung — Musik, Essen, Lebensentscheidungen. Teste mich.",
-        "Ich kann dir Wetter oder News live raussuchen, über dein Lieblingsgericht streiten, oder bei Entscheidungen den Advocatus Diaboli spielen. Was klingt gut?",
+        "Wetter, News, Flugstatus — alles live. Oder wir streiten über dein Lieblingsgericht. Oder ich spiel Advocatus Diaboli bei einer Entscheidung. Du sagst's.",
         "Statt aufzuzählen — sag mir worüber du gerade nachdenkst, und ich zeig's dir direkt.",
       ],
       en: [
