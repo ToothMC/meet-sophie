@@ -17,6 +17,11 @@ const CHALLENGE_PROVIDERS = [
   { provider: 'mistral', model: 'mistral-small-latest' },
 ];
 
+const ECO_CHALLENGE_PROVIDERS = [
+  { provider: 'google', model: 'gemini-2.5-flash-lite' },
+  { provider: 'openai', model: 'gpt-4o-mini' },
+];
+
 const PER_PROVIDER_TIMEOUT = 8000;
 
 export default async function handler(req, res) {
