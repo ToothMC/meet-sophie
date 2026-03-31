@@ -700,7 +700,7 @@ NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
       },
       body: JSON.stringify({
         model: realtimeModel,
-        voice: "marin",
+        voice: "shimmer",
         modalities: ["audio", "text"],
         temperature: 0.7,
         speed: 1.0,
