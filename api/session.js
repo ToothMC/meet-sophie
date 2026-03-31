@@ -690,7 +690,7 @@ NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
     // Realtime session create
     // ---------------------------
     const isEco = !!profile.eco_mode;
-    const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-4o-realtime-preview";
+    const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-realtime";
 
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
@@ -700,7 +700,7 @@ NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
       },
       body: JSON.stringify({
         model: realtimeModel,
-        voice: "shimmer",
+        voice: "marin",
         modalities: ["audio", "text"],
         temperature: 0.7,
         speed: 1.0,
