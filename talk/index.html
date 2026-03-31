@@ -4882,7 +4882,9 @@ async function startVoice(){
     pc = new RTCPeerConnection();
     setupDataChannelLogging();
 
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
@@ -4897,15 +4899,20 @@ async function startVoice(){
       if (ontrackFired) return; // guard against multiple ontrack fires
       ontrackFired = true;
       const remoteStream = e.streams[0];
+      // Attach stream to <audio> element so browser AEC (echo cancellation) can pair
+      // mic input with speaker output. Without this, the browser can't cancel echo and
+      // Sophie's voice feeds back into the mic → rapid-fire VAD triggers.
+      // Volume stays 0 — GainNode handles actual playback volume + fade control.
+      audioEl.volume = 0;
+      audioEl.srcObject = remoteStream;
+      audioEl.autoplay = true;
       try {
         audioSource = audioCtx.createMediaStreamSource(remoteStream);
         audioSource.connect(gainNode);
-        // GainNode is the ONLY playback path — <audio> element is NOT used
+        // GainNode handles playback — <audio> element is muted but keeps AEC active
       } catch (_) {
-        // Web Audio failed — fall back to <audio> element
-        audioEl.srcObject = remoteStream;
+        // Web Audio failed — fall back to <audio> element for direct playback
         audioEl.volume = 1;
-        audioEl.autoplay = true;
       }
     };
 
