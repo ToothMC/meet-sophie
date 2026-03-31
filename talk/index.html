@@ -4887,19 +4887,24 @@ async function startVoice(){
 
     // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
     audioEl = document.createElement("audio");
-    audioEl.autoplay = true;
     audioEl.playsInline = true;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") await audioCtx.resume();
     gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
     pc.ontrack = e => {
-      audioEl.srcObject = e.streams[0]; // keep for Safari fallback
+      // Mute <audio> element BEFORE assigning stream to prevent double playback
+      audioEl.volume = 0;
+      audioEl.srcObject = e.streams[0];
       try {
         audioSource = audioCtx.createMediaStreamSource(e.streams[0]);
         audioSource.connect(gainNode);
-        audioEl.volume = 0; // mute <audio> element — GainNode handles playback
-      } catch (_) {} // fallback: <audio> element plays directly
+        // GainNode handles all playback — <audio> element stays muted
+      } catch (_) {
+        // Web Audio failed — fall back to <audio> element
+        audioEl.volume = 1;
+      }
+      audioEl.autoplay = true;
     };
 
     const offer = await pc.createOffer();
