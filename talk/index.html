@@ -5482,24 +5482,12 @@ function showMobileStartFallback() {
   showBackground(false);
 }
 
-if (session?.user && !isMobileDevice) {
+if (session?.user) {
+  // Auto-start for all devices. The talk page is only reached via user gesture
+  // (tap on landing page), so getUserMedia permission dialog will work.
+  // iOS Safari doesn't support navigator.permissions.query for microphone,
+  // so the old check always fell through to the fallback on iOS.
   startVoice();
-} else if (session?.user) {
-  // Mobile: check if mic permission is already granted → auto-start
-  // Otherwise show the start button and wait for user tap
-  if (navigator.permissions && navigator.permissions.query) {
-    navigator.permissions.query({ name: "microphone" })
-      .then(result => {
-        if (result.state === "granted") {
-          startVoice();
-        } else {
-          showMobileStartFallback();
-        }
-      })
-      .catch(() => showMobileStartFallback());
-  } else {
-    showMobileStartFallback();
-  }
 }
 </script>
 
