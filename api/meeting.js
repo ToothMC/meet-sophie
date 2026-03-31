@@ -759,18 +759,22 @@ async function handleSummarize(req, res) {
 
   // Build summary prompt
   const contextStr = (contextRes.data || []).map(c => `[${c.context_type}] ${c.content}`).join("\n");
-  // Exclude chat_message and silent_hint — chat is a private side-channel, NEVER in reports
+  // Primary notes: exclude chat_message and silent_hint
   const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint" && n.note_type !== "chat_message");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
-  // Voice transcript ONLY — sent from frontend (SpeechRecognition + Sophie DataChannel)
-  // Chat messages are NEVER included in the report — they are a private side-channel
+  // Voice transcript from frontend (SpeechRecognition + Sophie DataChannel)
   const voiceTranscript = (body.chat_transcript || "").trim();
 
-  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, voiceTranscript=${voiceTranscript.length}`);
+  // Fallback: if no voice transcript, include chat messages as content source
+  // Chat captures what was discussed with Sophie — better than an empty report
+  const chatMessages = (notesRes.data || []).filter(n => n.note_type === "chat_message");
+  const chatStr = voiceTranscript ? "" : chatMessages.map(n => n.content).join("\n");
+
+  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, voiceTranscript=${voiceTranscript.length}, chatFallback=${chatStr.length}`);
 
   // If there's no content at all, return empty summary — do NOT hallucinate
-  if (!notesStr.trim() && !contextStr.trim() && !voiceTranscript.trim()) {
+  if (!notesStr.trim() && !contextStr.trim() && !voiceTranscript.trim() && !chatStr.trim()) {
     const emptySummary = {
       meeting_id,
       short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
@@ -816,13 +820,14 @@ async function handleSummarize(req, res) {
   // -----------------------------------------------------------------------
   let reportSessionId = null;
   try {
-    // Build FULL transcript (context + notes + chat) for the report pipeline
+    // Build FULL transcript (context + notes + voice + chat fallback) for the report pipeline
     const fullTranscriptParts = [];
     if (meeting.title) fullTranscriptParts.push(`Meeting: ${meeting.title}`);
     if (meeting.meeting_type) fullTranscriptParts.push(`Typ: ${meeting.meeting_type}`);
     if (contextStr.trim()) fullTranscriptParts.push(`\nKontext:\n${contextStr}`);
     if (voiceTranscript.trim()) fullTranscriptParts.push(`\nVoice-Protokoll:\n${voiceTranscript}`);
     if (notesStr.trim()) fullTranscriptParts.push(`\nNotizen:\n${notesStr}`);
+    if (chatStr.trim()) fullTranscriptParts.push(`\nChat-Verlauf (Sophie & User):\n${chatStr}`);
     const fullTranscript = fullTranscriptParts.join("\n");
 
     if (fullTranscript.trim().length > 50) {
@@ -863,6 +868,7 @@ async function handleSummarize(req, res) {
   if (contextStr.trim()) fullTranscriptParts2.push(`\nKontext:\n${contextStr}`);
   if (voiceTranscript.trim()) fullTranscriptParts2.push(`\nVollständiges Voice-Protokoll:\n${voiceTranscript}`);
   if (notesStr.trim()) fullTranscriptParts2.push(`\nNotizen & Entscheidungen:\n${notesStr}`);
+  if (chatStr.trim()) fullTranscriptParts2.push(`\nChat-Verlauf (Sophie & User):\n${chatStr}`);
 
   return res.status(200).json({
     ok: true,
