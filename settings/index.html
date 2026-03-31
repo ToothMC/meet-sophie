@@ -966,8 +966,8 @@ async function pitchDemoFromReport() {
     await _playDemoPitchTTS(result.demoPitch, btn, () => pitchDemoFromReport());
   } catch (e) {
     console.error("pitchDemoFromReport failed:", e);
-    alert("Fehler: " + (e?.message || "Unbekannt"));
-    if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
+    if (btn) { btn.disabled = false; btn.textContent = "\u26A0 " + (e?.message || "Fehler").slice(0, 40); }
+    setTimeout(() => { if (btn) btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }, 5000);
   }
 }
 
@@ -985,7 +985,10 @@ async function _playDemoPitchTTS(text, btn, replayFn) {
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
     body: JSON.stringify({ text }),
   });
-  if (!resp.ok) throw new Error("TTS fehlgeschlagen");
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => '');
+    throw new Error("TTS " + resp.status + ": " + errBody.slice(0, 80));
+  }
 
   const blob = await resp.blob();
   const url = URL.createObjectURL(blob);
