@@ -2340,10 +2340,25 @@ async function toggleSophieMute() {
   updateParticipantsBar();
 
   if (!sophieMuted) {
+    // Unlock audio playback on iOS — must happen in user gesture handler
+    try {
+      const silentCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = silentCtx.createBuffer(1, 1, 22050);
+      const src = silentCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(silentCtx.destination);
+      src.start(0);
+      silentCtx.close();
+    } catch (_) {}
+
     // UNMUTE → Pause audio recording, connect Sophie voice
     pauseAudioRecording();
     setSophieStatus(lang === "de" ? "Sophie kommt dazu …" : "Sophie is joining …");
     await connectSophieVoice();
+    // Explicitly play audio element — autoplay alone fails on mobile Safari
+    if (sophieVoiceAudio) {
+      try { await sophieVoiceAudio.play(); } catch (_) {}
+    }
     setSophieStatus(lang === "de" ? "Sophie hört zu" : "Sophie is listening");
   } else {
     // MUTE → Disconnect Sophie voice, resume audio recording
