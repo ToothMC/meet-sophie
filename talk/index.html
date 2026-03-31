@@ -985,8 +985,8 @@ body{
 </div>
 
 <div class="wrap" style="display:none">
-  <h2 id="headline">Sophie is here.</h2>
-  <div class="status" id="status">Whenever you're ready.</div>
+  <h2 id="headline"></h2>
+  <div class="status" id="status"></div>
   <div class="mode-indicator" id="modeIndicator" aria-hidden="true"></div>
   <div class="research-indicator" id="researchIndicator" aria-hidden="true">
     <div class="ri-icons">
@@ -4795,37 +4795,15 @@ async function startVoice(){
 
     if (tokenRes.status === 429) {
       _startVoiceLock = false;
-      const busyMsg = _uiLang === "de"
-        ? "Sophie ist gerade beschäftigt. Bitte versuche es gleich nochmal."
-        : _uiLang === "fr"
-        ? "Sophie est occupée. Réessaie dans un instant."
-        : "Sophie is busy right now. Please try again in a moment.";
-      setStatus(busyMsg);
-      headline.textContent = t("sophie_waiting");
-      startBtn.textContent = t("start"); resetStartBtnStyle();
-      startBtn.onclick = startVoice;
-      showBackground(false);
-      showLiveBadge(false);
-      startBtn.disabled = false;
-      logoutBtn.disabled = false;
       track("talk_start_failed", { http_status: 429, message: data?.error || "busy" });
+      window.location.href = "/";
       return;
     }
 
     if (!tokenRes.ok) {
       _startVoiceLock = false;
-      const msg = data?.message || (_uiLang === "de" ? `Kein Zugriff (HTTP ${tokenRes.status}).`
-        : _uiLang === "fr" ? `Accès refusé (HTTP ${tokenRes.status}).`
-        : `Access denied (HTTP ${tokenRes.status}).`);
-      setStatus(msg);
-      headline.textContent = t("sophie_waiting");
-      startBtn.textContent = t("start"); resetStartBtnStyle();
-      startBtn.onclick = startVoice;
-      showBackground(false);
-      showLiveBadge(false);
-      startBtn.disabled = false;
-      logoutBtn.disabled = false;
-      track("talk_start_failed", { http_status: tokenRes.status, message: msg });
+      track("talk_start_failed", { http_status: tokenRes.status, message: data?.message || "" });
+      window.location.href = "/";
       return;
     }
 
@@ -4949,36 +4927,9 @@ async function startVoice(){
   } catch(err){
     _startVoiceLock = false;
     console.error(err);
-
     cleanupLiveSession();
-
-    showBackground(false);
-    showLiveBadge(false);
-    showVoiceChat(false);
-
-    startBtn.disabled = false;
-    startBtn.textContent = t("start"); resetStartBtnStyle();
-    startBtn.onclick = startVoice;
-    endBtn.disabled = true;
-    logoutBtn.disabled = false;
-    timerEl.style.display = "none";
-
-    headline.textContent = t("sophie_waiting");
-
-    if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
-      setStatus(t("err_mic_denied"));
-    } else {
-      const status = Number(err?.httpStatus || 0);
-      if (status === 504 || status === 503) {
-        setStatus(t("err_timeout"));
-      } else if (status >= 500) {
-        setStatus(t("err_connection"));
-      } else {
-        setStatus(t("err_generic"));
-      }
-    }
-
-    setSoftHint("");
+    track("talk_start_failed", { error: err?.name || "unknown", message: err?.message?.slice(0, 100) || "" });
+    window.location.href = "/";
 
     track("talk_start_exception", {
       message: String(err?.message || err),
@@ -5040,21 +4991,7 @@ async function stopVoicePitchClean() {
 
   if (!hasRealConversation) {
     stopFakeReportLoader();
-    talkStartedAt = null;
-    remainingAtSessionStart = 0;
-    convoLog = [];
-    partialAssistant = "";
-    lastAssistantFinal = "";
-    userTranscriptBuffer.clear();
-    hasUserSpoken = false;
-    showBackground(false);
-    statusEl.style.visibility = "visible";
-    startBtn.disabled = false;
-    startBtn.textContent = t("start"); resetStartBtnStyle();
-    startBtn.onclick = startVoice;
-    logoutBtn.disabled = false;
-    headline.textContent = t("sophie_waiting");
-    setStatus(t("ready"));
+    window.location.href = "/";
     return;
   }
 
