@@ -1128,7 +1128,7 @@ async function handleMessage(req, res) {
     const withinBudget = await checkDailyBudget(user.id, ctx.userTier);
     if (!withinBudget) {
       decision.primary = { provider: "google", model: "gemini-2.5-flash-lite" };
-      decision.fallback = null;
+      decision.fallback = { provider: "openai", model: "gpt-4o-mini" };
       decision.reason = "budget-cap-degradation";
     }
   }
