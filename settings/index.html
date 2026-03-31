@@ -949,45 +949,69 @@ window.pitchAgain = pitchAgain;
 
 async function pitchDemoFromReport() {
   if (!_reportDetailData) return;
-  const title = _reportDetailData.title || "Sales Pitch";
   const sessionId = _reportDetailData.session_id;
   if (!sessionId) { alert("Keine Session-Daten gefunden."); return; }
 
-  // Show loading state
   const btn = document.getElementById("pitchDemoBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Wird vorbereitet..."; }
 
   try {
-    // Generate the demo pitch SERVER-SIDE (text AI, no hallucination)
+    // Step 1: Generate optimized pitch text
     const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
+    if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
 
-    if (!result?.demoPitch) {
-      alert("Demo-Pitch konnte nicht erstellt werden. Versuche es nochmal.");
-      if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
-      return;
-    }
+    if (btn) btn.textContent = "Sophie spricht...";
 
-    // Store pitch text separately (too large for HTTP header as Base64)
-    sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
-
-    const handover = {
-      funnelMode: "salespitch",
-      language: document.documentElement.lang || "de",
-      pitchDemo: true,
-      pitchTopic: title,
-      hasDemoPitch: true, // flag — actual text in sessionStorage.SOPHIE_DEMO_PITCH
-      summary: `DEMO PITCH: Vorab generierter Text.`,
-      recentMessages: [],
-      userName: "",
-    };
-    localStorage.setItem("sophie_session_mode", "salespitch");
-    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
-    window.location.href = "/talk";
+    // Step 2: Convert to audio via TTS
+    await playDemoPitchAudio(result.demoPitch, btn);
   } catch (e) {
     console.error("pitchDemoFromReport failed:", e);
     alert("Fehler: " + (e?.message || "Unbekannt"));
     if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
   }
+}
+
+// Shared TTS playback for demo pitch — used by both report and journey
+let _demoAudio = null;
+async function playDemoPitchAudio(text, btn, replayFn) {
+  // Stop any existing playback
+  if (_demoAudio) { _demoAudio.pause(); _demoAudio = null; }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Nicht eingeloggt");
+
+  const resp = await fetch("/api/ai/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ text }),
+  });
+  if (!resp.ok) throw new Error("TTS fehlgeschlagen");
+
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  _demoAudio = new Audio(url);
+  _demoAudio.play();
+
+  const resetBtn = () => {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+      btn.onclick = replayFn || (() => pitchDemoFromReport());
+    }
+    URL.revokeObjectURL(url);
+  };
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = "\u23F9 Stop";
+    btn.onclick = () => {
+      if (_demoAudio) { _demoAudio.pause(); _demoAudio = null; }
+      resetBtn();
+    };
+  }
+
+  _demoAudio.onended = () => { _demoAudio = null; resetBtn(); };
 }
 // Keep old score parsing for pitchAgain (not demo)
 function _parsePitchScores(html) {
@@ -1062,43 +1086,23 @@ async function pitchAgainFromJourney(topic) {
 }
 window.pitchAgainFromJourney = pitchAgainFromJourney;
 
-// Sophie Demo Pitch — Sophie pitches FOR the user as an example
-async function pitchDemoFromJourney(topic) {
+// Sophie Demo Pitch — Sophie pitches FOR the user as an example (TTS audio, no talk session)
+async function pitchDemoFromJourney(topic, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = "Wird vorbereitet..."; }
   try {
-    const [data, prevDemo] = await Promise.all([
-      api("pitch-journey-detail&topic=" + encodeURIComponent(topic)),
-      api("get-demo-pitch&topic=" + encodeURIComponent(topic)).catch(() => ({ found: false })),
-    ]);
-    const handover = {
-      funnelMode: "salespitch",
-      language: document.documentElement.lang || "de",
-      pitchDemo: true,
-      pitchTopic: topic,
-      audience: data.target_audience || "",
-      pitchType: data.pitch_type || "",
-      goalType: data.goal_type || "",
-      previousScores: {
-        content: data.scores_content || {},
-        delivery: data.scores_delivery || {},
-        overall: data.score || 0,
-      },
-      previousWeaknesses: data.weaknesses || [],
-      previousStrengths: data.strengths || [],
-      // THE ACTUAL PITCH CONTENT — this is what Sophie bases her demo on
-      pitchTranscript: (data.pitchTranscript || '').slice(0, 5000),
-      reportSummary: (data.reportSummary || '').slice(0, 3000),
-      // Previous demo for iterative improvement
-      previousDemoTranscript: prevDemo?.found ? (prevDemo.transcript || '').slice(0, 4000) : '',
-      previousDemoSelfCritique: prevDemo?.found ? (prevDemo.selfCritique || '') : '',
-      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen — basierend auf dem echten Pitch-Transcript.`,
-      recentMessages: [{ role: "user", content: `Zeig mir wie du "${topic}" pitchen würdest.` }],
-      userName: "",
-    };
-    localStorage.setItem("sophie_session_mode", "salespitch");
-    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
-    window.location.href = "/talk";
+    // Get the latest pitch session for this topic to generate demo
+    const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
+    const sessionId = data?.session_id;
+    if (!sessionId) throw new Error("Keine Session gefunden");
+
+    const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
+    if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
+
+    if (btnEl) btnEl.textContent = "Sophie spricht...";
+    await playDemoPitchAudio(result.demoPitch, btnEl, () => pitchDemoFromJourney(topic, btnEl));
   } catch (e) {
     alert("Nicht genug Pitch-Daten vorhanden. Pitche mindestens einmal, damit Sophie dir zeigen kann wie es geht.");
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
   }
 }
 window.pitchDemoFromJourney = pitchDemoFromJourney;

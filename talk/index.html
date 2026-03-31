@@ -2573,29 +2573,41 @@ function configurePostCallCta(triggeredByLimit = false) {
         const { data: { session: authSess } } = await supabase.auth.getSession();
         const token = authSess?.access_token;
         if (!token) throw new Error("Nicht eingeloggt");
-        const resp = await fetch("/api/settings?action=generate-demo-pitch", {
+        const genResp = await fetch("/api/settings?action=generate-demo-pitch", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ session_id: sid }),
         });
-        const result = await resp.json();
+        const result = await genResp.json();
         if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
 
-        // Store pitch text separately (too large for HTTP header)
-        sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
-        const handover = {
-          funnelMode: "salespitch",
-          language: _uiLang || "de",
-          pitchDemo: true,
-          pitchTopic: pitchTopic,
-          hasDemoPitch: true,
-          summary: `DEMO PITCH: Vorab generierter Text.`,
-          recentMessages: [],
-          userName: "",
+        demoBtn.textContent = "Sophie spricht...";
+
+        // TTS: convert text to audio and play inline (no talk session)
+        const ttsResp = await fetch("/api/ai/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ text: result.demoPitch }),
+        });
+        if (!ttsResp.ok) throw new Error("TTS fehlgeschlagen");
+
+        const blob = await ttsResp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.play();
+
+        demoBtn.disabled = false;
+        demoBtn.textContent = "\u23F9 Stop";
+        window._demoAudio = audio;
+        const originalOnclick = demoBtn.onclick;
+        const resetDemo = () => {
+          window._demoAudio = null;
+          demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+          demoBtn.onclick = originalOnclick;
+          URL.revokeObjectURL(url);
         };
-        localStorage.setItem("sophie_session_mode", "salespitch");
-        sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
-        window.location.reload();
+        demoBtn.onclick = () => { audio.pause(); resetDemo(); };
+        audio.onended = resetDemo;
       } catch (e) {
         console.error("demo generation failed:", e);
         demoBtn.disabled = false;
