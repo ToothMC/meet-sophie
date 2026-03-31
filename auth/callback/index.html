@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sophie</title>
   <style>
-    body { margin:0; background:#0b0f14; }
+    body { margin:0; background:#0b0f14; color:#e8e0d8; font-family:-apple-system,BlinkMacSystemFont,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .close-hint { text-align:center; padding:24px; max-width:320px; }
+    .close-hint h2 { font-size:18px; margin:0 0 8px; }
+    .close-hint p { font-size:14px; opacity:0.7; margin:0; }
   </style>
 </head>
 <body>
+  <div class="close-hint" id="closeHint" style="display:none">
+    <h2 id="hintTitle">Du bist eingeloggt!</h2>
+    <p id="hintText">Du kannst diesen Tab jetzt schließen.</p>
+  </div>
+
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -52,20 +60,36 @@
     function go(path) {
       if (done) return;
       done = true;
-      // Tell the original tab to navigate to target — it has the user's chat state
+
+      // Try to hand off to original tab via BroadcastChannel
+      let handedOff = false;
       try {
         const bc = new BroadcastChannel("sophie_auth");
         bc.postMessage({ type: "auth_complete", target: path });
-        // Wait briefly for original tab to receive the message, then try to close THIS tab
-        // On mobile Safari, window.close() works for tabs opened via link (magic link from email)
-        setTimeout(() => {
-          try { window.close(); } catch (_) {}
-          // Fallback: if close didn't work (desktop etc.), redirect normally
-          setTimeout(() => { window.location.replace(path); }, 500);
-        }, 300);
         bc.close();
-        return;
+        handedOff = true;
       } catch (_) {}
+
+      if (handedOff) {
+        // Original tab will navigate — THIS tab should close or show hint
+        try { window.close(); } catch (_) {}
+        // window.close() doesn't work on mobile Safari for email-opened tabs
+        // Show "close this tab" hint + auto-redirect after 3s as last resort
+        const hint = document.getElementById("closeHint");
+        if (lang === "en") {
+          document.getElementById("hintTitle").textContent = "You're logged in!";
+          document.getElementById("hintText").textContent = "You can close this tab now.";
+        } else if (lang === "fr") {
+          document.getElementById("hintTitle").textContent = "Vous êtes connecté !";
+          document.getElementById("hintText").textContent = "Vous pouvez fermer cet onglet.";
+        }
+        hint.style.display = "block";
+        // Last resort: redirect after 3s if user doesn't close
+        setTimeout(() => { window.location.replace(path); }, 3000);
+        return;
+      }
+
+      // No BroadcastChannel support — redirect directly
       window.location.replace(path);
     }
 
