@@ -3227,11 +3227,13 @@
     // Fallback: if no auth event fires within 2s (e.g. no session), resolve anyway
     setTimeout(() => _authReady(false), 2000);
 
-    // Navigate this tab when auth completes in callback tab — callback tab will close itself
+    // Navigate this tab when auth completes in callback tab
     try {
       const bc = new BroadcastChannel("sophie_auth");
       bc.onmessage = (e) => {
         if (e.data?.type === "auth_complete") {
+          // ACK so callback tab knows we exist and won't redirect
+          bc.postMessage({ type: "auth_ack" });
           bc.close();
           window.location.replace(e.data.target || "/talk");
         }

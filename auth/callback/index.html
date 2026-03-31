@@ -8,13 +8,15 @@
     body { margin:0; background:#0b0f14; color:#e8e0d8; font-family:-apple-system,BlinkMacSystemFont,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; }
     .close-hint { text-align:center; padding:24px; max-width:320px; }
     .close-hint h2 { font-size:18px; margin:0 0 8px; }
-    .close-hint p { font-size:14px; opacity:0.7; margin:0; }
+    .close-hint p { font-size:14px; opacity:0.7; margin:0 0 16px; }
+    .close-hint button { background:#c4a882; color:#0b0f14; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:600; cursor:pointer; }
   </style>
 </head>
 <body>
   <div class="close-hint" id="closeHint" style="display:none">
     <h2 id="hintTitle">Du bist eingeloggt!</h2>
-    <p id="hintText">Du kannst diesen Tab jetzt schließen.</p>
+    <p id="hintText">Wechsle zurück zum vorherigen Tab.</p>
+    <button id="hintBtn" onclick="window.close()">Tab schließen</button>
   </div>
 
   <script type="module">
@@ -28,7 +30,6 @@
 
     // Read mode + language from URL params (passed via emailRedirectTo)
     const urlParams = new URLSearchParams(window.location.search);
-    // ONLY use URL param — localStorage may have stale mode from previous session
     const detectedMode = urlParams.get("mode") || "";
     const lang = urlParams.get("lang") || localStorage.getItem("preferredLanguage") || "";
     if (lang && ["de", "en", "fr"].includes(lang)) {
@@ -38,12 +39,10 @@
     // Build target path with mode
     function buildTarget(base) {
       if (detectedMode && detectedMode !== "talk") {
-        // Meeting mode → dedicated meeting page
         if (detectedMode === "meeting") {
           localStorage.removeItem("sophie_session_mode");
           return "/meeting/";
         }
-        // Map routing modes to session modes for /talk
         const SESSION_MAP = {
           brainstorm: "brainstorm", salespitch: "salespitch",
           explore: "", decide: "", reflect: "", chill: ""
@@ -57,52 +56,64 @@
       return base;
     }
 
+    function showCloseHint() {
+      const hint = document.getElementById("closeHint");
+      if (lang === "en") {
+        document.getElementById("hintTitle").textContent = "You're logged in!";
+        document.getElementById("hintText").textContent = "Switch back to the previous tab.";
+        document.getElementById("hintBtn").textContent = "Close tab";
+      } else if (lang === "fr") {
+        document.getElementById("hintTitle").textContent = "Vous êtes connecté !";
+        document.getElementById("hintText").textContent = "Retournez à l'onglet précédent.";
+        document.getElementById("hintBtn").textContent = "Fermer l'onglet";
+      }
+      hint.style.display = "block";
+    }
+
     function go(path) {
       if (done) return;
       done = true;
 
       // Try to hand off to original tab via BroadcastChannel
-      let handedOff = false;
       try {
         const bc = new BroadcastChannel("sophie_auth");
-        bc.postMessage({ type: "auth_complete", target: path });
-        bc.close();
-        handedOff = true;
-      } catch (_) {}
 
-      if (handedOff) {
-        // Original tab will navigate — THIS tab should close or show hint
-        try { window.close(); } catch (_) {}
-        // window.close() doesn't work on mobile Safari for email-opened tabs
-        // Show "close this tab" hint + auto-redirect after 3s as last resort
-        const hint = document.getElementById("closeHint");
-        if (lang === "en") {
-          document.getElementById("hintTitle").textContent = "You're logged in!";
-          document.getElementById("hintText").textContent = "You can close this tab now.";
-        } else if (lang === "fr") {
-          document.getElementById("hintTitle").textContent = "Vous êtes connecté !";
-          document.getElementById("hintText").textContent = "Vous pouvez fermer cet onglet.";
-        }
-        hint.style.display = "block";
-        // Last resort: redirect after 3s if user doesn't close
-        setTimeout(() => { window.location.replace(path); }, 3000);
+        // Listen for ACK from original tab
+        let acked = false;
+        bc.onmessage = (e) => {
+          if (e.data?.type === "auth_ack") {
+            acked = true;
+            bc.close();
+            // Original tab confirmed it received the message and will navigate
+            // This tab stays on "close this tab" hint — NEVER redirects
+            showCloseHint();
+          }
+        };
+
+        // Send auth_complete to original tab
+        bc.postMessage({ type: "auth_complete", target: path });
+
+        // Wait 2s for ACK — if no original tab responds, redirect here
+        setTimeout(() => {
+          if (!acked) {
+            bc.close();
+            // No original tab listening — this is the only tab, redirect normally
+            window.location.replace(path);
+          }
+        }, 2000);
         return;
-      }
+      } catch (_) {}
 
       // No BroadcastChannel support — redirect directly
       window.location.replace(path);
     }
 
-    // Determine default target: /talk only if a specific mode was selected (via "Mit Sophie sprechen")
-    // Otherwise: landing page (user just logged in via "Einloggen")
     const defaultTarget = detectedMode ? "/talk" : "/";
 
-    // PKCE exchange + session detection — redirect as soon as session is ready
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) go(buildTarget(defaultTarget));
     });
 
-    // Fallback after 3s
     setTimeout(async () => {
       const { data } = await supabase.auth.getSession();
       go(data.session?.user ? buildTarget(defaultTarget) : "/login");
