@@ -352,8 +352,9 @@ body{
 
 /* ---- LIVE TIMER ---- */
 .live-timer{
-  font-size:12px;color:rgba(255,90,90,.7);font-weight:600;
-  letter-spacing:.04em;text-align:center;padding:4px;
+  font-size:28px;color:#ef4444;font-weight:700;
+  letter-spacing:.06em;text-align:center;padding:10px 0;
+  font-variant-numeric:tabular-nums;
 }
 </style>
 </head>
@@ -464,6 +465,8 @@ body{
       <div style="font-size:12px;color:#a09080;margin-top:8px" id="reportProgressLabel">Daten werden aufbereitet...</div>
     </div>
     <div id="reportPreview" class="hidden" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff">
+      <!-- Mobile: direct DOM render. Desktop: iframe for A4 isolation -->
+      <div id="reportDirect" style="display:none"></div>
       <iframe id="reportFrame" style="width:100%;border:none;min-height:400px" sandbox="allow-same-origin"></iframe>
     </div>
     <div id="reportActions" class="hidden">
@@ -1533,45 +1536,48 @@ function showMeetingReport(html) {
   const reportPreview = $("reportPreview");
   const reportActions = $("reportActions");
   const reportFrame = $("reportFrame");
+  const reportDirect = $("reportDirect");
+  const isMobile = window.innerWidth <= 600;
 
   reportPreview.classList.remove("hidden");
   reportActions.classList.remove("hidden");
   reportActions.style.display = "block";
 
-  // Inject mobile-responsive CSS for reading view (A4 layout preserved for PDF export)
-  // Prepend to HTML — AI-generated reports may not have <head> tags
-  const mobileCSS = `<style>
-    @media (max-width: 700px) {
-      body, html { margin:0 !important; padding:0 !important; background:#fff !important; }
-      body > div:first-child { max-width:100% !important; padding:16px 12px !important; margin:0 !important; box-sizing:border-box !important; }
-      h1 { font-size:20px !important; }
-      h2 { font-size:16px !important; }
-      table { width:100% !important; font-size:13px !important; }
-      td, th { padding:6px 8px !important; }
+  if (isMobile) {
+    // Mobile: render directly in DOM — no iframe, no CSS injection issues
+    reportFrame.style.display = "none";
+    reportDirect.style.display = "block";
+    // Extract body content from HTML (strip <html>, <head>, <style> wrapper)
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    // Find the main content div (usually body > div with max-width)
+    const styleEl = tmp.querySelector("style");
+    const mainDiv = tmp.querySelector('div[style*="max-width"]') || tmp.querySelector("body > div") || tmp;
+    // Apply extracted styles + override for mobile
+    reportDirect.innerHTML = "";
+    if (styleEl) {
+      const s = document.createElement("style");
+      s.textContent = styleEl.textContent + `
+        [style*="max-width"] { max-width:100% !important; padding:12px 0 !important; margin:0 !important; }
+      `;
+      reportDirect.appendChild(s);
     }
-  </style>`;
-  // Insert after opening <style> or at the very start
-  let displayHtml;
-  if (html.includes('</head>')) {
-    displayHtml = html.replace('</head>', mobileCSS + '</head>');
-  } else if (html.includes('<style')) {
-    displayHtml = html.replace('<style', mobileCSS + '<style');
+    // Clone content nodes
+    for (const child of mainDiv.children) {
+      reportDirect.appendChild(child.cloneNode(true));
+    }
   } else {
-    displayHtml = mobileCSS + html;
+    // Desktop: iframe for A4 isolation
+    reportDirect.style.display = "none";
+    reportFrame.style.display = "block";
+    const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => {
+      try { reportFrame.style.height = doc.documentElement.scrollHeight + "px"; } catch (_) {}
+    }, 500);
   }
-
-  // Write HTML into iframe
-  const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
-  doc.open();
-  doc.write(displayHtml);
-  doc.close();
-
-  // Auto-resize iframe to content
-  setTimeout(() => {
-    try {
-      reportFrame.style.height = doc.documentElement.scrollHeight + "px";
-    } catch (_) {}
-  }, 500);
 
   // Helper: filter report sections based on toggle options (DOM-based, reliable)
   function getExportHtml() {
@@ -1672,20 +1678,7 @@ function showMeetingReport(html) {
   // "Aktualisieren" — re-render report with current toggle options (no AI call)
   $("reportRegenerateBtn").onclick = () => {
     const exportHtml = getExportHtml();
-    // Replace iframe entirely to avoid Mobile Safari doc.write hang
-    const oldFrame = $("reportFrame");
-    const newFrame = document.createElement("iframe");
-    newFrame.id = "reportFrame";
-    newFrame.style.cssText = "width:100%;border:none;min-height:400px";
-    newFrame.sandbox = "allow-same-origin";
-    oldFrame.replaceWith(newFrame);
-    const doc = newFrame.contentDocument || newFrame.contentWindow.document;
-    doc.open();
-    doc.write(exportHtml);
-    doc.close();
-    setTimeout(() => {
-      try { newFrame.style.height = doc.documentElement.scrollHeight + "px"; } catch(_) {}
-    }, 300);
+    showMeetingReport(exportHtml);
     // Reset button to inactive
     $("reportRegenerateBtn").disabled = true;
     $("reportRegenerateBtn").style.opacity = ".4";
