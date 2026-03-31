@@ -111,26 +111,40 @@ export interface BrainstormIdea {
   status:    'active' | 'prioritized' | 'discarded'
 }
 
-export interface PitchScorecard {
-  clarity:             number  // 1-5
-  problemSharpness:    number  // 1-5
-  valueProposition:    number  // 1-5
-  differentiation:     number  // 1-5
-  credibility:         number  // 1-5
-  audienceFit:         number  // 1-5
-  objectionResistance: number  // 1-5
-  persuasiveness:      number  // 1-5
+export interface PitchContentScores {
+  clarity:           number  // 1-5, weight 12%
+  problemSharpness:  number  // 1-5, weight 10%
+  valueProposition:  number  // 1-5, weight 12%
+  structure:         number  // 1-5, weight 8%
+  differentiation:   number  // 1-5, weight 8%
+  credibility:       number  // 1-5, weight 5%
+  audienceFit:       number  // 1-5, weight 5%
 }
+
+export interface PitchDeliveryScores {
+  opening:           number  // 1-5, weight 8%
+  closing:           number  // 1-5, weight 7%
+  voiceRhythm:       number  // 1-5, weight 8%
+  rhetoricLanguage:  number  // 1-5, weight 7%
+  authenticity:      number  // 1-5, weight 5%
+  persuasiveness:    number  // 1-5, weight 5%
+}
+
+export type PitchType = 'sales' | 'investor' | 'keynote' | 'internal' | 'self' | 'other'
+export type GoalType = 'buy' | 'invest' | 'approve' | 'trust' | 'understand' | 'remember' | 'decide'
+export type ConfidenceLevel = 'low' | 'medium' | 'high'
 
 export interface PitchMemory {
   id:                  string
   userId:              string
   pitchTopic:          string
-  audienceType:        'investor' | 'customer' | 'partner' | 'leadership' | 'skeptic' | 'mixed'
-  goalType:            'investment' | 'sale' | 'approval' | 'partnership'
-  overallScore:        number          // 1.0-5.0 (average of scorecard)
-  scores:              PitchScorecard
-  confidenceLevel:     'low' | 'medium' | 'high'
+  pitchType:           PitchType
+  audienceType:        'investor' | 'customer' | 'partner' | 'leadership' | 'public' | 'jury' | 'mixed'
+  goalType:            GoalType
+  overallScore:        number          // 1.0-5.0 (weighted average)
+  scoresContent:       PitchContentScores
+  scoresDelivery:      PitchDeliveryScores
+  confidenceLevel:     ConfidenceLevel
   recurringStrengths:  string[]
   recurringWeaknesses: string[]
   versionLabel:        string | null

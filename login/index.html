@@ -196,8 +196,8 @@
       if (!data) {
         await supabase.from("user_usage").insert({
           user_id: userId,
-          free_seconds_total: 120,
-          free_seconds_used: 0
+          free_tokens_total: 50,
+          free_tokens_used: 0
         });
       }
     }
@@ -233,8 +233,8 @@
 
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
-      const safePaths = ["/pricing", "/talk"];
-      const target = redirect && safePaths.some(p => redirect.startsWith(p)) ? redirect : "/talk";
+      const safePaths = ["/pricing", "/talk", "/settings", "/meeting", "/"];
+      const target = redirect && safePaths.some(p => redirect.startsWith(p)) ? redirect : "/";
       window.location.href = target;
     }
 
@@ -247,8 +247,32 @@
       if (session?.user) handleSuccessfulAuth();
     });
 
+    // Close this tab when auth completes in another tab (callback page)
+    try {
+      const bc = new BroadcastChannel("sophie_auth");
+      bc.onmessage = (e) => {
+        if (e.data?.type === "auth_complete") {
+          bc.close();
+          // window.close() only works for script-opened windows; fallback: navigate away
+          try { window.close(); } catch (_) {}
+          // If still open (browser blocked close), redirect to target
+          setTimeout(() => { window.location.replace(e.data.target || "/talk"); }, 300);
+        }
+      };
+    } catch (_) {}
+
+    // Pre-fill email from last successful login
+    const emailInput = document.getElementById("email");
+    const savedEmail = localStorage.getItem("sophie_login_email");
+    if (savedEmail && emailInput) emailInput.value = savedEmail;
+
+    // Enter key submits email
+    if (emailInput) emailInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); btn.click(); }
+    });
+
     btn.onclick = async () => {
-      const email = document.getElementById("email").value.trim();
+      const email = emailInput.value.trim();
       if (!email) return setStatus(t.empty, true);
 
       setStatus(t.sending);
@@ -264,6 +288,9 @@
       btn.disabled = false;
 
       if (error) return setStatus(error.message, true);
+
+      // Remember email for next visit
+      localStorage.setItem("sophie_login_email", email);
       setStatus(t.sent);
     };
   </script>

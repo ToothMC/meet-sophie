@@ -1,34 +1,14 @@
 import Stripe from "stripe";
 import { buffer } from "micro";
 import { createClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_FREE_TOKENS,
+  includedTokensForPlan,
+  topupTokensForPack,
+  planFromPriceId,
+} from "../lib/billing-constants.js";
 
 export const config = { api: { bodyParser: false } };
-
-// ✅ Free = 120 Sekunden (2 Minuten)
-const DEFAULT_FREE_SECONDS_TOTAL = 120;
-
-function includedSecondsForPlan(plan) {
-  const p = String(plan || "").toLowerCase().trim();
-  if (p === "starter") return 15 * 60; // Companion: 15 min
-  if (p === "plus") return 25 * 60;    // Best Friend: 25 min
-  return 0;
-}
-
-function topupSecondsForPack(pack) {
-  const k = Number(pack);
-  if (k === 5) return 5 * 60;     // 5 min
-  if (k === 10) return 10 * 60;   // 10 min
-  if (k === 20) return 20 * 60;   // 20 min
-  return 0;
-}
-
-function planFromPriceId(priceId) {
-  const starter = process.env.STRIPE_PRICE_ID_STARTER;
-  const plus = process.env.STRIPE_PRICE_ID_PLUS;
-  if (starter && priceId === starter) return "starter";
-  if (plus && priceId === plus) return "plus";
-  return "";
-}
 
 async function safeTrack(supabase, userId, event_name, meta = {}) {
   try {
@@ -73,7 +53,28 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("✅ Stripe event received:", { type: event.type, id: event.id });
+    console.log("Stripe event received:", { type: event.type, id: event.id });
+
+    // Idempotency: skip already-processed events (Stripe can deliver webhooks multiple times)
+    const { data: existingEvent } = await supabase
+      .from("analytics_events")
+      .select("id")
+      .eq("event_name", "stripe_webhook_" + event.type)
+      .eq("meta->>stripe_event_id", event.id)
+      .maybeSingle();
+
+    if (existingEvent) {
+      console.log("Webhook already processed, skipping:", event.id);
+      return res.status(200).json({ received: true, duplicate: true });
+    }
+
+    // Mark this event as processed BEFORE doing anything (prevents race with parallel deliveries)
+    const eventUserId = event.data?.object?.metadata?.user_id || null;
+    await supabase.from("analytics_events").insert({
+      user_id: eventUserId,
+      event_name: "stripe_webhook_" + event.type,
+      meta: { stripe_event_id: event.id, event_type: event.type },
+    }).catch(() => {}); // don't block on analytics failure
 
     // 1) Checkout completed
     if (event.type === "checkout.session.completed") {
@@ -109,10 +110,10 @@ export default async function handler(req, res) {
           }
         }
 
-        const includedSeconds = includedSecondsForPlan(plan);
+        const includedTokens = includedTokensForPlan(plan);
 
-        if (!includedSeconds) {
-          console.error("No included seconds resolved - refusing activation", {
+        if (!includedTokens) {
+          console.error("No included tokens resolved - refusing activation", {
             userId,
             plan,
             stripeSubscriptionId,
@@ -120,9 +121,9 @@ export default async function handler(req, res) {
           await safeTrack(supabase, userId, "subscription_activation_failed", {
             plan: plan || null,
             stripe_subscription_id: stripeSubscriptionId,
-            reason: "no_included_seconds",
+            reason: "no_included_tokens",
           });
-          return res.status(500).send("No included seconds resolved");
+          return res.status(500).send("No included tokens resolved");
         }
 
         const { error: subErr } = await supabase
@@ -160,22 +161,38 @@ export default async function handler(req, res) {
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
-            free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
-            free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL, // ✅ freetime ist abgelaufen im Upgrade-Moment
-            paid_seconds_total: includedSeconds,
-            paid_seconds_used: 0,
-            topup_seconds_balance: 0,
+            free_tokens_total: DEFAULT_FREE_TOKENS,
+            free_tokens_used: DEFAULT_FREE_TOKENS,
+            paid_tokens_total: includedTokens,
+            paid_tokens_used: 0,
+            topup_tokens_balance: 0,
           });
           if (uInsErr) {
             console.error("Supabase insert user_usage failed:", uInsErr);
             return res.status(500).send("Supabase write failed (user_usage insert)");
           }
         } else {
+          // Carry over remaining paid tokens as topup balance (upgrade fairness)
+          const { data: currentUsage } = await supabase
+            .from("user_usage")
+            .select("paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          const paidRemaining = Math.max(0, (currentUsage?.paid_tokens_total || 0) - (currentUsage?.paid_tokens_used || 0));
+          const topupCarryover = paidRemaining > 0 ? paidRemaining : 0;
+          const newTopupBalance = (currentUsage?.topup_tokens_balance || 0) + topupCarryover;
+
+          if (topupCarryover > 0) {
+            console.log(`[webhook] Upgrade: carrying over ${topupCarryover} remaining paid tokens as topup for user ${userId.slice(0, 8)}`);
+          }
+
           const { error: uUpdErr } = await supabase
             .from("user_usage")
             .update({
-              paid_seconds_total: includedSeconds,
-              paid_seconds_used: 0,
+              paid_tokens_total: includedTokens,
+              paid_tokens_used: 0,
+              topup_tokens_balance: newTopupBalance,
             })
             .eq("user_id", userId);
 
@@ -189,7 +206,7 @@ export default async function handler(req, res) {
           plan: plan || null,
           stripe_subscription_id: stripeSubscriptionId,
           stripe_customer_id: stripeCustomerId,
-          included_seconds: includedSeconds,
+          included_tokens: includedTokens,
         });
 
         return res.status(200).json({ received: true });
@@ -198,16 +215,16 @@ export default async function handler(req, res) {
       // B) Top-up payment
       if (mode === "payment") {
         const pack = session?.metadata?.topup_pack;
-        const addSeconds = topupSecondsForPack(pack);
+        const addTokens = topupTokensForPack(pack);
 
-        if (addSeconds <= 0) {
+        if (addTokens <= 0) {
           await safeTrack(supabase, userId, "topup_invalid_pack", { pack });
           return res.status(200).json({ received: true });
         }
 
         const { data: usage, error: uSelErr } = await supabase
           .from("user_usage")
-          .select("topup_seconds_balance")
+          .select("topup_tokens_balance")
           .eq("user_id", userId)
           .maybeSingle();
 
@@ -216,18 +233,18 @@ export default async function handler(req, res) {
         if (!usage) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
-            free_seconds_total: DEFAULT_FREE_SECONDS_TOTAL,
-            free_seconds_used: DEFAULT_FREE_SECONDS_TOTAL,
-            paid_seconds_total: 0,
-            paid_seconds_used: 0,
-            topup_seconds_balance: addSeconds,
+            free_tokens_total: DEFAULT_FREE_TOKENS,
+            free_tokens_used: DEFAULT_FREE_TOKENS,
+            paid_tokens_total: 0,
+            paid_tokens_used: 0,
+            topup_tokens_balance: addTokens,
           });
           if (uInsErr) return res.status(500).send("Supabase write failed (user_usage insert)");
         } else {
-          const newBal = (usage.topup_seconds_balance || 0) + addSeconds;
+          const newBal = (usage.topup_tokens_balance || 0) + addTokens;
           const { error: uUpdErr } = await supabase
             .from("user_usage")
-            .update({ topup_seconds_balance: newBal })
+            .update({ topup_tokens_balance: newBal })
             .eq("user_id", userId);
 
           if (uUpdErr) return res.status(500).send("Supabase write failed (user_usage update)");
@@ -235,7 +252,7 @@ export default async function handler(req, res) {
 
         await safeTrack(supabase, userId, "topup_completed", {
           pack: Number(pack),
-          added_seconds: addSeconds,
+          added_tokens: addTokens,
           stripe_customer_id: stripeCustomerId,
         });
 
@@ -245,7 +262,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
-    // 2) Subscription Updated -> status/period_end sync
+    // 2) Subscription Updated -> status/period_end sync + plan change detection
     if (event.type === "customer.subscription.updated") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -257,7 +274,7 @@ export default async function handler(req, res) {
 
       const { data: row, error: findErr } = await supabase
         .from("user_subscriptions")
-        .select("user_id")
+        .select("user_id, plan")
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
@@ -266,28 +283,66 @@ export default async function handler(req, res) {
 
       const userId = row.user_id;
 
+      // Detect plan change via price ID
+      const newPriceId = sub.items?.data?.[0]?.price?.id || null;
+      const newPlan = newPriceId ? planFromPriceId(newPriceId) : null;
+
+      const updateFields = {
+        status,
+        is_active: isActive,
+        current_period_end: currentPeriodEnd,
+      };
+
+      // If plan changed (e.g. via Stripe portal), update plan name and tokens
+      if (newPlan && newPlan !== row.plan) {
+        updateFields.plan = newPlan;
+        console.log(`[webhook] Plan change detected: ${row.plan} → ${newPlan} for user ${userId.slice(0, 8)}`);
+      }
+
       const { error: updErr } = await supabase
         .from("user_subscriptions")
-        .update({
-          status,
-          is_active: isActive,
-          current_period_end: currentPeriodEnd,
-        })
+        .update(updateFields)
         .eq("user_id", userId);
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
+
+      // If plan changed, adjust token allocation (carry over remaining as topup)
+      if (newPlan && newPlan !== row.plan) {
+        const newTokens = includedTokensForPlan(newPlan);
+        if (newTokens > 0) {
+          const { data: usage } = await supabase
+            .from("user_usage")
+            .select("paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (usage) {
+            const paidRem = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+            const newTopup = (usage.topup_tokens_balance || 0) + paidRem;
+
+            await supabase.from("user_usage").update({
+              paid_tokens_total: newTokens,
+              paid_tokens_used: 0,
+              topup_tokens_balance: newTopup,
+            }).eq("user_id", userId);
+
+            console.log(`[webhook] Tokens adjusted: ${usage.paid_tokens_total}→${newTokens}, carried over ${paidRem} as topup`);
+          }
+        }
+      }
 
       await safeTrack(supabase, userId, "subscription_updated", {
         status,
         is_active: isActive,
         current_period_end: currentPeriodEnd,
         stripe_subscription_id: stripeSubscriptionId,
+        plan_changed: newPlan && newPlan !== row.plan ? `${row.plan}→${newPlan}` : null,
       });
 
       return res.status(200).json({ received: true });
     }
 
-    // 3) Monthly renew -> reset seconds (THIS is crucial)
+    // 3) Monthly renew -> reset tokens
     if (event.type === "invoice.paid") {
       const invoice = event.data.object;
 
@@ -310,15 +365,15 @@ export default async function handler(req, res) {
       if (!row.is_active) return res.status(200).json({ received: true });
 
       const userId = row.user_id;
-      const includedSeconds = includedSecondsForPlan(row.plan);
+      const includedTokens = includedTokensForPlan(row.plan);
 
-      if (!includedSeconds) return res.status(200).json({ received: true });
+      if (!includedTokens) return res.status(200).json({ received: true });
 
       const { error: uUpdErr } = await supabase
         .from("user_usage")
         .update({
-          paid_seconds_total: includedSeconds,
-          paid_seconds_used: 0,
+          paid_tokens_total: includedTokens,
+          paid_tokens_used: 0,
         })
         .eq("user_id", userId);
 
@@ -326,13 +381,13 @@ export default async function handler(req, res) {
 
       await safeTrack(supabase, userId, "subscription_renewed", {
         stripe_subscription_id: stripeSubscriptionId,
-        included_seconds: includedSeconds,
+        included_tokens: includedTokens,
       });
 
       return res.status(200).json({ received: true });
     }
 
-    // 4) Subscription Deleted -> deactivate (+ optional zero seconds)
+    // 4) Subscription Deleted -> deactivate (+ optional zero tokens)
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -359,9 +414,9 @@ export default async function handler(req, res) {
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
 
-      // optional: take away paid seconds immediately (depends on your gating)
+      // optional: take away paid tokens immediately (depends on your gating)
       await supabase.from("user_usage").update({
-        paid_seconds_total: 0,
+        paid_tokens_total: 0,
       }).eq("user_id", userId);
 
       await safeTrack(supabase, userId, "subscription_deleted", {

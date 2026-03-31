@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#faf9f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sophie — Einstellungen</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:#faf9f6;color:#2a2420;
+  min-height:100vh;min-height:100dvh;
+  -webkit-font-smoothing:antialiased;
+}
+.topbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;
+  background:rgba(250,249,246,.92);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid #ede8e2;
+}
+.topbar .back{
+  color:#7a6a5a;text-decoration:none;font-size:14px;
+  display:flex;align-items:center;gap:4px;
+}
+.topbar .back:hover{color:#2a2420}
+.topbar .title{flex:1;font-size:15px;font-weight:600;color:#2a2420}
+.topbar .logout-btn{
+  background:none;border:1px solid #ede8e2;
+  color:#7a6a5a;font-size:11px;padding:5px 12px;
+  border-radius:8px;cursor:pointer;font-family:inherit;
+}
+.topbar .logout-btn:hover{color:#2a2420;border-color:#c4a882}
+.loading{text-align:center;padding:80px 20px;color:#a09080;font-size:14px}
+main{max-width:520px;margin:0 auto;padding:12px}
+
+/* Sections */
+.section{
+  margin-bottom:8px;border-radius:16px;overflow:hidden;
+  background:#fff;
+  border:1px solid #ede8e2;
+  box-shadow:0 1px 4px rgba(0,0,0,.03);
+}
+.section-toggle{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 16px;cursor:pointer;
+  transition:background .15s;
+}
+.section-toggle:hover{background:rgba(0,0,0,.02)}
+.section-toggle .arrow{
+  font-size:10px;transition:transform .2s;color:#c4a882;
+}
+.section.collapsed .arrow{transform:rotate(-90deg)}
+.section-toggle .s-title{font-size:14px;font-weight:600;flex:1;color:#2a2420}
+.section-toggle .s-sub{font-size:11px;color:#a09080}
+.section-body{padding:0 16px 16px}
+.section.collapsed .section-body{display:none}
+
+/* Cards */
+.card{
+  background:#faf9f6;border:1px solid #ede8e2;
+  border-radius:12px;padding:12px;margin-bottom:8px;
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  cursor:pointer;font-family:inherit;border:none;transition:all .15s;
+}
+.btn-primary{background:#2a2420;color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-secondary{
+  background:rgba(0,0,0,.04);border:1px solid #ede8e2;
+  color:#5a4a40;
+}
+.btn-secondary:hover{background:rgba(0,0,0,.08)}
+.btn-danger{
+  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
+  color:#ef4444;
+}
+.btn-danger:hover{background:rgba(239,68,68,.15)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:8px}
+
+/* Status badges */
+.badge{
+  display:inline-block;font-size:10px;font-weight:600;
+  padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.05em;
+}
+.badge-healthy{background:rgba(34,197,94,.1);color:#16a34a}
+.badge-degraded{background:rgba(234,179,8,.1);color:#ca8a04}
+.badge-down{background:rgba(239,68,68,.1);color:#dc2626}
+.badge-active{background:rgba(34,197,94,.1);color:#16a34a}
+.badge-decoupled{background:rgba(234,179,8,.1);color:#ca8a04}
+.badge-deleted{background:rgba(239,68,68,.1);color:#dc2626}
+
+/* Usage bar */
+.usage-bar-wrap{
+  height:8px;border-radius:4px;background:#ede8e2;overflow:hidden;margin:8px 0;
+}
+.usage-bar{
+  height:100%;border-radius:4px;transition:width .4s ease,background .3s;
+}
+.usage-bar.green{background:#22c55e}
+.usage-bar.orange{background:#f59e0b}
+.usage-bar.red{background:#ef4444}
+.usage-label{display:flex;justify-content:space-between;font-size:12px;color:#5a4a40;font-weight:600}
+.usage-detail{font-size:11px;color:#a09080;margin-top:4px;line-height:1.6}
+.usage-cost{margin-top:12px;padding-top:10px;border-top:1px solid #f0ece6}
+.usage-cost-label{font-size:11px;color:#a09080;margin-bottom:4px}
+.usage-cost-bar-wrap{height:5px;border-radius:3px;background:#ede8e2;overflow:hidden}
+.usage-cost-bar{height:100%;border-radius:3px;background:#c4a882;transition:width .4s ease}
+
+/* Provider grid */
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.provider-card{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:10px;
+  background:#faf9f6;border:1px solid #ede8e2;
+}
+.provider-card .p-icon{width:18px;height:18px;opacity:.6}
+.provider-card .p-info{flex:1}
+.provider-card .p-name{font-size:12px;font-weight:600;color:#2a2420}
+.provider-card .p-latency{font-size:10px;color:#a09080}
+
+/* Cost bars */
+.cost-row{
+  display:flex;align-items:center;gap:8px;padding:6px 0;
+  border-bottom:1px solid #f0ece6;
+}
+.cost-row:last-child{border-bottom:none}
+.cost-row .c-icon{width:14px;height:14px;opacity:.5}
+.cost-row .c-name{font-size:12px;flex:1}
+.cost-row .c-value{font-size:12px;font-weight:600;color:#5a4a40}
+.cost-total{
+  font-size:20px;font-weight:700;margin-bottom:4px;
+}
+.cost-count{font-size:11px;color:#a09080;margin-bottom:12px}
+
+/* Source pills */
+.pill-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.pill{
+  padding:7px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  cursor:pointer;border:1px solid #ede8e2;
+  background:rgba(0,0,0,.02);color:#7a6a5a;
+  transition:all .15s;
+}
+.pill:hover{background:rgba(0,0,0,.04)}
+.pill.active{background:rgba(196,168,130,.15);border-color:#c4a882;color:#2a2420}
+
+/* Textareas */
+.ta{
+  width:100%;min-height:80px;padding:10px 12px;border-radius:10px;
+  background:rgba(0,0,0,.02);border:1px solid #ede8e2;
+  color:#2a2420;font-size:12px;font-family:inherit;resize:vertical;
+  outline:none;line-height:1.5;
+}
+.ta:focus{border-color:#c4a882}
+.ta-readonly{opacity:.7;cursor:default;resize:none}
+
+/* Prompt box */
+.prompt-box{position:relative;margin-bottom:12px}
+.prompt-box .copy-btn{
+  position:absolute;top:8px;right:8px;
+  font-size:10px;padding:3px 8px;border-radius:6px;
+  background:rgba(0,0,0,.05);border:1px solid rgba(255,255,255,.15);
+  color:#7a6a5a;cursor:pointer;font-family:inherit;
+}
+.prompt-box .copy-btn:hover{color:#2a2420}
+
+/* File upload drop zone */
+.drop-zone{
+  border:2px dashed rgba(255,255,255,.12);border-radius:12px;
+  padding:20px;text-align:center;margin:12px 0;
+  color:#a09080;font-size:12px;
+  cursor:pointer;transition:all .2s;
+}
+.drop-zone:hover,.drop-zone.dragover{
+  border-color:#c4a882;background:rgba(142,178,255,.06);
+  color:rgba(200,216,255,.7);
+}
+.drop-zone input[type=file]{display:none}
+.drop-zone .dz-icon{font-size:24px;margin-bottom:6px;opacity:.4}
+.drop-zone .dz-file{
+  margin-top:8px;font-size:11px;color:rgba(142,178,255,.7);font-weight:600;
+}
+.drop-zone .dz-formats{font-size:10px;color:rgba(255,255,255,.2);margin-top:4px}
+.import-tabs{display:flex;gap:0;margin-bottom:12px;border-radius:10px;overflow:hidden;border:1px solid #ede8e2}
+.import-tab{
+  flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;
+  cursor:pointer;background:rgba(255,255,255,.03);color:#a09080;
+  transition:all .15s;border:none;font-family:inherit;
+}
+.import-tab:hover{background:rgba(0,0,0,.03)}
+.import-tab.active{background:rgba(196,168,130,.12);color:#2a2420}
+
+/* Candidate list */
+.candidate{
+  display:flex;align-items:flex-start;gap:8px;padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.candidate input[type=checkbox]{margin-top:3px;accent-color:#34c47a}
+.candidate .c-text{font-size:12px;color:#5a4a40;flex:1}
+.candidate .c-type{
+  font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  color:rgba(255,255,255,.3);background:rgba(0,0,0,.03);
+  padding:2px 6px;border-radius:4px;white-space:nowrap;
+}
+
+/* Source list item */
+.source-item{
+  display:flex;align-items:center;gap:10px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.source-item:last-child{border-bottom:none}
+.source-item .s-info{flex:1}
+.source-item .s-name{font-size:13px;font-weight:500}
+.source-item .s-meta{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px}
+.source-item .s-actions{display:flex;gap:4px}
+
+.msg{font-size:12px;color:#a09080;padding:8px 0}
+.msg-success{color:#34c47a}
+.msg-error{color:#ff5a5a}
+
+.hidden{display:none!important}
+
+@media(max-width:460px){
+  main{padding:8px}
+  .provider-grid{grid-template-columns:1fr}
+  .pill-row{flex-direction:column}
+  .pill{text-align:center}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back">&larr; Zur&uuml;ck</a>
+  <span class="title">Einstellungen</span>
+  <button class="logout-btn" id="logoutBtn">Abmelden</button>
+</div>
+
+<div class="loading" id="authLoading">Laden...</div>
+
+<main id="mainContent" class="hidden">
+
+  <!-- Section: Account -->
+  <div class="section" id="sectionAccount">
+    <div class="section-body" style="padding-top:16px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#c4a882,#a08060);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff" id="accountAvatar">?</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:600;color:#2a2420" id="accountName">—</div>
+          <div style="font-size:12px;color:#a09080" id="accountEmail">—</div>
+        </div>
+        <span class="badge badge-active" id="accountPlan" style="display:none">—</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" id="manageSubBtn" style="display:none">Abo verwalten</button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn2">Abmelden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Guthaben -->
+  <div class="section" id="sectionUsage">
+    <div class="section-toggle" onclick="toggleSection('sectionUsage')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Guthaben</span>
+      <span class="s-sub" id="usageSub">Dein verbleibendes Kontingent</span>
+    </div>
+    <div class="section-body">
+      <div id="usageContent"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+  <!-- Section 1: KI-Import -->
+  <div class="section collapsed" id="sectionImport">
+    <div class="section-toggle" onclick="toggleSection('sectionImport')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">KI-Import</span>
+      <span class="s-sub">Bring deine KI-History mit</span>
+    </div>
+    <div class="section-body">
+      <div class="import-tabs">
+        <button class="import-tab active" id="tabPaste" onclick="switchImportTab('paste')">Text einf&uuml;gen</button>
+        <button class="import-tab" id="tabUpload" onclick="switchImportTab('upload')">Datei hochladen</button>
+      </div>
+
+      <!-- Tab: Text Paste -->
+      <div id="importTabPaste">
+        <p class="msg">W&auml;hle deine bisherige KI &mdash; Sophie generiert einen Extraktions-Prompt zum Kopieren.</p>
+        <div class="pill-row" id="importPills">
+          <div class="pill" data-source="chatgpt">ChatGPT</div>
+          <div class="pill" data-source="claude">Claude</div>
+          <div class="pill" data-source="gemini">Gemini</div>
+        </div>
+        <div id="importStep1" class="hidden">
+          <p class="msg">1. Kopiere diesen Prompt und f&uuml;ge ihn in deine andere KI ein:</p>
+          <div class="prompt-box">
+            <textarea class="ta ta-readonly" id="importPrompt" readonly></textarea>
+            <button class="copy-btn" id="copyPromptBtn">Kopieren</button>
+          </div>
+          <p class="msg">2. F&uuml;ge die Antwort hier ein:</p>
+          <textarea class="ta" id="importPaste" placeholder="Antwort hier einf&uuml;gen..."></textarea>
+          <div style="margin-top:8px">
+            <button class="btn btn-primary" id="importBtn" disabled>Importieren</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: File Upload -->
+      <div id="importTabUpload" class="hidden">
+        <p class="msg">Lade einen Export deiner bisherigen KI hoch. Unterst&uuml;tzte Formate:</p>
+        <div class="drop-zone" id="dropZone">
+          <div class="dz-icon">&#128194;</div>
+          <div>Datei hierher ziehen oder klicken</div>
+          <div class="dz-formats">.zip &middot; .dms &middot; .json &middot; .txt &middot; .docx</div>
+          <input type="file" id="fileInput" accept=".zip,.dms,.json,.txt,.md,.docx">
+          <div class="dz-file hidden" id="fileInfo"></div>
+        </div>
+        <button class="btn btn-primary" id="uploadBtn" disabled>Datei importieren</button>
+      </div>
+      <div id="importStep2" class="hidden">
+        <p class="msg msg-success" id="importStatus"></p>
+        <p class="msg">Sophie hat folgende Insights extrahiert. W&auml;hle was in ihr Ged&auml;chtnis &uuml;bernommen werden soll:</p>
+        <div id="importCandidates"></div>
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="approveBtn">In Ged&auml;chtnis &uuml;bernehmen</button>
+        </div>
+        <p class="msg hidden" id="approveStatus"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Source Ledger -->
+  <div class="section collapsed" id="sectionSources">
+    <div class="section-toggle" onclick="toggleSection('sectionSources')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Quellen</span>
+      <span class="s-sub">Was wei&szlig; Sophie &uuml;ber mich?</span>
+    </div>
+    <div class="section-body">
+      <div id="sourcesList"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+  <!-- Section: Meine Regeln (Sophie-learned behavioral rules) -->
+  <div class="section collapsed" id="sectionRules">
+    <div class="section-toggle" onclick="toggleSection('sectionRules')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Meine Regeln</span>
+      <span class="s-sub">Was Sophie von dir gelernt hat</span>
+    </div>
+    <div class="section-body">
+      <div id="rulesList"><p class="msg">Laden...</p></div>
+      <div style="margin-top:8px;text-align:right">
+        <button onclick="resetAllRules()" style="background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">Alle Regeln zurücksetzen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Reports -->
+  <div class="section collapsed" id="sectionReports">
+    <div class="section-toggle" onclick="toggleSection('sectionReports')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Reports</span>
+      <span class="s-sub">Deine bisherigen Reports</span>
+    </div>
+    <div class="section-body">
+      <div id="deleteSelectedBar" style="display:none;padding:8px 0;margin-bottom:8px">
+        <button id="deleteSelectedBtn" onclick="deleteSelectedReports()" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🗑 Ausgewählte löschen</button>
+        <span id="deleteSelectedCount" style="font-size:12px;color:#a09080;margin-left:8px"></span>
+      </div>
+      <div id="reportsList"><p class="msg">Laden...</p></div>
+      <!-- Report detail modal -->
+      <div id="reportDetailOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:#faf9f6;overflow-y:auto;padding:20px">
+        <div style="max-width:600px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 id="reportDetailTitle" style="font-size:15px;color:#2a2420;margin:0"></h3>
+            <button onclick="closeReportDetail()" style="background:none;border:none;color:#2a2420;font-size:20px;cursor:pointer">&times;</button>
+          </div>
+          <div id="reportDetailContent" style="background:#fff;border:1px solid #ede8e2;border-radius:12px;padding:16px;overflow:hidden;color:#1a1a1a"></div>
+          <div id="pitchAgainBar" style="display:none;margin-top:12px">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" onclick="pitchAgain()" style="flex:1;padding:12px;font-size:14px;font-weight:600">&#9650; Pitch again</button>
+              <button id="pitchDemoBtn" class="btn btn-secondary btn-sm" onclick="pitchDemoFromReport()" style="flex:1;padding:12px;font-size:14px;font-weight:600">&#127911; Sophie pitcht f&uuml;r dich</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="copyReportDetail()">Kopieren</button>
+            <button class="btn btn-secondary btn-sm" onclick="saveReportAsTemplate()">Als Vorlage speichern</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteReport()" style="margin-left:auto">L&ouml;schen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Meine Vorlagen -->
+  <div class="section collapsed" id="sectionTemplates">
+    <div class="section-toggle" onclick="toggleSection('sectionTemplates')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Meine Vorlagen</span>
+      <span class="s-sub">Gespeicherte Report-Designs</span>
+    </div>
+    <div class="section-body">
+      <div id="templatesList"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+  <!-- Section 3: Kosten -->
+  <div class="section collapsed" id="sectionCosts">
+    <div class="section-toggle" onclick="toggleSection('sectionCosts')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Kosten</span>
+      <span class="s-sub">Deine AI-Kosten heute</span>
+    </div>
+    <div class="section-body">
+      <div id="costsContent"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+  <!-- Section 4: Provider-Status -->
+  <div class="section collapsed" id="sectionHealth">
+    <div class="section-toggle" onclick="toggleSection('sectionHealth')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Provider-Status</span>
+      <span class="s-sub">KI-Provider Live-Status</span>
+    </div>
+    <div class="section-body">
+      <div class="provider-grid" id="healthGrid"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Provider icons (inline SVG)
+const ICONS = {
+  openai:    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z'/%3E%3C/svg%3E",
+  anthropic: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.304 2.002h-4.108l6.144 19.996h4.108zM6.696 2.002.552 21.998h4.108l1.26-4.248h6.16l1.26 4.248h4.108L11.304 2.002zm-.18 12.248L8.86 7.054l2.344 7.196z'/%3E%3C/svg%3E",
+  google:    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E",
+  mistral:   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Crect x='2' y='2' width='5' height='5'/%3E%3Crect x='17' y='2' width='5' height='5'/%3E%3Crect x='2' y='7' width='5' height='5'/%3E%3Crect x='7' y='7' width='5' height='5'/%3E%3Crect x='12' y='7' width='5' height='5'/%3E%3Crect x='17' y='7' width='5' height='5'/%3E%3Crect x='2' y='12' width='5' height='5'/%3E%3Crect x='17' y='12' width='5' height='5'/%3E%3C/svg%3E",
+};
+const NAMES = { openai: "OpenAI", anthropic: "Anthropic", google: "Google", mistral: "Mistral" };
+
+let session = null;
+let currentSource = null;
+let importSourceId = null;
+
+// ── Auth ──
+const authLoading = document.getElementById("authLoading");
+const mainContent = document.getElementById("mainContent");
+
+try {
+  const { data } = await supabase.auth.getSession();
+  session = data?.session;
+} catch {}
+
+if (!session?.user) {
+  window.location.href = "/login";
+} else {
+  authLoading.classList.add("hidden");
+  mainContent.classList.remove("hidden");
+  loadHealth();
+  loadCosts();
+  loadAccount();
+  loadUsage();
+}
+
+// ── Account Section ──
+async function loadAccount() {
+  const user = session.user;
+  const avatar = document.getElementById("accountAvatar");
+  const nameEl = document.getElementById("accountName");
+  const emailEl = document.getElementById("accountEmail");
+  const planEl = document.getElementById("accountPlan");
+  const manageBtn = document.getElementById("manageSubBtn");
+
+  // Email + avatar initial
+  emailEl.textContent = user.email || "—";
+  if (user.email) avatar.textContent = user.email[0].toUpperCase();
+
+  // Load profile + subscription via API
+  try {
+    const accountRes = await fetch("/api/settings?action=account", {
+      headers: { Authorization: "Bearer " + session.access_token },
+    });
+    const accountData = await accountRes.json();
+    const profile = accountData?.profile;
+    const sub = accountData?.subscription;
+
+    if (profile?.preferred_name || profile?.first_name) {
+      nameEl.textContent = profile.preferred_name || profile.first_name;
+      avatar.textContent = (profile.preferred_name || profile.first_name)[0].toUpperCase();
+    }
+    const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
+    if (sub?.plan) {
+      planEl.textContent = sub.plan + (active ? "" : " (inaktiv)");
+      planEl.className = "badge " + (active ? "badge-active" : "badge-decoupled");
+      planEl.style.display = "";
+    } else {
+      planEl.textContent = "Free";
+      planEl.className = "badge badge-decoupled";
+      planEl.style.display = "";
+    }
+    // Show manage button for active subscribers, pricing link for others
+    manageBtn.style.display = "";
+    if (active) {
+      manageBtn.textContent = "Abo verwalten";
+      manageBtn.onclick = async () => {
+        manageBtn.disabled = true;
+        try {
+          const res = await fetch("/api/billing?action=portal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+          });
+          const data = await res.json();
+          if (data.url) window.location.href = data.url;
+        } catch (e) { alert("Fehler: " + e?.message); }
+        manageBtn.disabled = false;
+      };
+    } else {
+      manageBtn.textContent = "Plan wählen";
+      manageBtn.onclick = () => { window.location.href = "/pricing"; };
+    }
+  } catch (e) { console.error("[account] sub load failed:", e); }
+}
+
+// Logout
+const logoutAction = async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/login";
+};
+document.getElementById("logoutBtn").onclick = logoutAction;
+document.getElementById("logoutBtn2").onclick = logoutAction;
+
+// ── Usage / Balance Section ──
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+async function loadUsage() {
+  const el = document.getElementById("usageContent");
+  const sub = document.getElementById("usageSub");
+  try {
+    const [d, ecoRes] = await Promise.all([api("usage"), api("eco-mode")]);
+    const ecoOn = !!ecoRes?.eco_mode;
+    const pct = d.usagePercent || 0;
+    const barColor = pct < 80 ? "green" : pct < 95 ? "orange" : "red";
+    const remaining = d.remainingTokens || 0;
+    const total = d.totalTokens || 0;
+
+    // Subtitle update
+    sub.textContent = remaining + " Tokens \u00fcbrig";
+
+    // Daily cost bar
+    const costPct = d.dailyCap > 0 ? Math.min(100, Math.round((d.dailyCost / d.dailyCap) * 100)) : 0;
+
+    // CTA if low
+    const lowBalance = total > 0 && (remaining / total) < 0.2;
+
+    el.innerHTML = `
+      <div class="usage-label">
+        <span>${remaining} Tokens \u00fcbrig</span>
+        <span>${total} Tokens gesamt</span>
+      </div>
+      <div class="usage-bar-wrap">
+        <div class="usage-bar ${barColor}" style="width:${Math.min(pct, 100)}%"></div>
+      </div>
+      <div class="usage-cost">
+        <div class="usage-cost-label">AI-Budget heute: $${parseFloat(d.dailyCost).toFixed(2)} / $${parseFloat(d.dailyCap).toFixed(2)}</div>
+        <div class="usage-cost-bar-wrap">
+          <div class="usage-cost-bar" style="width:${costPct}%"></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f0ece6">
+        <label style="position:relative;width:40px;height:22px;flex-shrink:0">
+          <input type="checkbox" id="ecoToggle" ${ecoOn ? 'checked' : ''} style="opacity:0;width:0;height:0"
+            onchange="toggleEcoMode(this.checked)">
+          <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${ecoOn ? '#4a8c5c' : '#ccc'};border-radius:11px;transition:.3s"></span>
+          <span style="position:absolute;height:18px;width:18px;left:${ecoOn ? '20px' : '2px'};bottom:2px;background:#fff;border-radius:50%;transition:.3s"></span>
+        </label>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#2a2420">Eco-Modus ${ecoOn ? '<span style="color:#4a8c5c;font-size:11px;margin-left:4px">aktiv</span>' : ''}</div>
+          <div style="font-size:11px;color:#a09080;margin-top:1px">G\u00fcnstigere KI-Modelle. 2.5\u00d7 mehr Gespr\u00e4chszeit, Antwortqualit\u00e4t kann variieren.</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <a href="/pricing" class="btn btn-secondary btn-sm">${lowBalance ? 'Tokens auftanken' : 'Pläne & Tokens'}</a>
+      </div>
+    `;
+  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+
+async function toggleEcoMode(enabled) {
+  try {
+    await api("eco-mode", { enabled }, "POST");
+    loadUsage(); // Refresh to update toggle state
+  } catch (e) { console.error("Eco toggle failed:", e); }
+}
+window.toggleEcoMode = toggleEcoMode;
+
+// ── Helpers ──
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle("collapsed");
+  // Load data on first open
+  if (id === "sectionSources" && !document.getElementById(id).classList.contains("collapsed")) loadSources();
+  if (id === "sectionRules" && !document.getElementById(id).classList.contains("collapsed")) loadRules();
+  if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
+  if (id === "sectionTemplates" && !document.getElementById(id).classList.contains("collapsed")) loadTemplates();
+}
+window.toggleSection = toggleSection;
+
+async function api(action, body = null, method = "GET") {
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (session?.access_token) opts.headers.Authorization = "Bearer " + session.access_token;
+  if (body && method === "POST") opts.body = JSON.stringify(body);
+  const res = await fetch("/api/settings?action=" + action, opts);
+  return res.json();
+}
+
+async function importApi(body) {
+  const opts = {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+    body: JSON.stringify(body),
+  };
+  const res = await fetch("/api/ai/import-context", opts);
+  return res.json();
+}
+
+function icon(provider) {
+  return ICONS[provider] ? `<img src="${ICONS[provider]}" style="width:14px;height:14px;opacity:.6">` : "";
+}
+
+// ── Section: Reports ──
+let _reportDetailData = null;
+
+async function loadReports() {
+  const list = document.getElementById("reportsList");
+  try {
+    const data = await api("reports");
+    // Load pitch journey data in parallel with reports
+    let journeyData = null;
+    try { journeyData = await api("pitch-journey"); } catch (_) {}
+
+    if (!data.reports?.length && !journeyData?.journeys?.length) {
+      list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return;
+    }
+
+    // Group by category
+    const groups = { meeting: [], salespitch: [], brainstorm: [], talk: [] };
+    const groupLabels = { meeting: "Meeting", salespitch: "Sales Pitch", brainstorm: "Brainstorming", talk: "Gespräche" };
+    for (const r of (data.reports || [])) {
+      const cat = (r.source === 'meeting' || r.report_style === 'meeting') ? 'meeting'
+        : (r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
+        : r.report_style === 'brainstorm' ? 'brainstorm'
+        : 'talk';
+      groups[cat].push(r);
+    }
+
+    let html = '';
+    const renderCard = (r) => {
+      const d = new Date(r.created_at);
+      const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+      const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+      const source = r.source || 'talk';
+      return `<div class="card" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
+        <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+          <div style="font-size:13px;font-weight:600;color:#2a2420">${date}, ${time}</div>
+        </div>
+      </div>`;
+    };
+
+    // Helper: score color
+    const scoreColor = (s) => s >= 70 ? '#22c55e' : s >= 45 ? '#eab308' : '#ef4444';
+    const trendArrow = (delta) => delta > 0 ? `<span style="color:#22c55e">+${delta}</span>` : delta < 0 ? `<span style="color:#ef4444">${delta}</span>` : '';
+
+    for (const [cat, reports] of Object.entries(groups)) {
+      if (!reports.length) continue;
+
+      const groupId = 'reportGroup_' + cat;
+
+      html += `<div style="margin-bottom:8px;border:1px solid #ede8e2;border-radius:12px;overflow:hidden">
+        <div onclick="document.getElementById('${groupId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;background:#fff">
+          <span style="font-size:10px;color:#c4a882">&#9660;</span>
+          <span style="font-size:12px;font-weight:600;color:#2a2420;flex:1">${groupLabels[cat]}</span>
+          <span style="font-size:11px;color:#a09080">${reports.length}</span>
+        </div>
+        <div id="${groupId}" class="hidden" style="padding:0 14px 12px">`;
+
+      // All categories use the same simple list format
+      {
+        // Standard report list (meetings, brainstorm, talk)
+        const titleGroups = {};
+        for (const r of reports) {
+          const cleanTitle = (r.title || 'Report').replace(/_\d+$/, '').trim();
+          if (!titleGroups[cleanTitle]) titleGroups[cleanTitle] = [];
+          titleGroups[cleanTitle].push(r);
+        }
+        for (const [title, items] of Object.entries(titleGroups)) {
+          if (items.length === 1) {
+            const r = items[0];
+            const d = new Date(r.created_at);
+            const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+            const source = r.source || 'talk';
+            html += `<div class="card" style="display:flex;align-items:center;gap:10px">
+              <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
+              <div style="flex:1;cursor:pointer" onclick="openReportDetail('${r.session_id || r.id}','${source}')">
+                <div style="font-size:13px;font-weight:600;color:#2a2420">${title}</div>
+              </div>
+              <div style="font-size:11px;color:#a09080">${date}</div>
+            </div>`;
+          } else {
+            const subId = 'titleGroup_' + cat + '_' + Math.random().toString(36).slice(2, 8);
+            html += `<div style="margin:4px 0;border:1px solid #f0ece6;border-radius:8px;overflow:hidden">
+              <div onclick="document.getElementById('${subId}').classList.toggle('hidden')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;background:#faf9f6">
+                <span style="font-size:9px;color:#c4a882">&#9660;</span>
+                <span style="font-size:13px;font-weight:600;color:#2a2420;flex:1">${title}</span>
+                <span style="font-size:11px;color:#a09080">${items.length}×</span>
+              </div>
+              <div id="${subId}" class="hidden" style="padding:0 10px 6px">`;
+            items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            html += items.map(renderCard).join('');
+            html += '</div></div>';
+          }
+        }
+      }
+
+      html += '</div></div>';
+    }
+    list.innerHTML = html;
+  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+function updateDeleteBar() {
+  const checked = document.querySelectorAll(".report-cb:checked");
+  const bar = document.getElementById("deleteSelectedBar");
+  const count = document.getElementById("deleteSelectedCount");
+  if (checked.length > 0) {
+    bar.style.display = "flex";
+    bar.style.alignItems = "center";
+    count.textContent = checked.length + " ausgewählt";
+  } else {
+    bar.style.display = "none";
+  }
+}
+
+async function deleteSelectedReports() {
+  const checked = document.querySelectorAll(".report-cb:checked");
+  if (!checked.length) return;
+  const meetingCount = [...checked].filter(cb => cb.dataset.source === "meeting").length;
+  const msg = meetingCount > 0
+    ? `${checked.length} Report(s) löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt.`
+    : `${checked.length} Report(s) wirklich löschen?`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById("deleteSelectedBtn");
+  btn.disabled = true;
+  btn.textContent = "Lösche...";
+
+  for (const cb of checked) {
+    const id = cb.dataset.id;
+    const source = cb.dataset.source;
+    try {
+      await api("delete-report", { session_id: id, source }, "POST");
+    } catch (e) {
+      console.error("Delete failed:", id, e);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = "🗑 Ausgewählte löschen";
+  document.getElementById("deleteSelectedBar").style.display = "none";
+  await loadReports();
+}
+
+async function openReportDetail(sessionId, source = 'talk') {
+  const overlay = document.getElementById("reportDetailOverlay");
+  const titleEl = document.getElementById("reportDetailTitle");
+  const contentEl = document.getElementById("reportDetailContent");
+  overlay.style.display = "block";
+  titleEl.textContent = "Laden...";
+  contentEl.innerHTML = '<p class="msg">Laden...</p>';
+  try {
+    const data = await api("report-detail&session_id=" + sessionId + "&source=" + source);
+    _reportDetailData = data;
+    titleEl.textContent = data.title || "Report";
+
+    // Show "Pitch again" button only for salespitch reports
+    const pitchBar = document.getElementById("pitchAgainBar");
+    const demoBtn = document.getElementById("pitchDemoBtn");
+    if (pitchBar) {
+      const isSalespitch = data.report_style === 'salespitch' || data.report_style === 'pitch';
+      pitchBar.style.display = isSalespitch ? 'block' : 'none';
+
+      if (isSalespitch && demoBtn) {
+        demoBtn.disabled = false;
+        demoBtn.style.opacity = '1';
+        demoBtn.style.cursor = 'pointer';
+      }
+    }
+
+    if (data.report_html) {
+      // Render HTML report in iframe for proper isolation
+      contentEl.innerHTML = '<iframe id="settingsReportFrame" style="width:100%;border:none;min-height:500px;background:#fff;border-radius:8px" sandbox="allow-same-origin"></iframe>';
+      const iframe = document.getElementById("settingsReportFrame");
+      iframe.addEventListener("load", () => {
+        const doc = iframe.contentDocument;
+        doc.open();
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}</style></head><body>${data.report_html}</body></html>`);
+        doc.close();
+        // Auto-resize iframe to content
+        setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 200);
+      });
+      // Trigger load
+      const doc = iframe.contentDocument;
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}</style></head><body>${data.report_html}</body></html>`);
+      doc.close();
+      setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 300);
+    } else if (data.short_summary) {
+      // Fallback: structured summary for meetings without HTML report
+      let html = `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
+      const renderSection = (items, label) => {
+        if (!items?.length) return '';
+        return `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">${label}</h4>`
+          + items.map(i => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${i.text || i}</div>`).join('') + '</div>';
+      };
+      html += renderSection(data.decisions, "Beschlüsse");
+      html += renderSection(data.action_items, "Action Items");
+      html += renderSection(data.open_points, "Offene Punkte");
+      contentEl.innerHTML = html;
+    } else {
+      contentEl.innerHTML = '<p class="msg">Kein Report vorhanden.</p>';
+    }
+  } catch (e) {
+    titleEl.textContent = "Fehler";
+    contentEl.innerHTML = '<p class="msg">Report konnte nicht geladen werden.</p>';
+  }
+}
+window.openReportDetail = openReportDetail;
+window.updateDeleteBar = updateDeleteBar;
+window.deleteSelectedReports = deleteSelectedReports;
+
+function closeReportDetail() {
+  document.getElementById("reportDetailOverlay").style.display = "none";
+  _reportDetailData = null;
+}
+window.closeReportDetail = closeReportDetail;
+
+async function copyReportDetail() {
+  if (!_reportDetailData?.report_html) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = _reportDetailData.report_html;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      "text/html": new Blob([_reportDetailData.report_html], { type: "text/html" }),
+      "text/plain": new Blob([tmp.textContent], { type: "text/plain" }),
+    })]);
+  } catch (_) {
+    await navigator.clipboard.writeText(tmp.textContent);
+  }
+}
+window.copyReportDetail = copyReportDetail;
+
+async function saveReportAsTemplate() {
+  if (!_reportDetailData?.report_html) return;
+  try {
+    await api("save-report-template", { mode: "default", report_html: _reportDetailData.report_html }, "POST");
+    alert("Als Vorlage gespeichert!");
+  } catch (e) { alert("Fehler: " + e?.message); }
+}
+window.saveReportAsTemplate = saveReportAsTemplate;
+
+function pitchAgain() {
+  if (!_reportDetailData) return;
+  const title = _reportDetailData.title || "Sales Pitch";
+  const html = _reportDetailData.report_html || "";
+  const h1Match = html.match(/<h1[^>]*>([^<]+)/i);
+  const pitchTopic = (h1Match ? h1Match[1].trim() : title) || "deinen Pitch";
+
+  // Parse scores from report HTML for coaching context
+  const extractScore = (criterion) => {
+    const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
+    const m = html.match(re);
+    return m ? parseFloat(m[1]) : 0;
+  };
+  const tmpDiv = document.createElement("div");
+  tmpDiv.innerHTML = html;
+  const allText = tmpDiv.textContent || "";
+  const weakMatch = allText.match(/(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)[:\s]*([\s\S]*?)(?:Nächste|Next|Prochaines|Verdict|$)/i);
+  const weaknesses = weakMatch ? weakMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+  const strMatch = allText.match(/(?:Stärken|Strengths|Forces)[:\s]*([\s\S]*?)(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)/i);
+  const strengths = strMatch ? strMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+  const overallMatch = html.match(/font-size:\s*48px[^>]*>(\d+\.?\d*)/);
+  const overall = overallMatch ? Math.round(parseFloat(overallMatch[1]) * 20) : 0;
+
+  const handover = {
+    funnelMode: "salespitch",
+    language: document.documentElement.lang || "de",
+    pitchRetry: true,
+    pitchTopic: pitchTopic,
+    previousPitchSessionId: _reportDetailData.session_id || null,
+    previousScores: {
+      content: {
+        clarity: extractScore("Clarity"), problem_sharpness: extractScore("Problem Sharpness"),
+        value_proposition: extractScore("Value Proposition"), structure: extractScore("Structure"),
+        differentiation: extractScore("Differentiation"), credibility: extractScore("Credibility"),
+        audience_fit: extractScore("Audience Fit"),
+      },
+      delivery: {
+        opening: extractScore("Opening"), closing: extractScore("Closing"),
+        voice_rhythm: extractScore("Voice.*Rhythm"), rhetoric_language: extractScore("Rhetoric.*Language"),
+        authenticity: extractScore("Authenticity"), persuasiveness: extractScore("Persuasiveness"),
+      },
+      overall: overall,
+    },
+    previousWeaknesses: weaknesses,
+    previousStrengths: strengths,
+    previousVersion: 1,
+    summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht. Score: ${overall}/100. Schwächen: ${weaknesses.join(', ')}. Phase A NICHT nochmal stellen.`,
+    recentMessages: [
+      { role: "user", content: `Ich möchte meinen Pitch "${pitchTopic}" nochmal machen und verbessern.` }
+    ],
+    userName: "",
+  };
+  localStorage.setItem("sophie_session_mode", "salespitch");
+  sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+  window.location.href = "/talk";
+}
+window.pitchAgain = pitchAgain;
+
+async function pitchDemoFromReport() {
+  if (!_reportDetailData) return;
+  const title = _reportDetailData.title || "Sales Pitch";
+  const sessionId = _reportDetailData.session_id;
+  if (!sessionId) { alert("Keine Session-Daten gefunden."); return; }
+
+  // Show loading state
+  const btn = document.getElementById("pitchDemoBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Wird vorbereitet..."; }
+
+  try {
+    // Generate the demo pitch SERVER-SIDE (text AI, no hallucination)
+    const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
+
+    if (!result?.demoPitch) {
+      alert("Demo-Pitch konnte nicht erstellt werden. Versuche es nochmal.");
+      if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
+      return;
+    }
+
+    // Store pitch text separately (too large for HTTP header as Base64)
+    sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
+
+    const handover = {
+      funnelMode: "salespitch",
+      language: document.documentElement.lang || "de",
+      pitchDemo: true,
+      pitchTopic: title,
+      hasDemoPitch: true, // flag — actual text in sessionStorage.SOPHIE_DEMO_PITCH
+      summary: `DEMO PITCH: Vorab generierter Text.`,
+      recentMessages: [],
+      userName: "",
+    };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  } catch (e) {
+    console.error("pitchDemoFromReport failed:", e);
+    alert("Fehler: " + (e?.message || "Unbekannt"));
+    if (btn) { btn.disabled = false; btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
+  }
+}
+// Keep old score parsing for pitchAgain (not demo)
+function _parsePitchScores(html) {
+  const extractScore = (criterion) => {
+    const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
+    const m = html.match(re);
+    return m ? parseFloat(m[1]) : 0;
+  };
+  const tmpDiv2 = document.createElement("div");
+  tmpDiv2.innerHTML = html;
+  const allText = tmpDiv2.textContent || "";
+  const weakMatch = allText.match(/(?:Schwächen|Weaknesses|Verbesserung)[:\s]*([\s\S]*?)(?:Nächste|Next|Verdict|$)/i);
+  const weaknesses = weakMatch ? weakMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+  const strMatch = allText.match(/(?:Stärken|Strengths)[:\s]*([\s\S]*?)(?:Schwächen|Weaknesses|Verbesserung)/i);
+  const strengths = strMatch ? strMatch[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+
+  const handover = {
+    funnelMode: "salespitch",
+    language: document.documentElement.lang || "de",
+    pitchDemo: true,
+    pitchTopic: pitchTopic || "deinen Pitch",
+    previousPitchSessionId: sessionId,
+    pitchTranscript: pitchTranscript.slice(0, 5000),
+    reportSummary: reportSummary.slice(0, 3000),
+    previousWeaknesses: weaknesses,
+    previousStrengths: strengths,
+    summary: `DEMO PITCH: Sophie soll "${pitchTopic}" pitchen — basierend auf dem echten Transcript.`,
+    recentMessages: [{ role: "user", content: `Zeig mir wie du "${pitchTopic || title}" pitchen würdest.` }],
+    userName: "",
+  };
+  localStorage.setItem("sophie_session_mode", "salespitch");
+  sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+  window.location.href = "/talk";
+}
+window.pitchDemoFromReport = pitchDemoFromReport;
+
+// Pitch again from Journey card — loads pitch memory data for handover
+async function pitchAgainFromJourney(topic) {
+  try {
+    const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
+    const handover = {
+      funnelMode: "salespitch",
+      language: document.documentElement.lang || "de",
+      pitchRetry: true,
+      pitchTopic: topic,
+      previousScores: {
+        content: data.scores_content || {},
+        delivery: data.scores_delivery || {},
+        overall: data.score || 0,
+      },
+      previousWeaknesses: data.weaknesses || [],
+      previousStrengths: data.strengths || [],
+      previousVersion: data.version || 1,
+      audience: data.target_audience || "",
+      pitchType: data.pitch_type || "",
+      goalType: data.goal_type || "",
+      summary: `PITCH RETRY v${(data.version || 1) + 1}: "${topic}". Vorheriger Score: ${data.score || 0}/100. Schwächen: ${(data.weaknesses || []).join(', ')}. Phase A NICHT nochmal stellen.`,
+      recentMessages: [{ role: "user", content: `Ich möchte meinen Pitch "${topic}" nochmal machen.` }],
+      userName: "",
+    };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  } catch (e) {
+    console.error("pitchAgainFromJourney failed:", e);
+    // Fallback: simple retry without scores
+    const handover = { funnelMode: "salespitch", language: document.documentElement.lang || "de", pitchRetry: true, pitchTopic: topic, summary: `PITCH RETRY: "${topic}". Phase A NICHT nochmal stellen.`, recentMessages: [{ role: "user", content: `Nochmal "${topic}".` }], userName: "" };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  }
+}
+window.pitchAgainFromJourney = pitchAgainFromJourney;
+
+// Sophie Demo Pitch — Sophie pitches FOR the user as an example
+async function pitchDemoFromJourney(topic) {
+  try {
+    const [data, prevDemo] = await Promise.all([
+      api("pitch-journey-detail&topic=" + encodeURIComponent(topic)),
+      api("get-demo-pitch&topic=" + encodeURIComponent(topic)).catch(() => ({ found: false })),
+    ]);
+    const handover = {
+      funnelMode: "salespitch",
+      language: document.documentElement.lang || "de",
+      pitchDemo: true,
+      pitchTopic: topic,
+      audience: data.target_audience || "",
+      pitchType: data.pitch_type || "",
+      goalType: data.goal_type || "",
+      previousScores: {
+        content: data.scores_content || {},
+        delivery: data.scores_delivery || {},
+        overall: data.score || 0,
+      },
+      previousWeaknesses: data.weaknesses || [],
+      previousStrengths: data.strengths || [],
+      // THE ACTUAL PITCH CONTENT — this is what Sophie bases her demo on
+      pitchTranscript: (data.pitchTranscript || '').slice(0, 5000),
+      reportSummary: (data.reportSummary || '').slice(0, 3000),
+      // Previous demo for iterative improvement
+      previousDemoTranscript: prevDemo?.found ? (prevDemo.transcript || '').slice(0, 4000) : '',
+      previousDemoSelfCritique: prevDemo?.found ? (prevDemo.selfCritique || '') : '',
+      summary: `DEMO PITCH: Sophie soll "${topic}" selbst pitchen — basierend auf dem echten Pitch-Transcript.`,
+      recentMessages: [{ role: "user", content: `Zeig mir wie du "${topic}" pitchen würdest.` }],
+      userName: "",
+    };
+    localStorage.setItem("sophie_session_mode", "salespitch");
+    sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+    window.location.href = "/talk";
+  } catch (e) {
+    alert("Nicht genug Pitch-Daten vorhanden. Pitche mindestens einmal, damit Sophie dir zeigen kann wie es geht.");
+  }
+}
+window.pitchDemoFromJourney = pitchDemoFromJourney;
+
+// ── Section: Meine Regeln ──
+async function loadRules() {
+  const list = document.getElementById("rulesList");
+  try {
+    const data = await api("custom-rules");
+    const rules = data.rules || [];
+    if (!rules.length) {
+      list.innerHTML = '<p class="msg">Sophie hat noch keine Regeln von dir gelernt. Sage ihr im Chat z.B. "Merk dir: fass immer zuerst zusammen" — sie lernt mit der Zeit.</p>';
+      return;
+    }
+    list.innerHTML = rules.map((r, i) => {
+      const d = new Date(r.created_at);
+      const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+      const title = r.title || '';
+      return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 0">
+        <div style="flex:1">
+          ${title ? `<div style="font-size:12px;font-weight:700;color:#2a2420;margin-bottom:2px">${title}</div>` : ''}
+          <div style="font-size:12px;color:#5a5045">${r.rule}</div>
+          <div style="font-size:10px;color:#a09080;margin-top:2px">${date}</div>
+        </div>
+        <button onclick="deleteRule(${i})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px" title="Regel löschen">&times;</button>
+      </div>`;
+    }).join('');
+  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+async function deleteRule(index) {
+  try {
+    await api("delete-custom-rule", { method: "POST", body: JSON.stringify({ index }) });
+    loadRules();
+  } catch (e) { console.error("delete rule failed:", e); }
+}
+window.deleteRule = deleteRule;
+
+async function resetAllRules() {
+  if (!confirm("Alle gelernten Regeln zurücksetzen? Sophie vergisst alle individuellen Anweisungen.")) return;
+  try {
+    await api("reset-custom-rules", { method: "POST", body: "{}" });
+    loadRules();
+  } catch (e) { console.error("reset rules failed:", e); }
+}
+window.resetAllRules = resetAllRules;
+
+// ── Section: Meine Vorlagen ──
+const MODE_LABELS = { default: "Standard Report", brainstorm: "Brainstorm", salespitch: "Sales Pitch", meeting: "Meeting" };
+
+async function loadTemplates() {
+  const list = document.getElementById("templatesList");
+  try {
+    const data = await api("templates");
+    if (!data.templates?.length) {
+      list.innerHTML = '<p class="msg">Keine Vorlagen vorhanden.</p>';
+      return;
+    }
+    list.innerHTML = data.templates.map(t => {
+      const label = MODE_LABELS[t.mode] || t.mode;
+      const isSystem = t.type === 'system';
+      const badge = isSystem
+        ? '<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(52,196,122,.15);color:#34c47a;font-weight:600;letter-spacing:.03em;">STANDARD</span>'
+        : '<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(142,178,255,.15);color:#8eb2ff;font-weight:600;letter-spacing:.03em;">INDIVIDUELL</span>';
+      const action = isSystem
+        ? ''
+        : `<button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.mode}')" title="Entfernt deine individuelle Vorlage, Standard wird wiederhergestellt">Zurücksetzen</button>`;
+      return `<div class="card" style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;font-weight:600;color:#2a2420">${label}</span>
+            ${badge}
+          </div>
+          <div style="font-size:11px;color:#a09080;margin-top:4px">${t.preview ? t.preview.slice(0, 80) + '…' : 'Vorlage aktiv'}</div>
+        </div>
+        ${action}
+      </div>`;
+    }).join("");
+  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+}
+
+async function deleteTemplate(mode) {
+  if (!confirm("Individuelle Vorlage für '" + (MODE_LABELS[mode] || mode) + "' entfernen und auf Standard zurücksetzen?")) return;
+  try {
+    await api("delete-template", { mode }, "POST");
+    loadTemplates();
+  } catch (e) { alert("Fehler: " + e?.message); }
+}
+window.deleteTemplate = deleteTemplate;
+
+async function deleteReport() {
+  if (!_reportDetailData?.session_id) return;
+  const source = _reportDetailData.source || 'talk';
+  const msg = source === 'meeting'
+    ? "Report löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt."
+    : "Report wirklich löschen?";
+  if (!confirm(msg)) return;
+  try {
+    await api("delete-report", { session_id: _reportDetailData.session_id, source }, "POST");
+    closeReportDetail();
+    loadReports();
+  } catch (e) { alert("Fehler: " + e?.message); }
+}
+window.deleteReport = deleteReport;
+
+// ── Section 4: Provider-Status ──
+async function loadHealth() {
+  const grid = document.getElementById("healthGrid");
+  try {
+    const data = await api("health");
+    if (!data.providers?.length) { grid.innerHTML = '<p class="msg">Keine Daten</p>'; return; }
+    grid.innerHTML = data.providers.map(p => `
+      <div class="provider-card">
+        ${icon(p.provider)}
+        <div class="p-info">
+          <div class="p-name">${NAMES[p.provider] || p.provider}</div>
+          <div class="p-latency">${p.latency_ms || "?"}ms</div>
+        </div>
+        <span class="badge badge-${p.status}">${p.status}</span>
+      </div>
+    `).join("");
+  } catch { grid.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+// Auto-refresh every 60s
+setInterval(loadHealth, 60000);
+
+// ── Section 3: Kosten ──
+async function loadCosts() {
+  const el = document.getElementById("costsContent");
+  try {
+    const data = await api("costs");
+    const total = parseFloat(data.totalCost || 0);
+    const providers = data.perProvider || {};
+    const count = data.requestCount || 0;
+
+    if (count === 0) {
+      el.innerHTML = '<p class="msg">Noch keine Kosten heute.</p>';
+      return;
+    }
+
+    let rows = "";
+    for (const [p, cost] of Object.entries(providers)) {
+      rows += `<div class="cost-row">
+        ${icon(p)}
+        <span class="c-name">${NAMES[p] || p}</span>
+        <span class="c-value">$${parseFloat(cost).toFixed(4)}</span>
+      </div>`;
+    }
+
+    el.innerHTML = `
+      <div class="cost-total">$${total.toFixed(4)}</div>
+      <div class="cost-count">${count} Requests &middot; ${data.date}</div>
+      ${rows}
+    `;
+  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+
+// ── Section 2: Source Ledger ──
+async function loadSources() {
+  const el = document.getElementById("sourcesList");
+  try {
+    const data = await api("sources");
+    if (!data.sources?.length) {
+      el.innerHTML = '<p class="msg">Keine importierten Quellen. Nutze den KI-Import oben.</p>';
+      return;
+    }
+    el.innerHTML = data.sources.map(s => `
+      <div class="source-item">
+        <div class="s-info">
+          <div class="s-name">${s.source_name}</div>
+          <div class="s-meta">${s.source_type} &middot; ${s.item_count || 0} Items &middot; ${new Date(s.created_at).toLocaleDateString("de-DE")}</div>
+        </div>
+        <span class="badge badge-${s.status}">${s.status}</span>
+        <div class="s-actions">
+          ${s.status === "active" ? `<button class="btn btn-sm btn-secondary" onclick="sourceAction('decouple','${s.id}')">Entkoppeln</button>` : ""}
+          <button class="btn btn-sm btn-danger" onclick="sourceAction('delete-all','${s.id}')">L&ouml;schen</button>
+        </div>
+      </div>
+    `).join("");
+  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+}
+
+window.sourceAction = async function(action, sourceId) {
+  if (action === "delete-all" && !confirm("Alle Daten dieser Quelle wirklich l\u00f6schen?")) return;
+  await api(action, { sourceId }, "POST");
+  loadSources();
+};
+
+// ── Import Tab Switching ──
+function switchImportTab(tab) {
+  document.getElementById("tabPaste").classList.toggle("active", tab === "paste");
+  document.getElementById("tabUpload").classList.toggle("active", tab === "upload");
+  document.getElementById("importTabPaste").classList.toggle("hidden", tab !== "paste");
+  document.getElementById("importTabUpload").classList.toggle("hidden", tab !== "upload");
+}
+window.switchImportTab = switchImportTab;
+
+// ── File Upload (Drag & Drop) ──
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const fileInfo = document.getElementById("fileInfo");
+const uploadBtn = document.getElementById("uploadBtn");
+let selectedFile = null;
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length > 0) handleFileSelect(fileInput.files[0]);
+});
+
+function handleFileSelect(file) {
+  selectedFile = file;
+  const sizeKb = Math.round(file.size / 1024);
+  fileInfo.textContent = `${file.name} (${sizeKb} KB)`;
+  fileInfo.classList.remove("hidden");
+  uploadBtn.disabled = false;
+}
+
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = "Importiere...";
+
+  try {
+    // Read file as base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]); // strip data:...;base64,
+      reader.onerror = reject;
+      reader.readAsDataURL(selectedFile);
+    });
+
+    const opts = {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+      body: JSON.stringify({ fileName: selectedFile.name, fileData: base64 }),
+    };
+    const res = await fetch("/api/ai/import-file", opts);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || "Upload fehlgeschlagen");
+
+    importSourceId = data.sourceId;
+    document.getElementById("importStatus").textContent = data.message || "Datei verarbeitet.";
+    document.getElementById("importStatus").classList.remove("msg-error");
+    document.getElementById("importStatus").classList.add("msg-success");
+
+    // Show candidates
+    const candidates = data.memoryCandidates || [];
+    const container = document.getElementById("importCandidates");
+    if (candidates.length === 0) {
+      container.innerHTML = '<p class="msg">Keine Memory-Kandidaten gefunden.</p>';
+      approveBtn.classList.add("hidden");
+    } else {
+      container.innerHTML = candidates.map((c, i) => `
+        <div class="candidate">
+          <input type="checkbox" checked data-idx="${i}">
+          <span class="c-text">${c.summary || c.content?.slice(0, 100) || "Insight"}</span>
+          <span class="c-type">${c.type || "?"}</span>
+        </div>
+      `).join("");
+      approveBtn.classList.remove("hidden");
+    }
+
+    // Switch to step 2 (approval) — keep file info visible
+    document.getElementById("importTabUpload").classList.add("hidden");
+    document.getElementById("importTabPaste").classList.add("hidden");
+    step2.classList.remove("hidden");
+    document.querySelector(".import-tabs").classList.add("hidden");
+
+    // Auto-open Source Ledger and refresh
+    const sourcesSection = document.getElementById("sectionSources");
+    if (sourcesSection.classList.contains("collapsed")) sourcesSection.classList.remove("collapsed");
+    loadSources();
+  } catch (e) {
+    document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Upload fehlgeschlagen");
+    document.getElementById("importStatus").classList.add("msg-error");
+    document.getElementById("importStatus").classList.remove("hidden");
+    step2.classList.remove("hidden");
+  } finally {
+    uploadBtn.textContent = "Datei importieren";
+    uploadBtn.disabled = false;
+  }
+});
+
+// ── Section 1: KI-Import (Text Paste) ──
+const importPills = document.querySelectorAll("#importPills .pill");
+const step1 = document.getElementById("importStep1");
+const step2 = document.getElementById("importStep2");
+const promptEl = document.getElementById("importPrompt");
+const pasteEl = document.getElementById("importPaste");
+const importBtn = document.getElementById("importBtn");
+const approveBtn = document.getElementById("approveBtn");
+
+importPills.forEach(pill => {
+  pill.addEventListener("click", async () => {
+    importPills.forEach(p => p.classList.remove("active"));
+    pill.classList.add("active");
+    currentSource = pill.dataset.source;
+    step1.classList.remove("hidden");
+    step2.classList.add("hidden");
+
+    // Fetch extraction prompt
+    const data = await importApi({ action: "get-prompt", source: currentSource });
+    promptEl.value = data.prompt || "Fehler beim Laden des Prompts";
+  });
+});
+
+document.getElementById("copyPromptBtn").addEventListener("click", () => {
+  navigator.clipboard.writeText(promptEl.value);
+  document.getElementById("copyPromptBtn").textContent = "Kopiert!";
+  setTimeout(() => document.getElementById("copyPromptBtn").textContent = "Kopieren", 2000);
+});
+
+pasteEl.addEventListener("input", () => {
+  importBtn.disabled = !pasteEl.value.trim();
+});
+
+importBtn.addEventListener("click", async () => {
+  importBtn.disabled = true;
+  importBtn.textContent = "Importiere...";
+  try {
+    const data = await importApi({ action: "import", source: currentSource, content: pasteEl.value.trim() });
+    importSourceId = data.sourceId;
+    document.getElementById("importStatus").textContent = data.message || "Import verarbeitet.";
+
+    // Show candidates
+    const candidates = data.memoryCandidates || [];
+    const container = document.getElementById("importCandidates");
+    if (candidates.length === 0) {
+      container.innerHTML = '<p class="msg">Keine Memory-Kandidaten gefunden.</p>';
+      approveBtn.classList.add("hidden");
+    } else {
+      container.innerHTML = candidates.map((c, i) => `
+        <div class="candidate">
+          <input type="checkbox" checked data-idx="${i}">
+          <span class="c-text">${c.summary || c.content?.slice(0, 100) || "Insight"}</span>
+          <span class="c-type">${c.type || "?"}</span>
+        </div>
+      `).join("");
+      approveBtn.classList.remove("hidden");
+    }
+
+    step1.classList.add("hidden");
+    step2.classList.remove("hidden");
+
+    // Auto-open Source Ledger and refresh
+    const sourcesSection2 = document.getElementById("sectionSources");
+    if (sourcesSection2.classList.contains("collapsed")) sourcesSection2.classList.remove("collapsed");
+    loadSources();
+  } catch (e) {
+    document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Import fehlgeschlagen");
+    document.getElementById("importStatus").classList.add("msg-error");
+  } finally {
+    importBtn.textContent = "Importieren";
+    importBtn.disabled = false;
+  }
+});
+
+approveBtn.addEventListener("click", async () => {
+  if (!importSourceId) return;
+  const checked = document.querySelectorAll("#importCandidates input:checked");
+  const itemIds = [...checked].map(cb => cb.dataset.idx);
+  approveBtn.disabled = true;
+  try {
+    const data = await importApi({ action: "approve", sourceId: importSourceId, itemIds });
+    const statusEl = document.getElementById("approveStatus");
+    statusEl.textContent = data.message || "Erledigt.";
+    statusEl.classList.remove("hidden");
+    statusEl.classList.add("msg-success");
+    approveBtn.textContent = "Erledigt";
+  } catch {
+    approveBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

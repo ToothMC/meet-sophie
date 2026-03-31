@@ -11,6 +11,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { TOKEN_COSTS } from "../lib/billing-constants.js";
 import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
@@ -174,6 +175,27 @@ async function handleCreate(req, res) {
 
   const supabase = getSupabase();
 
+  // ── Paywall: Check subscription + remaining tokens ──
+  const [subRes, usageRes] = await Promise.all([
+    supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const sub = subRes.data;
+  const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
+  const usage = usageRes.data;
+  const freeRem = Math.max(0, (usage?.free_tokens_total ?? 50) - (usage?.free_tokens_used ?? 0));
+  const paidRem = Math.max(0, (usage?.paid_tokens_total ?? 0) - (usage?.paid_tokens_used ?? 0));
+  const topupRem = Math.max(0, usage?.topup_tokens_balance ?? 0);
+  const remaining = freeRem + paidRem + topupRem;
+
+  if (!active && remaining <= 0) {
+    return res.status(402).json({
+      error: "No active subscription",
+      reason: "no_active_subscription",
+      redirect: "/pricing",
+    });
+  }
+
   // Validate parent_meeting_id if provided
   if (parentMeetingId) {
     const { data: parent } = await supabase
@@ -258,7 +280,19 @@ async function handleList(req, res) {
     return res.status(500).json({ error: "Failed to list meetings" });
   }
 
-  return res.status(200).json({ ok: true, meetings: data || [] });
+  // Mark which meetings have a summary
+  const meetingIds = (data || []).map(m => m.id);
+  let summaryIds = new Set();
+  if (meetingIds.length) {
+    const { data: sums } = await supabase
+      .from("meeting_summary")
+      .select("meeting_id")
+      .in("meeting_id", meetingIds);
+    summaryIds = new Set((sums || []).map(s => s.meeting_id));
+  }
+
+  const enriched = (data || []).map(m => ({ ...m, has_summary: summaryIds.has(m.id) }));
+  return res.status(200).json({ ok: true, meetings: enriched });
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +363,7 @@ async function handleContext(req, res) {
     return res.status(400).json({ error: "Missing meeting_id, context_type, or content" });
   }
 
-  if (!["agenda", "participants", "goal", "text_note", "file", "history_ref"].includes(context_type)) {
+  if (!["agenda", "participants", "goal", "text_note", "file", "history_ref", "location"].includes(context_type)) {
     return res.status(400).json({ error: "Invalid context_type" });
   }
 
@@ -350,7 +384,11 @@ async function handleContext(req, res) {
   if (context_type === "file" && body.file_path && finalContent.startsWith("[File:")) {
     try {
       const extracted = await extractFileContent(supabase, body.file_path);
-      if (extracted) finalContent = extracted;
+      if (extracted) {
+        finalContent = extracted;
+        // Deduct tokens for AI-powered file extraction (GPT-4o Vision)
+        await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message * 2 }).catch(() => {});
+      }
     } catch (e) {
       console.error("File extraction error:", e?.message);
       // Keep original placeholder content
@@ -558,6 +596,9 @@ async function handleMessage(req, res) {
   const rawReply = openaiData?.choices?.[0]?.message?.content || "";
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
+  // Deduct token for meeting chat message (same cost as regular chat)
+  await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message }).catch(() => {});
+
   // Extract structured items from LIVE-phase responses
   let extractedItems = null;
   let hintData = null;
@@ -603,12 +644,23 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Clean reply (strip JSON blocks for display, keep 💡 hint text visible)
+  // Clean reply (strip JSON blocks, mode tokens, keep 💡 hint text visible)
   const reply = rawReply
     .replace(/```json[\s\S]*?```/g, "")
     .replace(/\{[\s\S]*"decisions"[\s\S]*\}/g, "")
     .replace(/\{"hint"\s*:\s*\{[^}]*\}\}/g, "")
+    .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
+    .replace(/\s*\[SYSTEM:[^\]]*\]\s*/g, "")
+    .replace(/\s*\[SESSION_END\]\s*/g, "")
     .trim() || rawReply.trim();
+
+  // Save user message + Sophie reply as chat_message notes for summary
+  const lastUserMsg = messages[messages.length - 1]?.content || "";
+  const { error: noteErr } = await supabase.from("meeting_notes").insert([
+    { meeting_id, note_type: "chat_message", content: `[User] ${lastUserMsg}` },
+    { meeting_id, note_type: "chat_message", content: `[Sophie] ${reply}` },
+  ]);
+  if (noteErr) console.error("[meeting] note insert failed:", noteErr.message);
 
   return res.status(200).json({
     ok: true,
@@ -624,6 +676,7 @@ async function handleMessage(req, res) {
 // Action: summarize — Summary generieren (POST-Phase)
 // ---------------------------------------------------------------------------
 
+// Summarize meeting + trigger HTML report via 4-AI pipeline
 async function handleSummarize(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -654,11 +707,18 @@ async function handleSummarize(req, res) {
 
   // Build summary prompt
   const contextStr = (contextRes.data || []).map(c => `[${c.context_type}] ${c.content}`).join("\n");
-  const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint");
+  // Exclude chat_message and silent_hint — chat is a private side-channel, NEVER in reports
+  const notes = (notesRes.data || []).filter(n => n.note_type !== "silent_hint" && n.note_type !== "chat_message");
   const notesStr = notes.map(n => `[${n.note_type}] ${n.content}`).join("\n");
 
+  // Voice transcript ONLY — sent from frontend (SpeechRecognition + Sophie DataChannel)
+  // Chat messages are NEVER included in the report — they are a private side-channel
+  const voiceTranscript = (body.chat_transcript || "").trim();
+
+  console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, voiceTranscript=${voiceTranscript.length}`);
+
   // If there's no content at all, return empty summary — do NOT hallucinate
-  if (!notesStr.trim() && !contextStr.trim()) {
+  if (!notesStr.trim() && !contextStr.trim() && !voiceTranscript.trim()) {
     const emptySummary = {
       meeting_id,
       short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
@@ -675,142 +735,18 @@ async function handleSummarize(req, res) {
     return res.status(200).json({ ok: true, summary: saved || emptySummary });
   }
 
-  const summarySystemPrompt = `You are Sophie. Generate a structured meeting summary.
-${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
-
-Meeting: ${meeting.title || "Untitled"}
-Type: ${meeting.meeting_type}
-${contextStr ? `\nContext:\n${contextStr}` : ""}
-${notesStr ? `\nNotes from meeting:\n${notesStr}` : ""}
-
-CRITICAL RULES:
-- ONLY summarize what is EXPLICITLY written in the notes and context above.
-- Do NOT invent, assume, or hallucinate any content.
-- If a category has no items, return an empty array [].
-- If there is very little content, the summary should be very short.
-- NEVER make up decisions, action items, or risks that are not explicitly stated.
-
-Generate a JSON object with this exact schema:
-{
-  "short_summary": "2-3 sentence summary of ONLY what was actually discussed",
-  "decisions": [{ "text": "...", "owner": "..." }],
-  "action_items": [{ "text": "...", "owner": "...", "due": "..." }],
-  "open_points": [{ "text": "..." }],
-  "risks": [{ "text": "...", "severity": "low|medium|high" }]
-}
-
-Return ONLY the JSON object, no other text.`;
-
-  let openaiResp;
-  try {
-    openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
-        max_tokens: 1500,
-        messages: [{ role: "system", content: summarySystemPrompt }],
-        temperature: 0.3,
-        response_format: { type: "json_object" },
-      }),
-    });
-  } catch (e) {
-    console.error("OpenAI API error:", e?.message);
-    return res.status(502).json({ error: "OpenAI API unavailable" });
-  }
-
-  if (!openaiResp.ok) {
-    return res.status(openaiResp.status).json({ error: "OpenAI API error" });
-  }
-
-  const data = await openaiResp.json();
-  const rawContent = data?.choices?.[0]?.message?.content || "{}";
-
-  let summary;
-  try {
-    summary = JSON.parse(rawContent);
-  } catch {
-    return res.status(502).json({ error: "Failed to parse summary JSON" });
-  }
-
-  // Generate follow-up diff if parent meeting exists
-  let followupDiff = null;
-  if (meeting.parent_meeting_id) {
-    const { data: parentSummary } = await supabase
-      .from("meeting_summary")
-      .select("action_items, open_points")
-      .eq("meeting_id", meeting.parent_meeting_id)
-      .maybeSingle();
-
-    if (parentSummary) {
-      const diffPrompt = `You are Sophie. Compare the previous meeting's action items and open points with the current meeting notes.
-${language === "de" ? "Antworte auf Deutsch." : language === "fr" ? "Réponds en français." : "Respond in English."}
-
-PREVIOUS MEETING:
-Action Items: ${JSON.stringify(parentSummary.action_items || [])}
-Open Points: ${JSON.stringify(parentSummary.open_points || [])}
-
-CURRENT MEETING NOTES:
-${notesStr}
-
-CURRENT MEETING SUMMARY:
-${JSON.stringify(summary)}
-
-Generate a JSON object with this schema:
-{
-  "resolved": [{ "text": "...", "status": "done" }],
-  "still_open": [{ "text": "...", "status": "open" }],
-  "escalated": [{ "text": "...", "status": "escalated" }],
-  "new_items": [{ "text": "..." }]
-}
-
-Rules:
-- "resolved": items from the previous meeting that were addressed or completed
-- "still_open": items from previous meeting still not resolved
-- "escalated": items that got worse or more urgent
-- "new_items": completely new action items or points from the current meeting
-Return ONLY the JSON object.`;
-
-      try {
-        const diffResp = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
-            max_tokens: 1000,
-            messages: [{ role: "system", content: diffPrompt }],
-            temperature: 0.3,
-            response_format: { type: "json_object" },
-          }),
-        });
-        if (diffResp.ok) {
-          const diffData = await diffResp.json();
-          const diffContent = diffData?.choices?.[0]?.message?.content || "{}";
-          followupDiff = JSON.parse(diffContent);
-        }
-      } catch (e) {
-        console.error("Follow-up diff generation error:", e?.message);
-        // Non-critical, continue without diff
-      }
-    }
-  }
-
-  // Upsert summary (including followup_diff if generated)
+  // -----------------------------------------------------------------------
+  // No GPT-4o summary — Claude report is the single source of truth.
+  // Save minimal placeholder to meeting_summary for DB compatibility.
+  // -----------------------------------------------------------------------
   const upsertData = {
     meeting_id,
-    short_summary: summary.short_summary || "",
-    decisions: summary.decisions || [],
-    action_items: summary.action_items || [],
-    open_points: summary.open_points || [],
-    risks: summary.risks || [],
+    short_summary: "",
+    decisions: [],
+    action_items: [],
+    open_points: [],
+    risks: [],
   };
-  if (followupDiff) upsertData.followup_diff = followupDiff;
 
   const { data: saved, error: saveErr } = await supabase
     .from("meeting_summary")
@@ -823,13 +759,65 @@ Return ONLY the JSON object.`;
     return res.status(500).json({ error: "Failed to save summary" });
   }
 
-  // Auto-generate title if missing
-  if (!meeting.title && summary.short_summary) {
-    const autoTitle = summary.short_summary.slice(0, 60).replace(/\.+$/, "").trim();
-    await supabase.from("meetings").update({ title: autoTitle }).eq("id", meeting_id);
+  // -----------------------------------------------------------------------
+  // Trigger HTML Report via generate-report pipeline (same as Talk mode)
+  // -----------------------------------------------------------------------
+  let reportSessionId = null;
+  try {
+    // Build FULL transcript (context + notes + chat) for the report pipeline
+    const fullTranscriptParts = [];
+    if (meeting.title) fullTranscriptParts.push(`Meeting: ${meeting.title}`);
+    if (meeting.meeting_type) fullTranscriptParts.push(`Typ: ${meeting.meeting_type}`);
+    if (contextStr.trim()) fullTranscriptParts.push(`\nKontext:\n${contextStr}`);
+    if (voiceTranscript.trim()) fullTranscriptParts.push(`\nVoice-Protokoll:\n${voiceTranscript}`);
+    if (notesStr.trim()) fullTranscriptParts.push(`\nNotizen:\n${notesStr}`);
+    const fullTranscript = fullTranscriptParts.join("\n");
+
+    if (fullTranscript.trim().length > 50) {
+      // Create a user_session so generate-report can link to it
+      const { data: session } = await supabase.from("user_sessions").insert({
+        user_id: user.id,
+        session_mode: "meeting",
+        status: "ended",
+        title: meeting.title || "Meeting",
+      }).select("id").single();
+
+      if (session?.id) {
+        reportSessionId = session.id;
+
+        // Link meeting to session
+        await supabase.from("meetings").update({ session_id: session.id }).eq("id", meeting_id);
+
+        // Create conversation_outputs row for report tracking
+        await supabase.from("conversation_outputs").upsert({
+          session_id: session.id,
+          report_status: "pending",
+          report_progress: 0,
+        }, { onConflict: "session_id" });
+
+        console.log(`[meeting-summarize] report session created: ${session.id}, frontend will trigger generate-report`);
+      }
+    }
+  } catch (e) {
+    console.error("[meeting-summarize] report trigger error:", e?.message);
+    // Non-critical — summary was already saved
   }
 
-  return res.status(200).json({ ok: true, summary: saved });
+  // Build full transcript for frontend to pass to generate-report
+  const fullTranscriptParts2 = [];
+  if (meeting.title) fullTranscriptParts2.push(`Meeting: ${meeting.title}`);
+  if (meeting.meeting_type) fullTranscriptParts2.push(`Typ: ${meeting.meeting_type}`);
+  if (meeting.started_at) fullTranscriptParts2.push(`Datum: ${new Date(meeting.started_at).toLocaleString("de-DE")}`);
+  if (contextStr.trim()) fullTranscriptParts2.push(`\nKontext:\n${contextStr}`);
+  if (voiceTranscript.trim()) fullTranscriptParts2.push(`\nVollständiges Voice-Protokoll:\n${voiceTranscript}`);
+  if (notesStr.trim()) fullTranscriptParts2.push(`\nNotizen & Entscheidungen:\n${notesStr}`);
+
+  return res.status(200).json({
+    ok: true,
+    summary: saved,
+    report_session_id: reportSessionId,
+    report_transcript: fullTranscriptParts2.join("\n"),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -882,11 +870,17 @@ async function handleDelete(req, res) {
   // Verify ownership
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id")
+    .select("id, session_id")
     .eq("id", meeting_id)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  // If meeting has a linked report session, clean up report data first
+  if (meeting.session_id) {
+    await supabase.from("conversation_outputs").delete().eq("session_id", meeting.session_id);
+    await supabase.from("user_sessions").delete().eq("id", meeting.session_id);
+  }
 
   // Delete meeting (cascades to context, notes, summary via ON DELETE CASCADE)
   // Children with parent_meeting_id will get SET NULL automatically

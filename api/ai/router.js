@@ -6,7 +6,7 @@ import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { trackCost, checkDailyBudget } from '../../lib/ai/cost-tracker.js';
 import { normalizeResponse } from '../../lib/ai/persona-normalizer.js';
 
-const FALLBACK_TIMEOUT_MS = parseInt(process.env.AI_ROUTER_FALLBACK_TIMEOUT_MS || '3000', 10);
+const FALLBACK_TIMEOUT_MS = parseInt(process.env.AI_ROUTER_FALLBACK_TIMEOUT_MS || '5000', 10);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

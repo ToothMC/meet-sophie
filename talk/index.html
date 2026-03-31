@@ -125,6 +125,10 @@ body{
   width:90%;
   max-width:420px;
   padding-top:40px;
+  transition:padding-bottom .3s ease;
+}
+.wrap.vc-active{
+  padding-bottom:32dvh;
 }
 
 /* Buttons */
@@ -149,6 +153,16 @@ body{
   color:#fff;
   border:1px solid rgba(255,255,255,.3);
 }
+#pauseBtn{
+  background:rgba(255,200,60,.15);
+  color:#ffc83c;
+  border:1px solid rgba(255,200,60,.3);
+}
+#pauseBtn.is-paused{
+  background:rgba(100,220,160,.15);
+  color:#64dca0;
+  border-color:rgba(100,220,160,.3);
+}
 
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
@@ -161,10 +175,32 @@ body{
 .mode-indicator[data-mode="explorer"]{ color:#3f8cff; }
 .mode-indicator[data-mode="reflect"]{ color:#a78bfa; }
 .mode-indicator[data-mode="decide"]{ color:#f5c842; }
-.mode-indicator[data-mode="relax"]{ color:#34d399; }
+.mode-indicator[data-mode="chill"]{ color:#34d399; }
 .mode-indicator[data-mode="brainstorm"]{ color:#f5c842; }
 .mode-indicator[data-mode="meeting"]{ color:#34c47a; }
 .mode-indicator[data-mode="salespitch"]{ color:#ff5252; }
+.research-indicator{
+  display:flex;align-items:center;gap:6px;justify-content:center;
+  margin-bottom:10px;opacity:0;transition:opacity .3s ease;
+  font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.05em;
+}
+.research-indicator.visible{ opacity:1; }
+.research-indicator .ri-icons{
+  display:flex;gap:4px;align-items:center;
+}
+.research-indicator .ri-icon{
+  width:14px;height:14px;opacity:.3;transition:opacity .3s ease;
+}
+.research-indicator .ri-icon.active{
+  opacity:1;animation:riPulse .8s ease-in-out infinite;
+}
+@keyframes riPulse{
+  0%,100%{opacity:.4;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.15)}
+}
+.research-indicator .ri-label{
+  font-size:9px;text-transform:uppercase;letter-spacing:.1em;
+}
 .timer{ margin-bottom:20px; opacity:.75; font-size:14px; }
 
 .mode-bar{
@@ -182,6 +218,45 @@ body{
 .mode-pill.active{
   background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.45);
   color:#fff;
+}
+
+/* Report toggle */
+.report-toggle{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;margin-bottom:14px;
+  -webkit-user-select:none;user-select:none;
+  position:relative;z-index:5;
+}
+.report-toggle input{ display:none; }
+.report-toggle-slider{
+  width:32px;height:18px;
+  background:rgba(255,255,255,.12);
+  border-radius:9px;
+  position:relative;
+  transition:background .2s;
+}
+.report-toggle-slider::after{
+  content:'';position:absolute;
+  left:2px;top:2px;
+  width:14px;height:14px;
+  background:rgba(255,255,255,.35);
+  border-radius:50%;
+  transition:transform .2s, background .2s;
+}
+.report-toggle input:checked + .report-toggle-slider{
+  background:#6366f1;
+}
+.report-toggle input:checked + .report-toggle-slider::after{
+  transform:translateX(14px);
+  background:#fff;
+}
+.report-toggle-text{
+  font-size:12px;color:rgba(255,255,255,.35);
+  letter-spacing:.02em;
+  transition:color .2s;
+}
+.report-toggle input:checked ~ .report-toggle-text{
+  color:rgba(255,255,255,.7);
 }
 
 .live-badge{
@@ -233,6 +308,108 @@ body{
   display:none;
 }
 
+/* ── Voice Chat Panel ── */
+.voice-chat{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  z-index:4;
+  display:flex;
+  flex-direction:column;
+  max-height:30dvh;
+  background:rgba(11,15,20,.88);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,.1);
+  padding-bottom:env(safe-area-inset-bottom);
+  animation:vcSlideUp .3s ease;
+}
+@keyframes vcSlideUp{
+  from{transform:translateY(100%);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+
+.voice-chat-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:14px 16px 8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  scrollbar-width:none;
+}
+.voice-chat-messages::-webkit-scrollbar{display:none}
+
+.voice-chat-input{
+  display:flex;
+  gap:8px;
+  padding:10px 16px 12px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+
+#voiceChatInput{
+  flex:1;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;
+  padding:10px 16px;
+  font-size:15px;
+  font-family:inherit;
+  color:#fff;
+  outline:none;
+}
+#voiceChatInput::placeholder{
+  color:rgba(255,255,255,.4);
+}
+#voiceChatInput:focus{
+  border-color:rgba(255,255,255,.3);
+  background:rgba(255,255,255,.14);
+}
+#voiceChatInput:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+
+#voiceChatSend{
+  width:40px;height:40px;
+  border-radius:50%;
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.2);
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  transition:background .15s;
+}
+#voiceChatSend:hover{background:rgba(255,255,255,.25)}
+#voiceChatSend:disabled{opacity:.4;cursor:not-allowed}
+
+.vc-msg{
+  max-width:80%;
+  padding:8px 14px;
+  border-radius:16px;
+  font-size:14px;
+  line-height:1.5;
+  word-break:break-word;
+  animation:vcFadeIn .2s ease;
+}
+@keyframes vcFadeIn{
+  from{opacity:0;transform:translateY(4px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.vc-user{
+  align-self:flex-end;
+  background:rgba(67,56,202,.8);
+  color:#fff;
+  border-radius:16px 16px 4px 16px;
+}
+.vc-sophie{
+  align-self:flex-start;
+  background:rgba(255,255,255,.1);
+  color:rgba(255,255,255,.88);
+  border-radius:16px 16px 16px 4px;
+}
+
 #limitOverlay{
   position:fixed;
   inset:0;
@@ -248,23 +425,6 @@ body{
   object-fit:cover;
 }
 
-#billingFooter{
-  position:fixed;
-  left:0; right:0;
-  bottom:10px;
-  z-index:4;
-  text-align:center;
-  font-size:12px;
-  opacity:.55;
-  pointer-events:none;
-}
-#billingFooter a{
-  color:rgba(255,255,255,.9);
-  text-decoration:none;
-  pointer-events:auto;
-}
-#billingFooter a:hover{ text-decoration:underline; }
-
 .softHint{
   margin-top:-4px;
   margin-bottom:10px;
@@ -275,21 +435,30 @@ body{
 
 .inlineReportProgress{
   width:100%;
-  max-width:320px;
-  height:6px;
-  margin:8px auto 18px;
-  background:rgba(255,255,255,.08);
+  max-width:360px;
+  margin:12px auto 18px;
+  display:none;
+  text-align:center;
+}
+.inlineReportProgressTrack{
+  height:10px;
+  background:rgba(255,255,255,.1);
   border-radius:999px;
   overflow:hidden;
-  display:none;
+  margin-bottom:8px;
 }
-
 .inlineReportProgressBar{
   width:0%;
   height:100%;
-  background:rgba(255,255,255,.92);
+  background:linear-gradient(90deg,#c4a882,#e0c9a6);
   border-radius:999px;
-  transition:width .35s ease;
+  transition:width .4s ease;
+}
+.inlineReportPercent{
+  font-size:13px;
+  font-weight:600;
+  color:rgba(255,255,255,.7);
+  letter-spacing:.03em;
 }
 
 #postCallPanel{
@@ -357,6 +526,38 @@ body{
   margin-inline:auto;
 }
 
+.reportStyleBar{
+  display:flex;
+  gap:6px;
+  justify-content:center;
+  margin:0 0 16px;
+  flex-wrap:wrap;
+}
+.reportStylePill{
+  padding:5px 12px;
+  border-radius:16px;
+  border:1px solid #d4ccc4;
+  background:transparent;
+  color:#7a6e60;
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all .2s;
+}
+.reportStylePill.active{
+  background:#2a2420;
+  color:#f5f0ea;
+  border-color:#2a2420;
+}
+.reportStylePill.recommended::after{
+  content:" \u2605";
+  font-size:10px;
+  color:#b89a5a;
+}
+.reportStylePill:disabled{
+  opacity:.5;
+  cursor:wait;
+}
 .reportModeBar{
   display:flex;
   gap:0;
@@ -750,16 +951,32 @@ body{
     padding-bottom:max(0px, env(safe-area-inset-bottom));
   }
 }
+
+/* ── Brainstorm segmented control (Solo | Team) ─────────── */
+.bs-pill-wrap{display:inline-flex;min-width:114px;justify-content:center}
+.bs-seg{display:inline-flex;border:1px solid rgba(245,200,66,.4);border-radius:20px;
+  overflow:hidden;height:28px;align-items:stretch}
+.bs-seg-btn{border:none;background:transparent;color:rgba(246,247,251,.4);
+  font-family:inherit;font-size:12px;font-weight:500;padding:0 14px;
+  cursor:pointer;transition:all .15s;position:relative}
+.bs-seg-btn:first-child::after{content:"";position:absolute;right:0;top:20%;
+  height:60%;width:1px;background:rgba(245,200,66,.25)}
+.bs-seg-btn:hover{color:rgba(246,247,251,.7)}
+.bs-seg-btn.active{background:rgba(245,200,66,.18);color:rgba(245,200,66,.95)}
+/* ─────────────────────────────────────────────────────────── */
 </style>
 </head>
 
 <body>
+
+<!-- Brainstorm Setup Modal -->
 
 <div class="bg" id="bg"></div>
 <div class="overlay" id="overlay"></div>
 
 <div class="topbar">
   <a href="/" id="backToLandingBtn">← Back</a>
+  <a href="/settings/" id="settingsBtn" style="color:rgba(255,255,255,.6);font-size:18px;text-decoration:none;padding:6px;border-radius:8px;display:flex;align-items:center" title="Einstellungen">&#9881;</a>
   <button id="logoutBtn" type="button">Log out</button>
 </div>
 
@@ -771,6 +988,15 @@ body{
   <h2 id="headline">Sophie is here.</h2>
   <div class="status" id="status">Whenever you're ready.</div>
   <div class="mode-indicator" id="modeIndicator" aria-hidden="true"></div>
+  <div class="research-indicator" id="researchIndicator" aria-hidden="true">
+    <div class="ri-icons">
+      <img class="ri-icon" id="riOpenai" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z'/%3E%3C/svg%3E" alt="GPT">
+      <img class="ri-icon" id="riAnthropic" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.304 2.002h-4.108l6.144 19.996h4.108zM6.696 2.002.552 21.998h4.108l1.26-4.248h6.16l1.26 4.248h4.108L11.304 2.002zm-.18 12.248L8.86 7.054l2.344 7.196z'/%3E%3C/svg%3E" alt="Claude">
+      <img class="ri-icon" id="riGoogle" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E" alt="Gemini">
+      <img class="ri-icon" id="riMistral" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Crect x='2' y='2' width='5' height='5'/%3E%3Crect x='17' y='2' width='5' height='5'/%3E%3Crect x='2' y='7' width='5' height='5'/%3E%3Crect x='7' y='7' width='5' height='5'/%3E%3Crect x='12' y='7' width='5' height='5'/%3E%3Crect x='17' y='7' width='5' height='5'/%3E%3Crect x='2' y='12' width='5' height='5'/%3E%3Crect x='17' y='12' width='5' height='5'/%3E%3C/svg%3E" alt="Mistral">
+    </div>
+    <span class="ri-label">Recherche</span>
+  </div>
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
     <span class="live-text">LIVE</span>
@@ -779,16 +1005,40 @@ body{
   <div class="softHint" id="softHint"></div>
 
   <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
-    <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
+    <div class="inlineReportProgressTrack">
+      <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
+    </div>
+    <div id="inlineReportPercent" class="inlineReportPercent"></div>
   </div>
 
   <div class="mode-bar" id="modeBar">
-    <button class="mode-pill" data-mode="brainstorm">✦ Brainstorm</button>
+    <div class="bs-pill-wrap">
+      <button class="mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
+      <div class="bs-seg" id="bsSeg" style="display:none">
+        <button class="bs-seg-btn active" data-bs="solo">Solo</button>
+        <button class="bs-seg-btn" data-bs="group">Team</button>
+      </div>
+    </div>
     <button class="mode-pill" data-mode="meeting">◉ Meeting</button>
     <button class="mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
   </div>
+  <label class="report-toggle" id="reportToggleLabel">
+    <input type="checkbox" id="reportToggle" checked>
+    <span class="report-toggle-slider"></span>
+    <span class="report-toggle-text">Report</span>
+  </label>
   <button id="start" class="btn">Start conversation</button>
+  <button id="pauseBtn" class="btn btn-pause" style="display:none">Pause</button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
+
+  <!-- Live chat input during voice session -->
+  <div class="voice-chat" id="voiceChat" style="display:none">
+    <div class="voice-chat-messages" id="voiceChatMessages"></div>
+    <div class="voice-chat-input">
+      <input type="text" id="voiceChatInput" placeholder="Nachricht an Sophie...">
+      <button id="voiceChatSend" type="button">➤</button>
+    </div>
+  </div>
 </div>
 
 <div id="postCallPanel">
@@ -802,8 +1052,15 @@ body{
 
   <div class="postCallInner">
     <div class="postCallHero">
-      <h3 class="postCallTitle">Your Thinking Report</h3>
+      <h3 class="postCallTitle">Report</h3>
       <p class="postCallSubtitle">A short summary of your conversation with Sophie.</p>
+    </div>
+
+    <div class="reportStyleBar" id="reportStyleBar" style="display:none">
+      <button type="button" class="reportStylePill" data-style="thinking">Thinking</button>
+      <button type="button" class="reportStylePill" data-style="scorecard">Score-Card</button>
+      <button type="button" class="reportStylePill" data-style="meeting">Meeting</button>
+      <button type="button" class="reportStylePill" data-style="quick">Quick</button>
     </div>
 
     <div class="reportModeBar">
@@ -860,6 +1117,20 @@ body{
           <span>Download</span>
         </button>
       </div>
+
+      <div class="report-export-line" style="margin-top:8px;">
+        <div class="report-export-title">Layout</div>
+      </div>
+      <div class="export">
+        <button id="saveTemplateBtn" class="export-btn" type="button" style="display:none;">
+          <i data-lucide="bookmark"></i>
+          <span>Save Template</span>
+        </button>
+        <button id="regenerateReportBtn" class="export-btn" type="button" style="display:none;">
+          <i data-lucide="refresh-cw"></i>
+          <span>Regenerate</span>
+        </button>
+      </div>
     </div>
 
     <div id="postCallCta" class="postCallCta">
@@ -878,10 +1149,6 @@ body{
   <video id="limitVideo" playsinline preload="auto">
     <source src="/video/sophie_limit.mp4" type="video/mp4">
   </video>
-</div>
-
-<div id="billingFooter" aria-label="billing-footer">
-  <a href="#" id="manageSubLink" style="display:none;">Manage subscription</a>
 </div>
 
 <script type="module">
@@ -935,50 +1202,6 @@ supabase.auth.onAuthStateChange((event, session) => {
   if (event === "SIGNED_OUT" || !session?.user) {
     window.location.href = "/login";
   }
-});  
-  
-const manageSubLink = document.getElementById("manageSubLink");
-const billingFooter = document.getElementById("billingFooter");
-
-async function initManageSubscriptionLink(){
-  try{
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    const res = await fetch("/api/billing?action=portal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: "{}",
-    });
-
-    if (res.status === 200) {
-      manageSubLink.style.display = "inline";
-      billingFooter.style.pointerEvents = "auto";
-    }
-  } catch(_) {}
-}
-
-manageSubLink?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  try{
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
-
-    const res = await fetch("/api/billing?action=portal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: "{}",
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (data?.url) window.location.href = data.url;
-  } catch(_) {}
 });
 
 async function sendMemoryUpdate(secondsUsed) {
@@ -1040,10 +1263,61 @@ async function sendMemoryUpdate(secondsUsed) {
   }
 }
 
-const startBtn = document.getElementById("start");
-const endBtn   = document.getElementById("end");
+const startBtn  = document.getElementById("start");
+const endBtn    = document.getElementById("end");
+const pauseBtn  = document.getElementById("pauseBtn");
+
+let isPaused = false;
+let pausedConvoLog = null;      // transcript snapshot preserved across pause
+let pausedElapsedMs = 0;        // elapsed session time before pause
 
 let selectedVoiceMode = null;
+let brainstormVoiceConfig = null;
+
+// ── Brainstorm segmented control logic ─────────────────────
+let _bsMode = "solo";
+const bsPillMain = document.getElementById("bsPillMain");
+const bsSeg      = document.getElementById("bsSeg");
+const bsSegBtns  = bsSeg.querySelectorAll(".bs-seg-btn");
+
+function showBsSeg(defaultMode) {
+  bsPillMain.style.display = "none";
+  bsSeg.style.display = "inline-flex";
+  if (defaultMode) _bsMode = defaultMode;
+  else _bsMode = "solo";
+  bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+}
+function hideBsSeg() {
+  bsSeg.style.display = "none";
+  bsPillMain.style.display = "";
+  bsPillMain.classList.remove("active");
+}
+
+window._getBrainstormConfig = function() {
+  const durMap = { solo: 20, group: 30 };
+  return {
+    topic: null, goal: null, mode: _bsMode,
+    depth: "standard", duration_minutes: durMap[_bsMode] || 20,
+    facilitation_style: "guided", silent_hints: true,
+  };
+};
+
+bsSegBtns.forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (btn.dataset.bs === _bsMode) {
+      selectedVoiceMode = null;
+      brainstormVoiceConfig = null;
+      hideBsSeg();
+      localStorage.removeItem("sophie_session_mode");
+    } else {
+      _bsMode = btn.dataset.bs;
+      brainstormVoiceConfig = null; // force rebuild on next startVoice()
+      bsSegBtns.forEach(b => b.classList.toggle("active", b.dataset.bs === _bsMode));
+    }
+  });
+});
+// ──────────────────────────────────────────────────────────
 
 // Mode pill toggle (voice page)
 document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
@@ -1051,9 +1325,19 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     const mode = btn.dataset.mode;
     if (selectedVoiceMode === mode) {
       selectedVoiceMode = null;
+      brainstormVoiceConfig = null;
       btn.classList.remove("active");
       localStorage.removeItem("sophie_session_mode");
+      if (mode === "brainstorm") hideBsSeg();
+    } else if (mode === "brainstorm") {
+      brainstormVoiceConfig = null;
+      selectedVoiceMode = "brainstorm";
+      document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
+      localStorage.setItem("sophie_session_mode", "brainstorm");
+      showBsSeg();
     } else {
+      brainstormVoiceConfig = null;
+      hideBsSeg();
       selectedVoiceMode = mode;
       document.querySelectorAll("#modeBar .mode-pill").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
@@ -1071,8 +1355,14 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
       const ho = JSON.parse(handoverRaw);
       if (ho.funnelMode && ho.funnelMode !== "talk" && ["brainstorm", "meeting", "salespitch"].includes(ho.funnelMode)) {
         selectedVoiceMode = ho.funnelMode;
-        const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${ho.funnelMode}"]`);
-        if (pill) pill.classList.add("active");
+        if (ho.funnelMode === "brainstorm") {
+          // Restore Solo/Team from handover config
+          brainstormVoiceConfig = ho.brainstormConfig || null;
+          showBsSeg(ho.brainstormConfig?.mode || "solo");
+        } else {
+          const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${ho.funnelMode}"]`);
+          if (pill) pill.classList.add("active");
+        }
         return; // funnel mode takes priority
       }
     } catch(_) {}
@@ -1085,7 +1375,8 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     window.location.href = "/meeting/";
     return;
   }
-  if (stored && ["brainstorm", "salespitch"].includes(stored)) {
+  // Brainstorm excluded — config is transient and lost on page reload
+  if (stored && ["salespitch"].includes(stored)) {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
@@ -1117,7 +1408,134 @@ const showTranscriptBtn = document.getElementById("showTranscriptBtn");
 const copyReportBtn = document.getElementById("copyReportBtn");
 const shareReportBtn = document.getElementById("shareReportBtn");
 const downloadReportBtn = document.getElementById("downloadReportBtn");
+const saveTemplateBtn = document.getElementById("saveTemplateBtn");
+const regenerateReportBtn = document.getElementById("regenerateReportBtn");
 
+// ── Voice Chat (text during voice session) ──
+const voiceChatEl = document.getElementById("voiceChat");
+const voiceChatMessages = document.getElementById("voiceChatMessages");
+const voiceChatInput = document.getElementById("voiceChatInput");
+const voiceChatSendBtn = document.getElementById("voiceChatSend");
+
+function showVoiceChat(show) {
+  if (!voiceChatEl) return;
+  const wrap = document.querySelector(".wrap");
+  if (show) {
+    voiceChatEl.style.display = "flex";
+    voiceChatInput.disabled = false;
+    voiceChatSendBtn.disabled = false;
+    if (wrap) wrap.classList.add("vc-active");
+  } else {
+    voiceChatEl.style.display = "none";
+    voiceChatMessages.innerHTML = "";
+    voiceChatInput.value = "";
+    if (wrap) wrap.classList.remove("vc-active");
+  }
+}
+
+function appendVoiceChatBubble(role, text) {
+  if (!voiceChatMessages) return;
+  const el = document.createElement("div");
+  el.className = "vc-msg " + (role === "user" ? "vc-user" : "vc-sophie");
+  el.textContent = text;
+  voiceChatMessages.appendChild(el);
+  voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
+}
+
+function sendVoiceChatMessage() {
+  const text = (voiceChatInput.value || "").trim();
+  if (!text || !dc || dc.readyState !== "open") return;
+
+  // Show user bubble
+  appendVoiceChatBubble("user", text);
+
+  // Track in convoLog
+  convoLog.push({ role: "user", text: "[chat] " + text });
+
+  // Send to Realtime API via DataChannel
+  dcSend({
+    type: "conversation.item.create",
+    item: {
+      type: "message",
+      role: "user",
+      content: [{ type: "input_text", text: "[CHAT MESSAGE] " + text }]
+    }
+  });
+
+  // Trigger response — OpenAI handles parallel queuing
+  dcSend({ type: "response.create" });
+
+  // Clear input
+  voiceChatInput.value = "";
+  voiceChatInput.focus();
+}
+
+voiceChatSendBtn?.addEventListener("click", sendVoiceChatMessage);
+voiceChatInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendVoiceChatMessage();
+  }
+});
+
+// Style-Switcher: regenerate report in different style
+document.getElementById("reportStyleBar")?.addEventListener("click", async (e) => {
+  const pill = e.target.closest(".reportStylePill");
+  if (!pill || pill.classList.contains("active") || pill.disabled) return;
+
+  const newStyle = pill.dataset.style;
+  const ctx = window._lastReportContext;
+  if (!ctx) return;
+
+  // Disable all pills during loading
+  document.querySelectorAll(".reportStylePill").forEach(p => p.disabled = true);
+  pill.classList.add("active");
+  document.querySelectorAll(".reportStylePill").forEach(p => { if (p !== pill) p.classList.remove("active"); });
+
+  postCallSummary.textContent = _uiLang === "de" ? "Wird neu generiert..." : "Regenerating...";
+  postCallInsights.innerHTML = "";
+  postCallActions.innerHTML = "";
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
+    } catch (_) {}
+
+    const res = await fetch("/api/memory-update", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        transcript: ctx.transcriptLog,
+        reportStyle: newStyle,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      showPostCallResults(data, ctx.transcriptLog);
+
+      // Save preferred style to user profile
+      try {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.access_token) {
+          const user = authSession.user;
+          if (user?.id) {
+            await supabase.from("user_profile").update({ preferred_report_style: newStyle }).eq("user_id", user.id);
+          }
+        }
+      } catch (_) {}
+    } else {
+      postCallSummary.textContent = _uiLang === "de" ? "Fehler bei der Regenerierung." : "Regeneration failed.";
+    }
+  } catch (e) {
+    console.error("Style switch error:", e);
+    postCallSummary.textContent = _uiLang === "de" ? "Fehler bei der Regenerierung." : "Regeneration failed.";
+  }
+
+  document.querySelectorAll(".reportStylePill").forEach(p => p.disabled = false);
+});
 
 const postCallCta = document.getElementById("postCallCta");
 const postCallCtaTitle = document.getElementById("postCallCtaTitle");
@@ -1148,6 +1566,9 @@ let pc = null;
 let stream = null;
 let audioEl = null;
 let dc = null;
+let audioCtx = null;
+let gainNode = null;
+let audioSource = null;
 // selectedVoiceMode declared above (before mode-pill handlers)
 
 let convoLog = [];
@@ -1181,6 +1602,15 @@ let closingResponseActive = false; // true only while OUR closing response is pl
 let closingResponseId = null; // ID of our closing response — prevents cancelled responses from triggering session end
 let endCleanlyAfterResponse = false; // Sophie was mid-sentence at 22s — just end after she finishes
 let pitchReportSignaled = false;    // Sales Pitch: Sophie announced report → end call after response
+let pitchReportBgPromise = null;    // Background report generation (starts at signal_pitch_report, parallel to Phase D audio)
+let pitchInactivityTimer = null;    // Auto-end salespitch after silence
+const PITCH_INACTIVITY_SECONDS = 60; // End session after 60s of no speech
+
+let inactivityTimer = null;         // Global inactivity auto-end (all modes)
+let inactivityWarningFired = false; // "Hey, bist du noch da?" already sent
+let lastActivityAt = 0;             // Timestamp of last speech/response event
+const INACTIVITY_WARNING_MS = 30 * 1000; // 30s silence → ask if still there
+const INACTIVITY_END_MS     = 30 * 1000; // 30s more → end session (60s total)
 
 let hasUserSpoken = false;
 
@@ -1229,17 +1659,19 @@ const _i18n = {
   ready:              { en: "Whenever you're ready.",        de: "Wann immer du bereit bist.",        fr: "Quand tu es prête." },
   start:              { en: "Start conversation",            de: "Gespräch starten",                  fr: "Démarrer la conversation" },
   end:                { en: "End conversation",              de: "Gespräch beenden",                  fr: "Terminer la conversation" },
+  start_brainstorm:   { en: "Start Brainstorming",          de: "Brainstorming starten",              fr: "Démarrer le brainstorming" },
+  end_brainstorm:     { en: "End Brainstorming",            de: "Brainstorming beenden",              fr: "Terminer le brainstorming" },
   connecting:         { en: "Connecting …",                  de: "Verbinde …",                        fr: "Connexion …" },
   sophie_coming:      { en: "Sophie is coming …",            de: "Sophie kommt …",                    fr: "Sophie arrive …" },
   sophie_listening:   { en: "Sophie is listening.",           de: "Sophie hört zu.",                   fr: "Sophie écoute." },
   sophie_waiting:     { en: "Sophie is waiting.",             de: "Sophie wartet.",                    fr: "Sophie attend." },
   tap_to_start:       { en: "Tap the button to start.",      de: "Tippe auf den Button, um zu starten.", fr: "Appuie sur le bouton pour commencer." },
-  report_title:       { en: "Your Thinking Report",          de: "Dein Denkbericht",                  fr: "Ton rapport de réflexion" },
-  creating_report:    { en: "Creating your Thinking Report …", de: "Dein Bericht wird erstellt …",       fr: "Création de ton rapport …" },
-  report_title_pitch: { en: "Your Sales Pitch Report",       de: "Dein Sales Pitch Report",            fr: "Ton rapport Sales Pitch" },
-  creating_report_pitch: { en: "Creating your Pitch Report …", de: "Dein Pitch Report wird erstellt …",  fr: "Création de ton rapport Pitch …" },
-  report_title_brainstorm: { en: "Your Brainstorming Report",  de: "Dein Brainstorming Bericht",         fr: "Ton rapport de brainstorming" },
-  report_title_meeting:    { en: "Your Meeting Report",        de: "Dein Meeting Bericht",               fr: "Ton rapport de réunion" },
+  report_title:       { en: "Your Report",                   de: "Dein Report",                       fr: "Ton rapport" },
+  creating_report:    { en: "Creating your Report …",         de: "Dein Report wird erstellt …",        fr: "Création de ton rapport …" },
+  report_title_pitch: { en: "Sales Pitch Report",             de: "Sales Pitch Report",                 fr: "Rapport Sales Pitch" },
+  creating_report_pitch: { en: "Creating your Report …",      de: "Dein Report wird erstellt …",        fr: "Création de ton rapport …" },
+  report_title_brainstorm: { en: "Brainstorming Report",      de: "Brainstorming Report",               fr: "Rapport de brainstorming" },
+  report_title_meeting:    { en: "Meeting Report",            de: "Meeting Report",                     fr: "Rapport de réunion" },
   session_ended:      { en: "Your session has ended.",       de: "Deine Sitzung ist beendet.",        fr: "Ta session est terminée." },
   new_session:        { en: "New session",                   de: "Neue Sitzung starten",              fr: "Nouvelle session" },
   close:              { en: "Close",                         de: "Schließen",                         fr: "Fermer" },
@@ -1256,6 +1688,7 @@ const _i18n = {
   view_report:        { en: "View Report",                   de: "Report ansehen",                    fr: "Voir le rapport" },
   auth_loading:       { en: "I'll be right with you …",      de: "Ich bin gleich bei dir …",           fr: "J'arrive tout de suite …" },
   wrapping_up:        { en: "Sophie is wrapping up.",         de: "Sophie schließt ab.",                fr: "Sophie termine." },
+  see_you_soon:       { en: "See you later, if you like ✦",   de: "Bis später, wenn du magst ✦",         fr: "À plus tard, si tu veux ✦" },
   preparing_closing:  { en: "Sophie is preparing a short closing.", de: "Sophie bereitet einen kurzen Abschluss vor.", fr: "Sophie prépare une brève conclusion." },
   err_timeout:        { en: "Connection timed out. Please try again.", de: "Zeitüberschreitung. Bitte versuche es erneut.", fr: "Délai dépassé. Réessaie." },
   err_connection:     { en: "Connection failed. Please try again.",   de: "Verbindung fehlgeschlagen. Bitte versuche es erneut.", fr: "Connexion échouée. Réessaie." },
@@ -1264,8 +1697,13 @@ const _i18n = {
   report_failed:      { en: "Report generation failed.",     de: "Report-Erstellung fehlgeschlagen.",  fr: "Échec de la génération du rapport." },
   no_summary:         { en: "No summary available.",         de: "Keine Zusammenfassung verfügbar.",   fr: "Aucun résumé disponible." },
   no_transcript:      { en: "No transcript available.",      de: "Kein Transkript verfügbar.",         fr: "Aucune transcription disponible." },
+  pause:              { en: "Pause",                         de: "Pause",                              fr: "Pause" },
+  resume:             { en: "Resume",                        de: "Fortsetzen",                         fr: "Reprendre" },
+  session_paused:     { en: "Session paused",                de: "Session pausiert",                    fr: "Session en pause" },
+  paused_hint:        { en: "Press Resume to continue.",     de: "Drücke Fortsetzen um weiterzumachen.", fr: "Appuie sur Reprendre pour continuer." },
 };
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
+function resetStartBtnStyle() { startBtn.style.background = ""; startBtn.style.color = ""; }
 
 // Patch static HTML elements that were rendered with defaults
 const _authLoadTxt = document.getElementById("authLoadingText");
@@ -1311,17 +1749,19 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
   if (_shareSpan) _shareSpan.textContent = t("share");
   const _dlSpan = document.querySelector("#downloadReportBtn span");
   if (_dlSpan) _dlSpan.textContent = t("download");
-  const _exportTitle = document.querySelector(".report-export-title");
-  if (_exportTitle) _exportTitle.textContent = t("export_label");
+  const _exportTitles = document.querySelectorAll(".report-export-title");
+  if (_exportTitles[0]) _exportTitles[0].textContent = t("export_label");
+  if (_exportTitles[1]) _exportTitles[1].textContent = _uiLang === "de" ? "Layout" : _uiLang === "fr" ? "Mise en page" : "Layout";
+  const _saveTemplateSpan = document.querySelector("#saveTemplateBtn span");
+  if (_saveTemplateSpan) _saveTemplateSpan.textContent = _uiLang === "de" ? "Als Vorlage" : _uiLang === "fr" ? "Sauvegarder" : "Save Template";
+  const _regenSpan = document.querySelector("#regenerateReportBtn span");
+  if (_regenSpan) _regenSpan.textContent = _uiLang === "de" ? "Neu generieren" : _uiLang === "fr" ? "Régénérer" : "Regenerate";
   // CTA title
   const _ctaTitle = document.getElementById("postCallCtaTitle");
   if (_ctaTitle) _ctaTitle.textContent = t("continue_sophie");
   // Reopen report button
   const _reopenBtn = document.getElementById("reopenReportBtn");
   if (_reopenBtn) _reopenBtn.textContent = "📋 " + t("view_report");
-  // Manage subscription link
-  const _manageSub = document.getElementById("manageSubLink");
-  if (_manageSub) _manageSub.textContent = t("manage_sub");
 }
 // ────────────────────────────────────────────────────────────
 
@@ -1348,7 +1788,7 @@ function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
 const modeIndicatorEl = document.getElementById("modeIndicator");
-const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", relax: "◆ Relax", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
+const modeIndicatorLabels = { explorer: "◆ Explorer", reflect: "◆ Reflect", decide: "◆ Decide", chill: "◆ Chill", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
 function updateModeIndicator(mode) {
   if (!modeIndicatorEl) return;
   if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
@@ -1357,6 +1797,37 @@ function updateModeIndicator(mode) {
   modeIndicatorEl.classList.add("visible");
 }
 function clearModeIndicator() { updateModeIndicator(null); }
+
+// Research indicator — shows which providers are being queried
+const researchEl = document.getElementById("researchIndicator");
+// Import toast — shows settings link during voice when Sophie mentions import
+function showImportToast() {
+  // Don't show twice
+  if (document.getElementById("importToast")) return;
+  const toast = document.createElement("a");
+  toast.id = "importToast";
+  toast.href = "/settings/";
+  toast.textContent = "Einstellungen öffnen →";
+  toast.style.cssText = "position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:12px;background:rgba(142,178,255,.18);border:1px solid rgba(142,178,255,.3);color:#c8d8ff;font-size:13px;font-weight:600;text-decoration:none;z-index:100;backdrop-filter:blur(8px);animation:fadeIn .3s ease;";
+  document.body.appendChild(toast);
+  // Auto-remove after 15 seconds
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 15000);
+}
+
+function showResearchIndicator() {
+  if (!researchEl) return;
+  researchEl.classList.add("visible");
+  // Activate all icons with staggered animation
+  const icons = researchEl.querySelectorAll(".ri-icon");
+  icons.forEach((icon, i) => {
+    setTimeout(() => icon.classList.add("active"), i * 200);
+  });
+}
+function hideResearchIndicator() {
+  if (!researchEl) return;
+  researchEl.classList.remove("visible");
+  researchEl.querySelectorAll(".ri-icon").forEach(icon => icon.classList.remove("active"));
+}
 
 function showReadyStatus() {
   statusEl.textContent = t("ready");
@@ -1416,9 +1887,11 @@ function normalizeActions(items) {
   if (!Array.isArray(items)) return [];
   return items
     .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const title = String(item.label || item.title || "").trim();
-      const detail = String(item.detail || item.text || "").trim();
+      if (!item) return null;
+      if (typeof item === "string") return { title: item, detail: "" };
+      if (typeof item !== "object") return null;
+      const title = String(item.label || item.title || item.task || "").trim();
+      const detail = String(item.detail || item.text || (item.owner ? `Owner: ${item.owner}${item.deadline ? ` | ${item.deadline}` : ''}` : "") || "").trim();
       if (!title && !detail) return null;
       return { title, detail };
     })
@@ -1463,7 +1936,7 @@ function buildReportText() {
     .filter(Boolean);
 
   const _rp = {
-    title:      { en: "Your Thinking Report",   de: "Dein Thinking Report",   fr: "Ton Thinking Report" },
+    title:      { en: "Your Report",            de: "Dein Report",            fr: "Ton Rapport" },
     summary:    { en: "Summary",                 de: "Zusammenfassung",        fr: "Résumé" },
     insights:   { en: "Key Insights",            de: "Wichtige Erkenntnisse",  fr: "Points clés" },
     actions:    { en: "Next Steps",              de: "Nächste Schritte",       fr: "Prochaines étapes" },
@@ -1502,6 +1975,22 @@ function isTranscriptTabActive() {
 }
 
 function buildReportHtml(withTranscript) {
+  // Smart Report: use the AI-generated HTML directly
+  const ctx = window._lastReportContext;
+  const reportHtml = ctx?.apiResult?.output?.report_html;
+  if (reportHtml) {
+    const transcript = withTranscript ? (postCallTranscript.textContent || "").trim() : "";
+    let html = reportHtml;
+    if (withTranscript && transcript) {
+      html += `<div style="margin-top:32px;padding-top:24px;border-top:1px solid #ddd;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:8px;">${_uiLang === "de" ? "Vollständiges Transkript" : "Full Transcript"}</div>
+        <pre style="white-space:pre-wrap;font-size:13px;color:#444;line-height:1.7;background:#f5f5f5;padding:16px;border-radius:8px;margin:0;font-family:inherit;">${escapeHtml(transcript)}</pre>
+      </div>`;
+    }
+    return html;
+  }
+
+  // Fallback: structured fields
   const summary = (postCallSummary.textContent || "").trim();
   const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
     .map(li => li.textContent.trim()).filter(Boolean);
@@ -1513,7 +2002,7 @@ function buildReportHtml(withTranscript) {
   const transcript = (postCallTranscript.textContent || "").trim();
 
   const _rp = {
-    title:      { en: "Your Thinking Report",   de: "Dein Thinking Report",   fr: "Ton Thinking Report" },
+    title:      { en: "Your Report",            de: "Dein Report",            fr: "Ton Rapport" },
     subtitle:   { en: "Sophie – Conversation Summary", de: "Sophie – Gesprächszusammenfassung", fr: "Sophie – Résumé de conversation" },
     summary:    { en: "Summary",                 de: "Zusammenfassung",        fr: "Résumé" },
     insights:   { en: "Key Insights",            de: "Wichtige Erkenntnisse",  fr: "Points clés" },
@@ -1523,17 +2012,17 @@ function buildReportHtml(withTranscript) {
   };
   const _rh = (k) => _rp[k]?.[_uiLang] || _rp[k]?.en || k;
 
-  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.75;color:#2c2420;max-width:600px;">
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 6px;">${_rh("title")}</p>
-<h2 style="font-size:20px;font-weight:700;color:#1a1210;margin:0 0 24px;padding-bottom:16px;border-bottom:1px solid #ede8e2;">${_rh("subtitle")}</h2>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("summary")}</p>
-<p style="margin:0 0 24px;color:#3a3028;">${escapeHtml(summary || "—")}</p>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("insights")}</p>
-<ul style="margin:0 0 24px;padding-left:20px;color:#3a3028;">${insightLines.map(x => `<li style="margin-bottom:6px;">${escapeHtml(x)}</li>`).join("") || "<li>—</li>"}</ul>
-<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("actions")}</p>
-<div style="margin:0 0 24px;">${actionItems.map(item => `<p style="margin:0 0 14px;"><strong style="color:#1a1210;">${escapeHtml(item.title)}</strong>${item.detail ? `<br><span style="color:#6a5a50;font-size:14px;">${escapeHtml(item.detail)}</span>` : ""}</p>`).join("") || "<p style='color:#3a3028;margin:0'>—</p>"}</div>
-${withTranscript && transcript ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 8px;">${_rh("transcript")}</p><p style="white-space:pre-wrap;font-size:13px;color:#5a4a40;line-height:1.7;background:#f5f2ee;padding:16px;border-radius:8px;margin:0;">${escapeHtml(transcript)}</p>` : ""}
-<p style="margin:32px 0 0;font-size:12px;color:#b0a090;">${_rh("footer")}</p>
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.75;color:#1a1a1a;max-width:600px;">
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 6px;">${_rh("title")}</p>
+<h2 style="font-size:20px;font-weight:700;color:#111;margin:0 0 24px;padding-bottom:16px;border-bottom:1px solid #ddd;">${_rh("subtitle")}</h2>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 8px;">${_rh("summary")}</p>
+<p style="margin:0 0 24px;color:#333;">${escapeHtml(summary || "—")}</p>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 8px;">${_rh("insights")}</p>
+<ul style="margin:0 0 24px;padding-left:20px;color:#333;">${insightLines.map(x => `<li style="margin-bottom:6px;">${escapeHtml(x)}</li>`).join("") || "<li>—</li>"}</ul>
+<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 8px;">${_rh("actions")}</p>
+<div style="margin:0 0 24px;">${actionItems.map(item => `<p style="margin:0 0 14px;"><strong style="color:#111;">${escapeHtml(item.title)}</strong>${item.detail ? `<br><span style="color:#666;font-size:14px;">${escapeHtml(item.detail)}</span>` : ""}</p>`).join("") || "<p style='color:#333;margin:0'>—</p>"}</div>
+${withTranscript && transcript ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 8px;">${_rh("transcript")}</p><p style="white-space:pre-wrap;font-size:13px;color:#444;line-height:1.7;background:#f5f5f5;padding:16px;border-radius:8px;margin:0;">${escapeHtml(transcript)}</p>` : ""}
+<p style="margin:32px 0 0;font-size:12px;color:#999;">${_rh("footer")}</p>
 </div>`;
 }
 
@@ -1549,7 +2038,7 @@ function buildReportPlainText(withTranscript) {
   const transcript = (postCallTranscript.textContent || "").trim();
 
   const _tp = {
-    title:      { en: "Your Thinking Report",    de: "Dein Thinking Report",     fr: "Ton Thinking Report" },
+    title:      { en: "Your Report",              de: "Dein Report",              fr: "Ton Rapport" },
     summary:    { en: "SUMMARY",                  de: "ZUSAMMENFASSUNG",          fr: "RÉSUMÉ" },
     insights:   { en: "KEY INSIGHTS",             de: "WICHTIGE ERKENNTNISSE",    fr: "POINTS CLÉS" },
     actions:    { en: "NEXT STEPS",               de: "NÄCHSTE SCHRITTE",         fr: "PROCHAINES ÉTAPES" },
@@ -1626,73 +2115,94 @@ function downloadReport() {
   const withTranscript = isTranscriptTabActive();
   const datePrefix = getDatePrefix();
   const topicSlug = lastReportExport.topicSlug || "session";
-
-  const summary = (postCallSummary.textContent || "").trim();
-  const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
-    .map(li => li.textContent.trim()).filter(Boolean);
-  const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
-    .map((node) => ({
-      title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
-      detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
-    })).filter(item => item.title || item.detail);
   const transcript = (postCallTranscript.textContent || "").trim();
+
+  // Smart Report: export the AI-generated HTML directly
+  const ctx = window._lastReportContext;
+  const reportHtml = ctx?.apiResult?.output?.report_html;
+  const reportBlocks = ctx?.apiResult?.output?.report_blocks;
+  const reportProviders = ctx?.apiResult?.output?.report_providers || [];
+  const titleBlock = reportBlocks?.find(b => b.type === 'title');
+  const reportTitle = titleBlock?.text || ctx?.apiResult?.output?.session_title || t("report_title");
+
+  let bodyContent;
+  if (reportHtml) {
+    // AI-generated HTML — use directly
+    bodyContent = reportHtml;
+    if (reportProviders.length > 1) {
+      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#999;">Verified by ${reportProviders.length} AIs</div>`;
+    }
+  } else if (reportBlocks) {
+    // Use the same block renderer but for standalone HTML
+    bodyContent = renderReportBlocks(reportBlocks);
+    if (reportProviders.length > 1) {
+      bodyContent += `<div style="text-align:center;margin-top:16px;font-size:11px;color:#999;">Verified by ${reportProviders.length} AIs</div>`;
+    }
+  } else {
+    // Legacy: read from DOM
+    const summary = (postCallSummary.textContent || "").trim();
+    const insightLines = Array.from(postCallInsights.querySelectorAll("li"))
+      .map(li => li.textContent.trim()).filter(Boolean);
+    const actionItems = Array.from(postCallActions.querySelectorAll(".report-action-item"))
+      .map((node) => ({
+        title: node.querySelector(".report-action-title")?.textContent.replace(/^•\s*/, "").trim() || "",
+        detail: node.querySelector(".report-action-detail")?.textContent.trim() || ""
+      })).filter(item => item.title || item.detail);
+
+    bodyContent = `<div class="section"><p class="label">${_uiLang === "de" ? "Zusammenfassung" : "Summary"}</p><p>${escapeHtml(summary)}</p></div>`;
+    if (insightLines.length) bodyContent += `<div class="section"><p class="label">${_uiLang === "de" ? "Erkenntnisse" : "Insights"}</p><ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul></div>`;
+    if (actionItems.length) bodyContent += `<div class="section"><p class="label">${_uiLang === "de" ? "Nächste Schritte" : "Next Steps"}</p>${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}</div>`;
+  }
+
+  if (withTranscript && transcript) {
+    bodyContent += `<div class="section"><p class="label">${_uiLang === "de" ? "Transkript" : "Transcript"}</p><pre>${escapeHtml(transcript)}</pre></div>`;
+  }
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="${_uiLang || "en"}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sophie – ${t("report_title")}</title>
+<title>Sophie – ${escapeHtml(reportTitle)}</title>
 <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf9f6;color:#2c2420;margin:0;padding:40px 24px;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#1a1a1a;margin:0;padding:40px 24px;}
   .wrap{max-width:640px;margin:0 auto;}
-  .label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c4a882;margin:0 0 10px;}
-  h1{font-size:26px;font-weight:700;color:#1a1210;margin:0 0 8px;}
-  .subtitle{font-size:14px;color:#a09080;margin:0 0 40px;}
-  .section{margin:0 0 36px;padding-bottom:36px;border-bottom:1px solid #ede8e2;}
-  .section:last-child{border-bottom:none;}
-  p{margin:0;font-size:16px;line-height:1.8;color:#3a3028;}
+  .label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 10px;}
+  h1{font-size:26px;font-weight:700;color:#111;margin:0 0 8px;}
+  .subtitle{font-size:14px;color:#888;margin:0 0 28px;}
+  .section{margin:0 0 24px;}
+  .report-section{margin-top:20px;padding-top:20px;border-top:1px solid #ddd;}
+  .report-section:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .report-heading{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin:0 0 10px;}
+  .report-summary-text{font-size:16px;line-height:1.8;color:#333;margin:0;}
+  .report-insight-list{list-style:none;padding:0;margin:0;}
+  .report-insight-list li{padding:6px 0 6px 16px;position:relative;font-size:15px;line-height:1.7;color:#333;}
+  .report-insight-list li::before{content:"\\2022";position:absolute;left:0;color:#333;font-weight:bold;}
+  .report-action-item{margin-bottom:14px;}
+  .report-action-title{font-size:15px;font-weight:600;color:#111;}
+  p{margin:0;font-size:16px;line-height:1.8;color:#333;}
   ul{margin:0;padding-left:20px;}
-  li{margin:0 0 10px;font-size:16px;line-height:1.7;color:#3a3028;}
-  li::marker{color:#c4a882;}
-  .action-title{font-size:16px;font-weight:700;color:#1a1210;margin:0 0 4px;}
-  .action-detail{font-size:15px;color:#6a5a50;margin:0 0 18px;}
-  pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;line-height:1.75;color:#5a4a40;background:rgba(0,0,0,.025);border:1px solid #ede8e2;border-radius:12px;padding:20px;margin:0;}
-  .footer{margin-top:48px;font-size:12px;color:#b0a090;text-align:center;}
+  li{margin:0 0 8px;font-size:15px;line-height:1.7;color:#333;}
+  li::marker{color:#333;}
+  .action-title{font-size:16px;font-weight:700;color:#111;margin:0 0 4px;}
+  .action-detail{font-size:15px;color:#666;margin:0 0 18px;}
+  pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;line-height:1.75;color:#444;background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:20px;margin:0;}
+  blockquote{margin:0;padding:14px 20px;background:#f5f5f5;border-left:3px solid #333;border-radius:0 14px 14px 0;font-style:italic;font-size:15px;line-height:1.7;color:#333;}
+  .footer{margin-top:48px;font-size:12px;color:#999;text-align:center;}
+  @media print{body{padding:20px;background:#fff;}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <p class="label">${t("report_title")}</p>
-  <h1>${_uiLang === "de" ? "Sophie – Gesprächszusammenfassung" : _uiLang === "fr" ? "Sophie – Résumé de conversation" : "Sophie – Conversation Summary"}</h1>
+  <h1>${escapeHtml(reportTitle)}</h1>
   <p class="subtitle">${new Date().toLocaleDateString(_uiLang === "de" ? "de-DE" : _uiLang === "fr" ? "fr-FR" : "en-US", {day:"numeric",month:"long",year:"numeric"})}</p>
-
-  <div class="section">
-    <p class="label">${_uiLang === "de" ? "Zusammenfassung" : _uiLang === "fr" ? "Résumé" : "Summary"}</p>
-    <p>${escapeHtml(summary || "—")}</p>
-  </div>
-
-  <div class="section">
-    <p class="label">${_uiLang === "de" ? "Wichtige Erkenntnisse" : _uiLang === "fr" ? "Points clés" : "Key Insights"}</p>
-    <ul>${insightLines.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
-  </div>
-
-  <div class="section">
-    <p class="label">${_uiLang === "de" ? "Nächste Schritte" : _uiLang === "fr" ? "Prochaines étapes" : "Next Steps"}</p>
-    ${actionItems.map(item => `<p class="action-title">${escapeHtml(item.title)}</p><p class="action-detail">${escapeHtml(item.detail)}</p>`).join("")}
-  </div>
-
-  ${withTranscript && transcript ? `<div class="section">
-    <p class="label">${_uiLang === "de" ? "Vollständiges Transkript" : _uiLang === "fr" ? "Transcription complète" : "Full Transcript"}</p>
-    <pre>${escapeHtml(transcript)}</pre>
-  </div>` : ""}
-
+  ${bodyContent}
   <div class="footer">${_uiLang === "de" ? "Erstellt mit Sophie" : _uiLang === "fr" ? "Créé avec Sophie" : "Created with Sophie"} · meet-sophie.com</div>
 </div>
 </body>
 </html>`;
 
-  const filename = `${datePrefix}_sophie-thinking-report_${topicSlug}.html`;
+  const filename = `${datePrefix}_sophie-report_${topicSlug}.html`;
   const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
 
   // iOS Safari: blob downloads via a.click() often silently fail.
@@ -1751,45 +2261,193 @@ function getDatePrefix() {
   return `${year}-${month}-${day}`;
 }
 
+// Start report generation and poll progress
+async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
+  if (!inlineReportProgress || !inlineReportProgressBar) return;
+
+  // Keep fake loader running for smooth animation — don't reset bar position
+  // Fake loader provides continuous visual feedback between real progress updates
+  if (!window.__sophieLoaderInterval) {
+    // If no fake loader running, start one
+    startFakeReportLoader();
+  }
+  inlineReportProgress.style.display = "block";
+  const softHint = document.getElementById("softHint");
+  const percentEl = document.getElementById("inlineReportPercent");
+
+  // Track minimum progress — bar only goes UP, never backwards
+  let minProgress = parseFloat(inlineReportProgressBar.style.width) || 5;
+
+  // Skip firing generate-report if already started in background (parallel pitch flow)
+  if (!opts.skipGenerate) {
+    const transcriptText = transcriptLog
+      .filter(m => m.text && m.text.trim())
+      .map(m => `[${m.role}]: ${m.text}`)
+      .join("\n");
+
+    const genHeaders = { "Content-Type": "application/json" };
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
+    } catch (_) {}
+
+    fetch("/api/ai/generate-report", {
+      method: "POST",
+      headers: genHeaders,
+      body: JSON.stringify({
+        session_id: sessionId,
+        transcript_text: transcriptText,
+        session_mode: selectedVoiceMode || null,
+      }),
+    }).catch(e => console.error("[report] generate fetch failed:", e?.message));
+  } else {
+    console.log(`[report] skipping generate — already started in background`);
+  }
+
+  // Poll for progress — fake loader keeps bar moving between real updates
+  const maxAttempts = 90;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise(r => setTimeout(r, 2000));
+
+    try {
+      const res = await fetch(`/api/ai/report-status?session_id=${sessionId}`);
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      // Only update bar if real progress is HIGHER than current position
+      const realProgress = Math.max(5, Math.min(98, data.progress || 0));
+      if (realProgress > minProgress) {
+        minProgress = realProgress;
+        inlineReportProgressBar.style.width = realProgress + "%";
+      }
+
+      if (percentEl && data.detail) percentEl.textContent = data.detail;
+
+      if (softHint && data.detail) {
+        softHint.textContent = data.detail;
+        softHint.style.display = "block";
+      }
+
+      if (data.status === "done" && data.report_html) {
+        // Smooth finish: stop fake loader, animate to 100%, brief pause, then show report
+        stopFakeReportLoader(false);
+        inlineReportProgressBar.style.width = "100%";
+        if (percentEl) percentEl.textContent = "Report fertig!";
+        if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
+
+        // Brief pause at 100% so user sees completion before report slides in
+        await new Promise(r => setTimeout(r, 800));
+        inlineReportProgress.style.display = "none";
+
+        showPostCallResults({
+          session: { id: sessionId },
+          output: {
+            session_title: data.title,
+            report_html: data.report_html,
+            report_providers: data.report_providers,
+          },
+        }, transcriptLog, opts);
+        return;
+      }
+
+      if (data.status === "failed") {
+        stopFakeReportLoader(true);
+        if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
+        showPostCallResults({
+          output: { short_summary: data.detail || "Report konnte nicht erstellt werden.", key_insights: [], action_plan: [] }
+        }, transcriptLog, opts);
+        return;
+      }
+    } catch (e) {
+      console.error("[report-poll] error:", e?.message);
+    }
+  }
+
+  // Timeout
+  inlineReportProgress.style.display = "none";
+  if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
+  showPostCallResults({
+    output: { short_summary: "Report-Generierung hat zu lange gedauert.", key_insights: [], action_plan: [] }
+  }, transcriptLog, opts);
+}
+
 function startFakeReportLoader() {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
   inlineReportProgress.style.display = "block";
   inlineReportProgressBar.style.width = "0%";
+  const percentEl = document.getElementById("inlineReportPercent");
+
+  const stages = [
+    { at: 0, text: "Transcript wird analysiert..." },
+    { at: 25, text: "Kriterien werden bewertet..." },
+    { at: 50, text: "Scorecard wird erstellt..." },
+    { at: 75, text: "Report wird finalisiert..." },
+    { at: 90, text: "Fast fertig..." },
+  ];
 
   let progress = 8;
   inlineReportProgressBar.style.width = progress + "%";
+  if (percentEl) percentEl.textContent = stages[0].text;
 
   window.__sophieLoaderInterval = setInterval(() => {
     if (progress < 35) {
-      progress += Math.random() * 10;
+      progress += Math.random() * 8;
     } else if (progress < 62) {
-      progress += Math.random() * 7;
+      progress += Math.random() * 5;
     } else if (progress < 84) {
-      progress += Math.random() * 4;
+      progress += Math.random() * 3;
     } else if (progress < 92) {
-      progress += Math.random() * 1.5;
+      progress += Math.random() * 1;
     }
 
     if (progress > 92) progress = 92;
     inlineReportProgressBar.style.width = progress + "%";
-  }, 380);
+
+    if (percentEl) {
+      const stage = [...stages].reverse().find(s => progress >= s.at);
+      if (stage) percentEl.textContent = stage.text;
+    }
+  }, 500);
 }
 
-function stopFakeReportLoader() {
+function resetPostCallUI() {
+  // Report was disabled — skip report panel, reset to ready state
+  startBtn.disabled = false;
+  startBtn.textContent = t("start"); resetStartBtnStyle();
+  startBtn.onclick = startVoice;
+  logoutBtn.disabled = false;
+  headline.textContent = t("sophie_waiting");
+  setStatus(t("ready"));
+  modeBar.style.display = "flex";
+  const rTgl = document.getElementById("reportToggleLabel");
+  if (rTgl) rTgl.style.display = "flex";
+  showBackground(false);
+}
+
+function stopFakeReportLoader(hideBar = true) {
   if (window.__sophieLoaderInterval) {
     clearInterval(window.__sophieLoaderInterval);
     window.__sophieLoaderInterval = null;
   }
+  // Cancel any pending hide timeout
+  if (window.__sophieLoaderHideTimeout) {
+    clearTimeout(window.__sophieLoaderHideTimeout);
+    window.__sophieLoaderHideTimeout = null;
+  }
 
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
-  inlineReportProgressBar.style.width = "100%";
-
-  setTimeout(() => {
-    inlineReportProgress.style.display = "none";
-    inlineReportProgressBar.style.width = "0%";
-  }, 420);
+  if (hideBar) {
+    inlineReportProgressBar.style.width = "100%";
+    const percentEl = document.getElementById("inlineReportPercent");
+    if (percentEl) percentEl.textContent = "";
+    window.__sophieLoaderHideTimeout = setTimeout(() => {
+      inlineReportProgress.style.display = "none";
+      inlineReportProgressBar.style.width = "0%";
+      window.__sophieLoaderHideTimeout = null;
+    }, 420);
+  }
 }
 
 function clearClosingTimers() {
@@ -1825,6 +2483,140 @@ function configurePostCallCta(triggeredByLimit = false) {
   postCallCta.style.display = "block";
 
   function goHome() { window.location.href = "/"; }
+
+  // Remove any previously added demo button
+  const oldDemo = document.getElementById("postCallDemoBtn");
+  if (oldDemo) oldDemo.remove();
+
+  // Sales Pitch: show "Pitch again" + "Sophie pitcht für dich"
+  if (selectedVoiceMode === "salespitch") {
+    postCallCtaTitle.textContent = "";
+
+    // Extract pitch topic + scores from the just-generated report for retry handover
+    const reportTitle = document.querySelector(".postCallTitle")?.textContent || "";
+    const pitchTopic = reportTitle || voiceHandover?.pitchTopic || "deinen Pitch";
+
+    // Parse scores from report HTML for retry context
+    const reportEl = document.getElementById("postCallSummary");
+    const reportHtml = reportEl?.innerHTML || "";
+    const extractScoreFromHtml = (criterion) => {
+      const re = new RegExp(criterion + '[\\s\\S]*?(\\d+\\.?\\d*)\\s*/\\s*5', 'i');
+      const m = reportHtml.match(re);
+      return m ? parseFloat(m[1]) : 0;
+    };
+    const pitchScores = {
+      content: {
+        clarity: extractScoreFromHtml("Clarity"),
+        problem_sharpness: extractScoreFromHtml("Problem Sharpness"),
+        value_proposition: extractScoreFromHtml("Value Proposition"),
+        structure: extractScoreFromHtml("Structure"),
+        differentiation: extractScoreFromHtml("Differentiation"),
+        credibility: extractScoreFromHtml("Credibility"),
+        audience_fit: extractScoreFromHtml("Audience Fit"),
+      },
+      delivery: {
+        opening: extractScoreFromHtml("Opening"),
+        closing: extractScoreFromHtml("Closing"),
+        voice_rhythm: extractScoreFromHtml("Voice.*Rhythm"),
+        rhetoric_language: extractScoreFromHtml("Rhetoric.*Language"),
+        authenticity: extractScoreFromHtml("Authenticity"),
+        persuasiveness: extractScoreFromHtml("Persuasiveness"),
+      },
+      overall: 0,
+    };
+    // Extract overall from large number in report
+    const overallMatch = reportHtml.match(/font-size:\s*48px[^>]*>(\d+\.?\d*)/);
+    if (overallMatch) pitchScores.overall = Math.round(parseFloat(overallMatch[1]) * 20);
+
+    // Extract strengths/weaknesses from report text
+    const tmpDiv = document.createElement("div");
+    tmpDiv.innerHTML = reportHtml;
+    const allText = tmpDiv.textContent || "";
+    const weaknessSection = allText.match(/(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)[:\s]*([\s\S]*?)(?:Nächste|Next|Prochaines|Verdict|$)/i);
+    const pitchWeaknesses = weaknessSection ? weaknessSection[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+    const strengthSection = allText.match(/(?:Stärken|Strengths|Forces)[:\s]*([\s\S]*?)(?:Schwächen|Weaknesses|Faiblesses|Verbesserung)/i);
+    const pitchStrengths = strengthSection ? strengthSection[1].split(/[•\-\n]/).map(s => s.trim()).filter(s => s.length > 5).slice(0, 3) : [];
+
+    function buildPitchRetryHandover() {
+      return {
+        funnelMode: "salespitch",
+        language: _uiLang || "de",
+        pitchRetry: true,
+        pitchTopic: pitchTopic,
+        previousScores: pitchScores,
+        previousWeaknesses: pitchWeaknesses,
+        previousStrengths: pitchStrengths,
+        previousVersion: (voiceHandover?.previousVersion || 1),
+        audience: voiceHandover?.audience || "",
+        summary: `PITCH RETRY: Du hast "${pitchTopic}" bereits gepitcht. Score: ${pitchScores.overall}/100. Schwächen: ${pitchWeaknesses.join(', ')}. Phase A NICHT nochmal stellen.`,
+        recentMessages: [{ role: "user", content: `Nochmal "${pitchTopic}".` }],
+        userName: "",
+      };
+    }
+
+    postCallPrimaryBtn.textContent = _uiLang === "de" ? "▲ Pitch again" : _uiLang === "fr" ? "▲ Pitcher à nouveau" : "▲ Pitch again";
+    postCallPrimaryBtn.onclick = () => {
+      localStorage.setItem("sophie_session_mode", "salespitch");
+      sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(buildPitchRetryHandover()));
+      window.location.reload();
+    };
+
+    postCallSecondaryBtn.textContent = _uiLang === "de" ? "Zurück zum Start" : _uiLang === "fr" ? "Retour" : "Back to start";
+    postCallSecondaryBtn.onclick = goHome;
+
+    // Add "Sophie pitcht für dich" button
+    const demoBtn = document.createElement("button");
+    demoBtn.id = "postCallDemoBtn";
+    demoBtn.type = "button";
+    demoBtn.className = "smallBtn secondary";
+    demoBtn.style.cssText = "background:linear-gradient(135deg,#c4a882,#a08060);color:#fff;border:none;";
+    demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+    demoBtn.onclick = async () => {
+      demoBtn.disabled = true;
+      demoBtn.textContent = "Wird vorbereitet...";
+      try {
+        const ctx = window._lastReportContext;
+        const sid = ctx?.sessionId || sessionId;
+        if (!sid) throw new Error("Keine Session-ID");
+
+        // Generate demo pitch SERVER-SIDE (reliable text AI, no hallucination)
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        const token = authSess?.access_token;
+        if (!token) throw new Error("Nicht eingeloggt");
+        const resp = await fetch("/api/settings?action=generate-demo-pitch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ session_id: sid }),
+        });
+        const result = await resp.json();
+        if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
+
+        // Store pitch text separately (too large for HTTP header)
+        sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
+        const handover = {
+          funnelMode: "salespitch",
+          language: _uiLang || "de",
+          pitchDemo: true,
+          pitchTopic: pitchTopic,
+          hasDemoPitch: true,
+          summary: `DEMO PITCH: Vorab generierter Text.`,
+          recentMessages: [],
+          userName: "",
+        };
+        localStorage.setItem("sophie_session_mode", "salespitch");
+        sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
+        window.location.reload();
+      } catch (e) {
+        console.error("demo generation failed:", e);
+        demoBtn.disabled = false;
+        demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+        alert("Demo-Pitch konnte nicht vorbereitet werden: " + (e?.message || "Unbekannt"));
+      }
+    };
+    postCallPrimaryBtn.parentNode.insertBefore(demoBtn, postCallSecondaryBtn);
+
+    return;
+  }
 
   if (triggeredByLimit) {
     if (isPremium || plan) {
@@ -1976,9 +2768,102 @@ function renderSalesPitchReportHtml(report) {
   return html;
 }
 
+// Dynamic block renderer for smart reports
+function renderReportBlocks(blocks) {
+  if (!blocks || !Array.isArray(blocks)) return null;
+  const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const scoreColor = (s) => s >= 4 ? "#4a8c5c" : s >= 3 ? "#b89a5a" : "#b85a4a";
+
+  return blocks.map(block => {
+    switch (block.type) {
+      case 'title':
+        return ''; // handled by panel title
+
+      case 'summary':
+        return `<section class="report-section" style="margin-top:0;padding-top:0;border-top:none;">
+          <p class="report-summary-text">${esc(block.text)}</p></section>`;
+
+      case 'highlights':
+        return `<section class="report-section">
+          <h4 class="report-heading" style="color:#c4a882;">Highlights</h4>
+          ${(block.items||[]).map(h => `<div style="padding:10px 14px;margin-bottom:8px;background:rgba(196,168,130,0.08);border-left:3px solid #c4a882;border-radius:0 12px 12px 0;font-size:14px;line-height:1.6;color:#2a2420;">${esc(h)}</div>`).join('')}
+          </section>`;
+
+      case 'insights':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'Erkenntnisse':_uiLang==='fr'?'Points cl\u00e9s':'Key Insights'}</h4>
+          <ul class="report-insight-list">${(block.items||[]).map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+          </section>`;
+
+      case 'scorecard':
+        return `<section class="report-section">
+          <h4 class="report-heading">Scorecard</h4>
+          <div style="background:#faf8f5;border-radius:16px;padding:16px 18px;">
+          ${(block.items||[]).map(s => `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:13px;color:#3a3028;min-width:120px;">${esc(s.label)}</span>
+            <div style="flex:1;height:8px;background:#ede8e2;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:${(s.score/5)*100}%;background:${scoreColor(s.score)};border-radius:4px;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;min-width:30px;text-align:right;color:${scoreColor(s.score)}">${s.score}/5</span>
+          </div>
+          ${s.note ? `<div style="font-size:11px;color:#7a6e60;margin:-6px 0 8px 130px;">${esc(s.note)}</div>` : ''}`).join('')}
+          </div></section>`;
+
+      case 'decisions':
+        return `<section class="report-section">
+          <h4 class="report-heading" style="color:#4a8c5c;">${_uiLang==='de'?'Beschl\u00fcsse':'Decisions'}</h4>
+          ${(block.items||[]).map(d => `<div style="padding:4px 0 4px 20px;position:relative;font-size:14px;line-height:1.5;"><span style="position:absolute;left:0;color:#4a8c5c;font-weight:bold;">\u2713</span>${esc(d)}</div>`).join('')}
+          </section>`;
+
+      case 'actions':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'N\u00e4chste Schritte':'Action Items'}</h4>
+          ${(block.items||[]).map(a => {
+            const task = typeof a === 'string' ? a : a.task;
+            const meta = typeof a === 'object' && a.owner ? `<div style="font-size:12px;color:#7a6e60;margin-top:2px;">${a.owner}${a.deadline && a.deadline !== 'none' ? ` | ${a.deadline}` : ''}</div>` : '';
+            return `<div class="report-action-item"><div class="report-action-title" style="font-weight:600;color:#2a2420;">${esc(task)}</div>${meta}</div>`;
+          }).join('')}
+          </section>`;
+
+      case 'participants':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'Teilnehmer':'Participants'}</h4>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${(block.items||[]).map(p => `<span style="padding:4px 12px;border-radius:12px;background:rgba(42,36,32,0.06);font-size:13px;color:#3a3028;">${esc(p)}</span>`).join('')}
+          </div></section>`;
+
+      case 'questions':
+        return `<section class="report-section">
+          <h4 class="report-heading">${_uiLang==='de'?'Offene Fragen':'Open Questions'}</h4>
+          <ul style="list-style:none;padding:0;">${(block.items||[]).map(q => `<li style="padding:4px 0 4px 16px;position:relative;font-size:13px;line-height:1.5;color:#7a6e60;"><span style="position:absolute;left:0;color:#b89a5a;font-weight:bold;">?</span>${esc(q)}</li>`).join('')}</ul>
+          </section>`;
+
+      case 'quote':
+        return `<section class="report-section">
+          <blockquote style="margin:0;padding:12px 18px;background:rgba(196,168,130,0.06);border-left:3px solid #c4a882;border-radius:0 12px 12px 0;font-style:italic;font-size:14px;line-height:1.6;color:#3a3028;">
+          "${esc(block.text)}"${block.source ? `<div style="font-size:11px;color:#a09080;margin-top:6px;">— ${esc(block.source)}</div>` : ''}
+          </blockquote></section>`;
+
+      case 'metadata':
+        const parts = [];
+        if (block.date) parts.push(block.date);
+        if (block.duration) parts.push(block.duration);
+        if (block.mood) parts.push(block.mood);
+        if (parts.length === 0) return '';
+        return `<div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;">
+          ${parts.map(p => `<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:rgba(42,36,32,0.05);color:#7a6e60;">${esc(p)}</span>`).join('')}
+          </div>`;
+
+      default:
+        return '';
+    }
+  }).filter(Boolean).join('');
+}
+
 function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   const triggeredByLimit = !!opts.triggeredByLimit;
   const pitchReport = apiResult?.output?.sales_pitch_report || null;
+  const reportBlocks = apiResult?.output?.report_blocks || null;
 
   const summary =
     apiResult?.output?.short_summary ||
@@ -1994,8 +2879,35 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
 
   lastReportExport.topicSlug = slugifyFilenamePart(sessionTitle);
 
-  if (pitchReport) {
-    // Sales Pitch Report — custom layout
+  const reportHtml = apiResult?.output?.report_html || null;
+
+  if (reportHtml) {
+    // Smart HTML Report — AI generated the complete HTML
+    const titleEl = document.querySelector(".postCallTitle");
+    const subtitleEl = document.querySelector(".postCallSubtitle");
+    if (titleEl) titleEl.textContent = apiResult?.output?.session_title || sessionTitle || "Report";
+    if (subtitleEl) subtitleEl.textContent = "";
+
+    const headingSummary = document.getElementById("reportHeadingSummary");
+    const headingInsights = document.getElementById("reportHeadingInsights");
+    const headingActions = document.getElementById("reportHeadingActions");
+    if (headingSummary) headingSummary.style.display = "none";
+    if (headingInsights) headingInsights.style.display = "none";
+    if (headingActions) headingActions.style.display = "none";
+
+    postCallSummary.innerHTML = reportHtml;
+    postCallInsights.innerHTML = "";
+    postCallActions.innerHTML = "";
+
+    const providers = apiResult?.output?.report_providers || [];
+    if (providers.length > 1) {
+      const badge = document.createElement("div");
+      badge.style.cssText = "text-align:center;margin-top:16px;font-size:10px;color:#999;letter-spacing:.3px;";
+      badge.textContent = `Verified by ${providers.length} AIs`;
+      postCallSummary.appendChild(badge);
+    }
+  } else if (pitchReport) {
+    // Sales Pitch Report — custom layout (legacy)
     const titleEl = document.querySelector(".postCallTitle");
     const subtitleEl = document.querySelector(".postCallSubtitle");
     if (titleEl) titleEl.textContent = t("report_title_pitch");
@@ -2040,6 +2952,39 @@ function showPostCallResults(apiResult, transcriptLog, opts = {}) {
   }
 
   postCallTranscript.textContent = transcriptText || t("no_transcript");
+
+  // Show/hide template + regenerate buttons (only for smart HTML reports)
+  if (saveTemplateBtn) saveTemplateBtn.style.display = reportHtml ? "" : "none";
+  if (regenerateReportBtn) regenerateReportBtn.style.display = reportHtml ? "" : "none";
+
+  // Show save-template hint for first-time reports (no template saved yet)
+  if (reportHtml && saveTemplateBtn) {
+    const hintId = "saveTemplateHint";
+    if (!document.getElementById(hintId)) {
+      const hint = document.createElement("div");
+      hint.id = hintId;
+      hint.style.cssText = "text-align:center;padding:10px 16px;margin-top:8px;font-size:12px;color:rgba(255,255,255,.5);line-height:1.5;";
+      const hintText = _uiLang === "de"
+        ? 'Gefällt dir das Layout? Speichere es als Vorlage — zukünftige Reports nutzen dann dein Design.'
+        : _uiLang === "fr"
+        ? 'Tu aimes ce design ? Sauvegarde-le comme modèle pour tes futurs rapports.'
+        : 'Like this layout? Save it as a template — future reports will use your design.';
+      hint.textContent = hintText;
+      saveTemplateBtn.closest(".report-export")?.appendChild(hint);
+    }
+  }
+
+  // No style pills — AI decides the format
+  const styleBar = document.getElementById("reportStyleBar");
+  if (styleBar) styleBar.style.display = "none";
+
+  // Store current transcript + session for regeneration
+  window._lastReportContext = {
+    transcriptLog,
+    transcriptText,
+    sessionId: apiResult?.session?.id,
+    apiResult,
+  };
 
   configurePostCallCta(triggeredByLimit);
   showSummaryView();
@@ -2120,6 +3065,8 @@ function cleanupLiveSession() {
   stopCountdown();
   clearClosingTimers();
   stopFakeReportLoader();
+  pauseBtn.style.display = "none";
+  isPaused = false;
 
   if (dc) {
     try { dc.close(); } catch(e){}
@@ -2154,6 +3101,90 @@ function cleanupLiveSession() {
   softEndFinalizing = false;
   resetClosingState();
 }
+
+// ── Pause / Resume ─────────────────────────────────────────────────────────
+function pauseSession() {
+  if (isPaused || !pc) return;
+  isPaused = true;
+  console.log(`[${runId}] [pause] pausing session`);
+
+  // Snapshot transcript before teardown
+  const partial = (partialAssistant || "").trim();
+  pausedConvoLog = [...convoLog];
+  if (partial) pausedConvoLog.push({ role: "assistant", text: partial });
+
+  // Calculate elapsed time to restore on resume
+  pausedElapsedMs = talkStartedAt ? Date.now() - talkStartedAt : 0;
+
+  // Tear down WebRTC without clearing convoLog or billing
+  stopDynamicResets();
+  stopCountdown();
+  stopInactivityTimer();
+  clearClosingTimers();
+
+  if (dc)     { try { dc.close(); } catch(e){} dc = null; }
+  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(e){} stream = null; }
+  if (pc)     { try { pc.close(); } catch(e){} pc = null; }
+  if (audioEl){ try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
+
+  // UI: paused state
+  pauseBtn.textContent = t("resume") || "Resume";
+  pauseBtn.classList.add("is-paused");
+  startBtn.disabled = true;
+  showLiveBadge(false);
+  headline.textContent = t("session_paused") || "Session paused";
+  setStatus(t("paused_hint") || "Press Resume to continue.");
+}
+
+async function resumeSession() {
+  if (!isPaused) return;
+  isPaused = false;
+  console.log(`[${runId}] [pause] resuming session`);
+
+  pauseBtn.textContent = "Pause";
+  pauseBtn.classList.remove("is-paused");
+  pauseBtn.style.display = "none"; // hide during reconnect
+
+  // Reconnect voice — startVoice() handles full WebRTC setup
+  // It will reset convoLog, so we restore it after
+  const savedLog = pausedConvoLog || [];
+  const savedElapsed = pausedElapsedMs || 0;
+  pausedConvoLog = null;
+  pausedElapsedMs = 0;
+
+  await startVoice();
+
+  // Restore transcript + elapsed time
+  if (savedLog.length > 0) {
+    convoLog = savedLog;
+
+    // Inject resume context into the Realtime session so Sophie knows what happened
+    // Use sendWhenChannelOpen to wait for DataChannel to be ready (avoids race condition)
+    const summaryLines = savedLog.slice(-10).map(m => `[${m.role}]: ${m.text}`).join("\n");
+    try {
+      await sendWhenChannelOpen({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: `[RESUME] Session was paused and resumed. Here is the conversation so far:\n${summaryLines}\n\nContinue where we left off.` }],
+        }
+      }, 5000);
+      await sendWhenChannelOpen({ type: "response.create" }, 3000);
+    } catch (e) {
+      console.warn("[pause] resume context inject failed:", e?.message);
+    }
+  }
+
+  // Adjust talkStartedAt to account for time spent before pause
+  if (savedElapsed > 0 && talkStartedAt) {
+    talkStartedAt = Date.now() - savedElapsed;
+  }
+
+  // Show pause button again
+  pauseBtn.style.display = "";
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 async function fetchRealtimeAnswerSdp({ offerSdp, clientSecret, maxAttempts = 3 }) {
   const baseUrl = "https://api.openai.com/v1/realtime";
@@ -2243,6 +3274,41 @@ function muteMic() {
   } catch (_) {}
 }
 
+// Sensitivity modes for turn detection:
+// "normal"  — default conversation (threshold 0.5, responsive to normal speech)
+// "guarded" — Sophie says something important (threshold 0.85, only deliberate loud interruption)
+// "locked"  — no interruption possible (demo pitch, closing)
+async function setMicSensitivity(mode = "normal") {
+  const configs = {
+    normal:  { threshold: 0.5,  silence_duration_ms: 200,  create_response: true,  interrupt_response: true },
+    guarded: { threshold: 0.85, silence_duration_ms: 800,  create_response: true,  interrupt_response: false },
+    locked:  { threshold: 0.95, silence_duration_ms: 1200, create_response: false, interrupt_response: false },
+  };
+  const cfg = configs[mode] || configs.normal;
+  try {
+    await sendWhenChannelOpen({
+      type: "session.update",
+      session: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } }
+    }, 2000);
+    console.log(`[${runId}] [mic] sensitivity → ${mode} (threshold: ${cfg.threshold})`);
+  } catch (_) {}
+}
+
+// Salespitch inactivity auto-end: if no one speaks for 30s, end session cleanly
+function resetPitchInactivity() {
+  if (pitchInactivityTimer) { clearTimeout(pitchInactivityTimer); pitchInactivityTimer = null; }
+  if (selectedVoiceMode !== "salespitch" || limitTriggered || _pitchCleanRunning) return;
+  pitchInactivityTimer = setTimeout(() => {
+    if (limitTriggered || _pitchCleanRunning) return;
+    console.log(`[${runId}] [salespitch] ${PITCH_INACTIVITY_SECONDS}s inactivity — auto-ending session`);
+    stopVoicePitchClean();
+  }, PITCH_INACTIVITY_SECONDS * 1000);
+}
+
+function stopPitchInactivity() {
+  if (pitchInactivityTimer) { clearTimeout(pitchInactivityTimer); pitchInactivityTimer = null; }
+}
+
 async function setTurnBehavior({ createResponse, interruptResponse }) {
   try{
     await sendWhenChannelOpen({
@@ -2250,7 +3316,7 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
       session: {
         turn_detection: {
           type: "server_vad",
-          silence_duration_ms: 400,
+          silence_duration_ms: 200,
           threshold: 0.5,
           prefix_padding_ms: 300,
           create_response: !!createResponse,
@@ -2307,13 +3373,133 @@ ${(voiceHandover.recentMessages || [])
   try {
     await cancelAnyOngoingResponse();
 
-    // Sales Pitch: ignore handover entirely — start Phase A immediately
+    // Sales Pitch: start Phase A with handover context + correct language
     if (selectedVoiceMode === "salespitch") {
+      const pitchLang = voiceHandover?.language || _uiLang || "en";
+      const isPitchRetry = voiceHandover?.pitchRetry === true;
+      const isPitchDemo = voiceHandover?.pitchDemo === true;
+      const pitchTopic = voiceHandover?.pitchTopic || voiceHandover?.summary?.match(/"([^"]+)"/)?.[1] || "deinen Pitch";
+
+      const langLock = pitchLang === "de"
+        ? "Speak GERMAN. All questions and feedback in German."
+        : pitchLang === "fr"
+        ? "Speak FRENCH. All questions and feedback in French."
+        : "Speak ENGLISH. All questions and feedback in English.";
+
+      let pitchInstructions;
+
+      if (isPitchDemo) {
+        // DEMO: Lock mic — Sophie speaks for 2-3 min uninterrupted
+        setMicSensitivity("locked");
+        console.log(`[${runId}] [salespitch] demo mode — mic locked at kickoff start`);
+
+        // Read pitch text from separate sessionStorage key (not from handover header — too large)
+        const prewrittenPitch = sessionStorage.getItem("SOPHIE_DEMO_PITCH") || voiceHandover.prewrittenDemoPitch || "";
+        if (prewrittenPitch) sessionStorage.removeItem("SOPHIE_DEMO_PITCH"); // clean up after reading
+
+        if (prewrittenPitch) {
+          // Pre-generated pitch text exists — Sophie performs it
+          pitchInstructions = `${langLock}
+
+Du bist Sophie. Ein optimierter Pitch wurde für dich vorbereitet.
+PRÄSENTIERE ihn jetzt wie eine professionelle Keynote-Sprecherin.
+
+PERFORMANCE:
+- Betone Schlüsselwörter, variiere Tempo, setze Pausen vor wichtigen Aussagen
+- Hook mit Energie, Closing langsam und klar
+- Ändere KEINE Fakten — nur kleine sprachliche Anpassungen für natürlichen Sprachfluss
+
+Starte SOFORT mit dem Pitch. Keine Einleitung wie "OK pass auf". Direkt rein.
+
+NACH DEM PITCH: Erkläre kurz (2-3 Sätze) was du rhetorisch bewusst gemacht hast.
+Dann frage: "Willst du es jetzt selbst versuchen?"
+
+═══ DER PITCH ═══
+${prewrittenPitch}
+═══ ENDE ═══`;
+        } else {
+          // No pre-generated text — fallback
+          pitchInstructions = `${langLock}
+Sage: "Der Demo-Pitch konnte leider nicht vorbereitet werden. Lass uns stattdessen gemeinsam an deinem Pitch arbeiten — was möchtest du verbessern?"`;
+        }
+      } else if (isPitchRetry) {
+        // RETRY: Skip Phase A — pass previous scores + weaknesses for targeted coaching
+        const prevScores = voiceHandover.previousScores || null;
+        const prevWeaknesses = voiceHandover.previousWeaknesses || [];
+        const prevStrengths = voiceHandover.previousStrengths || [];
+        const prevVersion = voiceHandover.previousVersion || 1;
+        const audience = voiceHandover.audience || "";
+
+        let prevContext = "";
+        if (prevScores || prevWeaknesses.length) {
+          prevContext = `\nPREVIOUS PITCH DATA (v${prevVersion}):`;
+          if (prevScores?.overall) prevContext += `\n- Overall Score: ${prevScores.overall}/100`;
+          if (audience) prevContext += `\n- Audience: ${audience}`;
+          if (prevStrengths.length) prevContext += `\n- Strengths: ${prevStrengths.slice(0, 3).join(', ')}`;
+          if (prevWeaknesses.length) prevContext += `\n- Weaknesses to improve: ${prevWeaknesses.slice(0, 3).join(', ')}`;
+          prevContext += "\n";
+        }
+
+        pitchInstructions = `Du bist Sophie im Sales Pitch Modus. Das ist RETRY v${prevVersion + 1} — dein Gegenüber hat "${pitchTopic}" bereits gepitcht.
+
+${langLock}
+${prevContext}
+SKIP PHASE A COMPLETELY. Do NOT ask what they're presenting, who the audience is, or what should stick.
+
+Start with a short, encouraging opener (1-2 sentences). Reference ONE specific weakness they should focus on.
+${pitchLang === "de"
+  ? `Beispiel: "OK — nochmal ${pitchTopic}. Letztes Mal war [Stärke] stark, aber achte diesmal besonders auf [Schwäche]. Leg los!"`
+  : pitchLang === "fr"
+  ? `Exemple: "OK — on reprend ${pitchTopic}. La dernière fois [force] était bien, mais concentre-toi sur [faiblesse]. Lance-toi !"`
+  : `Example: "OK — ${pitchTopic} again. Last time [strength] was solid, but focus on [weakness] this time. Go!"`}
+
+Then go DIRECTLY to Phase B (listen to pitch). Be warm, specific, brief.
+WICHTIG: Sprich IMMER mit "du" — niemals "der User" oder dritte Person.`;
+      } else {
+        // FIRST PITCH: Normal Phase A with 3 setup questions
+        const uploadedFiles = voiceHandover?.uploadedFiles || [];
+        const chatContext = voiceHandover ? `
+CHAT CONTEXT — CRITICAL: Use this info. Do NOT ask again what you already know.
+Known user name: ${voiceHandover.userName || "(unknown)"}
+Language: ${pitchLang}
+Summary: ${voiceHandover.summary || "(none)"}
+${uploadedFiles.length ? `Hochgeladene Dateien im Chat: ${uploadedFiles.join(', ')}` : ''}
+Recent messages:
+${(voiceHandover.recentMessages || [])
+  .map(m => {
+    let line = `- ${m.role}: ${m.content}`;
+    if (m.fileNames?.length) line += ` [Dateien: ${m.fileNames.join(', ')}]`;
+    return line;
+  })
+  .join("\n")}
+
+WICHTIG: Wenn aus dem Chat-Kontext BEREITS hervorgeht was der User präsentiert, vor wem, oder was das Ziel ist — überspringe die entsprechende Phase A Frage und gehe zur nächsten.
+Wenn der User eine Datei hochgeladen hat (PDF, PPTX, DOCX, Bilder — egal welches Format), ist der Inhalt in Sophies Antwort im Chat-Verlauf enthalten. Nutze diese Info!
+` : "";
+
+        pitchInstructions = `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first.
+
+${langLock}
+${chatContext}
+
+PHASE A — 3 Setup Questions (fixed order, ask one at a time):
+${pitchLang === "de" ? `1. "Hey — lass uns deinen Pitch anschauen. Was präsentierst du?"
+2. "Vor wem wirst du präsentieren?"
+3. "Was soll am Ende beim Publikum hängen bleiben?"
+Dann: "Okay. Pitch, sobald du bereit bist."` : `1. "Hey — let's look at your pitch. What are you presenting?"
+2. "Who will you be presenting to?"
+3. "What should stick with the audience at the end?"
+Then: "Okay. Pitch whenever you're ready."`}
+
+If any of these are already answered from the chat context, skip them and move to the next.
+No smalltalk. No mode explanation. No onboarding. Be direct and natural.`;
+      }
+
       await sendWhenChannelOpen({
         type: "response.create",
         response: {
           modalities: ["audio", "text"],
-          instructions: `You are Sophie in Sales Pitch Mode. Start Phase A now. Speak first. Ask who they are pitching to. No handover context. No prior conversation.`
+          instructions: pitchInstructions,
         }
       }, 3000);
       return;
@@ -2439,6 +3625,13 @@ async function handleTimeLimitReached(){
 
   try { track("time_limit_reached", { plan: plan || null }); } catch(_) {}
 
+  // Sales Pitch: use clean teardown that preserves audio + generates report
+  if (selectedVoiceMode === "salespitch") {
+    console.log(`[${runId}] [salespitch] handleTimeLimitReached → using stopVoicePitchClean instead of stopVoice`);
+    try { await stopVoicePitchClean(); } catch (_) {}
+    return;
+  }
+
   try {
     await stopVoice(true);
   } catch (_) {}
@@ -2507,6 +3700,8 @@ async function triggerClosingResponse() {
 async function maybeTriggerSoftEnding(){
   if (!softEndEnabled || softEndFinalizing) return;
   if (!dc || dc.readyState !== "open") return;
+  // Sales Pitch: Sophie controls session end via signal_pitch_report — NEVER soft-end
+  if (selectedVoiceMode === "salespitch") return;
 
   if (!softEndWarningTriggered && remainingSeconds <= softEndWarningSeconds) {
     softEndWarningTriggered = true;
@@ -2525,7 +3720,11 @@ async function maybeTriggerSoftEnding(){
     stopDynamicResets();
     stopCountdown();
     muteMic();
+    setMicSensitivity("guarded"); // Sophie's closing summary must not be interrupted by noise
     setSoftHint("");
+    // Disable voice chat input during closing
+    if (voiceChatInput) voiceChatInput.disabled = true;
+    if (voiceChatSendBtn) voiceChatSendBtn.disabled = true;
     console.log(`[${runId}] [softend] summary threshold reached: ${remainingSeconds}s`);
 
     if (sophieIsResponding || userIsSpeaking) {
@@ -2541,9 +3740,69 @@ async function maybeTriggerSoftEnding(){
   }
 }
 
+// ── Inactivity auto-end (global, all modes) ──────────────────────────────────
+// Strategy: track lastActivityAt timestamp instead of enumerating busy-flags.
+// Any speech or response event resets it — new features work automatically.
+// Salespitch has its own dedicated timer and is excluded here.
+function touchActivity() {
+  lastActivityAt = Date.now();
+}
+
+function startInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityWarningFired = false;
+  inactivityTimer = setTimeout(function checkInactivity() {
+    if (selectedVoiceMode === "salespitch") return;  // has own timer
+    if (selectedVoiceMode === "meeting") return;     // long silence between speakers is normal
+    if (selectedVoiceMode === "brainstorm") return;  // thinking pauses are normal during brainstorming
+    if (limitTriggered || softEndFinalizing) return;  // already ending
+    if (isPaused) return;                             // session paused — no timeout
+    if (!hasUserSpoken) { touchActivity(); inactivityTimer = setTimeout(checkInactivity, INACTIVITY_WARNING_MS); return; } // wait for first utterance
+    const idleMs = Date.now() - lastActivityAt;
+    if (idleMs < INACTIVITY_WARNING_MS) {
+      // Not idle long enough yet — reschedule for remaining time
+      inactivityTimer = setTimeout(checkInactivity, INACTIVITY_WARNING_MS - idleMs);
+      return;
+    }
+    if (!inactivityWarningFired) {
+      inactivityWarningFired = true;
+      console.log(`[${runId}] [inactivity] ${Math.round(idleMs/1000)}s silence — asking if still there`);
+      try {
+        dc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: { type: "message", role: "user",
+            content: [{ type: "input_text", text: "[SYSTEM: Der User hat 30 Sekunden nicht gesprochen. Frag kurz und locker ob er noch da ist — ein Satz, kein Coaching.]" }]
+          }
+        }));
+        dc.send(JSON.stringify({ type: "response.create" }));
+      } catch(e) { console.warn('[inactivity] check-in failed', e?.message); }
+      // Check again after grace period
+      inactivityTimer = setTimeout(checkInactivity, INACTIVITY_END_MS);
+      return;
+    }
+    // Warning was sent, still no activity → end session
+    const totalIdleMs = Date.now() - lastActivityAt;
+    if (totalIdleMs >= INACTIVITY_WARNING_MS + INACTIVITY_END_MS) {
+      if (limitTriggered || softEndFinalizing) return;
+      console.log(`[${runId}] [inactivity] 60s total silence — ending session`);
+      void handleTimeLimitReached();
+    }
+  }, INACTIVITY_WARNING_MS);
+}
+
+function stopInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = null;
+  inactivityWarningFired = false;
+}
+
+// resetInactivityTimer is no longer needed — touchActivity() + startInactivityTimer handles it
+
 function startCountdown(){
   if (countdown) clearInterval(countdown);
   timerEl.style.display = "none";
+  touchActivity(); // baseline — prevents timer from firing immediately
+  startInactivityTimer();
 
   countdown = setInterval(() => {
     remainingSeconds -= 1;
@@ -2551,7 +3810,9 @@ function startCountdown(){
 
     void maybeTriggerSoftEnding();
 
-    if (remainingSeconds <= 0 && !softEndSummaryTriggered) {
+    // Don't kill session during demo pitch — Sophie is speaking, let her finish
+    const isDemoActive = voiceHandover?.pitchDemo === true && !hasUserSpoken;
+    if (remainingSeconds <= 0 && !softEndSummaryTriggered && !isDemoActive) {
       void handleTimeLimitReached();
     }
   }, 1000);
@@ -2570,41 +3831,185 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "server_vad",
-            silence_duration_ms: 400,
-            threshold: 0.5,
+            // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
+            silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 200,
+            threshold: selectedVoiceMode === "salespitch" ? 0.65 : 0.5,
             prefix_padding_ms: 300,
             create_response: false,
             interrupt_response: true
           }
         }
       };
-      // Add signal_mode tool only for normal conversations (not brainstorm/meeting/salespitch)
+      // No signal_mode tool in voice — it adds latency (function call round-trip before speaking)
+      // Mode indicator defaults to "chill" for normal conversations
       if (!selectedVoiceMode) {
+        updateModeIndicator("chill");
         sessionUpdate.session.tools = [{
           type: "function",
-          name: "signal_mode",
-          description: "Signal the current thinking mode to the UI. Call this silently at the start of every response.",
+          name: "deep_research",
+          description: "Query multiple AI models (Claude, Gemini, Mistral) in parallel to get diverse perspectives on a question. Use when the user asks complex questions, needs fact-checking, a second opinion, or deeper analysis. The result contains answers from all available AI providers.",
           parameters: {
             type: "object",
             properties: {
-              mode: { type: "string", enum: ["explorer", "reflect", "decide", "relax"] }
+              question: { type: "string", description: "The question or topic to research across AI models" },
+              context: { type: "string", description: "Optional additional context from the conversation" }
             },
-            required: ["mode"]
+            required: ["question"]
+          }
+        }, {
+          type: "function",
+          name: "search_history",
+          description: "Search through the user's imported conversation history from other AI assistants. Use when the user asks about previous conversations, past projects, what was discussed before, or wants to find specific information from their chat history. Returns matching conversation excerpts.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search keywords to find in the conversation history" }
+            },
+            required: ["query"]
+          }
+        }, {
+          type: "function",
+          name: "get_weather",
+          description: "Get current weather and 3-day forecast for a location. Use when the user asks about weather, temperature, rain, or outdoor conditions.",
+          parameters: {
+            type: "object",
+            properties: {
+              location: { type: "string", description: "City name or location (e.g. 'Berlin', 'New York', 'München')" }
+            },
+            required: ["location"]
+          }
+        }, {
+          type: "function",
+          name: "web_search",
+          description: "Search the web for current information, facts, prices, or any real-time data. Use when the user asks about something that requires up-to-date information beyond your training data.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "The search query" }
+            },
+            required: ["query"]
+          }
+        }, {
+          type: "function",
+          name: "get_news",
+          description: "Get current news about a topic. Use when the user asks about recent events, current affairs, or news headlines.",
+          parameters: {
+            type: "object",
+            properties: {
+              topic: { type: "string", description: "The news topic to search for (e.g. 'Tech', 'Politik', 'Sport')" }
+            },
+            required: ["topic"]
+          }
+        }, {
+          type: "function",
+          name: "get_wikipedia",
+          description: "Look up factual knowledge, definitions, biographies, history, or explanations from Wikipedia. Use when the user asks knowledge questions like 'What is...?', 'Who was...?', 'How does... work?', 'What happened in...?'. NEVER say you don't have access — use this tool instead!",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "The topic to look up (e.g. 'Albert Einstein', 'Quantencomputing', 'Februar 2026')" }
+            },
+            required: ["query"]
+          }
+        }, {
+          type: "function",
+          name: "get_flight_status",
+          description: "Get real-time flight status, delays, gates, and arrival times. Use when the user asks about a flight number (e.g. 'LH1234', 'EW 9876', 'UA 456'). Returns departure/arrival times, delays, gate info, and current position if airborne.",
+          parameters: {
+            type: "object",
+            properties: {
+              flight_number: { type: "string", description: "IATA flight number (e.g. 'LH1234', 'EW9876', 'UA456')" }
+            },
+            required: ["flight_number"]
+          }
+        }, {
+          type: "function",
+          name: "get_airport_arrivals",
+          description: "Get real-time arrivals board for an airport. Use when the user asks what flights are arriving, landing, or coming in at an airport — without knowing a specific flight number. Returns a list of arriving flights with times, status and delays.",
+          parameters: {
+            type: "object",
+            properties: {
+              airport_iata: { type: "string", description: "IATA airport code (e.g. 'FRA', 'PFO', 'MUC', 'JFK')" }
+            },
+            required: ["airport_iata"]
+          }
+        }, {
+          type: "function",
+          name: "get_airport_departures",
+          description: "Get real-time departures board for an airport. Use when the user asks what flights are departing or taking off from an airport — without knowing a specific flight number.",
+          parameters: {
+            type: "object",
+            properties: {
+              airport_iata: { type: "string", description: "IATA airport code (e.g. 'FRA', 'PFO', 'MUC', 'JFK')" }
+            },
+            required: ["airport_iata"]
+          }
+        }, {
+          type: "function",
+          name: "send_chat_note",
+          description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+          parameters: {
+            type: "object",
+            properties: {
+              note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+            },
+            required: ["note"]
           }
         }];
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
-        // signal_pitch_report: Sophie calls this at the end of Phase D to trigger call end + report generation
-        sessionUpdate.session.tools = [{
-          type: "function",
-          name: "signal_pitch_report",
-          description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
-          parameters: { type: "object", properties: {} }
-        }];
+        const isDemoMode = voiceHandover?.pitchDemo === true;
+        if (isDemoMode) {
+          // Demo pitch: Sophie speaks, no report generation — only send_chat_note
+          sessionUpdate.session.tools = [{
+            type: "function",
+            name: "send_chat_note",
+            description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+            parameters: {
+              type: "object",
+              properties: {
+                note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+              },
+              required: ["note"]
+            }
+          }];
+        } else {
+          // Normal pitch: signal_pitch_report triggers call end + report generation
+          sessionUpdate.session.tools = [{
+            type: "function",
+            name: "signal_pitch_report",
+            description: "Call this immediately after completing verbal feedback (Phase D), right after announcing the written report. This ends the voice session and triggers report generation.",
+            parameters: { type: "object", properties: {} }
+          }, {
+            type: "function",
+            name: "send_chat_note",
+            description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+            parameters: {
+              type: "object",
+              properties: {
+                note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+              },
+              required: ["note"]
+            }
+          }];
+        }
         sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       } else {
-        // Static mode indicator for brainstorm/meeting sessions
+        // brainstorm/meeting: add send_chat_note tool
+        sessionUpdate.session.tools = [{
+          type: "function",
+          name: "send_chat_note",
+          description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
+          parameters: {
+            type: "object",
+            properties: {
+              note: { type: "string", description: "Short text to display (max 280 chars). Use line breaks for lists." }
+            },
+            required: ["note"]
+          }
+        }];
+        sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       }
       dcSend(sessionUpdate);
@@ -2620,9 +4025,39 @@ function attachChannel(ch) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
     } else if (!isFirstSession) {
-      console.log(`[${runId}] [returning] enabling auto responses`);
-      try { await setAutoResponses(true); } catch(e) { console.log(`[${runId}] [returning] setAutoResponses failed`, e); }
+      console.log(`[${runId}] [returning] forcing casual greeting via response.create override`);
+      try {
+        await cancelAnyOngoingResponse();
+        const userName = data?.preferred_name || data?.user_name || "";
+        const greetLang = data?.preferred_language || _uiLang || "en";
+        const greetText = greetLang === "de"
+          ? `Hey${userName ? " " + userName : ""}! Schön dass du wieder da bist.`
+          : `Hey${userName ? " " + userName : ""}! Good to see you again.`;
+        // Override system prompt for THIS ONE response only
+        dcSend({
+          type: "response.create",
+          response: {
+            modalities: ["audio", "text"],
+            instructions: `Say exactly this and NOTHING else: "${greetText}" — then stop speaking and wait in silence. Do not add any question, topic, or offer.`,
+          },
+        });
+        await setAutoResponses(true);
+      } catch(e) { console.log(`[${runId}] [returning] greeting kickoff failed`, e); await setAutoResponses(true); }
     }
+  });
+
+  // Connection lost — if we're in a salespitch session with real conversation, save transcript + generate report
+  dc.addEventListener("close", () => {
+    console.warn(`[${runId}] [dc] closed unexpectedly`);
+    if (selectedVoiceMode === "salespitch" && hasUserSpoken && !limitTriggered && talkStartedAt) {
+      console.log(`[${runId}] [salespitch] DC closed — triggering emergency report generation`);
+      limitTriggered = true; // prevent double-trigger
+      stopVoicePitchClean();
+    }
+  });
+
+  dc.addEventListener("error", (e) => {
+    console.error(`[${runId}] [dc] error:`, e);
   });
 
   dc.addEventListener("message", async (ev) => {
@@ -2632,6 +4067,16 @@ function attachChannel(ch) {
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
+        // Smooth fade-out instead of hard audio cut (prevents click/pop)
+        if (gainNode && audioCtx) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+        }
+        // User is speaking — reset inactivity (including warning flag if grace period active)
+        inactivityWarningFired = false;
+        touchActivity();
+        if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
       }
 
@@ -2648,9 +4093,17 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+        if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
+        // Fade audio back in for Sophie's new response
+        if (gainNode && audioCtx) {
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+        }
 
         // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
-        if (softEndSummaryTriggered && !closingResponseExpected && !softEndFinalizing && !limitTriggered) {
+        // NEVER cancel during salespitch — Sophie's feedback (Phase D) must play fully
+        if (softEndSummaryTriggered && !closingResponseExpected && !softEndFinalizing && !limitTriggered && selectedVoiceMode !== "salespitch") {
           console.log(`[${runId}] [softend] unexpected response.created during closing — cancelling before audio`);
           try { dcSend({ type: "response.cancel" }); } catch(_) {}
           // Do NOT set sophieIsResponding = false here — our closing response may still be playing
@@ -2664,6 +4117,8 @@ function attachChannel(ch) {
         }
 
         sophieIsResponding = true;
+        // Sophie is speaking — stop inactivity timer
+        if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
       }
 
@@ -2709,16 +4164,260 @@ function attachChannel(ch) {
         return;
       }
 
+      // ── deep_research Tool Call Handler ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "deep_research") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [research] deep_research called:`, args.question?.slice(0, 80));
+          showResearchIndicator();
+
+          // Build messages from conversation log for the compare endpoint
+          const researchMessages = [
+            ...convoLog.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text })),
+            { role: "user", content: args.question + (args.context ? "\n\nKontext: " + args.context : "") },
+          ];
+
+          // Call compare endpoint (queries all providers in parallel)
+          const researchHeaders = { "Content-Type": "application/json" };
+          try {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (authSession?.access_token) researchHeaders["Authorization"] = "Bearer " + authSession.access_token;
+          } catch (_) {}
+
+          const compareRes = await fetch("/api/ai/compare", {
+            method: "POST",
+            headers: researchHeaders,
+            body: JSON.stringify({
+              messages: researchMessages,
+              priorAnswer: null,
+              userId: null,
+            }),
+          });
+
+          let resultText = "";
+          if (compareRes.ok) {
+            const data = await compareRes.json();
+            // Build a concise summary of all provider answers
+            const parts = [];
+            if (data.fastest) {
+              parts.push(`[Schnellste Antwort — ${data.fastest.provider}]:\n${data.fastest.content}`);
+            }
+            for (const other of (data.others || [])) {
+              parts.push(`[${other.provider}]:\n${other.content}`);
+            }
+            resultText = parts.join("\n\n---\n\n");
+            console.log(`[${runId}] [research] got ${data.providerCount} provider answers`);
+          } else {
+            resultText = "Recherche nicht verfügbar — antworte mit deinem eigenen Wissen.";
+            console.log(`[${runId}] [research] compare failed:`, compareRes.status);
+          }
+
+          hideResearchIndicator();
+          // Return result to Sophie — she'll incorporate it into her spoken response
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ research: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          hideResearchIndicator();
+          console.error(`[${runId}] [research] error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Research failed" })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
+      // ── search_history Tool Call Handler ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "search_history") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [search] search_history called:`, args.query);
+          showResearchIndicator();
+
+          const searchHeaders = { "Content-Type": "application/json" };
+          try {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (authSession?.access_token) searchHeaders["Authorization"] = "Bearer " + authSession.access_token;
+          } catch (_) {}
+
+          const searchRes = await fetch("/api/ai/search-history", {
+            method: "POST",
+            headers: searchHeaders,
+            body: JSON.stringify({ query: args.query }),
+          });
+
+          hideResearchIndicator();
+          let resultText = "";
+          if (searchRes.ok) {
+            const data = await searchRes.json();
+            resultText = data.summary || data.message || "Keine Ergebnisse gefunden.";
+            console.log(`[${runId}] [search] found ${data.resultCount} results`);
+          } else {
+            resultText = "Suche nicht verfügbar.";
+          }
+
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ history: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          hideResearchIndicator();
+          console.error(`[${runId}] [search] error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Search failed" })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
+      // ── Realtime Tools: Weather, Search, News ──
+      if (msg?.type === "response.function_call_arguments.done" &&
+          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures"].includes(msg?.name)) {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures" };
+          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata } };
+          console.log(`[${runId}] [tools] ${msg.name} called:`, JSON.stringify(args));
+          showResearchIndicator();
+
+          const toolHeaders = { "Content-Type": "application/json" };
+          const toolRes = await fetch("/api/ai/tools", {
+            method: "POST",
+            headers: toolHeaders,
+            body: JSON.stringify({ tool: toolMap[msg.name], params: paramMap[msg.name] }),
+          });
+
+          hideResearchIndicator();
+          let resultText = "";
+          if (toolRes.ok) {
+            const data = await toolRes.json();
+            resultText = data.result || "Keine Daten verfügbar.";
+            console.log(`[${runId}] [tools] ${msg.name} result length: ${resultText.length}`);
+          } else {
+            resultText = "Tool nicht verfügbar — antworte mit deinem eigenen Wissen.";
+          }
+
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ result: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          hideResearchIndicator();
+          console.error(`[${runId}] [tools] ${msg.name} error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Tool failed" })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
+      // ── send_chat_note: Sophie sends a text note to the chat panel ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "send_chat_note") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const note = String(args.note || "").trim();
+          if (note) {
+            if (voiceChatEl && voiceChatEl.style.display !== "none") {
+              appendVoiceChatBubble("sophie", note);
+            }
+            // Track in convoLog so it appears in the report
+            convoLog.push({ role: "assistant", text: "[chat note] " + note });
+          }
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (_) {}
+        return;
+      }
+
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "signal_pitch_report") {
         try {
-          // Acknowledge the function call (required by API) but do NOT send response.create
+          // Acknowledge the function call — then trigger a FINAL spoken response so Sophie finishes naturally
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ ok: true })
           }});
           // Guard: only honour if user has actually pitched (at least 2 user turns = setup answer + pitch)
           if (hasUserSpoken && convoLog.filter(m => m.role === "user").length >= 2) {
             pitchReportSignaled = true;
-            console.log(`[${runId}] [salespitch] signal_pitch_report received — ending after audio`);
+            // Phase D feedback: raise mic threshold so Sophie speaks uninterrupted
+            // Only deliberate, loud speech from user can interrupt
+            setMicSensitivity("guarded");
+            console.log(`[${runId}] [salespitch] signal_pitch_report received — mic guarded, starting bg report`);
+
+            // Start report generation in background WHILE Sophie is still speaking
+            // CRITICAL: Do NOT call sendMemoryUpdate() here — it modifies partialAssistant
+            // and convoLog, which breaks Sophie's ongoing voice transcript.
+            // Instead: snapshot transcript read-only → create session row → fire generate-report
+            pitchReportBgPromise = (async () => {
+              try {
+                // Wait 8s before starting API calls — let Sophie's audio stream fully stabilize
+                // Background report is a nice-to-have optimization, audio quality is critical
+                await new Promise(r => setTimeout(r, 8000));
+
+                // Read-only snapshot — do NOT touch partialAssistant or convoLog
+                const snapshot = [...convoLog];
+                const partial = (partialAssistant || "").trim();
+                if (partial) snapshot.push({ role: "assistant", text: partial });
+                const wallclock = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+
+                const { data: { session: authSession } } = await supabase.auth.getSession();
+                if (!authSession?.access_token) return null;
+                const authHeader = `Bearer ${authSession.access_token}`;
+
+                // Create session row via memory-update (needs conversation_outputs row for report)
+                const cleaned = snapshot.filter(t => {
+                  const text = String(t?.text || "").trim();
+                  return text && !(t.role === "user" && text.toLowerCase() === "bye.");
+                }).slice(-80);
+
+                const memResp = await fetch("/api/memory-update", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  body: JSON.stringify({
+                    transcript: cleaned,
+                    seconds_used: wallclock,
+                    session_started_at: talkStartedAt ? new Date(talkStartedAt).toISOString() : null,
+                    session_ended_at: new Date().toISOString(),
+                    session_id: sessionId,
+                    session_mode: "salespitch",
+                  }),
+                });
+                const memText = await memResp.text().catch(() => "");
+                let sid = sessionId;
+                try {
+                  const memData = JSON.parse(memText);
+                  if (memData?.session?.id) sid = memData.session.id;
+                } catch (_) {}
+                if (!sid) return null;
+
+                // Build transcript text for report
+                const transcriptText = snapshot
+                  .filter(m => m.text && m.text.trim())
+                  .map(m => `[${m.role}]: ${m.text}`)
+                  .join("\n");
+
+                // Fire generate-report (don't await — runs 30-60s in background)
+                fetch("/api/ai/generate-report", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch" }),
+                }).catch(e => console.error("[report] bg generate fetch failed:", e?.message));
+
+                console.log(`[${runId}] [salespitch] bg report fired for ${sid} — Sophie keeps speaking`);
+                return { sessionId: sid, transcriptLog: snapshot.map(m => ({ role: m.role, text: m.text })), wallclock };
+              } catch (e) {
+                console.error(`[${runId}] [salespitch] bg report setup failed:`, e?.message);
+                return null;
+              }
+            })();
+
+            // Do NOT send response.create — let any remaining audio finish playing
+            // The session ends in response.done handler after Sophie is done speaking
           } else {
             console.log(`[${runId}] [salespitch] signal_pitch_report ignored — too early (user turns: ${convoLog.filter(m => m.role === "user").length})`);
           }
@@ -2753,6 +4452,10 @@ function attachChannel(ch) {
 
       if (msg?.type === "response.done") {
         sophieIsResponding = false;
+        // Sophie finished speaking — reset inactivity timestamp (but not during grace period)
+        if (!inactivityWarningFired) touchActivity();
+        // NO inactivity timer on response.done — user may pause mid-pitch to think.
+        // Inactivity auto-end is ONLY triggered after mic is unlocked post-demo (90s timeout).
 
         const final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
         const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
@@ -2760,15 +4463,29 @@ function attachChannel(ch) {
         if (final && final !== last) {
           convoLog.push({ role: "assistant", text: final });
           lastAssistantFinal = final;
+
+          // Show settings link toast if Sophie mentions import/Einstellungen
+          // Suppressed in brainstorm mode — words like "import" appear in normal brainstorm language
+          if (selectedVoiceMode !== "brainstorm" && final.match(/einstellung|settings|importier|import.*daten/i)) {
+            showImportToast();
+          }
         }
 
         partialAssistant = "";
 
-        // Sales Pitch: Sophie announced report → end call now (audio already played)
-        if (pitchReportSignaled && !limitTriggered && !softEndFinalizing) {
+        // Sales Pitch: Sophie finished her verbal feedback → let audio buffer drain, then end cleanly
+        // Do NOT use stopVoice(false) — it sends response.cancel which kills buffered audio mid-sentence.
+        // Note: salespitch ignores limitTriggered/softEndFinalizing — feedback MUST complete
+        if (pitchReportSignaled && (selectedVoiceMode === "salespitch" || (!limitTriggered && !softEndFinalizing))) {
           pitchReportSignaled = false;
-          console.log(`[${runId}] [salespitch] ending call after report announcement`);
-          setTimeout(() => { void handleTimeLimitReached(); }, 1500);
+          console.log(`[${runId}] [salespitch] response.done — audio buffer draining, report already generating in bg`);
+          // Audio streams in real-time via WebRTC. response.done = API finished.
+          // Most audio has already played, just a few seconds of buffer lag remain.
+          // Report generation started at signal_pitch_report → has 20-60s head start.
+          setTimeout(() => {
+            console.log(`[${runId}] [salespitch] audio drain complete — transitioning to report`);
+            stopVoicePitchClean();
+          }, 25000); // 25s — Sophie's feedback can be 20-30s speech. response.done fires when API is done, NOT when speakers finish. Report generates in parallel so this doesn't delay it.
           return;
         }
 
@@ -2789,9 +4506,48 @@ function attachChannel(ch) {
         }
 
         if (kickoffInProgress) {
-          console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
           kickoffInProgress = false;
-          await setAutoResponses(true);
+          const isDemoKickoff = voiceHandover?.pitchDemo === true;
+          if (isDemoKickoff) {
+            // Demo pitch: Sophie speaks for 2-3 minutes uninterrupted.
+            // Mic already locked at kickoff (setMicSensitivity("locked"))
+            console.log(`[${runId}] [startmode] demo kickoff response.done — mic stays locked, Sophie continues`);
+
+            // After Sophie finishes her demo (~90s), restore normal sensitivity + enable auto-responses
+            // Also save Sophie's demo transcript for iterative improvement
+            setTimeout(async () => {
+              console.log(`[${runId}] [startmode] demo done — restoring mic to normal, enabling auto responses + inactivity timer`);
+              try {
+                await setMicSensitivity("normal");
+                await setAutoResponses(true);
+                // NOW start inactivity timer — if user doesn't respond within 60s, end session
+                resetPitchInactivity();
+              } catch(_) {}
+
+              // Save Sophie's demo transcript to pitch memory for iterative improvement
+              try {
+                const demoTranscript = convoLog
+                  .filter(m => m.role === "assistant" && m.text?.trim())
+                  .map(m => m.text)
+                  .join("\n");
+                if (demoTranscript.length > 50) {
+                  const { data: { session: authSession } } = await supabase.auth.getSession();
+                  if (authSession?.access_token) {
+                    const pitchTopic = voiceHandover?.pitchTopic || "Demo Pitch";
+                    await fetch("/api/settings?action=save-demo-pitch", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authSession.access_token}` },
+                      body: JSON.stringify({ topic: pitchTopic, transcript: demoTranscript }),
+                    });
+                    console.log(`[${runId}] [demo] saved demo transcript (${demoTranscript.length} chars) for "${pitchTopic}"`);
+                  }
+                }
+              } catch (e) { console.error(`[${runId}] [demo] save failed:`, e?.message); }
+            }, 90000); // 90s — Sophie's demo is 2-3 min max
+          } else {
+            console.log(`[${runId}] [startmode] response.done -> enable auto responses`);
+            await setAutoResponses(true);
+          }
           return;
         }
       }
@@ -2819,23 +4575,63 @@ async function reportUsage(seconds) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
 
+    const secPerToken = window._ecoMode ? 7.5 : 3; // Eco: 8 tokens/min, Normal: 20 tokens/min
+    const tokens = Math.ceil(seconds / secPerToken);
     const res = await fetch("/api/user?action=usage", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ seconds_used: seconds }),
+      body: JSON.stringify({ tokens_used: tokens }),
       keepalive: true,
     });
 
     const data = await res.json().catch(() => null);
     console.log("[reportUsage]", res.status, data);
+
+    // Show eco suggest banner (1× per account lifetime, server sets flag)
+    if (data?.suggest_eco && !sessionStorage.getItem("eco_suggested")) {
+      sessionStorage.setItem("eco_suggested", "1");
+      showEcoBanner();
+    }
+
     return data;
   } catch (e) {
     console.log("[reportUsage] failed", e);
     return null;
   }
+}
+
+function showEcoBanner() {
+  if (document.getElementById("ecoBanner")) return;
+  const banner = document.createElement("div");
+  banner.id = "ecoBanner";
+  banner.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;border:1px solid #ede8e2;border-radius:14px;padding:14px 18px;box-shadow:0 4px 20px rgba(0,0,0,.12);max-width:360px;width:90%;font-family:system-ui,sans-serif;animation:fadeIn .3s ease";
+  banner.innerHTML = `
+    <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px">Eco-Modus verf\u00fcgbar</div>
+    <div style="font-size:12px;color:#7a6a5a;line-height:1.4;margin-bottom:12px">Ein Wechsel auf Eco kann Ihre Nutzungsdauer um bis zu 150% verl\u00e4ngern.</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="activateEcoFromBanner()" style="flex:1;padding:8px 0;background:#c4a882;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Eco aktivieren</button>
+      <button onclick="document.getElementById('ecoBanner').remove()" style="flex:1;padding:8px 0;background:none;border:1px solid #ede8e2;color:#7a6a5a;border-radius:8px;font-size:12px;cursor:pointer">Verstanden</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+async function activateEcoFromBanner() {
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.access_token) return;
+    await fetch("/api/settings?action=eco-mode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.access_token },
+      body: JSON.stringify({ enabled: true }),
+    });
+    window._ecoMode = true;
+    const b = document.getElementById("ecoBanner");
+    if (b) b.innerHTML = '<div style="text-align:center;padding:8px;font-size:13px;color:#4a8c5c;font-weight:600">\u2713 Eco-Modus aktiviert</div>';
+    setTimeout(() => b?.remove(), 2000);
+  } catch (e) { console.error("Eco activation failed:", e); }
 }
 
 async function finalizeSessionAfterSummary() {
@@ -2903,6 +4699,10 @@ async function startVoice(){
   softEndSummaryTriggered = false;
   softEndFinalizing = false;
   pitchReportSignaled = false;
+  pitchReportBgPromise = null;
+  _pitchCleanRunning = false;
+  stopPitchInactivity();
+  stopInactivityTimer();
   resetClosingState();
 
   stopDynamicResets();
@@ -2932,7 +4732,16 @@ async function startVoice(){
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
-        ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {})
+        ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
+        ...((function() {
+          // Build brainstorm config on-the-fly from toggle if not already set
+          if (selectedVoiceMode === "brainstorm" && !brainstormVoiceConfig && window._getBrainstormConfig) {
+            brainstormVoiceConfig = window._getBrainstormConfig();
+          }
+          return brainstormVoiceConfig
+            ? { "X-Sophie-Brainstorm-Config": btoa(unescape(encodeURIComponent(JSON.stringify(brainstormVoiceConfig)))) }
+            : {};
+        })()),
       }
     });
 
@@ -2951,7 +4760,7 @@ async function startVoice(){
 
       showBackground(false);
       startBtn.disabled = false;
-      startBtn.textContent = t("start");
+      startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       logoutBtn.disabled = false;
       headline.textContent = premiumActive
@@ -2974,32 +4783,8 @@ async function startVoice(){
         };
 
         postCallSecondaryBtn.textContent = t("manage_sub");
-        postCallSecondaryBtn.onclick = async () => {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-              window.location.href = "/pricing";
-              return;
-            }
-
-            const res = await fetch("/api/billing?action=portal", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: "{}",
-            });
-
-            const portal = await res.json().catch(() => ({}));
-            if (portal?.url) {
-              window.location.href = portal.url;
-            } else {
-              window.location.href = "/pricing";
-            }
-          } catch (_) {
-            window.location.href = "/pricing";
-          }
+        postCallSecondaryBtn.onclick = () => {
+          window.location.href = "/settings/";
         };
       } else {
         postCallCtaTitle.textContent = t("continue_sophie");
@@ -3034,7 +4819,7 @@ async function startVoice(){
         : "Sophie is busy right now. Please try again in a moment.";
       setStatus(busyMsg);
       headline.textContent = t("sophie_waiting");
-      startBtn.textContent = t("start");
+      startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -3051,7 +4836,7 @@ async function startVoice(){
         : `Access denied (HTTP ${tokenRes.status}).`);
       setStatus(msg);
       headline.textContent = t("sophie_waiting");
-      startBtn.textContent = t("start");
+      startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       showBackground(false);
       showLiveBadge(false);
@@ -3063,6 +4848,7 @@ async function startVoice(){
 
     isPremium = !!data?.is_premium;
     plan = data?.plan || null;
+    window._ecoMode = !!data?.eco_mode;
 
     softEndEnabled = data?.soft_end_enabled !== false;
     softEndWarningSeconds = Number.isFinite(data?.soft_end_warning_seconds)
@@ -3099,10 +4885,29 @@ async function startVoice(){
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
+    // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
+    // audioEl exists solely to keep the WebRTC stream alive — it NEVER plays audio
     audioEl = document.createElement("audio");
-    audioEl.autoplay = true;
     audioEl.playsInline = true;
-    pc.ontrack = e => audioEl.srcObject = e.streams[0];
+    // NO autoplay — prevents any audio from audioEl before we can mute it
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    gainNode = audioCtx.createGain();
+    gainNode.connect(audioCtx.destination);
+    pc.ontrack = e => {
+      const stream = e.streams[0];
+      try {
+        // GainNode is the SOLE audio output
+        audioSource = audioCtx.createMediaStreamSource(stream);
+        audioSource.connect(gainNode);
+        // Attach to audioEl only to keep stream reference alive (muted, no autoplay)
+        audioEl.srcObject = stream;
+      } catch (_) {
+        // Fallback (Safari): let audioEl play directly
+        audioEl.autoplay = true;
+        audioEl.srcObject = stream;
+      }
+    };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -3120,11 +4925,21 @@ async function startVoice(){
 
     endBtn.disabled = false;
     startBtn.disabled = false;
-    startBtn.textContent = t("end");
+    startBtn.textContent = selectedVoiceMode === "brainstorm" ? t("end_brainstorm") : t("end");
     startBtn.onclick = () => stopVoice(false);
+    // Brainstorm: yellow end button
+    if (selectedVoiceMode === "brainstorm") {
+      startBtn.style.background = "linear-gradient(180deg, #f5c842 0%, #d4a017 100%)";
+      startBtn.style.color = "#1a1200";
+    }
+    pauseBtn.textContent = t("pause");
+    pauseBtn.classList.remove("is-paused");
+    pauseBtn.style.display = "";
+    pauseBtn.onclick = () => { isPaused ? resumeSession() : pauseSession(); };
     showReadyStatus();
     headline.textContent = t("sophie_listening");
     showLiveBadge(true);
+    showVoiceChat(true);
 
     setTimeout(() => {
       playReadySound();
@@ -3156,9 +4971,10 @@ async function startVoice(){
 
     showBackground(false);
     showLiveBadge(false);
+    showVoiceChat(false);
 
     startBtn.disabled = false;
-    startBtn.textContent = t("start");
+    startBtn.textContent = t("start"); resetStartBtnStyle();
     startBtn.onclick = startVoice;
     endBtn.disabled = true;
     logoutBtn.disabled = false;
@@ -3189,7 +5005,125 @@ async function startVoice(){
   }
 }
 
+// Clean pitch session end — no response.cancel, no goodbye, just teardown + report
+let _pitchCleanRunning = false;
+async function stopVoicePitchClean() {
+  // Re-entry guard — DC close handler can trigger this again
+  if (_pitchCleanRunning) { console.log(`[${runId}] [salespitch] stopVoicePitchClean — skipping re-entry`); return; }
+  _pitchCleanRunning = true;
+  limitTriggered = true; // prevent DC close handler from re-triggering
+
+  console.log(`[${runId}] [salespitch] stopVoicePitchClean — clean teardown`);
+  clearModeIndicator();
+  endBtn.disabled = true;
+  startBtn.disabled = true;
+  logoutBtn.disabled = true;
+  stopDynamicResets();
+  stopCountdown();
+  clearClosingTimers();
+  showLiveBadge(false);
+  showVoiceChat(false);
+
+  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+
+  if (reportEnabled) {
+    headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
+    startFakeReportLoader();
+  } else {
+    headline.textContent = t("see_you_soon");
+  }
+  setStatus("");
+  setSoftHint("");
+  timerEl.style.display = "none";
+
+  // Calculate actual wallclock duration only — no time-limit inflation
+  const wallclockSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
+
+  // Demo pitch: Sophie spoke (not user), so check for assistant turns instead
+  const isDemoSession = voiceHandover?.pitchDemo === true;
+  const hasRealConversation = wallclockSeconds >= 10 &&
+    convoLog.some(item => String(item?.text || "").trim()) &&
+    (hasUserSpoken || isDemoSession);
+
+  // Null references BEFORE closing to prevent DC close handler from re-triggering
+  const _dc = dc; dc = null;
+  const _stream = stream; stream = null;
+  const _pc = pc; pc = null;
+  const _audioEl = audioEl; audioEl = null;
+  if (_dc) { try { _dc.close(); } catch(_){} }
+  if (_stream) { try { _stream.getTracks().forEach(t => t.stop()); } catch(_){} }
+  if (_pc) { try { _pc.close(); } catch(_){} }
+  if (_audioEl) { try { _audioEl.srcObject = null; } catch(_){} }
+
+  if (!hasRealConversation) {
+    stopFakeReportLoader();
+    talkStartedAt = null;
+    remainingAtSessionStart = 0;
+    convoLog = [];
+    partialAssistant = "";
+    lastAssistantFinal = "";
+    userTranscriptBuffer.clear();
+    hasUserSpoken = false;
+    showBackground(false);
+    statusEl.style.visibility = "visible";
+    startBtn.disabled = false;
+    startBtn.textContent = t("start"); resetStartBtnStyle();
+    startBtn.onclick = startVoice;
+    logoutBtn.disabled = false;
+    headline.textContent = t("sophie_waiting");
+    setStatus(t("ready"));
+    return;
+  }
+
+  // Charge usage regardless of report toggle
+  try { await reportUsage(wallclockSeconds); } catch(_) {}
+
+  // Report disabled — skip report, just reset UI
+  if (!reportEnabled) {
+    stopFakeReportLoader();
+    resetPostCallUI();
+    return;
+  }
+
+  // Check if report generation was already started in background (parallel flow)
+  const bgCtx = pitchReportBgPromise ? await pitchReportBgPromise.catch(() => null) : null;
+  pitchReportBgPromise = null;
+
+  if (bgCtx?.sessionId) {
+    // Report was pre-fired — just poll (report has had 30-60s head start, usage already charged above)
+    console.log(`[${runId}] [salespitch] report already generating in bg — polling session ${bgCtx.sessionId}`);
+    await pollReportProgress(bgCtx.sessionId, bgCtx.transcriptLog, { triggeredByLimit: false, skipGenerate: true });
+  } else {
+    // Fallback: no background generation (e.g. DC dropped, emergency path) — start from scratch
+    console.log(`[${runId}] [salespitch] no bg report — generating from scratch`);
+    const transcriptSnapshot = [...convoLog];
+    const memoryResult = await sendMemoryUpdate(wallclockSeconds);
+    const pitchSessionId = memoryResult?.session?.id || sessionId;
+    if (pitchSessionId) {
+      const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
+      await pollReportProgress(pitchSessionId, transcriptLog, { triggeredByLimit: false });
+    } else {
+      stopFakeReportLoader();
+      const transcriptLog = transcriptSnapshot.map(m => ({ role: m.role, text: m.text }));
+      showPostCallResults({
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+      }, transcriptLog, { triggeredByLimit: false });
+    }
+  }
+}
+
 async function stopVoice(triggeredByLimit = false){
+  // Hide pause button + reset pause state on any session end
+  pauseBtn.style.display = "none";
+  isPaused = false;
+
+  // Salespitch: always use clean teardown (preserves audio, generates report correctly)
+  if (selectedVoiceMode === "salespitch") {
+    console.log(`[${runId}] [salespitch] stopVoice → routing to stopVoicePitchClean`);
+    try { await stopVoicePitchClean(); } catch (_) {}
+    return;
+  }
+
   clearModeIndicator();
   endBtn.disabled = true;
   startBtn.disabled = true;
@@ -3199,13 +5133,18 @@ async function stopVoice(triggeredByLimit = false){
   stopCountdown();
   clearClosingTimers();
   showLiveBadge(false);
+  showVoiceChat(false);
 
-  headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
-  setStatus(t("wrapping_up"));
+  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+  if (reportEnabled) {
+    headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
+    startFakeReportLoader();
+  } else {
+    headline.textContent = t("see_you_soon");
+  }
+  setStatus("");
   setSoftHint("");
   timerEl.style.display = "none";
-
-  startFakeReportLoader();
 
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
@@ -3255,6 +5194,7 @@ if (!hasRealConversation) {
 
   talkStartedAt = null;
   remainingAtSessionStart = 0;
+  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; gainNode = null; audioSource = null; }
 
   if (dc) {
     try { dc.close(); } catch(e){}
@@ -3286,7 +5226,7 @@ if (!hasRealConversation) {
 
   statusEl.style.visibility = "visible";
   startBtn.disabled = false;
-  startBtn.textContent = t("start");
+  startBtn.textContent = t("start"); resetStartBtnStyle();
   startBtn.onclick = startVoice;
   logoutBtn.disabled = false;
   headline.textContent = t("sophie_waiting");
@@ -3381,18 +5321,20 @@ if (!hasRealConversation) {
     const transcriptSnapshot = [...convoLog];
 
     const memoryResult = await sendMemoryUpdate(durationSeconds);
-    stopFakeReportLoader();
 
-    if (memoryResult?.output || memoryResult?.session) {
-      showPostCallResults(memoryResult, transcriptSnapshot, { triggeredByLimit });
-    } else if (transcriptSnapshot.length) {
+    // Start async report polling with progress bar (skip if user disabled report)
+    const sessionId = memoryResult?.session?.id;
+    if (reportEnabled && sessionId) {
+      await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
+    } else if (reportEnabled) {
+      stopFakeReportLoader();
       showPostCallResults({
-        output: {
-          short_summary: t("no_summary"),
-          key_insights: [],
-          action_plan: []
-        }
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
       }, transcriptSnapshot, { triggeredByLimit });
+    } else {
+      // Report disabled — skip report, just reset UI
+      stopFakeReportLoader();
+      resetPostCallUI();
     }
 
     track("talk_ended", {
@@ -3436,7 +5378,7 @@ if (!hasRealConversation) {
 
     statusEl.style.visibility = "visible";
     startBtn.disabled = false;
-    startBtn.textContent = t("start");
+    startBtn.textContent = t("start"); resetStartBtnStyle();
     startBtn.onclick = startVoice;
     logoutBtn.disabled = false;
     headline.textContent = t("sophie_waiting");
@@ -3472,6 +5414,55 @@ copyReportBtn?.addEventListener("click", copyReport);
 shareReportBtn?.addEventListener("click", shareReport);
 downloadReportBtn?.addEventListener("click", downloadReport);
 
+// Save current report HTML as template for this session mode
+saveTemplateBtn?.addEventListener("click", async () => {
+  const ctx = window._lastReportContext;
+  const html = ctx?.apiResult?.output?.report_html;
+  if (!html) return;
+
+  const span = saveTemplateBtn.querySelector("span");
+  const origText = span?.textContent;
+  try {
+    saveTemplateBtn.disabled = true;
+    const headers = { "Content-Type": "application/json" };
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.access_token) headers["Authorization"] = "Bearer " + s.access_token;
+    } catch (_) {}
+
+    const res = await fetch("/api/settings?action=save-report-template", {
+      method: "POST", headers,
+      body: JSON.stringify({ mode: selectedVoiceMode || "default", report_html: html }),
+    });
+    if (res.ok) {
+      if (span) span.textContent = "Saved!";
+      saveTemplateBtn.style.color = "#4a8c5c";
+      setTimeout(() => { if (span) span.textContent = origText; saveTemplateBtn.style.color = ""; }, 2000);
+    }
+  } catch (e) {
+    console.error("[save-template]", e?.message);
+  } finally {
+    saveTemplateBtn.disabled = false;
+  }
+});
+
+// Regenerate report with fresh AI generation
+regenerateReportBtn?.addEventListener("click", async () => {
+  const ctx = window._lastReportContext;
+  if (!ctx?.sessionId || !ctx?.transcriptLog) return;
+
+  regenerateReportBtn.disabled = true;
+  const span = regenerateReportBtn.querySelector("span");
+  if (span) span.textContent = "Generating...";
+
+  // Hide current report, show progress bar
+  hidePostCallResults();
+  await pollReportProgress(ctx.sessionId, ctx.transcriptLog);
+
+  regenerateReportBtn.disabled = false;
+  if (span) span.textContent = "Regenerate";
+});
+
 // NOTE: do NOT add startBtn.addEventListener("click", startVoice) here.
 // The mobile path sets startBtn.onclick = startVoice (line below),
 // and desktop auto-calls startVoice() directly.
@@ -3485,8 +5476,6 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
   window.location.href = "/";
 });
 
-initManageSubscriptionLink();
-
 // On mobile, getUserMedia requires a user gesture (tap/click) for first-time
 // permission. But if already granted, we can auto-start without a gesture.
 const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -3496,7 +5485,7 @@ function showMobileStartFallback() {
   headline.textContent = t("sophie_waiting");
   setStatus(t("tap_to_start"));
   startBtn.disabled = false;
-  startBtn.textContent = t("start");
+  startBtn.textContent = t("start"); resetStartBtnStyle();
   startBtn.onclick = startVoice;
   showBackground(false);
 }

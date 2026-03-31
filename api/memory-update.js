@@ -1,4 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
+import { getAdapter } from "../lib/ai/adapters/index.js";
+import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
+import { trackCost } from "../lib/ai/cost-tracker.js";
+import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
 
 function cleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -108,6 +112,206 @@ function sanitizeOpenQuestions(items) {
     .map((item) => cleanText(item).slice(0, 300))
     .filter(Boolean)
     .slice(0, 8);
+}
+
+// ---------------------------------------------------------------------------
+// Smart Report Generator — Multi-AI + Flexible Blocks
+// All 4 providers analyze the transcript in parallel,
+// Claude Sonnet synthesizes the best report with dynamic blocks.
+// ---------------------------------------------------------------------------
+
+const REPORT_PROVIDERS = [
+  { provider: 'openai', model: 'gpt-4o-mini' },
+  { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+  { provider: 'google', model: 'gemini-2.5-flash' },
+  { provider: 'mistral', model: 'mistral-small-latest' },
+];
+
+async function generateSmartReport({ transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel, sessionMode }) {
+  const modeHint = sessionMode ? `\nDer Session-Modus war: "${sessionMode}". Berücksichtige das bei deiner Analyse.` : '';
+  const analysisPrompt = `Analysiere dieses Gesprächs-Transcript. Extrahiere ALLES was relevant ist.
+Keine starre Vorlage — extrahiere was DA ist:
+- Wenn Scores/Bewertungen vorkommen → extrahiere sie mit Zahlen
+- Wenn Teilnehmer erkennbar → nenne sie
+- Wenn Entscheidungen getroffen wurden → liste sie
+- Wenn Action Items besprochen wurden → mit Owner und Deadline
+- Wenn es ein Pitch war → bewerte Kriterien wie Clarity, Value Proposition etc. mit Score 0-5
+- Wenn es ein Meeting war → Agenda, Beschlüsse, Protokoll
+- Wenn es ein kurzes Gespräch war → kurze Zusammenfassung reicht
+Antworte als freies JSON-Objekt. Nutze die Felder die PASSEN. Erfinde NICHTS.${modeHint}
+Schreibe in der GLEICHEN Sprache wie das Transcript.`;
+
+  // Step 1: All 4 providers analyze in parallel (8s timeout)
+  const results = await Promise.allSettled(
+    REPORT_PROVIDERS.map(async ({ provider, model }) => {
+      try {
+        const adapter = getAdapter(provider);
+        const response = await Promise.race([
+          adapter.complete({
+            messages: [
+              { role: 'system', content: analysisPrompt },
+              { role: 'user', content: `Transcript:\n${transcriptText}` },
+            ],
+            model,
+            maxTokens: 2048,
+            temperature: 0.2,
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000)),
+        ]);
+        // Try to parse JSON from response
+        const text = response.content || '';
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return { provider, data: JSON.parse(jsonMatch[0]) };
+        }
+        return null;
+      } catch (e) {
+        console.error(`[smart-report] ${provider} failed:`, e?.message);
+        return null;
+      }
+    })
+  );
+
+  const analyses = results
+    .map(r => r.status === 'fulfilled' ? r.value : null)
+    .filter(Boolean);
+
+  if (analyses.length === 0) {
+    // Fallback to simple summary
+    return buildFallbackReport(transcriptText, fallbackSummary, emotionalTone);
+  }
+
+  // Step 2: Claude Sonnet synthesizes the best report from all analyses
+  const analysesBlock = analyses
+    .map(a => `[${a.provider.toUpperCase()}]:\n${JSON.stringify(a.data, null, 2)}`)
+    .join('\n\n---\n\n');
+
+  const synthesisPrompt = `Du bist ein Premium Report-Designer für eine hochintelligente KI namens Sophie.
+${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert. Erstelle den BESTEN Report.
+
+DESIGN-PRINZIPIEN:
+- Modern, elegant, visuell ansprechend — der User soll merken dass er mit einer intelligenten KI arbeitet
+- NUR Informationen die von mindestens 2 KIs bestätigt werden (Confidence-Check gegen Halluzinationen)
+- Der Inhalt bestimmt die Form — wähle frei welche Blöcke passen
+- Wenn es ein kurzes Gespräch war → kurzer Report. Keine künstliche Tiefe
+- Schreibe in der gleichen Sprache wie die Analysen
+
+KONSISTENZ-LEITPLANKEN (damit wiederholte Sessions vergleichbar bleiben):
+- SALES PITCH → IMMER Scorecard mit diesen 8 Kriterien: Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Handling, Persuasiveness (Score 0-5). Plus: Stärken, Schwächen, Overall Score. So kann der User Pitch #1 mit Pitch #5 vergleichen.
+- MEETING → IMMER: Agenda/Themen → Beschlüsse → Action Items (mit Owner + Deadline) → Offene Punkte. Konsistente Struktur für jedes Meeting-Protokoll.
+- BRAINSTORM → IMMER: Ideen-Cluster → Favoriten → Nächste Schritte. Damit Brainstorming-Sessions vergleichbar sind.
+- REFLEXION/COACHING → Frei, aber Erkenntnisse und offene Fragen sollten immer dabei sein.
+- CASUAL/KURZ → Kompakte Zusammenfassung, keine erzwungene Tiefe.
+
+Diese Leitplanken sind KEINE starren Templates — du entscheidest was zum Gespräch passt. Aber wenn es z.B. ein Pitch war, nutze die 8 Scorecard-Kriterien damit der User seinen Fortschritt tracken kann.
+
+VERFÜGBARE BLOCK-TYPEN (nutze NUR was zum Inhalt passt):
+{"type":"title","text":"...","subtitle":"..."} — Titel
+{"type":"metadata","date":"...","duration":"...","mood":"..."} — Kontext-Pills
+{"type":"summary","text":"..."} — Zusammenfassung
+{"type":"highlights","items":["..."]} — Wichtigste Punkte (visuell hervorgehoben)
+{"type":"scorecard","items":[{"label":"...","score":0-5,"note":"..."}]} — Bewertung mit Scores
+{"type":"decisions","items":["..."]} — Getroffene Beschlüsse
+{"type":"actions","items":[{"task":"...","owner":"...","deadline":"..."}]} — Aufgaben
+{"type":"participants","items":["..."]} — Teilnehmer
+{"type":"insights","items":["..."]} — Erkenntnisse
+{"type":"questions","items":["..."]} — Offene Fragen
+{"type":"quote","text":"...","source":"..."} — Markantes Zitat
+
+Antworte NUR mit dem JSON-Array.
+
+DIE ${analyses.length} ANALYSEN:
+
+${analysesBlock}`;
+
+  try {
+    const synthesizer = getAdapter('anthropic');
+    const synthesisResponse = await Promise.race([
+      synthesizer.complete({
+        messages: [{ role: 'user', content: synthesisPrompt }],
+        model: 'claude-sonnet-4-6',
+        maxTokens: 3000,
+        temperature: 0.3,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000)),
+    ]);
+
+    const text = synthesisResponse.content || '';
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array in synthesis');
+    const blocks = JSON.parse(jsonMatch[0]);
+
+    // Extract standard fields for backward compatibility
+    const titleBlock = blocks.find(b => b.type === 'title');
+    const summaryBlock = blocks.find(b => b.type === 'summary');
+
+    return {
+      session_title: titleBlock?.text || analyses[0]?.data?.title || 'Session',
+      short_summary: summaryBlock?.text || analyses[0]?.data?.summary || fallbackSummary || '',
+      structured_summary: {
+        summary: summaryBlock?.text || '',
+        emotional_tone: emotionalTone || analyses[0]?.data?.emotional_summary || 'neutral',
+        stress_level: stressLevel,
+        closeness_level: closenessLevel,
+      },
+      // Legacy fields for backward compat
+      key_insights: (blocks.find(b => b.type === 'insights')?.items || []).map(t => ({ type: 'insight', text: t })),
+      action_plan: (blocks.find(b => b.type === 'actions')?.items || []).map(a => ({
+        label: a.task || a, detail: a.owner ? `Owner: ${a.owner}${a.deadline ? ` | Deadline: ${a.deadline}` : ''}` : '',
+      })),
+      open_questions: blocks.find(b => b.type === 'questions')?.items || [],
+      // New: flexible blocks for dynamic rendering
+      report_blocks: blocks,
+      report_providers: analyses.map(a => a.provider),
+      report_style: 'smart',
+    };
+  } catch (e) {
+    console.error('[smart-report] synthesis failed:', e?.message);
+    // Fallback: build blocks from best single analysis
+    const best = analyses[0].data;
+    const fallbackBlocks = [
+      { type: 'title', text: best.title || 'Session', subtitle: '' },
+      { type: 'summary', text: best.summary || fallbackSummary || '' },
+    ];
+    if (best.highlights?.length) fallbackBlocks.push({ type: 'highlights', items: best.highlights });
+    if (best.key_points?.length) fallbackBlocks.push({ type: 'insights', items: best.key_points });
+    if (best.scores?.length) fallbackBlocks.push({ type: 'scorecard', items: best.scores });
+    if (best.decisions?.length) fallbackBlocks.push({ type: 'decisions', items: best.decisions });
+    if (best.action_items?.length) fallbackBlocks.push({ type: 'actions', items: best.action_items });
+    if (best.participants?.length) fallbackBlocks.push({ type: 'participants', items: best.participants });
+    if (best.open_questions?.length) fallbackBlocks.push({ type: 'questions', items: best.open_questions });
+
+    return {
+      session_title: best.title || 'Session',
+      short_summary: best.summary || fallbackSummary || '',
+      structured_summary: { summary: best.summary || '', emotional_tone: emotionalTone || 'neutral', stress_level: stressLevel, closeness_level: closenessLevel },
+      key_insights: (best.key_points || []).map(t => ({ type: 'insight', text: t })),
+      action_plan: (best.action_items || []).map(a => ({ label: typeof a === 'string' ? a : a.task || '', detail: typeof a === 'object' && a.owner ? `Owner: ${a.owner}` : '' })),
+      open_questions: best.open_questions || [],
+      report_blocks: fallbackBlocks,
+      report_providers: [analyses[0].provider],
+      report_style: 'smart',
+    };
+  }
+}
+
+function buildFallbackReport(transcriptText, fallbackSummary, emotionalTone) {
+  const title = buildSessionTitle(fallbackSummary);
+  const summary = (fallbackSummary || '').slice(0, 300);
+  return {
+    session_title: title,
+    short_summary: summary,
+    structured_summary: { summary: summary, emotional_tone: emotionalTone || 'neutral', stress_level: null, closeness_level: null },
+    key_insights: buildFallbackKeyInsights(fallbackSummary),
+    action_plan: buildFallbackActionPlan(fallbackSummary),
+    open_questions: buildFallbackOpenQuestions(),
+    report_blocks: [
+      { type: 'title', text: title, subtitle: '' },
+      { type: 'summary', text: summary },
+    ],
+    report_providers: [],
+    report_style: 'smart',
+  };
 }
 
 async function generateConversationOutput({
@@ -247,14 +451,30 @@ ${transcriptText}
 // but with pitch-specific scorecard in key_insights + action_plan
 // ---------------------------------------------------------------------------
 async function generateSalesPitchReport({ transcriptText, openAiKey, model }) {
-  const system = `You analyze a Sales Pitch training session and produce a structured Sales Pitch Report.
+  const system = `You analyze a Sales Pitch training session and produce a structured Sales Pitch Report v2.
 The transcript contains a pitch practice: the user pitched, Sophie asked critical questions, and gave verbal feedback.
 
 Extract ALL evaluation data from the conversation. Score each criterion yourself based on the pitch quality you observe.
 
+PITCH TYPE CLASSIFICATION — derive from the 3 setup answers (what, who, goal):
+- "sales": customer, buying, ROI, pain point
+- "investor": investor, funding, market, traction
+- "keynote": audience, stage, conference, talk
+- "internal": team, management, budget, approval
+- "self": job interview, jury, application, self-presentation
+- "other": none of the above
+
+SCORING — 13 criteria in 2 groups:
+CONTENT (60%): clarity (12%), problem_sharpness (10%), value_proposition (12%), structure (8%), differentiation (8%), credibility (5%), audience_fit (5%)
+DELIVERY (40%): opening (8%), closing (7%), voice_rhythm (8%), rhetoric_language (7%), authenticity (5%), persuasiveness (5%)
+
+Overall score = weighted average (score × weight per criterion, sum / 100).
+
+CONFIDENCE: If text-only (no audio), mark voice_rhythm and authenticity as "low" confidence, rhetoric_language as "medium". Otherwise all "high".
+
 IMPORTANT: Write the ENTIRE output in the SAME language as the transcript.
 This includes ALL fields: overall_verdict, notes, strongest_elements, main_weaknesses, likely_audience_questions, improvement_priorities, recommended_next_attempt.
-Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpness, Value Proposition, Differentiation, Credibility, Audience Fit, Objection Resistance, Persuasiveness) — but the "note" field for each criterion must be in the transcript language.`;
+Criterion names in the scorecard MUST stay in English — but the "note" field for each criterion must be in the transcript language.`;
 
   const userMsg = `Transcript:\n${transcriptText}`;
 
@@ -264,11 +484,40 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
     properties: {
       session_title: { type: "string" },
       short_summary: { type: "string" },
+      pitch_type: { type: "string" },
       audience_type: { type: "string" },
       pitch_goal: { type: "string" },
+      goal_type: { type: "string" },
       pitch_topic: { type: "string" },
       overall_verdict: { type: "string" },
-      scorecard: {
+      scores_content: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          clarity: { type: "number" },
+          problem_sharpness: { type: "number" },
+          value_proposition: { type: "number" },
+          structure: { type: "number" },
+          differentiation: { type: "number" },
+          credibility: { type: "number" },
+          audience_fit: { type: "number" },
+        },
+        required: ["clarity", "problem_sharpness", "value_proposition", "structure", "differentiation", "credibility", "audience_fit"],
+      },
+      scores_delivery: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          opening: { type: "number" },
+          closing: { type: "number" },
+          voice_rhythm: { type: "number" },
+          rhetoric_language: { type: "number" },
+          authenticity: { type: "number" },
+          persuasiveness: { type: "number" },
+        },
+        required: ["opening", "closing", "voice_rhythm", "rhetoric_language", "authenticity", "persuasiveness"],
+      },
+      scorecard_notes: {
         type: "array",
         items: {
           type: "object",
@@ -277,11 +526,15 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
             criterion: { type: "string" },
             score: { type: "number" },
             note: { type: "string" },
+            confidence: { type: "string" },
+            group: { type: "string" },
           },
-          required: ["criterion", "score", "note"],
+          required: ["criterion", "score", "note", "confidence", "group"],
         },
       },
       overall_score: { type: "number" },
+      content_score: { type: "number" },
+      delivery_score: { type: "number" },
       confidence_level: { type: "string" },
       strongest_elements: { type: "array", items: { type: "string" } },
       main_weaknesses: { type: "array", items: { type: "string" } },
@@ -290,8 +543,9 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
       recommended_next_attempt: { type: "string" },
     },
     required: [
-      "session_title", "short_summary", "audience_type", "pitch_goal", "pitch_topic",
-      "overall_verdict", "scorecard", "overall_score", "confidence_level",
+      "session_title", "short_summary", "pitch_type", "audience_type", "pitch_goal", "goal_type", "pitch_topic",
+      "overall_verdict", "scores_content", "scores_delivery", "scorecard_notes",
+      "overall_score", "content_score", "delivery_score", "confidence_level",
       "strongest_elements", "main_weaknesses", "likely_audience_questions",
       "improvement_priorities", "recommended_next_attempt"
     ],
@@ -340,10 +594,11 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
     throw new Error("Bad JSON from sales pitch report model");
   }
 
-  // Map scorecard to key_insights format for the report UI
-  const scorecardInsights = (parsed.scorecard || []).map((item) => ({
+  // Map scorecard_notes to key_insights format for the report UI
+  const scorecardInsights = (parsed.scorecard_notes || []).map((item) => ({
     type: "scorecard",
-    text: `${item.criterion}: ${item.score}/5 — ${item.note}`,
+    text: `${item.criterion}: ${item.score}/5${item.confidence !== "high" ? ` (${item.confidence} confidence)` : ""} — ${item.note}`,
+    group: item.group,
   }));
 
   const strengthInsights = (parsed.strongest_elements || []).map((s) => ({
@@ -390,14 +645,20 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
     ],
     action_plan: actionPlan,
     open_questions: parsed.likely_audience_questions || [],
-    // Extra pitch-specific data for the frontend
+    // Extra pitch-specific data for the frontend (v2)
     sales_pitch_report: {
+      pitch_type: parsed.pitch_type || "other",
       audience_type: parsed.audience_type || "",
       pitch_goal: parsed.pitch_goal || "",
+      goal_type: parsed.goal_type || "",
       pitch_topic: parsed.pitch_topic || "",
       overall_verdict: parsed.overall_verdict || "",
-      scorecard: parsed.scorecard || [],
+      scores_content: parsed.scores_content || {},
+      scores_delivery: parsed.scores_delivery || {},
+      scorecard_notes: parsed.scorecard_notes || [],
       overall_score: parsed.overall_score || 0,
+      content_score: parsed.content_score || 0,
+      delivery_score: parsed.delivery_score || 0,
       confidence_level: parsed.confidence_level || "low",
       strongest_elements: parsed.strongest_elements || [],
       main_weaknesses: parsed.main_weaknesses || [],
@@ -406,6 +667,156 @@ Criterion names in the scorecard MUST stay in English (Clarity, Problem Sharpnes
       recommended_next_attempt: parsed.recommended_next_attempt || "",
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Meeting Summary generator
+// ---------------------------------------------------------------------------
+async function generateMeetingSummary({ transcriptText, openAiKey, model }) {
+  const system = `You create a structured MEETING SUMMARY from a conversation transcript.
+Extract: what was discussed, what was decided, action items with owners, and open topics.
+Structure the output clearly. Write in the SAME language as the transcript.`;
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      session_title: { type: "string" },
+      short_summary: { type: "string" },
+      agenda_points: { type: "array", items: { type: "string" } },
+      decisions: { type: "array", items: { type: "string" } },
+      action_items: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            task: { type: "string" },
+            owner: { type: "string" },
+            deadline: { type: "string" },
+          },
+          required: ["task", "owner", "deadline"],
+        },
+      },
+      open_topics: { type: "array", items: { type: "string" } },
+      next_steps: { type: "string" },
+    },
+    required: ["session_title", "short_summary", "agenda_points", "decisions", "action_items", "open_topics", "next_steps"],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model, input: [{ role: "system", content: system }, { role: "user", content: `Transcript:\n${transcriptText}` }],
+      temperature: 0.3, text: { format: { type: "json_schema", name: "sophie_meeting_summary_v1", strict: true, schema } }, truncation: "auto",
+    }),
+  });
+
+  if (!r.ok) throw new Error(`Meeting summary error ${r.status}`);
+  const out = await r.json();
+  const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+  const parsed = JSON.parse(String(text || "").trim());
+
+  return {
+    session_title: parsed.session_title || "Meeting",
+    short_summary: parsed.short_summary || "",
+    structured_summary: { summary: parsed.short_summary || "", emotional_tone: "neutral", stress_level: null, closeness_level: null },
+    key_insights: [
+      ...(parsed.agenda_points || []).map(a => ({ type: "agenda", text: a })),
+      ...(parsed.decisions || []).map(d => ({ type: "decision", text: d })),
+    ],
+    action_plan: (parsed.action_items || []).map(a => ({
+      label: `${a.task}${a.deadline !== "none" ? ` (${a.deadline})` : ""}`,
+      detail: a.owner !== "none" ? `Owner: ${a.owner}` : "",
+    })),
+    open_questions: parsed.open_topics || [],
+    meeting_data: parsed,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Quick Summary generator
+// ---------------------------------------------------------------------------
+async function generateQuickSummary({ transcriptText, openAiKey, model }) {
+  const system = `Create a QUICK SUMMARY of this conversation in 3-5 bullet points.
+Be extremely concise. Each bullet should be one short sentence capturing a key point.
+Write in the SAME language as the transcript.`;
+
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      session_title: { type: "string" },
+      bullets: { type: "array", items: { type: "string" } },
+    },
+    required: ["session_title", "bullets"],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model, input: [{ role: "system", content: system }, { role: "user", content: `Transcript:\n${transcriptText}` }],
+      temperature: 0.3, text: { format: { type: "json_schema", name: "sophie_quick_summary_v1", strict: true, schema } }, truncation: "auto",
+    }),
+  });
+
+  if (!r.ok) throw new Error(`Quick summary error ${r.status}`);
+  const out = await r.json();
+  const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+  const parsed = JSON.parse(String(text || "").trim());
+
+  return {
+    session_title: parsed.session_title || "Session",
+    short_summary: (parsed.bullets || []).join(" "),
+    structured_summary: { summary: (parsed.bullets || []).join(" "), emotional_tone: "neutral", stress_level: null, closeness_level: null },
+    key_insights: (parsed.bullets || []).map(b => ({ type: "bullet", text: b })),
+    action_plan: [],
+    open_questions: [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Style recommendation — AI picks the best report style for this transcript
+// ---------------------------------------------------------------------------
+async function recommendReportStyle({ transcriptText, openAiKey, model }) {
+  const r = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model, input: [
+        { role: "system", content: "Analyze this transcript and recommend the best report style. Options: thinking (deep analysis), scorecard (evaluation with scores), meeting (meeting summary with action items), quick (3-5 bullet points). Return ONLY the style name." },
+        { role: "user", content: transcriptText.slice(0, 2000) },
+      ],
+      temperature: 0.1, max_output_tokens: 20,
+    }),
+  });
+  if (!r.ok) return "thinking";
+  const out = await r.json();
+  const text = (out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "thinking").trim().toLowerCase();
+  if (["thinking", "scorecard", "meeting", "quick"].includes(text)) return text;
+  if (text.includes("score")) return "scorecard";
+  if (text.includes("meeting")) return "meeting";
+  if (text.includes("quick")) return "quick";
+  return "thinking";
+}
+
+// ---------------------------------------------------------------------------
+// Report generator dispatcher — picks the right generator based on style
+// ---------------------------------------------------------------------------
+async function generateReport({ style, transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel, openAiKey, model }) {
+  switch (style) {
+    case "scorecard":
+      return generateSalesPitchReport({ transcriptText, openAiKey, model });
+    case "meeting":
+      return generateMeetingSummary({ transcriptText, openAiKey, model });
+    case "quick":
+      return generateQuickSummary({ transcriptText, openAiKey, model });
+    case "thinking":
+    default:
+      return generateConversationOutput({ transcriptText, fallbackSummary, emotionalTone, stressLevel, closenessLevel, openAiKey, model });
+  }
 }
 
 /**
@@ -488,6 +899,21 @@ export default async function handler(req, res) {
         ? body.session_ended_at.trim()
         : nowIso;
 
+    // ---- Track realtime voice session cost (estimated from duration) ----
+    if (secondsUsed > 0) {
+      const realtimeCostUsd = estimateRealtimeCost(secondsUsed);
+      trackCost({
+        userId: user.id,
+        provider: 'openai',
+        model: 'gpt-realtime',
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: realtimeCostUsd,
+        latencyMs: secondsUsed * 1000,
+        routingReason: `realtime-voice-${sessionMode || 'unknown'}`,
+      }).catch(err => console.error("Realtime cost tracking error:", err?.message));
+    }
+
     // ---- Transcript normalization with strict role mapping ----
     const rawTranscript = body.transcript;
     let transcriptArr = [];
@@ -564,7 +990,7 @@ export default async function handler(req, res) {
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
-          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence"
+          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -870,6 +1296,23 @@ ${transcriptText}
     }
 
     const out = await r.json();
+
+    // Track memory extraction AI cost
+    if (out?.usage) {
+      const memModel = process.env.MEMORY_MODEL || "gpt-4o-mini";
+      const memCost = calculateCost(memModel, out.usage.input_tokens || 0, out.usage.output_tokens || 0);
+      trackCost({
+        userId: user.id,
+        provider: 'openai',
+        model: memModel,
+        inputTokens: out.usage.input_tokens || 0,
+        outputTokens: out.usage.output_tokens || 0,
+        costUsd: memCost,
+        latencyMs: 0,
+        routingReason: 'memory-extraction',
+      }).catch(err => console.error("Memory cost tracking error:", err?.message));
+    }
+
     const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
 
     let parsed;
@@ -1130,66 +1573,29 @@ ${transcriptText}
       }
     }
 
-    let conversationOutput;
-    try {
-      if (sessionMode === "salespitch") {
-        conversationOutput = await generateSalesPitchReport({
-          transcriptText,
-          openAiKey: process.env.OPENAI_API_KEY,
-          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-        });
-      } else {
-        conversationOutput = await generateConversationOutput({
-          transcriptText,
-          fallbackSummary: sessSummary,
-          emotionalTone: clean(ss.emotional_tone),
-          stressLevel: ss.stress_level,
-          closenessLevel: ss.closeness_level,
-          openAiKey: process.env.OPENAI_API_KEY,
-          model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-        });
-      }
-    } catch (e) {
-      console.error("conversation output generation failed:", e?.message || e);
-      conversationOutput = {
-        session_title: buildSessionTitle(sessSummary),
-        short_summary: sessSummary.slice(0, 300),
-        structured_summary: buildStructuredSummary({
-          shortSummary: sessSummary,
-          emotionalTone: clean(ss.emotional_tone),
-          stressLevel: ss.stress_level,
-          closenessLevel: ss.closeness_level,
-        }),
-        key_insights: buildFallbackKeyInsights(sessSummary),
-        action_plan: buildFallbackActionPlan(sessSummary),
-        open_questions: buildFallbackOpenQuestions(),
-      };
-    }
-
+    // Insert output row with "pending" status — report will be generated async
     const outputRow = {
       session_id: insertedSession.id,
-      title: cleanText(conversationOutput.session_title || finalSessionTitle).slice(0, 120),
-      short_summary: cleanText(conversationOutput.short_summary || sessSummary).slice(0, 300),
-      structured_summary: conversationOutput.structured_summary || buildStructuredSummary({
+      title: cleanText(finalSessionTitle).slice(0, 120),
+      short_summary: cleanText(sessSummary).slice(0, 300),
+      structured_summary: buildStructuredSummary({
         shortSummary: sessSummary,
         emotionalTone: clean(ss.emotional_tone),
         stressLevel: ss.stress_level,
         closenessLevel: ss.closeness_level,
       }),
-      key_insights: Array.isArray(conversationOutput.key_insights)
-        ? conversationOutput.key_insights
-        : buildFallbackKeyInsights(sessSummary),
-      action_plan: Array.isArray(conversationOutput.action_plan)
-        ? conversationOutput.action_plan
-        : buildFallbackActionPlan(sessSummary),
-      open_questions: Array.isArray(conversationOutput.open_questions)
-        ? conversationOutput.open_questions
-        : buildFallbackOpenQuestions(),
+      key_insights: [],
+      action_plan: [],
+      open_questions: [],
       model: process.env.OUTPUT_MODEL || process.env.MEMORY_MODEL || "gpt-4o-mini",
-      prompt_version: "conversation-insights-v1",
+      prompt_version: "smart-report-v2",
+      report_status: 'pending',
+      report_progress: 0,
     };
 
     const { error: outErr } = await supabase.from("conversation_outputs").insert(outputRow);
+
+    // Report generation is triggered by the frontend via /api/ai/generate-report
 
     if (outErr) {
       console.error("conversation_outputs insert failed:", outErr);
@@ -1223,11 +1629,8 @@ ${transcriptText}
         title: outputRow.title,
         session_title: outputRow.title,
         short_summary: outputRow.short_summary,
-        structured_summary: outputRow.structured_summary,
-        key_insights: outputRow.key_insights,
-        action_plan: outputRow.action_plan,
-        open_questions: outputRow.open_questions,
-        ...(conversationOutput.sales_pitch_report ? { sales_pitch_report: conversationOutput.sales_pitch_report } : {}),
+        report_status: 'generating',
+        report_progress: 0,
       },
       extracted: {
         first_name: profileRow.first_name,
