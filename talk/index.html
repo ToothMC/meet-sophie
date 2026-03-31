@@ -4067,12 +4067,8 @@ function attachChannel(ch) {
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
-        // Smooth fade-out instead of hard audio cut (prevents click/pop)
-        if (gainNode && audioCtx) {
-          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
-          gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-        }
+        // Fade out Sophie's voice when user starts speaking
+        if (audioEl) audioEl.volume = 0;
         // User is speaking — reset inactivity (including warning flag if grace period active)
         inactivityWarningFired = false;
         touchActivity();
@@ -4094,12 +4090,8 @@ function attachChannel(ch) {
       if (msg?.type === "response.created") {
         hideReadyStatus();
         if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
-        // Fade audio back in for Sophie's new response
-        if (gainNode && audioCtx) {
-          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-          gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
-          gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
-        }
+        // Restore volume for Sophie's new response
+        if (audioEl) audioEl.volume = 1;
 
         // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
         // NEVER cancel during salespitch — Sophie's feedback (Phase D) must play fully
@@ -4892,33 +4884,18 @@ async function startVoice(){
     });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-    // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
+    // Single audio path: <audio> element only — provides playback + browser AEC.
+    // No Web Audio GainNode to speakers (caused double playback).
+    // Volume fades use audioEl.volume directly.
     audioEl = document.createElement("audio");
+    audioEl.autoplay = true;
     audioEl.playsInline = true;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-    gainNode = audioCtx.createGain();
-    gainNode.connect(audioCtx.destination);
+    audioEl.volume = 1;
     let ontrackFired = false;
     pc.ontrack = e => {
-      if (ontrackFired) return; // guard against multiple ontrack fires
+      if (ontrackFired) return;
       ontrackFired = true;
-      const remoteStream = e.streams[0];
-      // Attach stream to <audio> element so browser AEC (echo cancellation) can pair
-      // mic input with speaker output. Without this, the browser can't cancel echo and
-      // Sophie's voice feeds back into the mic → rapid-fire VAD triggers.
-      // Volume stays 0 — GainNode handles actual playback volume + fade control.
-      audioEl.volume = 0;
-      audioEl.srcObject = remoteStream;
-      audioEl.autoplay = true;
-      try {
-        audioSource = audioCtx.createMediaStreamSource(remoteStream);
-        audioSource.connect(gainNode);
-        // GainNode handles playback — <audio> element is muted but keeps AEC active
-      } catch (_) {
-        // Web Audio failed — fall back to <audio> element for direct playback
-        audioEl.volume = 1;
-      }
+      audioEl.srcObject = e.streams[0];
     };
 
     const offer = await pc.createOffer();
