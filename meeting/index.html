@@ -436,7 +436,7 @@ body{
 
   <!-- Input Bar -->
   <!-- Sophie status indicator -->
-  <div id="sophieStatus" style="display:none;text-align:center;padding:6px 12px;font-size:12px;color:#c4a882;animation:sophiePulse 2s ease-in-out infinite"></div>
+  <div id="sophieStatus" style="display:none;text-align:center;padding:8px 12px;font-size:20px;font-weight:600;color:#22c55e;animation:sophiePulse 2s ease-in-out infinite"></div>
 
   <div class="input-bar" id="inputBar">
     <textarea id="chatInput" placeholder="Type here..." rows="1"></textarea>
@@ -1085,7 +1085,7 @@ function startLiveTimer() {
     const elapsed = Math.floor((Date.now() - liveStartTime) / 1000);
     const m = Math.floor(elapsed / 60).toString().padStart(2, "0");
     const s = (elapsed % 60).toString().padStart(2, "0");
-    liveTimerEl.textContent = `LIVE ${m}:${s}`;
+    liveTimerEl.textContent = `🔴 Aufnahme ${m}:${s}`;
   }, 1000);
 }
 
@@ -1544,27 +1544,16 @@ function showMeetingReport(html) {
   reportActions.style.display = "block";
 
   if (isMobile) {
-    // Mobile: render directly in DOM — no iframe, no CSS injection issues
+    // Mobile: render directly in DOM — just set innerHTML, browser handles the rest
     reportFrame.style.display = "none";
     reportDirect.style.display = "block";
-    // Extract body content from HTML (strip <html>, <head>, <style> wrapper)
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    // Find the main content div (usually body > div with max-width)
-    const styleEl = tmp.querySelector("style");
-    const mainDiv = tmp.querySelector('div[style*="max-width"]') || tmp.querySelector("body > div") || tmp;
-    // Apply extracted styles + override for mobile
-    reportDirect.innerHTML = "";
-    if (styleEl) {
-      const s = document.createElement("style");
-      s.textContent = styleEl.textContent + `
-        [style*="max-width"] { max-width:100% !important; padding:12px 0 !important; margin:0 !important; }
-      `;
-      reportDirect.appendChild(s);
-    }
-    // Clone content nodes
-    for (const child of mainDiv.children) {
-      reportDirect.appendChild(child.cloneNode(true));
+    reportDirect.innerHTML = html;
+    // Override the outer container width for mobile
+    const outerDiv = reportDirect.querySelector('div[style]');
+    if (outerDiv) {
+      outerDiv.style.maxWidth = "100%";
+      outerDiv.style.padding = "12px 0";
+      outerDiv.style.margin = "0";
     }
   } else {
     // Desktop: iframe for A4 isolation
@@ -1906,7 +1895,7 @@ function resumeMeeting() {
     const elapsed = Math.floor((Date.now() - liveStartTime) / 1000);
     const m = Math.floor(elapsed / 60).toString().padStart(2, "0");
     const s = (elapsed % 60).toString().padStart(2, "0");
-    liveTimerEl.textContent = `LIVE ${m}:${s}`;
+    liveTimerEl.textContent = `🔴 Aufnahme ${m}:${s}`;
   }, 1000);
 
   // UI
