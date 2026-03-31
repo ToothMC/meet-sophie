@@ -188,6 +188,9 @@ body{
 .phase-cta{
   padding:10px 16px;text-align:center;
   border-top:1px solid #ede8e2;
+  position:sticky;bottom:0;z-index:5;
+  background:rgba(250,249,246,.95);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
 .phase-cta button{
   width:100%;padding:16px 24px;font-size:17px;font-weight:700;
@@ -416,13 +419,6 @@ body{
     </div>
   </div>
 
-  <!-- Phase CTA — above chat so it's always visible on mobile -->
-  <div class="phase-cta" id="phaseCta">
-    <button class="cta-live" id="ctaLive">Start Meeting &rarr;</button>
-    <button class="cta-post hidden" id="ctaPost">End Meeting &rarr;</button>
-    <button class="cta-close hidden" id="ctaClose">Close</button>
-  </div>
-
   <!-- Chat -->
   <div class="chat-area" id="chatArea"></div>
 
@@ -441,6 +437,13 @@ body{
   <!-- Recording Status (visible during live phase) -->
   <div id="recordingStatus" class="hidden" style="display:none;padding:6px 12px;font-size:11px;font-family:monospace;background:#f0f0f0;border-radius:8px;margin:8px 0;color:#666;line-height:1.6">
     🔴 REC: <span id="recStatusText">—</span>
+  </div>
+
+  <!-- Phase CTA — sticky bottom, always visible -->
+  <div class="phase-cta" id="phaseCta">
+    <button class="cta-live" id="ctaLive">Start Meeting &rarr;</button>
+    <button class="cta-post hidden" id="ctaPost">End Meeting &rarr;</button>
+    <button class="cta-close hidden" id="ctaClose">Close</button>
   </div>
 
   <!-- Report Card (POST phase) — single source, no separate summary -->
