@@ -12,6 +12,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 import { TOKEN_COSTS } from "../lib/billing-constants.js";
+import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
 import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
@@ -557,10 +558,25 @@ async function handleMessage(req, res) {
     channel: "chat",
   });
 
+  // Inject real-time tool instructions (same as chat.js)
+  const toolInstructions =
+    `ECHTZEIT-TOOLS: Du hast Zugriff auf externe Datenquellen über Tools. Sage NIEMALS "Ich habe keinen Zugriff" oder "Ich kann nicht im Internet suchen". ` +
+    `Du HAST Zugriff — nutze die Tools! Antworte NUR mit einem Tool-Tag (sonst nichts), wenn eine dieser Situationen zutrifft:\n` +
+    `[TOOL:weather:Ortsname] — Wetter, Temperatur, Outdoor-Bedingungen\n` +
+    `[TOOL:search:Suchanfrage] — aktuelle Fakten, Preise, Ereignisse, alles was sich ändern kann\n` +
+    `[TOOL:news:Thema] — aktuelle Nachrichten und Headlines\n` +
+    `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen, Biographien\n` +
+    `[TOOL:flight:Flugnummer] — Live-Flugstatus\n` +
+    `[TOOL:arrivals:IATA-Code] — Ankunftstafel eines Flughafens\n` +
+    `[TOOL:departures:IATA-Code] — Abflugtafel eines Flughafens\n` +
+    `Antworte mit dem Tag ALLEIN — du bekommst die Daten dann automatisch und antwortest basierend darauf. ` +
+    `Wenn die Frage rein persönlich oder meetingbezogen ist (keine Fakten nötig), antworte normal ohne Tag.`;
+
   // Call OpenAI
   const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
   const openaiMessages = [
     { role: "system", content: systemPrompt },
+    { role: "system", content: toolInstructions },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
@@ -593,8 +609,44 @@ async function handleMessage(req, res) {
   }
 
   const openaiData = await openaiResp.json();
-  const rawReply = openaiData?.choices?.[0]?.message?.content || "";
+  let rawReply = openaiData?.choices?.[0]?.message?.content || "";
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
+
+  // Execute real-time tools if AI requested one
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+  if (toolMatch) {
+    const [, toolType, toolParam] = toolMatch;
+    let toolData;
+    try {
+      if (toolType === "weather") toolData = await getWeather(toolParam.trim());
+      else if (toolType === "search") toolData = await webSearch(toolParam.trim());
+      else if (toolType === "news") toolData = await getNews(toolParam.trim());
+      else if (toolType === "wiki") toolData = await getWikipedia(toolParam.trim());
+      else if (toolType === "flight") toolData = await getFlightStatus(toolParam.trim());
+      else if (toolType === "arrivals") toolData = await getAirportFlights(toolParam.trim(), "arr");
+      else if (toolType === "departures") toolData = await getAirportFlights(toolParam.trim(), "dep");
+    } catch (e) {
+      console.error(`[meeting] tool ${toolType} error:`, e?.message);
+    }
+    if (toolData) {
+      openaiMessages.push({ role: "assistant", content: rawReply });
+      openaiMessages.push({ role: "system", content: `[ECHTZEIT-DATEN]\n${toolData}\n\nAntworte jetzt basierend auf diesen aktuellen Daten. Kein Tool-Tag mehr.` });
+      try {
+        const retryResp = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: openaiModel, max_tokens: 1024, messages: openaiMessages, temperature: 0.7 }),
+        });
+        if (retryResp.ok) {
+          const retryData = await retryResp.json();
+          const retryReply = retryData?.choices?.[0]?.message?.content || "";
+          if (retryReply) rawReply = retryReply;
+        }
+      } catch (e) {
+        console.error("[meeting] tool retry error:", e?.message);
+      }
+    }
+  }
 
   // Deduct token for meeting chat message (same cost as regular chat)
   try { await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message }); } catch (_) {}
