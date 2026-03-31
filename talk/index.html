@@ -2561,7 +2561,7 @@ function configurePostCallCta(triggeredByLimit = false) {
     demoBtn.className = "smallBtn secondary";
     demoBtn.style.cssText = "background:linear-gradient(135deg,#c4a882,#a08060);color:#fff;border:none;";
     demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
-    demoBtn.onclick = async () => {
+    const _demoHandler = async () => {
       demoBtn.disabled = true;
       demoBtn.textContent = "Wird vorbereitet...";
       try {
@@ -2569,33 +2569,42 @@ function configurePostCallCta(triggeredByLimit = false) {
         const sid = ctx?.sessionId || sessionId;
         if (!sid) throw new Error("Keine Session-ID");
 
-        // Generate demo pitch SERVER-SIDE (reliable text AI, no hallucination)
+        // Step 1: Generate optimized pitch text (GPT-4o)
         const { data: { session: authSess } } = await supabase.auth.getSession();
         const token = authSess?.access_token;
         if (!token) throw new Error("Nicht eingeloggt");
-        const resp = await fetch("/api/settings?action=generate-demo-pitch", {
+        const genResp = await fetch("/api/settings?action=generate-demo-pitch", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ session_id: sid }),
         });
-        const result = await resp.json();
+        const result = await genResp.json();
         if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
 
-        // Store pitch text separately (too large for HTTP header)
-        sessionStorage.setItem("SOPHIE_DEMO_PITCH", result.demoPitch);
-        const handover = {
-          funnelMode: "salespitch",
-          language: _uiLang || "de",
-          pitchDemo: true,
-          pitchTopic: pitchTopic,
-          hasDemoPitch: true,
-          summary: `DEMO PITCH: Vorab generierter Text.`,
-          recentMessages: [],
-          userName: "",
+        demoBtn.textContent = "Sophie bereitet sich vor...";
+
+        // Step 2: TTS — emotional keynote delivery, no mic needed
+        const ttsResp = await fetch("/api/ai/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ text: result.demoPitch }),
+        });
+        if (!ttsResp.ok) throw new Error("TTS fehlgeschlagen");
+
+        const blob = await ttsResp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.play();
+
+        demoBtn.disabled = false;
+        demoBtn.textContent = "\u23F9 Stop";
+        const resetDemo = () => {
+          demoBtn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+          demoBtn.onclick = _demoHandler;
+          URL.revokeObjectURL(url);
         };
-        localStorage.setItem("sophie_session_mode", "salespitch");
-        sessionStorage.setItem("SOPHIE_HANDOVER", JSON.stringify(handover));
-        window.location.reload();
+        demoBtn.onclick = () => { audio.pause(); resetDemo(); };
+        audio.onended = resetDemo;
       } catch (e) {
         console.error("demo generation failed:", e);
         demoBtn.disabled = false;
@@ -2603,6 +2612,7 @@ function configurePostCallCta(triggeredByLimit = false) {
         alert("Demo-Pitch konnte nicht vorbereitet werden: " + (e?.message || "Unbekannt"));
       }
     };
+    demoBtn.onclick = _demoHandler;
     postCallPrimaryBtn.parentNode.insertBefore(demoBtn, postCallSecondaryBtn);
 
     return;
@@ -3379,7 +3389,8 @@ ${(voiceHandover.recentMessages || [])
       let pitchInstructions;
 
       if (isPitchDemo) {
-        // DEMO: Lock mic — Sophie speaks for 2-3 min uninterrupted
+        // DEPRECATED: demo pitch now uses TTS (api/ai/tts.js) instead of Realtime.
+        // This code path is only reached if someone manually navigates to /talk with pitchDemo handover.
         setMicSensitivity("locked");
         console.log(`[${runId}] [salespitch] demo mode — mic locked at kickoff start`);
 
