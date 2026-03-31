@@ -100,7 +100,7 @@ body{
   flex:1;display:none;flex-direction:column;
   max-width:680px;width:100%;margin:0 auto;
   min-height:0; /* Allow flex child to shrink — critical for overflow:auto in chat */
-  overflow:hidden;
+  overflow-y:auto; /* Scroll for report card in post phase */
 }
 .meeting-area.active{display:flex}
 
@@ -1548,13 +1548,14 @@ function showMeetingReport(html) {
     reportFrame.style.display = "none";
     reportDirect.style.display = "block";
     reportDirect.innerHTML = html;
-    // Override the outer container width for mobile
-    const outerDiv = reportDirect.querySelector('div[style]');
+    // Override the outer container for mobile (meeting-protocol or first div with max-width)
+    const outerDiv = reportDirect.querySelector('.meeting-protocol') || reportDirect.querySelector('div[style*="max-width"]') || reportDirect.querySelector('div[style]');
     if (outerDiv) {
       outerDiv.style.maxWidth = "100%";
       outerDiv.style.padding = "12px 0";
       outerDiv.style.margin = "0";
     }
+    console.log("[meeting-report] Mobile DOM render:", reportDirect.innerHTML.length, "chars, outerDiv found:", !!outerDiv);
   } else {
     // Desktop: iframe for A4 isolation
     reportDirect.style.display = "none";
