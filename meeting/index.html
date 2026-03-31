@@ -1642,12 +1642,19 @@ function showMeetingReport(html) {
   // "Aktualisieren" — re-render report with current toggle options (no AI call)
   $("reportRegenerateBtn").onclick = () => {
     const exportHtml = getExportHtml();
-    const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
+    // Replace iframe entirely to avoid Mobile Safari doc.write hang
+    const oldFrame = $("reportFrame");
+    const newFrame = document.createElement("iframe");
+    newFrame.id = "reportFrame";
+    newFrame.style.cssText = "width:100%;border:none;min-height:400px";
+    newFrame.sandbox = "allow-same-origin";
+    oldFrame.replaceWith(newFrame);
+    const doc = newFrame.contentDocument || newFrame.contentWindow.document;
     doc.open();
     doc.write(exportHtml);
     doc.close();
     setTimeout(() => {
-      try { reportFrame.style.height = doc.documentElement.scrollHeight + "px"; } catch(_) {}
+      try { newFrame.style.height = doc.documentElement.scrollHeight + "px"; } catch(_) {}
     }, 300);
     // Reset button to inactive
     $("reportRegenerateBtn").disabled = true;
