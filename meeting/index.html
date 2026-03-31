@@ -256,9 +256,9 @@ body{
 .diff-icon.escalated{color:#ff5a5a}
 .diff-icon.new{color:#6cb4ff}
 
-/* ---- MUTE TOGGLE ---- */
+/* ---- MUTE TOGGLE + PAUSE ---- */
 .mute-toggle{
-  padding:6px 10px;font-size:13px;border-radius:8px;cursor:pointer;
+  padding:10px 16px;font-size:15px;font-weight:600;border-radius:10px;cursor:pointer;
   border:1px solid #ede8e2;background:rgba(0,0,0,.03);
   color:#a09080;transition:all .2s;white-space:nowrap;
   font-family:inherit;display:none;
@@ -270,7 +270,7 @@ body{
 }
 .mute-toggle.active .mute-icon::after{content:"🔊"}
 .mute-toggle .mute-icon::after{content:"🔇"}
-#meetingPauseBtn{display:none;border-color:#e0c070;color:#b89040}
+#meetingPauseBtn{display:none;padding:10px 16px;font-size:15px;font-weight:600;border-radius:10px;border-color:#e0c070;color:#b89040}
 #meetingPauseBtn:hover{background:rgba(180,140,60,.1);color:#8a6e2a}
 #meetingPauseBtn.is-paused{border-color:rgba(52,196,122,.3);color:#22c55e}
 
@@ -1090,9 +1090,14 @@ async function transitionPhase(newPhase) {
     return;
   }
   try {
-    const data = await api("phase", { meeting_id: meetingId, phase: newPhase });
-    meetingData = { ...meetingData, ...data.meeting };
+    // Update UI IMMEDIATELY — don't wait for API
     updatePhaseUI(newPhase);
+    meetingData = { ...meetingData, phase: newPhase };
+
+    // API call in background (non-blocking for UI)
+    api("phase", { meeting_id: meetingId, phase: newPhase })
+      .then(data => { meetingData = { ...meetingData, ...data.meeting }; })
+      .catch(e => console.error("[meeting] phase API error:", e.message));
     // Phase info messages
     const PHASE_INFO = {
       de: {
@@ -1785,10 +1790,12 @@ async function startAudioRecording() {
     sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     appendSystemMsg("✅ Mikrofon aktiv — Aufnahme läuft");
 
-    mediaRecorder = new MediaRecorder(sharedMicStream, {
-      mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
               : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
-              : "audio/mp4",
+              : "audio/mp4";
+    mediaRecorder = new MediaRecorder(sharedMicStream, {
+      mimeType,
+      audioBitsPerSecond: 32000, // 32kbps — keeps files small on iOS (mp4), plenty for speech
     });
     audioChunks = [];
 

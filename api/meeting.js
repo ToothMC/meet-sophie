@@ -387,7 +387,7 @@ async function handleContext(req, res) {
       if (extracted) {
         finalContent = extracted;
         // Deduct tokens for AI-powered file extraction (GPT-4o Vision)
-        await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message * 2 }).catch(() => {});
+        try { await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message * 2 }); } catch (_) {}
       }
     } catch (e) {
       console.error("File extraction error:", e?.message);
@@ -597,7 +597,7 @@ async function handleMessage(req, res) {
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
   // Deduct token for meeting chat message (same cost as regular chat)
-  await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message }).catch(() => {});
+  try { await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message }); } catch (_) {}
 
   // Extract structured items from LIVE-phase responses
   let extractedItems = null;
