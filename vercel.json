@@ -1,11 +1,7 @@
 {
   "headers": [
     {
-      "source": "/(.*).html",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
-    },
-    {
-      "source": "/((?!api|_next|favicon|apple-touch|sophie|site).*)",
+      "source": "/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
     }
   ],
