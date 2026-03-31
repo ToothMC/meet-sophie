@@ -333,8 +333,10 @@ body{
 /* ---- MOBILE OPTIMIZATIONS ---- */
 @media (max-width: 600px) {
   .topbar { padding:8px 12px; padding-top:max(8px, env(safe-area-inset-top)); }
-  /* In prep phase, hide topbar to save space — back button is redundant with context */
+  /* In prep phase: hide topbar, unstick CTA + input so they don't cover fields */
   .meeting-area[data-phase="prep"] .topbar { display:none; }
+  .meeting-area[data-phase="prep"] .phase-cta { position:static; }
+  .meeting-area[data-phase="prep"] .input-bar { position:static; }
   .context-body { padding:12px 12px 8px; }
   .phase-cta { padding:8px 12px; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
   .input-bar { padding:8px 12px; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
