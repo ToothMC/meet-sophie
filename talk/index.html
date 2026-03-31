@@ -2564,6 +2564,10 @@ function configurePostCallCta(triggeredByLimit = false) {
     const _demoHandler = async () => {
       demoBtn.disabled = true;
       demoBtn.textContent = "Wird vorbereitet...";
+      // Unlock audio in user gesture context (iOS Safari requires this before async)
+      const _preAudio = new Audio();
+      _preAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      _preAudio.play().catch(() => {});
       try {
         const ctx = window._lastReportContext;
         const sid = ctx?.sessionId || sessionId;
@@ -2593,8 +2597,10 @@ function configurePostCallCta(triggeredByLimit = false) {
 
         const blob = await ttsResp.blob();
         const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.play();
+        // Reuse pre-unlocked audio element (iOS gesture context)
+        _preAudio.src = url;
+        _preAudio.play().catch(() => {});
+        const audio = _preAudio;
 
         demoBtn.disabled = false;
         demoBtn.textContent = "\u23F9 Stop";

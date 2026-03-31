@@ -955,6 +955,9 @@ async function pitchDemoFromReport() {
   const btn = document.getElementById("pitchDemoBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Wird vorbereitet..."; }
 
+  // Unlock audio IMMEDIATELY in user gesture context (before any async)
+  const prelockedAudio = _unlockAudioForMobile();
+
   try {
     // Step 1: Generate optimized pitch text (GPT-4o)
     const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
@@ -963,7 +966,7 @@ async function pitchDemoFromReport() {
     if (btn) btn.textContent = "Sophie bereitet sich vor...";
 
     // Step 2: Convert to audio via TTS (gpt-4o-mini-tts, emotional keynote delivery)
-    await _playDemoPitchTTS(result.demoPitch, btn, () => pitchDemoFromReport());
+    await _playDemoPitchTTS(result.demoPitch, btn, () => pitchDemoFromReport(), prelockedAudio);
   } catch (e) {
     console.error("pitchDemoFromReport failed:", e);
     if (btn) { btn.disabled = false; btn.textContent = "\u26A0 " + (e?.message || "Fehler").slice(0, 40); }
@@ -972,12 +975,27 @@ async function pitchDemoFromReport() {
 }
 
 // ── Shared TTS playback for demo pitch ──
+// iOS Safari requires audio.play() in user gesture context.
+// We create + play a silent audio IMMEDIATELY on tap to unlock,
+// then swap the src after async API calls complete.
 let _demoAudio = null;
-async function _playDemoPitchTTS(text, btn, replayFn) {
+function _unlockAudioForMobile() {
+  const audio = new Audio();
+  // Tiny silent WAV (44 bytes) to unlock iOS audio playback
+  audio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  audio.play().catch(() => {});
+  return audio;
+}
+
+async function _playDemoPitchTTS(text, btn, replayFn, prelockedAudio) {
   if (_demoAudio) { _demoAudio.pause(); _demoAudio = null; }
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  // Use pre-unlocked audio element (created in user gesture context)
+  const audio = prelockedAudio || _unlockAudioForMobile();
+  _demoAudio = audio;
+
+  const { data: { session: authSession } } = await supabase.auth.getSession();
+  const token = authSession?.access_token;
   if (!token) throw new Error("Nicht eingeloggt");
 
   const resp = await fetch("/api/ai/tts", {
@@ -992,8 +1010,10 @@ async function _playDemoPitchTTS(text, btn, replayFn) {
 
   const blob = await resp.blob();
   const url = URL.createObjectURL(blob);
-  _demoAudio = new Audio(url);
-  _demoAudio.play();
+
+  // Swap source on the already-unlocked audio element
+  audio.src = url;
+  audio.play().catch(() => {});
 
   const reset = () => {
     _demoAudio = null;
@@ -1011,7 +1031,7 @@ async function _playDemoPitchTTS(text, btn, replayFn) {
     btn.onclick = () => { if (_demoAudio) { _demoAudio.pause(); } reset(); };
   }
 
-  _demoAudio.onended = reset;
+  audio.onended = reset;
 }
 // Keep old score parsing for pitchAgain (not demo)
 function _parsePitchScores(html) {
@@ -1089,6 +1109,7 @@ window.pitchAgainFromJourney = pitchAgainFromJourney;
 // Sophie Demo Pitch — Sophie pitches FOR the user as an example (TTS, no talk session)
 async function pitchDemoFromJourney(topic, btnEl) {
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = "Wird vorbereitet..."; }
+  const prelockedAudio = _unlockAudioForMobile();
   try {
     const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
     const sessionId = data?.session_id;
@@ -1098,7 +1119,7 @@ async function pitchDemoFromJourney(topic, btnEl) {
     if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
 
     if (btnEl) btnEl.textContent = "Sophie bereitet sich vor...";
-    await _playDemoPitchTTS(result.demoPitch, btnEl, () => pitchDemoFromJourney(topic, btnEl));
+    await _playDemoPitchTTS(result.demoPitch, btnEl, () => pitchDemoFromJourney(topic, btnEl), prelockedAudio);
   } catch (e) {
     alert("Nicht genug Pitch-Daten vorhanden. Pitche mindestens einmal, damit Sophie dir zeigen kann wie es geht.");
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
