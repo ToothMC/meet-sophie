@@ -4892,19 +4892,21 @@ async function startVoice(){
     if (audioCtx.state === "suspended") await audioCtx.resume();
     gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
+    let ontrackFired = false;
     pc.ontrack = e => {
-      // Mute <audio> element BEFORE assigning stream to prevent double playback
-      audioEl.volume = 0;
-      audioEl.srcObject = e.streams[0];
+      if (ontrackFired) return; // guard against multiple ontrack fires
+      ontrackFired = true;
+      const remoteStream = e.streams[0];
       try {
-        audioSource = audioCtx.createMediaStreamSource(e.streams[0]);
+        audioSource = audioCtx.createMediaStreamSource(remoteStream);
         audioSource.connect(gainNode);
-        // GainNode handles all playback — <audio> element stays muted
+        // GainNode is the ONLY playback path — <audio> element is NOT used
       } catch (_) {
         // Web Audio failed — fall back to <audio> element
+        audioEl.srcObject = remoteStream;
         audioEl.volume = 1;
+        audioEl.autoplay = true;
       }
-      audioEl.autoplay = true;
     };
 
     const offer = await pc.createOffer();
