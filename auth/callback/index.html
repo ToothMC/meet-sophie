@@ -5,20 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sophie</title>
   <style>
-    body { margin:0; background:#0b0f14; color:#e8e0d8; font-family:-apple-system,BlinkMacSystemFont,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; }
-    .close-hint { text-align:center; padding:24px; max-width:320px; }
-    .close-hint h2 { font-size:18px; margin:0 0 8px; }
-    .close-hint p { font-size:14px; opacity:0.7; margin:0 0 16px; }
-    .close-hint button { background:#c4a882; color:#0b0f14; border:none; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:600; cursor:pointer; }
+    body { margin:0; background:#0b0f14; }
   </style>
 </head>
 <body>
-  <div class="close-hint" id="closeHint" style="display:none">
-    <h2 id="hintTitle">Du bist eingeloggt!</h2>
-    <p id="hintText">Wechsle zurück zum vorherigen Tab.</p>
-    <button id="hintBtn" onclick="window.close()">Tab schließen</button>
-  </div>
-
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -28,7 +18,6 @@
 
     let done = false;
 
-    // Read mode + language from URL params (passed via emailRedirectTo)
     const urlParams = new URLSearchParams(window.location.search);
     const detectedMode = urlParams.get("mode") || "";
     const lang = urlParams.get("lang") || localStorage.getItem("preferredLanguage") || "";
@@ -36,7 +25,6 @@
       localStorage.setItem("preferredLanguage", lang);
     }
 
-    // Build target path with mode
     function buildTarget(base) {
       if (detectedMode && detectedMode !== "talk") {
         if (detectedMode === "meeting") {
@@ -56,55 +44,10 @@
       return base;
     }
 
-    function showCloseHint() {
-      const hint = document.getElementById("closeHint");
-      if (lang === "en") {
-        document.getElementById("hintTitle").textContent = "You're logged in!";
-        document.getElementById("hintText").textContent = "Switch back to the previous tab.";
-        document.getElementById("hintBtn").textContent = "Close tab";
-      } else if (lang === "fr") {
-        document.getElementById("hintTitle").textContent = "Vous êtes connecté !";
-        document.getElementById("hintText").textContent = "Retournez à l'onglet précédent.";
-        document.getElementById("hintBtn").textContent = "Fermer l'onglet";
-      }
-      hint.style.display = "block";
-    }
-
     function go(path) {
       if (done) return;
       done = true;
-
-      // Try to hand off to original tab via BroadcastChannel
-      try {
-        const bc = new BroadcastChannel("sophie_auth");
-
-        // Listen for ACK from original tab
-        let acked = false;
-        bc.onmessage = (e) => {
-          if (e.data?.type === "auth_ack") {
-            acked = true;
-            bc.close();
-            // Original tab confirmed it received the message and will navigate
-            // This tab stays on "close this tab" hint — NEVER redirects
-            showCloseHint();
-          }
-        };
-
-        // Send auth_complete to original tab
-        bc.postMessage({ type: "auth_complete", target: path });
-
-        // Wait 2s for ACK — if no original tab responds, redirect here
-        setTimeout(() => {
-          if (!acked) {
-            bc.close();
-            // No original tab listening — this is the only tab, redirect normally
-            window.location.replace(path);
-          }
-        }, 2000);
-        return;
-      } catch (_) {}
-
-      // No BroadcastChannel support — redirect directly
+      // This IS the app tab now — just navigate directly
       window.location.replace(path);
     }
 

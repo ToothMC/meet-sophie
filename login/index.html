@@ -247,17 +247,8 @@
       if (session?.user) handleSuccessfulAuth();
     });
 
-    // Navigate this tab when auth completes in callback tab
-    try {
-      const bc = new BroadcastChannel("sophie_auth");
-      bc.onmessage = (e) => {
-        if (e.data?.type === "auth_complete") {
-          bc.postMessage({ type: "auth_ack" });
-          bc.close();
-          window.location.replace(e.data.target || "/talk");
-        }
-      };
-    } catch (_) {}
+    // Magic link opens a new tab — that tab becomes the app.
+    // This tab stays on login page, no duplicate navigation.
 
     // Pre-fill email from last successful login
     const emailInput = document.getElementById("email");
