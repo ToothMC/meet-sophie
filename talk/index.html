@@ -2412,17 +2412,8 @@ function startFakeReportLoader() {
 }
 
 function resetPostCallUI() {
-  // Report was disabled — skip report panel, reset to ready state
-  startBtn.disabled = false;
-  startBtn.textContent = t("start"); resetStartBtnStyle();
-  startBtn.onclick = startVoice;
-  logoutBtn.disabled = false;
-  headline.textContent = t("sophie_waiting");
-  setStatus(t("ready"));
-  modeBar.style.display = "flex";
-  const rTgl = document.getElementById("reportToggleLabel");
-  if (rTgl) rTgl.style.display = "flex";
-  showBackground(false);
+  // Report was disabled — go back to landing page
+  window.location.href = "/";
 }
 
 function stopFakeReportLoader(hideBar = true) {
@@ -5214,19 +5205,8 @@ if (!hasRealConversation) {
   userTranscriptBuffer.clear();
   hasUserSpoken = false;
 
-  showBackground(false);
-
-  statusEl.style.visibility = "visible";
-  startBtn.disabled = false;
-  startBtn.textContent = t("start"); resetStartBtnStyle();
-  startBtn.onclick = startVoice;
-  logoutBtn.disabled = false;
-  headline.textContent = t("sophie_waiting");
-  setStatus(t("ready"));
-  setSoftHint("");
-  softEndFinalizing = false;
-  resetClosingState();
-
+  // No real conversation — go back to landing page
+  window.location.href = "/";
   return;
 }
     
@@ -5366,17 +5346,8 @@ if (!hasRealConversation) {
     userTranscriptBuffer.clear();
     hasUserSpoken = false;
 
-    showBackground(false);
-
-    statusEl.style.visibility = "visible";
-    startBtn.disabled = false;
-    startBtn.textContent = t("start"); resetStartBtnStyle();
-    startBtn.onclick = startVoice;
-    logoutBtn.disabled = false;
-    headline.textContent = t("sophie_waiting");
-    setStatus(t("ready"));
-    setSoftHint("");
-    softEndFinalizing = false;
+    // Session fully ended — go back to landing page
+    window.location.href = "/";
     resetClosingState();
 
   } catch (e) {
@@ -5472,15 +5443,6 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 // permission. But if already granted, we can auto-start without a gesture.
 const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-function showMobileStartFallback() {
-  headline.textContent = t("sophie_waiting");
-  setStatus(t("tap_to_start"));
-  startBtn.disabled = false;
-  startBtn.textContent = t("start"); resetStartBtnStyle();
-  startBtn.onclick = startVoice;
-  showBackground(false);
-}
 
 if (session?.user) {
   // Auto-start for all devices. The talk page is only reached via user gesture
