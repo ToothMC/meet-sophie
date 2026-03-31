@@ -1075,11 +1075,13 @@ async function handleMessage(req, res) {
     });
   }
 
-  // Load profile for onboarding check
+  // Load profile for onboarding check + eco_mode
   let profileFirstName = "";
+  let profile = { eco_mode: false };
   if (user) {
-    const { data: prof } = await supabase.from("user_profile").select("first_name").eq("user_id", user.id).maybeSingle();
+    const { data: prof } = await supabase.from("user_profile").select("first_name,eco_mode").eq("user_id", user.id).maybeSingle();
     profileFirstName = (prof?.first_name || "").trim();
+    if (prof) profile = prof;
   }
 
   // Curated responses for trigger questions (works for all users)
