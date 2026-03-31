@@ -5346,8 +5346,11 @@ if (!hasRealConversation) {
     userTranscriptBuffer.clear();
     hasUserSpoken = false;
 
-    // Session fully ended — go back to landing page
-    window.location.href = "/";
+    // If report was shown, stay on page (report has its own navigation).
+    // Otherwise go back to landing page.
+    if (!reportEnabled || !sessionId) {
+      window.location.href = "/";
+    }
     resetClosingState();
 
   } catch (e) {
