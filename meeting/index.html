@@ -99,6 +99,8 @@ body{
 .meeting-area{
   flex:1;display:none;flex-direction:column;
   max-width:680px;width:100%;margin:0 auto;
+  min-height:0; /* Allow flex child to shrink — critical for overflow:auto in chat */
+  overflow:hidden;
 }
 .meeting-area.active{display:flex}
 
