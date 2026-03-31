@@ -340,6 +340,10 @@ body{
   .input-bar { padding:8px 12px; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
   /* Upload area compact on mobile */
   .upload-area { padding:8px; margin-top:4px; }
+  /* Report card full-bleed on mobile */
+  .report-card { margin:8px 0; padding:12px; border-radius:10px; }
+  #reportPreview { border:none !important; border-radius:0 !important; }
+  #reportFrame { min-height:300px; }
 }
 
 .hidden{display:none!important}
@@ -1532,10 +1536,25 @@ function showMeetingReport(html) {
   reportActions.classList.remove("hidden");
   reportActions.style.display = "block";
 
+  // Inject mobile-responsive CSS for reading view (A4 layout preserved for PDF export)
+  const mobileCSS = `<style>
+    @media (max-width: 700px) {
+      body, html { margin:0 !important; padding:0 !important; }
+      body > div, [style*="max-width"] { max-width:100% !important; padding:16px 14px !important; margin:0 !important; }
+      h1, [style*="font-size:24"] { font-size:20px !important; }
+      h2, [style*="font-size:18"] { font-size:16px !important; }
+      table { font-size:13px !important; }
+      td, th { padding:6px 8px !important; }
+      [style*="padding:40px"] { padding:16px 14px !important; }
+      [style*="padding:30px"] { padding:14px 12px !important; }
+    }
+  </style>`;
+  const displayHtml = html.replace('</head>', mobileCSS + '</head>');
+
   // Write HTML into iframe
   const doc = reportFrame.contentDocument || reportFrame.contentWindow.document;
   doc.open();
-  doc.write(html);
+  doc.write(displayHtml);
   doc.close();
 
   // Auto-resize iframe to content
