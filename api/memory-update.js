@@ -819,6 +819,79 @@ async function generateReport({ style, transcriptText, fallbackSummary, emotiona
   }
 }
 
+// ---------------------------------------------------------------------------
+// Memory File: free-form personal dossier, AI-maintained after each session
+// ---------------------------------------------------------------------------
+async function updateMemoryFile(userOnlyText, existingFile, apiKey) {
+  if (!userOnlyText.trim()) return existingFile || "";
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const system =
+    "You maintain a personal dossier about a user for their AI companion Sophie. " +
+    "Format: one fact per line, starting with the date (YYYY-MM-DD). " +
+    "Rules: " +
+    "(1) Only include facts explicitly stated by the user — never guess or infer. " +
+    "(2) Merge new facts with existing ones — update or enrich existing entries rather than appending duplicates. " +
+    "(3) If an existing entry needs updating (e.g. 'son Tom started school'), rewrite that line. " +
+    "(4) Max 150 lines — if over limit, remove the oldest/least relevant entries. " +
+    "(5) Use today's date (" + today + ") for new facts. " +
+    "(6) Use the same language as the user's messages. " +
+    "(7) If no new personal facts were shared, return the existing dossier unchanged. " +
+    "Output ONLY the dossier text, no commentary.";
+
+  const userMsg = existingFile && existingFile.trim()
+    ? `EXISTING DOSSIER:\n${existingFile}\n\nUSER MESSAGES FROM THIS SESSION (only these count for new facts):\n${userOnlyText}\n\nReturn the complete updated dossier.`
+    : `USER MESSAGES FROM THIS SESSION:\n${userOnlyText}\n\nCreate the initial dossier with relevant personal facts.`;
+
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.MEMORY_MODEL || "gpt-4o-mini",
+      input: [
+        { role: "system", content: system },
+        { role: "user", content: userMsg },
+      ],
+      temperature: 0.1,
+      truncation: "auto",
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`memory_file API error ${res.status}: ${err.slice(0, 200)}`);
+  }
+
+  const out = await res.json();
+  const text = out?.output_text || out?.output?.[0]?.content?.find?.((c) => c.type === "output_text")?.text || "";
+
+  if (!text.trim()) return existingFile || "";
+
+  // Track cost
+  if (out?.usage && apiKey) {
+    const memModel = process.env.MEMORY_MODEL || "gpt-4o-mini";
+    const cost = calculateCost(memModel, out.usage.input_tokens || 0, out.usage.output_tokens || 0);
+    trackCost({
+      userId: null,
+      provider: "openai",
+      model: memModel,
+      inputTokens: out.usage.input_tokens || 0,
+      outputTokens: out.usage.output_tokens || 0,
+      costUsd: cost,
+      latencyMs: 0,
+      routingReason: "memory-file-update",
+    }).catch(() => {});
+  }
+
+  // Enforce max 150 lines
+  const lines = text.trim().split("\n").filter((l) => l.trim());
+  return lines.slice(0, 150).join("\n");
+}
+
 /**
  * POST /api/memory-update
  * Body: {
@@ -990,7 +1063,7 @@ export default async function handler(req, res) {
       .from("user_profile")
       .select(
         "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
-          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode"
+          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode, memory_file"
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -1016,6 +1089,7 @@ export default async function handler(req, res) {
       openness_level: String(rel?.openness_level || "").trim(),
       emotional_patterns: String(rel?.emotional_patterns || "").trim(),
       last_interaction_summary: String(rel?.last_interaction_summary || "").trim(),
+      memory_file: String(prof?.memory_file || "").trim(),
     };
 
     // ---------------------------
@@ -1243,6 +1317,16 @@ ${transcriptText}
       required: ["profile", "relationship", "session"],
     };
 
+    // Start memory file update in parallel (free-form personal dossier)
+    const memoryFilePromise = updateMemoryFile(
+      userOnlyJoined,
+      existing.memory_file,
+      process.env.OPENAI_API_KEY
+    ).catch((e) => {
+      console.error("[memory-update] memory_file update failed:", e?.message);
+      return null;
+    });
+
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -1445,6 +1529,9 @@ ${transcriptText}
       finalNotes = `${finalNotes}\n${prefsLine}`.trim();
     }
 
+    // Await memory file result (ran in parallel with main call)
+    const updatedMemoryFile = await memoryFilePromise;
+
     const profileRow = {
       user_id: user.id,
       first_name: finalFirstName || null,
@@ -1458,6 +1545,7 @@ ${transcriptText}
       topics_like: finalTopicsLike.length ? finalTopicsLike : null,
       topics_avoid: finalTopicsAvoid.length ? finalTopicsAvoid : null,
       notes: finalNotes.slice(0, 2000),
+      memory_file: updatedMemoryFile !== null ? updatedMemoryFile : (existing.memory_file || ""),
       updated_at: nowIso,
       memory_confidence: prof?.memory_confidence || "medium",
     };

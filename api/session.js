@@ -255,7 +255,7 @@ export default async function handler(req, res) {
         .from("user_profile")
         .select(
           "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status, " +
-            "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at, custom_rules, eco_mode"
+            "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at, custom_rules, eco_mode, memory_file"
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -285,6 +285,7 @@ export default async function handler(req, res) {
           memory_confidence: (prof.memory_confidence || "").trim(),
           last_confirmed_at: prof.last_confirmed_at ?? null,
           eco_mode: !!prof.eco_mode,
+          memory_file: (prof.memory_file || "").trim(),
         };
       }
 
@@ -629,6 +630,7 @@ export default async function handler(req, res) {
         conversationStyle: profile.conversation_style,
         topicsLike: profile.topics_like,
         topicsAvoid: profile.topics_avoid,
+        memoryFile: profile.memory_file || "",
       },
       memory: {
         sessions: recentSessions,
