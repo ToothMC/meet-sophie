@@ -4886,27 +4886,20 @@ async function startVoice(){
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     // Route audio through GainNode for smooth fade-out on interruption (prevents click/pop)
-    // audioEl exists solely to keep the WebRTC stream alive — it NEVER plays audio
     audioEl = document.createElement("audio");
+    audioEl.autoplay = true;
     audioEl.playsInline = true;
-    // NO autoplay — prevents any audio from audioEl before we can mute it
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") await audioCtx.resume();
     gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
     pc.ontrack = e => {
-      const stream = e.streams[0];
+      audioEl.srcObject = e.streams[0]; // keep for Safari fallback
       try {
-        // GainNode is the SOLE audio output
-        audioSource = audioCtx.createMediaStreamSource(stream);
+        audioSource = audioCtx.createMediaStreamSource(e.streams[0]);
         audioSource.connect(gainNode);
-        // Attach to audioEl only to keep stream reference alive (muted, no autoplay)
-        audioEl.srcObject = stream;
-      } catch (_) {
-        // Fallback (Safari): let audioEl play directly
-        audioEl.autoplay = true;
-        audioEl.srcObject = stream;
-      }
+        audioEl.volume = 0; // mute <audio> element — GainNode handles playback
+      } catch (_) {} // fallback: <audio> element plays directly
     };
 
     const offer = await pc.createOffer();
