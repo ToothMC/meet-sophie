@@ -244,11 +244,10 @@
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) handleSuccessfulAuth();
+      // Only handle INITIAL_SESSION (page load with existing session)
+      // NOT SIGNED_IN from another tab's magic link — that tab is the app
+      if (event === "INITIAL_SESSION" && session?.user) handleSuccessfulAuth();
     });
-
-    // Magic link opens a new tab — that tab becomes the app.
-    // This tab stays on login page, no duplicate navigation.
 
     // Pre-fill email from last successful login
     const emailInput = document.getElementById("email");
