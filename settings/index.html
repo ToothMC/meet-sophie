@@ -1155,7 +1155,7 @@ async function loadRules() {
 
 async function deleteRule(index) {
   try {
-    await api("delete-custom-rule", { method: "POST", body: JSON.stringify({ index }) });
+    await api("delete-custom-rule", { index }, "POST");
     loadRules();
   } catch (e) { console.error("delete rule failed:", e); }
 }
@@ -1164,7 +1164,7 @@ window.deleteRule = deleteRule;
 async function resetAllRules() {
   if (!confirm("Alle gelernten Regeln zurücksetzen? Sophie vergisst alle individuellen Anweisungen.")) return;
   try {
-    await api("reset-custom-rules", { method: "POST", body: "{}" });
+    await api("reset-custom-rules", {}, "POST");
     loadRules();
   } catch (e) { console.error("reset rules failed:", e); }
 }
