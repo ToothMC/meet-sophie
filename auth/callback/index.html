@@ -52,11 +52,19 @@
     function go(path) {
       if (done) return;
       done = true;
-      // Tell other Sophie tabs (login, landing) to close — only one window should remain
+      // Tell the original tab to navigate to target — it has the user's chat state
       try {
         const bc = new BroadcastChannel("sophie_auth");
         bc.postMessage({ type: "auth_complete", target: path });
+        // Wait briefly for original tab to receive the message, then try to close THIS tab
+        // On mobile Safari, window.close() works for tabs opened via link (magic link from email)
+        setTimeout(() => {
+          try { window.close(); } catch (_) {}
+          // Fallback: if close didn't work (desktop etc.), redirect normally
+          setTimeout(() => { window.location.replace(path); }, 500);
+        }, 300);
         bc.close();
+        return;
       } catch (_) {}
       window.location.replace(path);
     }
