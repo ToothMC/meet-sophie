@@ -558,25 +558,25 @@ async function handleMessage(req, res) {
     channel: "chat",
   });
 
-  // Inject real-time tool instructions (same as chat.js)
-  const toolInstructions =
-    `ECHTZEIT-TOOLS: Du hast Zugriff auf externe Datenquellen über Tools. Sage NIEMALS "Ich habe keinen Zugriff" oder "Ich kann nicht im Internet suchen". ` +
-    `Du HAST Zugriff — nutze die Tools! Antworte NUR mit einem Tool-Tag (sonst nichts), wenn eine dieser Situationen zutrifft:\n` +
-    `[TOOL:weather:Ortsname] — Wetter, Temperatur, Outdoor-Bedingungen\n` +
-    `[TOOL:search:Suchanfrage] — aktuelle Fakten, Preise, Ereignisse, alles was sich ändern kann\n` +
-    `[TOOL:news:Thema] — aktuelle Nachrichten und Headlines\n` +
-    `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen, Biographien\n` +
+  // Inject real-time tool instructions directly into system prompt
+  // (separate system message gets ignored by GPT-4o when meeting prompt is dominant)
+  const toolBlock =
+    `\n\nECHTZEIT-TOOLS — WICHTIG:\n` +
+    `Du hast Zugriff auf externe Datenquellen. Sage NIEMALS "Ich habe keinen Zugriff" oder "Ich kann nicht im Internet suchen".\n` +
+    `Wenn der User nach aktuellen Fakten, Wetter, Nachrichten oder Wissen fragt: antworte NUR mit dem passenden Tool-Tag (NICHTS anderes):\n` +
+    `[TOOL:weather:Ortsname] — Wetter, Temperatur\n` +
+    `[TOOL:search:Suchanfrage] — aktuelle Fakten, Preise, Ereignisse\n` +
+    `[TOOL:news:Thema] — aktuelle Nachrichten\n` +
+    `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen\n` +
     `[TOOL:flight:Flugnummer] — Live-Flugstatus\n` +
-    `[TOOL:arrivals:IATA-Code] — Ankunftstafel eines Flughafens\n` +
-    `[TOOL:departures:IATA-Code] — Abflugtafel eines Flughafens\n` +
-    `Antworte mit dem Tag ALLEIN — du bekommst die Daten dann automatisch und antwortest basierend darauf. ` +
-    `Wenn die Frage rein persönlich oder meetingbezogen ist (keine Fakten nötig), antworte normal ohne Tag.`;
+    `[TOOL:arrivals:IATA-Code] — Ankunftstafel\n` +
+    `[TOOL:departures:IATA-Code] — Abflugtafel\n` +
+    `Antworte mit dem Tag ALLEIN. Du bekommst die Daten automatisch und antwortest dann basierend darauf.`;
 
   // Call OpenAI
   const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
   const openaiMessages = [
-    { role: "system", content: systemPrompt },
-    { role: "system", content: toolInstructions },
+    { role: "system", content: systemPrompt + toolBlock },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
