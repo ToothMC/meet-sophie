@@ -2258,10 +2258,16 @@
     }
 
     if (heroCta) {
-      heroCta.addEventListener("click", (e) => {
+      heroCta.addEventListener("click", async (e) => {
         e.preventDefault();
+        // Logged-in users go directly to voice — skip chat funnel
+        const token = await getToken();
+        if (token) {
+          goToVoiceFromChat();
+          return;
+        }
+        // Not logged in — open chat for funnel/onboarding
         openChatForeground();
-        // Quick-start: user clicked CTA with a mode (or default talk)
         quickStartChat();
       });
     }
