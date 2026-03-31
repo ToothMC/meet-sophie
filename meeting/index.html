@@ -109,20 +109,14 @@ body{
 }
 .context-panel.collapsed .context-body{display:none}
 .context-toggle{
-  display:flex;align-items:center;gap:8px;
-  padding:10px 16px;cursor:pointer;user-select:none;
-  font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-  color:#a09080;
+  display:none; /* Hide toggle label on mobile — fields speak for themselves */
 }
-.context-toggle:hover{color:#2a2420}
-.context-toggle .arrow{transition:transform .2s}
-.context-panel.collapsed .context-toggle .arrow{transform:rotate(-90deg)}
-.context-body{padding:0 16px 12px}
+.context-body{padding:8px 16px 8px}
 .context-body textarea{
-  width:100%;padding:8px 10px;font-size:13px;line-height:1.5;
+  width:100%;padding:8px 10px;font-size:14px;line-height:1.4;
   background:#fff;border:1px solid #ede8e2;
-  border-radius:8px;color:#2a2420;resize:vertical;min-height:60px;
-  font-family:inherit;outline:none;margin-bottom:8px;
+  border-radius:8px;color:#2a2420;resize:none;min-height:44px;
+  font-family:inherit;outline:none;margin-bottom:6px;
 }
 .context-body textarea:focus{border-color:#c4a882}
 .context-body textarea::placeholder{color:#b0a090}
@@ -196,8 +190,8 @@ body{
   border-top:1px solid #ede8e2;
 }
 .phase-cta button{
-  padding:10px 24px;font-size:14px;font-weight:700;
-  border:none;border-radius:10px;cursor:pointer;
+  width:100%;padding:16px 24px;font-size:17px;font-weight:700;
+  border:none;border-radius:14px;cursor:pointer;
   font-family:inherit;
 }
 .phase-cta .cta-live{background:#34c47a;color:#fff}
@@ -331,6 +325,18 @@ body{
   flex:1;display:flex;align-items:center;justify-content:center;
   font-size:16px;color:#a09080;
 }
+/* ---- MOBILE OPTIMIZATIONS ---- */
+@media (max-width: 600px) {
+  .topbar { padding:8px 12px; padding-top:max(8px, env(safe-area-inset-top)); }
+  /* In prep phase, hide topbar to save space — back button is redundant with context */
+  .meeting-area[data-phase="prep"] .topbar { display:none; }
+  .context-body { padding:12px 12px 8px; }
+  .phase-cta { padding:8px 12px; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+  .input-bar { padding:8px 12px; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+  /* Upload area compact on mobile */
+  .upload-area { padding:8px; margin-top:4px; }
+}
+
 .hidden{display:none!important}
 
 /* ---- LIVE TIMER ---- */
@@ -410,6 +416,13 @@ body{
     </div>
   </div>
 
+  <!-- Phase CTA — above chat so it's always visible on mobile -->
+  <div class="phase-cta" id="phaseCta">
+    <button class="cta-live" id="ctaLive">Start Meeting &rarr;</button>
+    <button class="cta-post hidden" id="ctaPost">End Meeting &rarr;</button>
+    <button class="cta-close hidden" id="ctaClose">Close</button>
+  </div>
+
   <!-- Chat -->
   <div class="chat-area" id="chatArea"></div>
 
@@ -428,13 +441,6 @@ body{
   <!-- Recording Status (visible during live phase) -->
   <div id="recordingStatus" class="hidden" style="display:none;padding:6px 12px;font-size:11px;font-family:monospace;background:#f0f0f0;border-radius:8px;margin:8px 0;color:#666;line-height:1.6">
     🔴 REC: <span id="recStatusText">—</span>
-  </div>
-
-  <!-- Phase CTA -->
-  <div class="phase-cta" id="phaseCta">
-    <button class="cta-live" id="ctaLive">Start Meeting &rarr;</button>
-    <button class="cta-post hidden" id="ctaPost">End Meeting &rarr;</button>
-    <button class="cta-close hidden" id="ctaClose">Close</button>
   </div>
 
   <!-- Report Card (POST phase) — single source, no separate summary -->
@@ -1010,6 +1016,7 @@ async function loadMeeting(id) {
 function updatePhaseUI(phase) {
   phaseBadge.textContent = phase.toUpperCase();
   phaseBadge.dataset.phase = phase;
+  meetingArea.dataset.phase = phase;
 
   // Context panel: only in prep
   contextPanel.classList.toggle("hidden", phase !== "prep");
@@ -1891,9 +1898,6 @@ function stopAudioRecording() {
   });
 }
 
-// Max blob size per chunk: ~3MB raw → ~4MB base64 JSON → safely under Vercel 6MB limit
-const MAX_CHUNK_BYTES = 3 * 1024 * 1024;
-
 async function transcribeAudioBlob(blob) {
   if (!blob || blob.size < 1000) {
     appendSystemMsg("⚠️ Audioaufnahme zu kurz für Transkription");
@@ -1911,88 +1915,43 @@ async function transcribeAudioBlob(blob) {
   const ext = blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
   const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
 
-  // Split into chunks if blob exceeds safe size
-  const chunks = [];
-  if (blob.size <= MAX_CHUNK_BYTES) {
-    chunks.push(blob);
-  } else {
-    // Use saved audioChunks (10s segments from MediaRecorder) to build safe-size groups
-    let currentParts = [];
-    let currentSize = 0;
-    for (const part of audioChunksForTranscribe) {
-      if (currentSize + part.size > MAX_CHUNK_BYTES && currentParts.length > 0) {
-        chunks.push(new Blob(currentParts, { type: blob.type }));
-        currentParts = [];
-        currentSize = 0;
-      }
-      currentParts.push(part);
-      currentSize += part.size;
-    }
-    if (currentParts.length > 0) {
-      chunks.push(new Blob(currentParts, { type: blob.type }));
-    }
-    // Fallback: if audioChunksForTranscribe was empty, slice the blob directly
-    if (chunks.length === 0) {
-      for (let offset = 0; offset < blob.size; offset += MAX_CHUNK_BYTES) {
-        chunks.push(blob.slice(offset, Math.min(offset + MAX_CHUNK_BYTES, blob.size)));
-      }
-    }
-    appendSystemMsg(`📦 Audio aufgeteilt in ${chunks.length} Teile`);
-  }
+  // Send as FormData (multipart) — no base64 overhead, stays under Vercel limits
+  // Single blob, no chunking — MediaRecorder chunks share a WebM header and can't be split
+  try {
+    const formData = new FormData();
+    formData.append("file", blob, ext);
+    formData.append("language", langCode);
 
-  const results = [];
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (chunks.length > 1) {
-      appendSystemMsg(`🔄 Teil ${i + 1}/${chunks.length} (${(chunk.size / 1024).toFixed(0)}KB)...`);
+    const resp = await fetch("/api/ai/transcribe", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${authToken}`,
+        // No Content-Type — browser sets multipart boundary automatically
+      },
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.error("[meeting-audio] Whisper error:", resp.status, err);
+      appendSystemMsg(`⚠️ Whisper-Fehler: ${resp.status}`);
+      return "";
     }
-
-    try {
-      // Convert chunk to base64
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(chunk);
-      });
-
-      const resp = await fetch("/api/ai/transcribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          audio_base64: base64,
-          filename: ext,
-          language: langCode,
-        }),
-      });
-
-      if (!resp.ok) {
-        const err = await resp.text();
-        console.error(`[meeting-audio] Whisper error chunk ${i + 1}:`, resp.status, err);
-        appendSystemMsg(`⚠️ Whisper-Fehler Teil ${i + 1}: ${resp.status}`);
-        continue; // Skip failed chunk, continue with rest
-      }
 
       const data = await resp.json();
       const text = (data.text || "").trim();
-      if (text) results.push(text);
-    } catch (e) {
-      console.error(`[meeting-audio] Chunk ${i + 1} failed:`, e.message);
-      appendSystemMsg(`⚠️ Teil ${i + 1} fehlgeschlagen: ${e.message}`);
-    }
+      if (text) {
+        appendSystemMsg(`✅ Transkription: ${text.length} Zeichen`);
+        console.log(`[meeting-audio] Whisper result: "${text.slice(0, 100)}..."`);
+      } else {
+        appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
+      }
+      return text;
+  } catch (e) {
+      console.error("[meeting-audio] Transcribe failed:", e.message);
+      appendSystemMsg(`⚠️ Transkription fehlgeschlagen: ${e.message}`);
+      return "";
   }
-
-  const fullText = results.join(" ").trim();
-  if (fullText) {
-    appendSystemMsg(`✅ Transkription: ${fullText.length} Zeichen`);
-    console.log(`[meeting-audio] Whisper result: "${fullText.slice(0, 100)}..."`);
-  } else {
-    appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
-  }
-  return fullText;
 }
 
 function cleanupMicStream() {

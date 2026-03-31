@@ -4,7 +4,56 @@ import { createClient } from '@supabase/supabase-js';
 import { SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from '../../lib/billing-constants.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 
-export const config = { maxDuration: 60, api: { bodyParser: { sizeLimit: '25mb' } } };
+// Disable body parser — we handle both JSON and multipart manually
+export const config = { maxDuration: 60, api: { bodyParser: false } };
+
+// Parse raw body from request
+function getRawBody(req, limit = 25 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > limit) { reject(new Error('Body too large')); req.destroy(); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+// Parse multipart form data (simple parser for file + fields)
+function parseMultipart(buffer, boundary) {
+  const parts = {};
+  const boundaryBuf = Buffer.from('--' + boundary);
+  let pos = 0;
+
+  while (pos < buffer.length) {
+    const start = buffer.indexOf(boundaryBuf, pos);
+    if (start === -1) break;
+    const nextStart = buffer.indexOf(boundaryBuf, start + boundaryBuf.length);
+    if (nextStart === -1) break;
+
+    const partBuf = buffer.slice(start + boundaryBuf.length, nextStart);
+    const headerEnd = partBuf.indexOf('\r\n\r\n');
+    if (headerEnd === -1) { pos = nextStart; continue; }
+
+    const headers = partBuf.slice(0, headerEnd).toString();
+    // Strip trailing \r\n from body
+    let body = partBuf.slice(headerEnd + 4);
+    if (body.length >= 2 && body[body.length - 2] === 13 && body[body.length - 1] === 10) {
+      body = body.slice(0, body.length - 2);
+    }
+
+    const nameMatch = headers.match(/name="([^"]+)"/);
+    const filenameMatch = headers.match(/filename="([^"]+)"/);
+    if (nameMatch) {
+      parts[nameMatch[1]] = filenameMatch ? { buffer: body, filename: filenameMatch[1] } : body.toString();
+    }
+    pos = nextStart;
+  }
+  return parts;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -17,13 +66,29 @@ export default async function handler(req, res) {
   if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
 
   try {
-    let body = req.body;
-    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+    const contentType = req.headers['content-type'] || '';
+    const rawBody = await getRawBody(req);
+    let audioBuffer, filename, language;
 
-    const { audio_base64, filename, language } = body;
-    if (!audio_base64) return res.status(400).json({ error: 'Missing audio_base64' });
+    if (contentType.includes('multipart/form-data')) {
+      // FormData upload (from mobile — no base64 overhead)
+      const boundaryMatch = contentType.match(/boundary=(.+)/);
+      if (!boundaryMatch) return res.status(400).json({ error: 'Missing boundary' });
+      const parts = parseMultipart(rawBody, boundaryMatch[1].trim());
+      if (!parts.file?.buffer) return res.status(400).json({ error: 'Missing file' });
+      audioBuffer = parts.file.buffer;
+      filename = parts.file.filename || 'audio.webm';
+      language = parts.language || '';
+    } else {
+      // JSON with base64 (legacy)
+      let body;
+      try { body = JSON.parse(rawBody.toString()); } catch { body = {}; }
+      if (!body.audio_base64) return res.status(400).json({ error: 'Missing audio_base64' });
+      audioBuffer = Buffer.from(body.audio_base64, 'base64');
+      filename = body.filename;
+      language = body.language;
+    }
 
-    const audioBuffer = Buffer.from(audio_base64, 'base64');
     if (audioBuffer.length < 1000) return res.status(400).json({ error: 'Audio too short' });
 
     console.log(`[transcribe] ${user.id}: ${(audioBuffer.length / 1024).toFixed(0)}KB, file=${filename || 'audio.webm'}`);
