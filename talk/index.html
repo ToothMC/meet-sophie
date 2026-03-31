@@ -4847,27 +4847,9 @@ async function startVoice(){
     });
     setupDataChannelLogging();
 
-    // Demo pitch: silent audio track — no mic permission needed.
-    // Works because user tapped the Play button (user gesture → AudioContext.resume).
-    const isDemoPitch = voiceHandover?.pitchDemo === true;
-    if (isDemoPitch) {
-      const actx = new AudioContext();
-      await actx.resume();
-      const osc = actx.createOscillator();
-      const gain = actx.createGain();
-      gain.gain.value = 0;
-      osc.connect(gain);
-      const dest = actx.createMediaStreamDestination();
-      gain.connect(dest);
-      osc.start();
-      stream = dest.stream;
-      window._demoSilentCtx = actx;
-      window._demoSilentOsc = osc;
-    } else {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      });
-    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     // Single audio path: <audio> element only — provides playback + browser AEC.
@@ -5006,8 +4988,6 @@ async function stopVoicePitchClean() {
   const _audioEl = audioEl; audioEl = null;
   if (_dc) { try { _dc.close(); } catch(_){} }
   if (_stream) { try { _stream.getTracks().forEach(t => t.stop()); } catch(_){} }
-  if (window._demoSilentOsc) { try { window._demoSilentOsc.stop(); } catch(_){} window._demoSilentOsc = null; }
-  if (window._demoSilentCtx) { try { window._demoSilentCtx.close(); } catch(_){} window._demoSilentCtx = null; }
   if (_pc) { try { _pc.close(); } catch(_){} }
   if (_audioEl) { try { _audioEl.srcObject = null; } catch(_){} }
 
@@ -5409,7 +5389,8 @@ const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent
 if (session?.user) {
   // Auto-start for all devices. The talk page is only reached via user gesture
   // (tap on landing page), so getUserMedia permission dialog will work.
-  // Demo pitch uses silent audio track instead of mic (no permission needed).
+  // iOS Safari doesn't support navigator.permissions.query for microphone,
+  // so the old check always fell through to the fallback on iOS.
   startVoice();
 }
 </script>
