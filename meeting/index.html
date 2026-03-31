@@ -525,6 +525,46 @@ let sharedMicStream = null;
 // Audio recording transcript (Whisper result or test data)
 let speechTranscript = [];  // Array of strings — transcribed audio from meeting
 
+// Wake Lock (prevent screen lock during live meeting on mobile)
+let wakeLockSentinel = null;
+
+async function requestWakeLock() {
+  try {
+    if ("wakeLock" in navigator) {
+      wakeLockSentinel = await navigator.wakeLock.request("screen");
+      wakeLockSentinel.addEventListener("release", () => {
+        console.log("[meeting] Wake lock released");
+        wakeLockSentinel = null;
+      });
+      console.log("[meeting] Wake lock acquired");
+    }
+  } catch (e) {
+    console.warn("[meeting] Wake lock failed:", e.message);
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLockSentinel) {
+    wakeLockSentinel.release().catch(() => {});
+    wakeLockSentinel = null;
+  }
+}
+
+// Re-acquire wake lock when page becomes visible again (iOS releases on tab switch)
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" && meetingData?.phase === "live") {
+    await requestWakeLock();
+    // Check if MediaRecorder died while backgrounded
+    if (mediaRecorder && mediaRecorder.state === "inactive") {
+      console.warn("[meeting] MediaRecorder died while backgrounded — restarting");
+      appendMsg("assistant", lang === "de"
+        ? "⚠️ Die Aufnahme wurde unterbrochen (Bildschirm gesperrt). Ich starte sie neu."
+        : "⚠️ Recording was interrupted (screen locked). Restarting.");
+      await startAudioRecording();
+    }
+  }
+});
+
 // ---------------------------------------------------------------------------
 // DOM refs
 // ---------------------------------------------------------------------------
@@ -1067,6 +1107,13 @@ async function transitionPhase(newPhase) {
     const phaseInfo = (PHASE_INFO[lang] || PHASE_INFO.en)[newPhase];
     if (phaseInfo) appendSystemMsg(phaseInfo);
 
+    // Wake lock: acquire when going live, release when leaving
+    if (newPhase === "live") {
+      await requestWakeLock();
+    } else if (newPhase === "post" || newPhase === "closed") {
+      releaseWakeLock();
+    }
+
     // When going LIVE: show agenda points or parent summary as Sophie message
     if (newPhase === "live") {
       const agenda = $("ctxAgenda")?.value?.trim();
@@ -1169,8 +1216,11 @@ function appendMsg(role, content) {
 }
 
 function appendSystemMsg(text) {
-  // System messages are silent — log only, no UI
   console.log("[meeting-system]", text);
+  // Show warnings/errors in UI so users see what's happening
+  if (text.includes("⚠️") || text.includes("❌")) {
+    appendMsg("assistant", text);
+  }
 }
 
 function autoResizeTextarea(el) {
@@ -1333,9 +1383,12 @@ async function generateSummary() {
     console.log(`[meeting] TRANSCRIPT TO SEND:\n${transcriptToSend}`);
     appendSystemMsg(`📊 ${speechTranscript.length} Audio-Segmente, ${voiceTranscript.length} Voice-Nachrichten`);
 
+    // Even without transcript, call summarize — backend can use notes/context
     if (!transcriptToSend.trim()) {
-      appendSystemMsg("⚠️ Kein Transcript vorhanden — Report kann nicht erstellt werden.");
-      return;
+      console.log("[meeting] No transcript — will try report from notes/context");
+      appendMsg("assistant", lang === "de"
+        ? "Kein Audio-Transcript verfügbar — ich versuche den Report aus Notizen und Kontext zu erstellen."
+        : "No audio transcript available — trying to create report from notes and context.");
     }
 
     // Show report card with progress bar immediately
@@ -1350,7 +1403,10 @@ async function generateSummary() {
       appendSystemMsg("⚠️ Report-Session konnte nicht erstellt werden.");
     }
   } catch (e) {
-    appendSystemMsg("Report error: " + e.message);
+    console.error("[meeting] generateSummary error:", e);
+    appendMsg("assistant", lang === "de"
+      ? `⚠️ Fehler beim Erstellen des Reports: ${e.message}`
+      : `⚠️ Error creating report: ${e.message}`);
   }
 }
 
@@ -1715,6 +1771,7 @@ function stopRecStatusUpdates() {
 // ---------------------------------------------------------------------------
 let mediaRecorder = null;
 let audioChunks = [];
+let audioChunksForTranscribe = []; // Preserved copy for chunked transcription
 
 async function startAudioRecording() {
   try {
@@ -1826,12 +1883,16 @@ function stopAudioRecording() {
     mediaRecorder.onstop = () => {
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
       console.log(`[meeting-audio] Stopped. ${audioChunks.length} chunks, ${(blob.size / 1024).toFixed(0)}KB`);
+      audioChunksForTranscribe = [...audioChunks]; // Preserve for chunked transcription
       audioChunks = [];
       resolve(blob);
     };
     mediaRecorder.stop();
   });
 }
+
+// Max blob size per chunk: ~3MB raw → ~4MB base64 JSON → safely under Vercel 6MB limit
+const MAX_CHUNK_BYTES = 3 * 1024 * 1024;
 
 async function transcribeAudioBlob(blob) {
   if (!blob || blob.size < 1000) {
@@ -1841,54 +1902,97 @@ async function transcribeAudioBlob(blob) {
 
   appendSystemMsg(`🔄 Transkribiere ${(blob.size / 1024).toFixed(0)}KB Audio via Whisper...`);
 
-  // Convert blob to base64 using FileReader (no stack overflow)
-  const base64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      resolve(dataUrl.split(",")[1]); // Remove "data:audio/webm;base64," prefix
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-
-  const ext = blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
-
   let authToken = accessToken;
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (s?.access_token) authToken = s.access_token;
   } catch (_) {}
 
-  const resp = await fetch("/api/ai/transcribe", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${authToken}`,
-    },
-    body: JSON.stringify({
-      audio_base64: base64,
-      filename: ext,
-      language: lang === "de" ? "de" : lang === "fr" ? "fr" : "en",
-    }),
-  });
+  const ext = blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
+  const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
 
-  if (!resp.ok) {
-    const err = await resp.text();
-    appendSystemMsg(`⚠️ Whisper-Fehler: ${resp.status}`);
-    console.error("[meeting-audio] Whisper error:", err);
-    return "";
+  // Split into chunks if blob exceeds safe size
+  const chunks = [];
+  if (blob.size <= MAX_CHUNK_BYTES) {
+    chunks.push(blob);
+  } else {
+    // Use saved audioChunks (10s segments from MediaRecorder) to build safe-size groups
+    let currentParts = [];
+    let currentSize = 0;
+    for (const part of audioChunksForTranscribe) {
+      if (currentSize + part.size > MAX_CHUNK_BYTES && currentParts.length > 0) {
+        chunks.push(new Blob(currentParts, { type: blob.type }));
+        currentParts = [];
+        currentSize = 0;
+      }
+      currentParts.push(part);
+      currentSize += part.size;
+    }
+    if (currentParts.length > 0) {
+      chunks.push(new Blob(currentParts, { type: blob.type }));
+    }
+    // Fallback: if audioChunksForTranscribe was empty, slice the blob directly
+    if (chunks.length === 0) {
+      for (let offset = 0; offset < blob.size; offset += MAX_CHUNK_BYTES) {
+        chunks.push(blob.slice(offset, Math.min(offset + MAX_CHUNK_BYTES, blob.size)));
+      }
+    }
+    appendSystemMsg(`📦 Audio aufgeteilt in ${chunks.length} Teile`);
   }
 
-  const data = await resp.json();
-  const text = (data.text || "").trim();
-  if (text) {
-    appendSystemMsg(`✅ Transkription: ${text.length} Zeichen`);
-    console.log(`[meeting-audio] Whisper result: "${text.slice(0, 100)}..."`);
+  const results = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (chunks.length > 1) {
+      appendSystemMsg(`🔄 Teil ${i + 1}/${chunks.length} (${(chunk.size / 1024).toFixed(0)}KB)...`);
+    }
+
+    try {
+      // Convert chunk to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(chunk);
+      });
+
+      const resp = await fetch("/api/ai/transcribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          audio_base64: base64,
+          filename: ext,
+          language: langCode,
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.text();
+        console.error(`[meeting-audio] Whisper error chunk ${i + 1}:`, resp.status, err);
+        appendSystemMsg(`⚠️ Whisper-Fehler Teil ${i + 1}: ${resp.status}`);
+        continue; // Skip failed chunk, continue with rest
+      }
+
+      const data = await resp.json();
+      const text = (data.text || "").trim();
+      if (text) results.push(text);
+    } catch (e) {
+      console.error(`[meeting-audio] Chunk ${i + 1} failed:`, e.message);
+      appendSystemMsg(`⚠️ Teil ${i + 1} fehlgeschlagen: ${e.message}`);
+    }
+  }
+
+  const fullText = results.join(" ").trim();
+  if (fullText) {
+    appendSystemMsg(`✅ Transkription: ${fullText.length} Zeichen`);
+    console.log(`[meeting-audio] Whisper result: "${fullText.slice(0, 100)}..."`);
   } else {
     appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
   }
-  return text;
+  return fullText;
 }
 
 function cleanupMicStream() {
