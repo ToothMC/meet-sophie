@@ -809,8 +809,6 @@
       position:fixed;
       width:100%;
       height:100%;
-      overscroll-behavior:none;
-      touch-action:none;
     }
 
     .chat-card.foreground{
@@ -863,16 +861,14 @@
         left:0;
         right:0;
         bottom:0;
-        top:0;
+        top:auto;
         transform:none;
         width:100%;
-        min-height:0;
-        max-height:none;
-        height:100%;
-        height:100dvh;
-        border-radius:0;
+        min-height:50vh;
+        max-height:100vh;
+        height:100vh;
+        border-radius:20px 20px 0 0;
         position:fixed;
-        overscroll-behavior:none;
       }
       .chat-card.foreground .chat-footer{
         position:sticky;
@@ -2236,8 +2232,6 @@
       const chatCard = document.getElementById("sophieChat");
       if (!chatCard) return;
       chatCard.classList.remove("foreground");
-      chatCard.style.height = "";
-      chatCard.style.top = "";
       document.body.classList.remove("chat-foreground-active");
       document.body.style.top = "";
       // Restore scroll position
@@ -2262,21 +2256,6 @@
       setFunnelMode(null);
       applyHeroMode(null);
       document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
-    }
-
-    // ── iOS keyboard viewport fix ──
-    // On iOS Safari, the virtual keyboard shrinks the visualViewport but not the
-    // layout viewport, causing fixed elements to overlap or the page to scroll.
-    if (window.visualViewport) {
-      const vvResize = () => {
-        const chatCard = document.getElementById("sophieChat");
-        if (!chatCard || !chatCard.classList.contains("foreground")) return;
-        const vv = window.visualViewport;
-        chatCard.style.height = vv.height + "px";
-        chatCard.style.top = vv.offsetTop + "px";
-      };
-      window.visualViewport.addEventListener("resize", vvResize);
-      window.visualViewport.addEventListener("scroll", vvResize);
     }
 
     if (heroCta) {
