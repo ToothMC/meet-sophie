@@ -1,6 +1,6 @@
 // api/ai/tts.js — OpenAI TTS: pitch text → MP3 audio (emotionale Keynote-Performance)
+// Uses fetch() directly — no 'openai' package (not in dependencies)
 import { createClient } from '@supabase/supabase-js';
-import OpenAI from 'openai';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 
 export const config = { maxDuration: 30 };
@@ -31,14 +31,26 @@ export default async function handler(req, res) {
   if (text.length > 5000) return res.status(400).json({ error: 'Text too long (max 5000 chars)' });
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const ttsResp = await client.audio.speech.create({
-      model: 'gpt-4o-mini-tts',
-      voice: 'shimmer',
-      input: text,
-      response_format: 'mp3',
-      instructions: DELIVERY_INSTRUCTIONS,
+    const ttsResp = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-tts',
+        voice: 'shimmer',
+        input: text,
+        response_format: 'mp3',
+        instructions: DELIVERY_INSTRUCTIONS,
+      }),
     });
+
+    if (!ttsResp.ok) {
+      const errText = await ttsResp.text().catch(() => '');
+      console.error(`[tts] OpenAI API error ${ttsResp.status}: ${errText.slice(0, 300)}`);
+      return res.status(502).json({ error: 'TTS API error' });
+    }
 
     // Cost: gpt-4o-mini-tts ~$0.006/1K chars
     const costUsd = (text.length / 1000) * 0.006;
