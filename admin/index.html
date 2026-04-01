@@ -418,8 +418,12 @@ function renderBudgetMonitor(providers, alerts, unackedCount) {
   const sevIcon = { critical: "\u{1F6A8}", warn: "\u26a0\ufe0f", info: "\u2139\ufe0f" };
   const sevColor = { critical: "#ef4444", warn: "#f59e0b", info: "#8eb2ff" };
 
-  feed.innerHTML = `<div style="font-size:11px;font-weight:600;color:#7a6a5a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Alerts</div>` +
-    alerts.slice(0, 20).map(a => {
+  const ackedCount = alerts.filter(a => a.acknowledged).length;
+  feed.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:600;color:#7a6a5a;text-transform:uppercase;letter-spacing:.05em">Alerts</div>
+      ${ackedCount > 0 ? `<button onclick="clearAckedAlerts()" style="background:none;border:1px solid rgba(255,255,255,.08);color:#7a6a5a;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:inherit">Erledigte löschen (${ackedCount})</button>` : ''}
+    </div>` +
+    alerts.slice(0, 30).map(a => {
       const d = new Date(a.created_at);
       const time = d.toLocaleString("de-DE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
       const icon = sevIcon[a.severity] || "";
@@ -431,7 +435,10 @@ function renderBudgetMonitor(providers, alerts, unackedCount) {
           <div style="font-size:11px;color:${color};font-weight:600">${a.message}</div>
           <div style="font-size:10px;color:#5a5045;margin-top:2px">${time} · ${a.provider}</div>
         </div>
-        ${!acked ? `<button onclick="ackAlert('${a.id}')" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,.1);color:#7a6a5a;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:inherit">OK</button>` : ''}
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          ${!acked ? `<button onclick="ackAlert('${a.id}')" style="background:none;border:1px solid rgba(255,255,255,.1);color:#7a6a5a;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:inherit">OK</button>` : ''}
+          <button onclick="deleteAlert('${a.id}')" style="background:none;border:1px solid rgba(239,68,68,.2);color:#ef4444;font-size:10px;padding:3px 6px;border-radius:6px;cursor:pointer;font-family:inherit;opacity:.6" title="Löschen">\u2715</button>
+        </div>
       </div>`;
     }).join("");
 }
@@ -441,6 +448,20 @@ window.ackAlert = async function(alertId) {
     await api("alerts", { method: "POST", body: JSON.stringify({ alert_id: alertId }) });
     loadAll();
   } catch (e) { console.error("ack failed:", e); }
+};
+
+window.deleteAlert = async function(alertId) {
+  try {
+    await api("alerts", { method: "DELETE", body: JSON.stringify({ alert_id: alertId }) });
+    loadAll();
+  } catch (e) { console.error("delete failed:", e); }
+};
+
+window.clearAckedAlerts = async function() {
+  try {
+    await api("alerts", { method: "DELETE", body: JSON.stringify({ clear_acknowledged: true }) });
+    loadAll();
+  } catch (e) { console.error("clear failed:", e); }
 };
 
 // Sort table

@@ -219,7 +219,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Alerts: GET unacknowledged, POST acknowledge ──
+  // ── Alerts: GET list, POST acknowledge, DELETE remove ──
   if (action === 'alerts') {
     if (req.method === 'GET') {
       const limit = Math.min(Number(req.query?.limit) || 50, 200);
@@ -237,6 +237,26 @@ export default async function handler(req, res) {
         .eq('id', alert_id);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ ok: true });
+    }
+    if (req.method === 'DELETE') {
+      const { alert_id, clear_acknowledged } = req.body || {};
+      if (clear_acknowledged) {
+        // Delete all acknowledged alerts
+        const { error } = await supabase.from('api_alert_log')
+          .delete()
+          .eq('acknowledged', true);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ ok: true });
+      }
+      if (alert_id) {
+        // Delete single alert
+        const { error } = await supabase.from('api_alert_log')
+          .delete()
+          .eq('id', alert_id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ ok: true });
+      }
+      return res.status(400).json({ error: 'Missing alert_id or clear_acknowledged' });
     }
   }
 

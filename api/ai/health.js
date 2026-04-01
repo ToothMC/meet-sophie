@@ -171,13 +171,14 @@ export default async function handler(req, res) {
       }
     }
 
-    // Deduplicate: don't re-alert if same alert was created in last 30 minutes
+    // Deduplicate: don't re-alert if same alert was already created today
     if (alerts.length) {
-      const thirtyMinAgo = new Date(Date.now() - 30 * 60000).toISOString();
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
       const { data: recentAlerts } = await supabase
         .from('api_alert_log')
         .select('provider, alert_type')
-        .gte('created_at', thirtyMinAgo);
+        .gte('created_at', todayStart.toISOString());
 
       const recentKeys = new Set((recentAlerts || []).map(a => `${a.provider}:${a.alert_type}`));
       const newAlerts = alerts.filter(a => !recentKeys.has(`${a.provider}:${a.alert_type}`));
