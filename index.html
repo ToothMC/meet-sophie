@@ -145,6 +145,7 @@
       background:rgba(255,255,255,.08);
       border-color:rgba(255,255,255,.18);
     }
+    .lang-short{display:none}
     .lang-menu{
       position:absolute;
       top:calc(100% + 10px);
@@ -384,6 +385,23 @@
       color:rgba(246,247,251,.55);
       font-size:12.5px;
       letter-spacing:.2px;
+    }
+    .hero-write-link{
+      display:none;
+      text-decoration:none;
+      color:rgba(246,247,251,.72);
+      font-size:16px;
+      font-weight:500;
+      letter-spacing:.01em;
+      transition:color .15s;
+    }
+    .hero-write-link:hover{color:rgba(246,247,251,.95)}
+    .mobile-feature-hint{
+      display:none;
+      margin:14px 0 0;
+      font-size:14px;
+      color:rgba(246,247,251,.52);
+      line-height:1.4;
     }
     .hero-mode-bar{
       display:flex;gap:8px;margin-top:12px;
@@ -730,30 +748,29 @@
       .thinking-sources-grid{grid-template-columns:1fr}
     }
     @media (max-width:640px){
-      .nav{min-height:50px}
-      .brand{font-size:13px}
-      .hero-actions{display:flex;flex-wrap:wrap;gap:12px}
-      .btn{min-width:0;min-height:48px;font-size:15px;padding:0 22px}
-      .hero-actions .btn-primary{width:100%;min-height:54px;font-size:17px;border-radius:16px}
-      .eyebrow{display:none}
-      .thinking-eyebrow{display:none}
+      /* --- Header compact --- */
+      .site-header{background:rgba(6,7,11,.48);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+      .nav{min-height:58px}
+      .brand{font-size:14px}
+      .login-link{padding:8px 11px;font-size:13px}
+      /* --- Language pill compact: flag + code --- */
+      .lang-btn{padding:8px 14px;font-size:14px;font-weight:600}
+      #lang-label{display:none}
+      .lang-short{display:inline}
+
+      /* --- Hero layout --- */
       .hero{
         position:relative;
-        min-height:calc(100dvh - 50px);
+        min-height:calc(100svh - 58px);
         padding:0;
         overflow:visible !important;
       }
       .hero::before{
         background:
-          linear-gradient(180deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.60) 24%, rgba(8,10,16,.38) 52%, rgba(8,10,16,.62) 100%),
-          url("hero.jpg") 70% center / cover no-repeat;
+          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
+          linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
+          url("hero.jpg") 63% center / cover no-repeat;
       }
-      .section{padding:34px 0}
-      .thinking-section{padding:56px 0 34px}
-      .thinking-shell{padding:34px 22px;border-radius:28px}
-      .thinking-copy{font-size:17px}
-      .thinking-highlight{margin-top:34px}
-      .wrap{width:min(calc(100% - 24px), var(--max))}
       .hero-grid{
         display:block;
         position:static;
@@ -763,14 +780,12 @@
         position:relative;
         z-index:1;
         padding-top:max(56px, env(safe-area-inset-top));
+        padding-bottom:max(24px, env(safe-area-inset-bottom));
         width:100%;
         text-align:center;
-      }
-      .hero-copy-col .hero-actions{
-        margin-top:calc(50vh - 250px);
-      }
-      .hero-copy-col .trust-line{
-        margin-top:8px;
+        display:flex;
+        flex-direction:column;
+        min-height:calc(100svh - 58px);
       }
       .hero-visual{
         position:static;
@@ -786,24 +801,95 @@
         box-shadow:none;
         overflow:visible;
       }
+
+      /* --- Eyebrow --- */
+      .eyebrow{display:none}
+      .thinking-eyebrow{display:none}
+
+      /* --- Headline --- */
       h1{
-        font-size:clamp(36px, 11vw, 48px);
-        line-height:.92;
-        max-width:none;
+        font-size:clamp(50px, 13vw, 64px);
+        line-height:.90;
+        letter-spacing:-.055em;
+        max-width:7.2ch;
+        margin-left:auto;
+        margin-right:auto;
       }
+
+      /* --- Subline --- */
       .hero-copy{
-        max-width:none;
-        font-size:17px;
-        line-height:1.5;
-        margin-top:14px;
+        max-width:18ch;
+        font-size:20px;
+        line-height:1.35;
+        margin-top:18px;
+        color:rgba(246,247,251,.88);
+        margin-left:auto;
+        margin-right:auto;
       }
+
+      /* --- CTA area --- */
+      .hero-copy-col .hero-actions{
+        margin-top:auto;
+      }
+      .hero-actions{display:flex;flex-direction:column;gap:14px}
+      .btn{min-width:0;min-height:48px;font-size:15px;padding:0 22px}
+      .hero-actions .btn-primary{width:100%;min-height:62px;font-size:22px;border-radius:20px}
+
+      /* --- Secondary link --- */
+      .hero-write-link{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        width:100%;
+        min-height:28px;
+        font-size:18px;
+        color:rgba(255,255,255,.86);
+      }
+
+      /* --- Feature hint --- */
+      .mobile-feature-hint{
+        display:block;
+        margin-top:6px;
+        font-size:15px;
+        line-height:1.4;
+        color:rgba(246,247,251,.72);
+        max-width:28ch;
+        margin-left:auto;
+        margin-right:auto;
+      }
+
+      /* --- Trust line --- */
+      .hero-copy-col .trust-line{
+        margin-top:14px;
+        font-size:15px;
+        color:rgba(246,247,251,.72);
+      }
+
+      /* --- Mode pills deprioritized --- */
+      .hero-mode-bar{
+        margin-top:18px;
+        justify-content:center;
+      }
+      .hero-mode-pill{
+        font-size:14px;
+        color:rgba(246,247,251,.58);
+      }
+
+      /* --- Hide chat-opening on mobile --- */
+      #chat-opening{display:none !important}
+
+      /* --- Sections below hero --- */
+      .section{padding:34px 0}
+      .thinking-section{padding:56px 0 34px}
+      .thinking-shell{padding:34px 22px;border-radius:28px}
+      .thinking-copy{font-size:17px}
+      .thinking-highlight{margin-top:34px}
+      .wrap{width:min(calc(100% - 24px), var(--max))}
       .card,
       .example-box,
       .trust-box,
       .faq-box,
       .cta-box{padding:22px}
-      .login-link,
-      .lang-btn{padding:9px 12px}
       .chat-msg-bubble{font-size:14px}
     }
     /* ===== SOPHIE CHAT CARD ===== */
@@ -942,17 +1028,8 @@
       }
     }
     @media (max-width:640px){
-      .chat-card{
-        --chat-h:clamp(200px, 30vh, 230px);
-        left:12px;
-        right:12px;
-        bottom:12px;
-        transform:none;
-        width:auto;
-        max-width:none;
-        height:var(--chat-h) !important;
-        border-radius:20px;
-        z-index:5;
+      .chat-card:not(.foreground){
+        display:none !important;
       }
     }
     .chat-card-header{
@@ -1351,6 +1428,7 @@
         <div class="lang-dropdown">
           <button class="lang-btn" id="langToggle" aria-expanded="false" aria-haspopup="true">
             <span id="lang-label">Language</span>
+            <span class="lang-short" id="lang-short">🇬🇧 EN</span>
           </button>
           <div class="lang-menu" id="langMenu">
             <button type="button" data-lang="en">English</button>
@@ -1371,6 +1449,7 @@
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
             <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
+            <a class="hero-write-link" href="/talk/" id="hero-btn-secondary">Or type</a>
           </div>
           <div class="hero-mode-bar" id="heroModeBar">
             <div class="bs-pill-wrap">
@@ -1383,6 +1462,7 @@
             <button class="hero-mode-pill" data-mode="meeting">◉ Meeting</button>
             <button class="hero-mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
           </div>
+          <p class="mobile-feature-hint" id="mobile-feature-hint">You can also send Sophie messages during a conversation.</p>
           <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
           <p id="chat-opening"></p>
         </div>
@@ -1616,6 +1696,7 @@
         page_title: "Meet Sophie — Your AI Thinking Partner",
         meta_description: "Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.",
         lang_label: "Language",
+        lang_short: "\ud83c\uddec\ud83c\udde7 EN",
         nav_use_cases: "Use cases",
         nav_how_it_works: "How it works",
         nav_pricing: "Pricing",
@@ -1627,6 +1708,8 @@
         hero_copy: "Your AI thinking partner for the moments that matter.",
         hero_btn_primary: "Talk to Sophie",
         hero_trust_line: "No signup · Start instantly",
+        hero_btn_secondary: "Or type",
+        mobile_feature_hint: "You can also send Sophie messages during a conversation.",
         floating_label: "Stop typing. Start talking.",
         floating_lines: [
           "\u201cSophie says: Think one moment longer before you react.\u201d",
@@ -1722,6 +1805,7 @@
         page_title: "Meet Sophie \u2014 Deine KI-Denkpartnerin",
         meta_description: "Sprachgespr\u00e4che mit Sophie \u2014 deiner KI-Denkpartnerin zum Erkunden von Ideen, Pr\u00fcfen von Entscheidungen und Reflektieren dessen, was wirklich z\u00e4hlt.",
         lang_label: "Sprache",
+        lang_short: "\ud83c\udde9\ud83c\uddea DE",
         nav_use_cases: "Anwendungsf\u00e4lle", nav_how_it_works: "So funktioniert es",
         nav_pricing: "Preise", nav_trust: "Vertrauen", nav_faq: "FAQ", login_link: "Einloggen",
         hero_eyebrow: "Klarheit beginnt im Gespr\u00e4ch.",
@@ -1729,6 +1813,8 @@
         hero_copy: "Deine KI f\u00fcr die Momente, die z\u00e4hlen.",
         hero_btn_primary: "Mit Sophie sprechen",
         hero_trust_line: "Kein Account n\u00f6tig \u00b7 Sofort starten",
+        hero_btn_secondary: "Oder schreiben",
+        mobile_feature_hint: "Auch w\u00e4hrend des Gespr\u00e4chs kannst du Sophie Nachrichten schicken.",
         floating_label: "H\u00f6r auf zu tippen. Fang an zu sprechen.",
         floating_lines: [
           "\u201eSophie says: Bevor du reagierst, denk einen Moment l\u00e4nger.\u201c",
@@ -1826,6 +1912,7 @@
       page_title: "Meet Sophie \u2014 Votre partenaire de r\u00e9flexion IA",
       meta_description: "Conversations vocales avec Sophie \u2014 votre partenaire de r\u00e9flexion IA pour explorer des id\u00e9es, tester des d\u00e9cisions et r\u00e9fl\u00e9chir \u00e0 ce qui compte vraiment.",
       lang_label: "Langue",
+      lang_short: "\ud83c\uddeb\ud83c\uddf7 FR",
       nav_use_cases: "Cas d\u2019usage", nav_how_it_works: "Comment \u00e7a marche",
       nav_pricing: "Tarifs", nav_trust: "Confiance", nav_faq: "FAQ", login_link: "Connexion",
       hero_eyebrow: "La clart\u00e9 na\u00eet dans la conversation.",
@@ -1833,6 +1920,8 @@
       hero_copy: "Votre IA pour les moments qui comptent.",
       hero_btn_primary: "Parler \u00e0 Sophie",
       hero_trust_line: "Sans inscription \u00b7 Commencer imm\u00e9diatement",
+      hero_btn_secondary: "Ou \u00e9crire",
+      mobile_feature_hint: "Vous pouvez aussi envoyer des messages \u00e0 Sophie pendant une conversation.",
       floating_label: "Arr\u00eatez de taper. Commencez \u00e0 parler.",
       floating_lines: [
         "\u00abSophie dit\u00a0: Prenez un instant de plus avant de r\u00e9agir.\u00bb",
@@ -1953,12 +2042,12 @@
       const metaDesc = document.querySelector('meta[name="description"]');
       if (metaDesc) metaDesc.setAttribute("content", t.meta_description);
       const textMap = {
-        "lang-label": t.lang_label,
+        "lang-label": t.lang_label, "lang-short": t.lang_short,
         "nav-use-cases": t.nav_use_cases, "nav-how-it-works": t.nav_how_it_works,
         "nav-pricing": t.nav_pricing, "nav-trust": t.nav_trust, "nav-faq": t.nav_faq,
         "login-link": t.login_link,
         "hero-eyebrow": t.hero_eyebrow, "hero-copy": t.hero_copy,
-        "hero-btn-primary": t.hero_btn_primary, "hero-trust-line": t.hero_trust_line,
+        "hero-btn-primary": t.hero_btn_primary, "hero-btn-secondary": t.hero_btn_secondary, "hero-trust-line": t.hero_trust_line, "mobile-feature-hint": t.mobile_feature_hint,
         "floating-label": t.floating_label,
         "thinking-eyebrow": t.thinking_eyebrow, "thinking-title": t.thinking_title,
         "thinking-copy-1": t.thinking_copy_1, "thinking-copy-2": t.thinking_copy_2,
