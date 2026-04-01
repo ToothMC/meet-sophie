@@ -1,3 +1,2 @@
-Meet Sophie
+test
 
-Your AI Thinking Partner — meet-sophie.com
