@@ -3231,10 +3231,9 @@
         if (!error) {
           wrap.remove();
           if (method === "otp") {
-            // iOS PWA: show code input directly in chat
             showOTPInput(email, messagesEl, () => {
-              appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
               _authReady(true);
+              goToVoiceFromChat();
             });
           } else {
             appendBubble("sophie", labels.sent(email));
@@ -3280,8 +3279,8 @@
           wrap.remove();
           if (method === "otp") {
             showOTPInput(email, messagesEl, () => {
-              appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
               _authReady(true);
+              goToVoiceFromChat();
             });
           } else {
             const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
@@ -3519,9 +3518,8 @@
           if (method === "otp") {
             chatState = "otp_capture";
             showOTPInput(text, messagesEl, () => {
-              chatState = "chat_active";
-              appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
               _authReady(true);
+              goToVoiceFromChat();
             });
           } else {
             chatState = "email_capture";
@@ -4021,11 +4019,10 @@
       const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
       if (!error) {
         if (method === "otp") {
-          // iOS PWA: hide auth form, show OTP input in chat
           hide(authEl);
           showOTPInput(email, messagesEl, () => {
-            appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
             _authReady(true);
+            goToVoiceFromChat();
           });
         } else {
           // Keep email visible so user can verify, just disable editing
