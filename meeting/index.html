@@ -1166,14 +1166,14 @@ async function transitionPhase(newPhase) {
 
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
-      // 1. Stop recording and get audio blob
+      // 1. Stop recording and get audio segments
       setSophieStatus(lang === "de" ? "Sophie hört sich das Gespräch an …" : "Sophie is reviewing the conversation …");
-      const audioBlob = await stopAudioRecording();
+      const segments = await stopAudioRecording();
       cleanupMicStream();
 
-      // 2. Transcribe via Whisper (if we have audio)
-      if (audioBlob && audioBlob.size > 1000) {
-        const whisperText = await transcribeAudioBlob(audioBlob);
+      // 2. Transcribe each segment via Whisper
+      if (segments && segments.length > 0) {
+        const whisperText = await transcribeAudioSegments(segments);
         if (whisperText) {
           speechTranscript.push(whisperText);
         }
@@ -1803,45 +1803,77 @@ function stopRecStatusUpdates() {
 // ---------------------------------------------------------------------------
 // Audio Recording (MediaRecorder) + Whisper Transcription at end
 // Works on ALL browsers (no Google dependency like SpeechRecognition)
+// Records in 2-minute segments so each blob stays under API limits.
 // ---------------------------------------------------------------------------
 let mediaRecorder = null;
 let audioChunks = [];
-let audioChunksForTranscribe = []; // Preserved copy for chunked transcription
+let audioSegments = []; // Array of complete Blobs, each with its own header
+let segmentRotationTimer = null;
+let currentMimeType = "audio/webm";
+const AUDIO_SEGMENT_MS = 120_000; // 2 minutes per segment
 
 async function startAudioRecording() {
   try {
     sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     appendSystemMsg("✅ Mikrofon aktiv — Aufnahme läuft");
 
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+    currentMimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
               : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
               : "audio/mp4";
-    mediaRecorder = new MediaRecorder(sharedMicStream, {
-      mimeType,
-      audioBitsPerSecond: 32000, // 32kbps — keeps files small on iOS (mp4), plenty for speech
-    });
     audioChunks = [];
+    audioSegments = [];
+    _startNewRecorder();
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
-
-    mediaRecorder.onerror = (e) => {
-      appendSystemMsg(`⚠️ Aufnahme-Fehler: ${e.error?.message || "unbekannt"}`);
-    };
-
-    // Record in 10-second chunks (so we don't lose everything on crash)
-    mediaRecorder.start(10000);
-    console.log("[meeting-audio] Recording started, mimeType:", mediaRecorder.mimeType);
+    // Rotate segment every 2 minutes to keep each blob small
+    segmentRotationTimer = setInterval(() => _rotateSegment(), AUDIO_SEGMENT_MS);
+    console.log("[meeting-audio] Recording started, mimeType:", currentMimeType);
   } catch (e) {
     appendSystemMsg(`❌ Mikrofon nicht verfügbar: ${e.message}`);
     console.error("[meeting-audio] getUserMedia failed:", e.message);
   }
 }
 
+function _startNewRecorder() {
+  if (!sharedMicStream || !sharedMicStream.active) return;
+  mediaRecorder = new MediaRecorder(sharedMicStream, {
+    mimeType: currentMimeType,
+    audioBitsPerSecond: 32000,
+  });
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) audioChunks.push(e.data);
+  };
+  mediaRecorder.onerror = (e) => {
+    appendSystemMsg(`⚠️ Aufnahme-Fehler: ${e.error?.message || "unbekannt"}`);
+  };
+  // 10-second timeslice for crash safety
+  mediaRecorder.start(10000);
+}
+
+function _rotateSegment() {
+  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+  // Stop fires onstop → we collect the blob, then start a fresh recorder
+  const recorder = mediaRecorder;
+  recorder.onstop = () => {
+    if (audioChunks.length > 0) {
+      const blob = new Blob(audioChunks, { type: recorder.mimeType || currentMimeType });
+      if (blob.size > 500) {
+        audioSegments.push(blob);
+        console.log(`[meeting-audio] Segment ${audioSegments.length} saved: ${(blob.size / 1024).toFixed(0)}KB`);
+      }
+      audioChunks = [];
+    }
+    _startNewRecorder();
+  };
+  recorder.stop();
+}
+
 function pauseAudioRecording() {
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.pause();
+    // Pause segment rotation while recording is paused
+    if (segmentRotationTimer) { clearInterval(segmentRotationTimer); segmentRotationTimer = null; }
     console.log("[meeting-audio] Paused (Sophie voice active)");
   }
 }
@@ -1849,6 +1881,10 @@ function pauseAudioRecording() {
 function resumeAudioRecording() {
   if (mediaRecorder && mediaRecorder.state === "paused") {
     mediaRecorder.resume();
+    // Resume segment rotation
+    if (!segmentRotationTimer) {
+      segmentRotationTimer = setInterval(() => _rotateSegment(), AUDIO_SEGMENT_MS);
+    }
     console.log("[meeting-audio] Resumed");
   }
 }
@@ -1912,29 +1948,48 @@ if (meetingPauseBtn) {
 // ────────────────────────────────────────────────────────────────────────────
 
 function stopAudioRecording() {
+  // Stop segment rotation
+  if (segmentRotationTimer) { clearInterval(segmentRotationTimer); segmentRotationTimer = null; }
+
   return new Promise((resolve) => {
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
-      resolve(null);
+      // Return previously saved segments (if any)
+      const result = audioSegments.length > 0 ? audioSegments : null;
+      resolve(result);
       return;
     }
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
-      console.log(`[meeting-audio] Stopped. ${audioChunks.length} chunks, ${(blob.size / 1024).toFixed(0)}KB`);
-      audioChunksForTranscribe = [...audioChunks]; // Preserve for chunked transcription
-      audioChunks = [];
-      resolve(blob);
+    const recorder = mediaRecorder;
+    recorder.onstop = () => {
+      // Save final segment
+      if (audioChunks.length > 0) {
+        const blob = new Blob(audioChunks, { type: recorder.mimeType || currentMimeType });
+        if (blob.size > 500) audioSegments.push(blob);
+        audioChunks = [];
+      }
+      const totalKB = audioSegments.reduce((s, b) => s + b.size, 0) / 1024;
+      console.log(`[meeting-audio] Stopped. ${audioSegments.length} segments, total ${totalKB.toFixed(0)}KB`);
+      resolve(audioSegments.length > 0 ? audioSegments : null);
     };
-    mediaRecorder.stop();
+    recorder.stop();
   });
 }
 
-async function transcribeAudioBlob(blob) {
-  if (!blob || blob.size < 1000) {
+// Transcribe an array of audio segments sequentially via Whisper
+async function transcribeAudioSegments(segments) {
+  if (!segments || segments.length === 0) {
+    appendSystemMsg("⚠️ Keine Audioaufnahme vorhanden");
+    return "";
+  }
+
+  // Filter out tiny segments
+  const valid = segments.filter(b => b && b.size >= 1000);
+  if (valid.length === 0) {
     appendSystemMsg("⚠️ Audioaufnahme zu kurz für Transkription");
     return "";
   }
 
-  appendSystemMsg(`🔄 Transkribiere ${(blob.size / 1024).toFixed(0)}KB Audio via Whisper...`);
+  const totalKB = valid.reduce((s, b) => s + b.size, 0) / 1024;
+  appendSystemMsg(`🔄 Transkribiere ${valid.length} Segment${valid.length > 1 ? "e" : ""} (${totalKB.toFixed(0)}KB) via Whisper...`);
 
   let authToken = accessToken;
   try {
@@ -1942,46 +1997,56 @@ async function transcribeAudioBlob(blob) {
     if (s?.access_token) authToken = s.access_token;
   } catch (_) {}
 
-  const ext = blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
   const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
+  const results = [];
+  let failures = 0;
 
-  // Send as FormData (multipart) — no base64 overhead, stays under Vercel limits
-  // Single blob, no chunking — MediaRecorder chunks share a WebM header and can't be split
-  try {
-    const formData = new FormData();
-    formData.append("file", blob, ext);
-    formData.append("language", langCode);
+  for (let i = 0; i < valid.length; i++) {
+    const blob = valid[i];
+    const ext = blob.type && blob.type.includes("mp4") ? "audio.mp4" : "audio.webm";
 
-    const resp = await fetch("/api/ai/transcribe", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${authToken}`,
-        // No Content-Type — browser sets multipart boundary automatically
-      },
-      body: formData,
-    });
+    try {
+      const formData = new FormData();
+      formData.append("file", blob, ext);
+      formData.append("language", langCode);
 
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.error("[meeting-audio] Whisper error:", resp.status, err);
-      appendSystemMsg(`⚠️ Whisper-Fehler: ${resp.status}`);
-      return "";
-    }
+      if (valid.length > 1) {
+        appendSystemMsg(`📝 Segment ${i + 1}/${valid.length} (${(blob.size / 1024).toFixed(0)}KB)...`);
+      }
+
+      const resp = await fetch("/api/ai/transcribe", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${authToken}` },
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const err = await resp.text();
+        console.error(`[meeting-audio] Whisper error segment ${i + 1}:`, resp.status, err);
+        appendSystemMsg(`⚠️ Segment ${i + 1}: Whisper-Fehler ${resp.status}`);
+        failures++;
+        continue;
+      }
 
       const data = await resp.json();
       const text = (data.text || "").trim();
       if (text) {
-        appendSystemMsg(`✅ Transkription: ${text.length} Zeichen`);
-        console.log(`[meeting-audio] Whisper result: "${text.slice(0, 100)}..."`);
-      } else {
-        appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
+        results.push(text);
+        console.log(`[meeting-audio] Segment ${i + 1} OK: "${text.slice(0, 80)}..."`);
       }
-      return text;
-  } catch (e) {
-      console.error("[meeting-audio] Transcribe failed:", e.message);
-      appendSystemMsg(`⚠️ Transkription fehlgeschlagen: ${e.message}`);
-      return "";
+    } catch (e) {
+      console.error(`[meeting-audio] Segment ${i + 1} failed:`, e.message);
+      failures++;
+    }
   }
+
+  const combined = results.join(" ");
+  if (combined) {
+    appendSystemMsg(`✅ Transkription: ${combined.length} Zeichen${failures > 0 ? ` (${failures} Segment${failures > 1 ? "e" : ""} fehlgeschlagen)` : ""}`);
+  } else {
+    appendSystemMsg("⚠️ Whisper hat keinen Text erkannt");
+  }
+  return combined;
 }
 
 function cleanupMicStream() {

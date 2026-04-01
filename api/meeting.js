@@ -830,7 +830,7 @@ async function handleSummarize(req, res) {
     if (chatStr.trim()) fullTranscriptParts.push(`\nChat-Verlauf (Sophie & User):\n${chatStr}`);
     const fullTranscript = fullTranscriptParts.join("\n");
 
-    if (fullTranscript.trim().length > 50) {
+    if (fullTranscript.trim().length > 10) {
       // Create a user_session so generate-report can link to it
       const { data: session } = await supabase.from("user_sessions").insert({
         user_id: user.id,
