@@ -124,11 +124,11 @@ body{
   z-index:2;
   width:90%;
   max-width:420px;
-  padding-top:14px;
-  transition:padding-bottom .3s ease;
+  padding-top:40px;
 }
-.wrap.vc-active{
-  padding-bottom:32dvh;
+.wrap.session-active{
+  align-self:flex-start;
+  padding-top:60px;
 }
 
 /* Buttons */
@@ -152,7 +152,6 @@ body{
   background:rgba(255,255,255,.15);
   color:#fff;
   border:1px solid rgba(255,255,255,.3);
-  margin-top:40px;
 }
 #pauseBtn{
   background:transparent;
@@ -5125,6 +5124,7 @@ async function startVoice(){
     showLiveBadge(false);
     showSessionBar(true);
     updateSessionBarMode(selectedVoiceMode || "talk");
+    document.querySelector(".wrap")?.classList.add("session-active");
     showVoiceChat(true);
 
     setTimeout(() => {
@@ -5261,6 +5261,7 @@ async function stopVoice(triggeredByLimit = false){
   // Hide pause button + session bar, reset pause state on any session end
   pauseBtn.style.display = "none";
   showSessionBar(false);
+  document.querySelector(".wrap")?.classList.remove("session-active");
   isPaused = false;
 
   // Salespitch: always use clean teardown (preserves audio, generates report correctly)
