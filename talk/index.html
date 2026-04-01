@@ -172,7 +172,11 @@ body{
   margin-bottom:12px;opacity:0;transition:opacity .4s ease;
 }
 .mode-indicator.visible{ opacity:.55; }
+.mode-indicator[data-mode="chill"]{ color:#3f8cff; }
 .mode-indicator[data-mode="talk"]{ color:#3f8cff; }
+.mode-indicator[data-mode="explorer"]{ color:#3f8cff; }
+.mode-indicator[data-mode="reflect"]{ color:#3f8cff; }
+.mode-indicator[data-mode="decide"]{ color:#3f8cff; }
 .mode-indicator[data-mode="brainstorm"]{ color:#f5c842; }
 .mode-indicator[data-mode="meeting"]{ color:#34c47a; }
 .mode-indicator[data-mode="salespitch"]{ color:#ff5252; }
@@ -1793,7 +1797,7 @@ function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
 
 const modeIndicatorEl = document.getElementById("modeIndicator");
-const modeIndicatorLabels = { talk: "◆ Talk", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
+const modeIndicatorLabels = { chill: "◆ Talk", talk: "◆ Talk", explorer: "◆ Explore", reflect: "◆ Reflect", decide: "◆ Decide", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
 function updateModeIndicator(mode) {
   if (!modeIndicatorEl) return;
   if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
@@ -3854,9 +3858,9 @@ function attachChannel(ch) {
         }
       };
       // No signal_mode tool in voice — it adds latency (function call round-trip before speaking)
-      // Mode indicator defaults to "talk" for normal conversations
+      // Mode indicator defaults to "chill" (displayed as "Talk") for normal conversations
       if (!selectedVoiceMode) {
-        updateModeIndicator("talk");
+        updateModeIndicator("chill");
         sessionUpdate.session.tools = [{
           type: "function",
           name: "deep_research",
