@@ -388,11 +388,17 @@
     }
     .hero-write-link{
       display:none;
+      appearance:none;
+      -webkit-appearance:none;
+      border:none;
+      background:none;
       text-decoration:none;
       color:rgba(246,247,251,.72);
       font-size:16px;
       font-weight:500;
+      font-family:inherit;
       letter-spacing:.01em;
+      cursor:pointer;
       transition:color .15s;
     }
     .hero-write-link:hover{color:rgba(246,247,251,.95)}
@@ -1449,7 +1455,7 @@
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
             <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
-            <a class="hero-write-link" href="/talk/" id="hero-btn-secondary">Or type</a>
+            <button class="hero-write-link" id="hero-btn-secondary" type="button">Or type</button>
           </div>
           <div class="hero-mode-bar" id="heroModeBar">
             <div class="bs-pill-wrap">
@@ -2396,6 +2402,15 @@
         // Not logged in — open chat for funnel/onboarding
         openChatForeground();
         quickStartChat();
+      });
+    }
+
+    // "Oder schreiben" → opens chat foreground for text-only
+    const heroWriteBtn = document.getElementById("hero-btn-secondary");
+    if (heroWriteBtn) {
+      heroWriteBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        openChatForeground();
       });
     }
 
