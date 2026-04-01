@@ -2628,6 +2628,11 @@
       setFunnelMode(null);
       applyHeroMode(null);
       document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+      // Reset brainstorm segmented control
+      const _bsSegEl = document.getElementById("bsSeg");
+      const _bsPill = document.getElementById("bsPillMain");
+      if (_bsSegEl) _bsSegEl.style.display = "none";
+      if (_bsPill) { _bsPill.style.display = ""; _bsPill.classList.remove("active"); }
     }
 
     if (heroCta) {
