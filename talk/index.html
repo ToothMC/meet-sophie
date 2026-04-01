@@ -316,10 +316,9 @@ body{
   display:flex;
   flex-direction:column;
   max-height:30dvh;
-  background:rgba(11,15,20,.88);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border-top:1px solid rgba(255,255,255,.1);
+  background:#ffffff;
+  border-top:1px solid rgba(0,0,0,.10);
+  box-shadow:0 -4px 20px rgba(0,0,0,.08);
   padding-bottom:env(safe-area-inset-bottom);
   animation:vcSlideUp .3s ease;
 }
@@ -343,26 +342,26 @@ body{
   display:flex;
   gap:8px;
   padding:10px 16px 12px;
-  border-top:1px solid rgba(255,255,255,.08);
+  border-top:1px solid rgba(0,0,0,.08);
 }
 
 #voiceChatInput{
   flex:1;
-  background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:20px;
+  background:#f5f5f5;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:22px;
   padding:10px 16px;
   font-size:15px;
   font-family:inherit;
-  color:#fff;
+  color:#1a1a1a;
   outline:none;
 }
 #voiceChatInput::placeholder{
-  color:rgba(255,255,255,.4);
+  color:rgba(0,0,0,.40);
 }
 #voiceChatInput:focus{
-  border-color:rgba(255,255,255,.3);
-  background:rgba(255,255,255,.14);
+  border-color:rgba(74,94,189,.50);
+  background:#ffffff;
 }
 #voiceChatInput:disabled{
   opacity:.4;
@@ -370,18 +369,25 @@ body{
 }
 
 #voiceChatSend{
-  width:40px;height:40px;
-  border-radius:50%;
-  background:rgba(255,255,255,.15);
-  border:1px solid rgba(255,255,255,.2);
-  color:#fff;
-  font-size:16px;
+  width:auto;height:auto;
+  border-radius:22px;
+  background:linear-gradient(135deg, #4a5ebd, #5b4db8);
+  border:none;
+  color:#ffffff;
+  font-size:0;
+  font-weight:700;
+  padding:10px 18px;
   cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
   transition:background .15s;
 }
-#voiceChatSend:hover{background:rgba(255,255,255,.25)}
+#voiceChatSend::after{
+  content:var(--vc-send-label, "Senden");
+  font-size:14px;
+  font-weight:700;
+}
+#voiceChatSend:hover{background:linear-gradient(135deg, #3d4fa8, #4e40a8)}
 #voiceChatSend:disabled{opacity:.4;cursor:not-allowed}
 
 .vc-msg{
@@ -399,15 +405,15 @@ body{
 }
 .vc-user{
   align-self:flex-end;
-  background:rgba(67,56,202,.8);
-  color:#fff;
-  border-radius:16px 16px 4px 16px;
+  background:linear-gradient(135deg, #4a5ebd, #5b4db8);
+  color:#ffffff;
+  border-radius:18px 18px 4px 18px;
 }
 .vc-sophie{
   align-self:flex-start;
-  background:rgba(255,255,255,.1);
-  color:rgba(255,255,255,.88);
-  border-radius:16px 16px 16px 4px;
+  background:#f0f0f0;
+  color:#1a1a1a;
+  border-radius:18px 18px 18px 4px;
 }
 
 #limitOverlay{
@@ -1710,6 +1716,9 @@ const voiceHandover = loadHandover();
 // ── i18n: UI translations ──────────────────────────────────
 const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
 document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
+// Set voice chat send button label
+const _vcSendLabels = { en: "Send", de: "Senden", fr: "Envoyer" };
+document.documentElement.style.setProperty("--vc-send-label", `"${_vcSendLabels[_uiLang] || _vcSendLabels.en}"`);
 
 const _i18n = {
   ready:              { en: "Whenever you're ready.",        de: "Wann immer du bereit bist.",        fr: "Quand tu es prête." },
