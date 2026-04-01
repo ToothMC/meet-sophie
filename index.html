@@ -990,26 +990,140 @@
         left:0;
         right:0;
         bottom:0;
-        top:auto;
+        top:0;
         transform:none;
         width:100%;
-        min-height:50vh;
+        height:100%;
+        min-height:100vh;
         max-height:100vh;
-        height:100vh;
-        border-radius:20px 20px 0 0;
+        border-radius:0;
         position:fixed;
+        /* --- Helles Chat-Design mobile --- */
+        background:#ffffff;
+        backdrop-filter:none;
+        -webkit-backdrop-filter:none;
+        box-shadow:none;
+        border:none;
       }
-      .chat-card.foreground .chat-footer{
-        position:sticky;
-        bottom:0;
-        background:rgba(10,12,19,.95);
-        padding-bottom:calc(env(safe-area-inset-bottom, 8px) + 10px);
+      /* --- Header: "Nachricht an Sophie" --- */
+      .chat-card.foreground .chat-card-header{
+        background:#ffffff;
+        border-bottom:1px solid rgba(0,0,0,.08);
+        padding:14px 16px 12px;
+        gap:12px;
       }
+      .chat-card.foreground .chat-avatar-img{
+        width:38px;height:38px;
+        border:2px solid rgba(0,0,0,.08);
+      }
+      .chat-card.foreground .chat-name{
+        color:#1a1a1a;
+        font-size:16px;
+        font-weight:700;
+        font-size:0;
+      }
+      .chat-card.foreground .chat-name::after{
+        content:var(--chat-header-label, "Nachricht an Sophie");
+        font-size:16px;
+        font-weight:700;
+      }
+      .chat-card.foreground .chat-online-status{
+        display:none;
+      }
+      .chat-card.foreground .chat-back-btn{
+        color:#1a1a1a;
+        border:1px solid rgba(0,0,0,.12);
+        background:rgba(0,0,0,.04);
+      }
+      .chat-card.foreground .chat-back-btn:hover{
+        background:rgba(0,0,0,.08);
+      }
+      /* --- Messages: heller Hintergrund --- */
       .chat-card.foreground .chat-messages{
         flex:1;overflow-y:auto;
         -webkit-overflow-scrolling:touch;
         overscroll-behavior:contain;
         touch-action:pan-y;
+        background:#ffffff;
+        padding:16px 16px 8px;
+        gap:10px;
+        scrollbar-color:rgba(0,0,0,.10) transparent;
+      }
+      /* --- Sophie Bubbles: hellgrau --- */
+      .chat-card.foreground .chat-msg.sophie .chat-msg-bubble{
+        background:#f0f0f0;
+        border:none;
+        color:#1a1a1a;
+        font-size:15px;
+        padding:10px 14px;
+        border-radius:18px;
+        border-bottom-left-radius:4px;
+      }
+      /* --- User Bubbles: blau/violett --- */
+      .chat-card.foreground .chat-msg.user .chat-msg-bubble{
+        background:linear-gradient(135deg, #4a5ebd, #5b4db8);
+        border:none;
+        color:#ffffff;
+        font-size:15px;
+        padding:10px 14px;
+        border-radius:18px;
+        border-bottom-right-radius:4px;
+      }
+      /* --- Footer: hell mit rotem Senden-Button --- */
+      .chat-card.foreground .chat-footer{
+        position:sticky;
+        bottom:0;
+        background:#ffffff;
+        border-top:1px solid rgba(0,0,0,.08);
+        padding:10px 12px;
+        padding-bottom:calc(env(safe-area-inset-bottom, 8px) + 10px);
+      }
+      .chat-card.foreground .chat-footer textarea{
+        background:#f5f5f5;
+        border:1px solid rgba(0,0,0,.10);
+        color:#1a1a1a;
+        border-radius:22px;
+        padding:10px 16px;
+        font-size:16px;
+      }
+      .chat-card.foreground .chat-footer textarea::placeholder{
+        color:rgba(0,0,0,.40);
+      }
+      .chat-card.foreground .chat-footer textarea:focus{
+        border-color:rgba(90,77,184,.40);
+      }
+      .chat-card.foreground .chat-send{
+        width:auto;height:auto;
+        border-radius:22px;
+        background:linear-gradient(135deg, #e8453c, #d63031);
+        color:#ffffff;
+        font-size:0;
+        font-weight:700;
+        padding:10px 20px;
+        box-shadow:none;
+      }
+      .chat-card.foreground .chat-send::after{
+        content:var(--chat-send-label, "Senden");
+        font-size:15px;
+        font-weight:700;
+      }
+      .chat-card.foreground .chat-send:hover:not(:disabled){
+        background:linear-gradient(135deg, #d63031, #c0392b);
+        transform:none;
+      }
+      /* --- Upload button anpassen --- */
+      .chat-card.foreground .chat-upload{
+        color:rgba(0,0,0,.50);
+        border-color:rgba(0,0,0,.15);
+        background:rgba(0,0,0,.04);
+      }
+      /* --- Typing indicator --- */
+      .chat-card.foreground .chat-typing span{
+        background:rgba(0,0,0,.30);
+      }
+      /* --- Settings button --- */
+      .chat-card.foreground .chat-settings-btn{
+        color:#1a1a1a;
       }
     }
     @media (max-width:1200px){
@@ -2135,6 +2249,15 @@
       });
       startFloatingRotation(lang);
       localStorage.setItem("preferredLanguage", lang);
+      // Mobile chat foreground labels via CSS custom properties
+      const chatLabels = {
+        en: { header: "Message to Sophie", send: "Send" },
+        de: { header: "Nachricht an Sophie", send: "Senden" },
+        fr: { header: "Message à Sophie", send: "Envoyer" },
+      };
+      const cl = chatLabels[lang] || chatLabels.en;
+      document.documentElement.style.setProperty("--chat-header-label", `"${cl.header}"`);
+      document.documentElement.style.setProperty("--chat-send-label", `"${cl.send}"`);
     }
     function detectLanguage() {
       const saved = localStorage.getItem("preferredLanguage");
