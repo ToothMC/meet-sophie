@@ -1,28 +1,3 @@
-Test - Stripe checkout - Stripe testmodus 
+# Meet Sophie
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-trigger deploy
-deploy onboarding fix
-fix anon routing
-hard onboarding nudge
-fix profile ref
-
-
-
+Your AI Thinking Partner — meet-sophie.com
