@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Allura&display=swap');
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#ede8e2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table cellpadding="0" cellspacing="0" width="100%" style="background-color:#ede8e2;padding:48px 16px;">
+    <tr><td align="center">
+      <table cellpadding="0" cellspacing="0" width="100%" style="max-width:520px;">
+
+        <tr>
+          <td align="center" style="padding-bottom:24px;">
+            <img src="https://meet-sophie.com/sophie.jpg" alt="Sophie" width="72"
+                 style="border-radius:50%;display:block;border:1px solid #ddd6cc;">
+            <p style="margin:10px 0 0;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#c4a882;">meet-sophie.com</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#faf9f6;border:1px solid #ddd6cc;border-radius:24px;padding:36px 36px 32px;">
+            <h1 style="margin:0 0 20px;font-size:22px;font-weight:700;color:#1a1210;letter-spacing:-0.02em;">
+              Message from Sophie
+            </h1>
+            <p style="margin:0 0 28px;font-size:16px;color:#3a3028;line-height:1.7;">
+              Hi,<br><br>
+              Let's continue where we left off.
+            </p>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:14px;background:#2c2420;">
+                  <a href="{{ .ConfirmationURL }}"
+                     style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#faf9f6;text-decoration:none;border-radius:14px;">
+                    Continue conversation
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- OTP Code — for iOS PWA where magic link opens in Safari (isolated storage) -->
+            <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;">
+              <tr>
+                <td style="border-top:1px solid #e8e2da;padding-top:24px;" align="center">
+                  <p style="margin:0;font-size:13px;color:#a09080;line-height:1.55;">
+                    Or enter this code in the app:
+                  </p>
+                  <p style="margin:12px 0 0;font-size:34px;font-weight:700;letter-spacing:10px;color:#2c2420;font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;">
+                    {{ .Token }}
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:24px 0 0;font-size:13px;color:#a09080;line-height:1.55;">
+              This link expires in 24 hours. If you didn't request this, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding-top:28px;">
+            <p style="margin:0;font-size:14px;color:#a09080;line-height:1.7;">
+              Greetings,<br>
+              <span style="font-family:'Allura',cursive;font-size:46px;color:#2c2420;line-height:1.2;display:block;margin-top:2px;">Sophie</span>
+            </p>
+            <p style="margin:12px 0 0;font-size:12px;color:#b8a898;">
+              meet-sophie.com &nbsp;&middot;&nbsp; Your AI Thinking Partner
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
