@@ -124,7 +124,7 @@ body{
   z-index:2;
   width:90%;
   max-width:420px;
-  padding-top:40px;
+  padding-top:14px;
   transition:padding-bottom .3s ease;
 }
 .wrap.vc-active{
@@ -152,6 +152,7 @@ body{
   background:rgba(255,255,255,.15);
   color:#fff;
   border:1px solid rgba(255,255,255,.3);
+  margin-top:40px;
 }
 #pauseBtn{
   background:transparent;
@@ -380,9 +381,9 @@ body{
   display:flex;
   flex-direction:column;
   max-height:30dvh;
-  background:#ffffff;
-  border-top:1px solid rgba(0,0,0,.10);
-  box-shadow:0 -4px 20px rgba(0,0,0,.08);
+  background:#1e1e1e;
+  border-top:1px solid rgba(255,255,255,.08);
+  box-shadow:0 -4px 20px rgba(0,0,0,.25);
   padding-bottom:env(safe-area-inset-bottom);
   animation:vcSlideUp .3s ease;
 }
@@ -406,26 +407,26 @@ body{
   display:flex;
   gap:8px;
   padding:10px 16px 12px;
-  border-top:1px solid rgba(0,0,0,.08);
+  border-top:1px solid rgba(255,255,255,.08);
 }
 
 #voiceChatInput{
   flex:1;
-  background:#f5f5f5;
-  border:1px solid rgba(0,0,0,.12);
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.12);
   border-radius:22px;
   padding:10px 16px;
   font-size:15px;
   font-family:inherit;
-  color:#1a1a1a;
+  color:#f0f0f0;
   outline:none;
 }
 #voiceChatInput::placeholder{
-  color:rgba(0,0,0,.40);
+  color:rgba(255,255,255,.40);
 }
 #voiceChatInput:focus{
-  border-color:rgba(74,94,189,.50);
-  background:#ffffff;
+  border-color:rgba(99,102,241,.60);
+  background:rgba(255,255,255,.12);
 }
 #voiceChatInput:disabled{
   opacity:.4;
@@ -1431,8 +1432,10 @@ function showSessionBar(on) {
 }
 function updateSessionBarMode(mode) {
   if (!sessionBar) return;
+  // map chill/talk both to "talk", null clears nothing (keep last)
+  const mapped = (!mode || mode === "chill" || mode === "talk") ? "talk" : mode;
   sessionBar.querySelectorAll(".sb-mode").forEach(el => {
-    el.classList.toggle("active", el.dataset.mode === mode);
+    el.classList.toggle("active", el.dataset.mode === mapped);
   });
 }
 
