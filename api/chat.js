@@ -1277,6 +1277,8 @@ async function handleMessage(req, res) {
     .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
     .replace(/\s*\[IMPORT_HINT\]\s*/g, "")
     .replace(/\s*\[LEARN_RULE:[^\]]*\]\s*/g, "")
+    .replace(/\s*\[TOOL:[^\]]*\]\s*/g, "")
+    .replace(/\s*\[ECHTZEIT-DATEN\][\s\S]*$/g, "")
     .trim();
 
   // Increment turn count + link user if just authenticated
