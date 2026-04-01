@@ -183,7 +183,22 @@ async function handleCreate(req, res) {
   ]);
   const sub = subRes.data;
   const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
-  const usage = usageRes.data;
+  let usage = usageRes.data;
+
+  // Ensure user_usage row exists (new users won't have one yet)
+  if (!usage) {
+    const { data: created } = await supabase
+      .from("user_usage")
+      .upsert({
+        user_id: user.id,
+        free_tokens_total: 50, free_tokens_used: 0,
+        paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+      }, { onConflict: "user_id" })
+      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+      .single();
+    if (created) usage = created;
+  }
+
   const freeRem = Math.max(0, (usage?.free_tokens_total ?? 50) - (usage?.free_tokens_used ?? 0));
   const paidRem = Math.max(0, (usage?.paid_tokens_total ?? 0) - (usage?.paid_tokens_used ?? 0));
   const topupRem = Math.max(0, usage?.topup_tokens_balance ?? 0);

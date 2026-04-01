@@ -136,7 +136,7 @@ export default async function handler(req, res) {
     // ---------------------------
     // Usage / Remaining tokens (für ALLE)
     // ---------------------------
-    const { data: usage, error: usageErr } = await supabase
+    let { data: usage, error: usageErr } = await supabase
       .from("user_usage")
       .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
       .eq("user_id", user.id)
@@ -144,6 +144,20 @@ export default async function handler(req, res) {
 
     if (usageErr) {
       return res.status(500).json({ error: usageErr.message });
+    }
+
+    // Ensure user_usage row exists (new users won't have one yet)
+    if (!usage) {
+      const { data: created, error: createErr } = await supabase
+        .from("user_usage")
+        .upsert({
+          user_id: user.id,
+          free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
+          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+        }, { onConflict: "user_id" })
+        .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+        .single();
+      if (!createErr && created) usage = created;
     }
 
     const freeTotal = usage?.free_tokens_total ?? DEFAULT_FREE_TOKENS;
