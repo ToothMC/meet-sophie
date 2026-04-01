@@ -165,7 +165,7 @@
         sending: "Login-Link wird gesendet…",
         sendingOtp: "Code wird gesendet…",
         sent: "Prüfe deine E-Mails und klick auf den Login-Link.",
-        sentOtp: "Prüfe deine E-Mails — gib den 6-stelligen Code unten ein.",
+        sentOtp: "Prüfe deine E-Mails — gib den Code unten ein.",
         codePlaceholder: "000000",
         verifyBtn: "Bestätigen",
         verifying: "Wird geprüft…",
@@ -182,7 +182,7 @@
         sending: "Sending login link…",
         sendingOtp: "Sending code…",
         sent: "Check your email and click the login link.",
-        sentOtp: "Check your email — enter the 6-digit code below.",
+        sentOtp: "Check your email — enter the code below.",
         codePlaceholder: "000000",
         verifyBtn: "Verify",
         verifying: "Verifying…",
@@ -318,7 +318,7 @@
       section.id = "otpSection";
       section.style.marginTop = "16px";
       section.innerHTML = `
-        <input id="otpCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8"
+        <input id="otpCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10"
           placeholder="${t.codePlaceholder}"
           style="width:100%;padding:15px 16px;font-size:24px;text-align:center;letter-spacing:8px;
                  border:1px solid rgba(255,255,255,.22);border-radius:12px;
