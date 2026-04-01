@@ -2481,7 +2481,7 @@
       wrap.className = "chat-msg sophie";
       const form = document.createElement("div");
       form.style.cssText = "display:flex;flex-direction:column;gap:10px;margin-top:6px;max-width:220px;";
-      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:8px;font-size:22px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--text,#fff);outline:none;font-family:inherit;box-sizing:border-box;width:100%" /><button type="button" style="padding:10px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:white;color:#0b0f14;cursor:pointer;width:100%">${otpLabels.verifyBtn}</button>`;
+      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:8px;font-size:22px;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.95);color:#1a1210;outline:none;font-family:inherit;box-sizing:border-box;width:100%" /><button type="button" style="padding:10px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:#2c2420;color:white;cursor:pointer;width:100%">${otpLabels.verifyBtn}</button>`;
       wrap.appendChild(form);
       parentEl.appendChild(wrap);
       parentEl.scrollTop = parentEl.scrollHeight;
