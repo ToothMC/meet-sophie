@@ -1035,7 +1035,7 @@ body{
     <span class="report-toggle-text">Report</span>
   </label>
   <button id="start" class="btn">Start conversation</button>
-  <button id="pauseBtn" class="btn btn-pause" style="display:none">Pause</button>
+  <button id="pauseBtn" class="btn btn-pause" style="display:none">⏸ Pause</button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 
   <!-- Live chat input during voice session -->
@@ -1329,6 +1329,16 @@ async function sendMemoryUpdate(secondsUsed) {
 const startBtn  = document.getElementById("start");
 const endBtn    = document.getElementById("end");
 const pauseBtn  = document.getElementById("pauseBtn");
+
+// ── Report toggle persistence ───────────────────────────────────────
+const reportToggle = document.getElementById("reportToggle");
+if (reportToggle) {
+  const saved = localStorage.getItem("sophie_report_enabled");
+  if (saved !== null) reportToggle.checked = saved === "true";
+  reportToggle.addEventListener("change", () => {
+    localStorage.setItem("sophie_report_enabled", reportToggle.checked);
+  });
+}
 
 let isPaused = false;
 let pausedConvoLog = null;      // transcript snapshot preserved across pause
@@ -3201,7 +3211,7 @@ function pauseSession() {
   if (audioEl){ try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
 
   // UI: paused state
-  pauseBtn.textContent = t("resume") || "Resume";
+  pauseBtn.textContent = "▶ " + (t("resume") || "Resume");
   pauseBtn.classList.add("is-paused");
   startBtn.disabled = true;
   showLiveBadge(false);
@@ -3214,7 +3224,7 @@ async function resumeSession() {
   isPaused = false;
   console.log(`[${runId}] [pause] resuming session`);
 
-  pauseBtn.textContent = "Pause";
+  pauseBtn.textContent = "⏸ " + (t("pause") || "Pause");
   pauseBtn.classList.remove("is-paused");
   pauseBtn.style.display = "none"; // hide during reconnect
 
@@ -5003,7 +5013,7 @@ async function startVoice(){
       startBtn.style.background = "linear-gradient(180deg, #f5c842 0%, #d4a017 100%)";
       startBtn.style.color = "#1a1200";
     }
-    pauseBtn.textContent = t("pause");
+    pauseBtn.textContent = "⏸ " + t("pause");
     pauseBtn.classList.remove("is-paused");
     pauseBtn.style.display = "";
     pauseBtn.onclick = () => { isPaused ? resumeSession() : pauseSession(); };
