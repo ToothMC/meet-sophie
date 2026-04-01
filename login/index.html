@@ -144,6 +144,8 @@
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { sendAuthEmail, verifyOTP, shouldUseOTP } from "/lib/sophie-auth-helper.js";
+    import { SophieTabManager } from "/lib/sophie-tab-manager.js";
 
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
@@ -158,25 +160,42 @@
         heading: "Sophie wartet auf dich.",
         sub: "Meld dich kurz an — dann geht's sofort los.",
         btn: "Login-Link senden",
+        btnOtp: "Code senden",
         empty: "Bitte gib deine E-Mail ein.",
         sending: "Login-Link wird gesendet…",
+        sendingOtp: "Code wird gesendet…",
         sent: "Prüfe deine E-Mails und klick auf den Login-Link.",
+        sentOtp: "Prüfe deine E-Mails — gib den 6-stelligen Code unten ein.",
+        codePlaceholder: "000000",
+        verifyBtn: "Bestätigen",
+        verifying: "Wird geprüft…",
+        wrongCode: "Falscher Code. Nochmal versuchen.",
+        resend: "Code erneut senden",
       },
       en: {
         back: "← Back",
         heading: "Sophie is waiting for you.",
         sub: "Sign in quickly — then you're good to go.",
         btn: "Send login link",
+        btnOtp: "Send code",
         empty: "Please enter your email.",
         sending: "Sending login link…",
+        sendingOtp: "Sending code…",
         sent: "Check your email and click the login link.",
+        sentOtp: "Check your email — enter the 6-digit code below.",
+        codePlaceholder: "000000",
+        verifyBtn: "Verify",
+        verifying: "Verifying…",
+        wrongCode: "Wrong code. Try again.",
+        resend: "Resend code",
       }
     };
     const t = T[LANG];
+    const useOTP = shouldUseOTP();
     document.getElementById("backLink").textContent = t.back;
     document.getElementById("loginHeading").textContent = t.heading;
     document.getElementById("loginSub").textContent = t.sub;
-    document.getElementById("magicLinkBtn").textContent = t.btn;
+    document.getElementById("magicLinkBtn").textContent = useOTP ? t.btnOtp : t.btn;
 
     const statusEl = document.getElementById("status");
     const btn = document.getElementById("magicLinkBtn");
@@ -244,9 +263,9 @@
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
-      // Only handle INITIAL_SESSION (page load with existing session)
-      // NOT SIGNED_IN from another tab's magic link — that tab is the app
       if (event === "INITIAL_SESSION" && session?.user) handleSuccessfulAuth();
+      // Also handle SIGNED_IN from OTP verification in this tab
+      if (event === "SIGNED_IN" && session?.user) handleSuccessfulAuth();
     });
 
     // Pre-fill email from last successful login
@@ -259,19 +278,18 @@
       if (e.key === "Enter") { e.preventDefault(); btn.click(); }
     });
 
+    // State for OTP code input (shown after email is sent on iOS PWA)
+    let pendingOtpEmail = null;
+
     btn.onclick = async () => {
       const email = emailInput.value.trim();
       if (!email) return setStatus(t.empty, true);
 
-      setStatus(t.sending);
+      setStatus(useOTP ? t.sendingOtp : t.sending);
       btn.disabled = true;
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + "/auth/callback"
-        }
-      });
+      const redirectUrl = window.location.origin + "/auth/callback";
+      const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
 
       btn.disabled = false;
 
@@ -279,8 +297,75 @@
 
       // Remember email for next visit
       localStorage.setItem("sophie_login_email", email);
-      setStatus(t.sent);
+
+      if (method === "otp") {
+        // iOS PWA: show OTP code input below the email field
+        pendingOtpEmail = email;
+        setStatus(t.sentOtp);
+        showOTPCodeInput(email);
+      } else {
+        setStatus(t.sent);
+      }
     };
+
+    function showOTPCodeInput(email) {
+      // Replace the email input + button with code input + verify button
+      const wrap = document.querySelector(".wrap");
+      const existingOtp = document.getElementById("otpSection");
+      if (existingOtp) existingOtp.remove();
+
+      const section = document.createElement("div");
+      section.id = "otpSection";
+      section.style.marginTop = "16px";
+      section.innerHTML = `
+        <input id="otpCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+          placeholder="${t.codePlaceholder}"
+          style="width:100%;padding:15px 16px;font-size:24px;text-align:center;letter-spacing:8px;
+                 border:1px solid rgba(255,255,255,.22);border-radius:12px;
+                 background:rgba(255,255,255,.08);color:white;outline:none;margin-bottom:12px" />
+        <button id="otpVerifyBtn" type="button"
+          style="width:100%;padding:15px;font-size:17px;font-weight:700;border:none;
+                 border-radius:12px;background:white;color:#0b0f14;cursor:pointer">${t.verifyBtn}</button>
+        <button id="otpResendBtn" type="button"
+          style="width:100%;padding:10px;font-size:13px;font-weight:500;border:none;
+                 border-radius:8px;background:transparent;color:rgba(255,255,255,.5);
+                 cursor:pointer;margin-top:8px">${t.resend}</button>`;
+      wrap.appendChild(section);
+
+      const codeInput = document.getElementById("otpCode");
+      const verifyBtn = document.getElementById("otpVerifyBtn");
+      const resendBtn = document.getElementById("otpResendBtn");
+      setTimeout(() => codeInput.focus(), 80);
+
+      codeInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); verifyBtn.click(); }
+      });
+
+      verifyBtn.onclick = async () => {
+        const code = codeInput.value.trim();
+        if (!code || code.length < 6) return;
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = t.verifying;
+
+        const { data, error } = await verifyOTP(supabase, email, code);
+        if (error) {
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = t.verifyBtn;
+          setStatus(t.wrongCode, true);
+          codeInput.value = "";
+          codeInput.focus();
+          return;
+        }
+        // Success — handleSuccessfulAuth will fire via onAuthStateChange
+      };
+
+      resendBtn.onclick = async () => {
+        resendBtn.disabled = true;
+        await sendAuthEmail(supabase, email, "");
+        setStatus(t.sentOtp);
+        resendBtn.disabled = false;
+      };
+    }
   </script>
 </body>
 </html>

@@ -5,18 +5,48 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sophie</title>
   <style>
-    body { margin:0; background:#0b0f14; }
+    body {
+      margin: 0;
+      background: #0b0f14;
+      color: white;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    .wrap {
+      max-width: 340px;
+      padding: 24px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,.15);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .msg { font-size: 15px; color: rgba(255,255,255,.7); line-height: 1.5; }
+    .done { color: rgba(255,255,255,.5); font-size: 14px; margin-top: 12px; }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <div class="spinner" id="spinner"></div>
+    <p class="msg" id="msg">Signing you in…</p>
+    <p class="done" id="done" style="display:none"></p>
+  </div>
+
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { SophieTabManager } from "/lib/sophie-tab-manager.js";
 
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let done = false;
 
     const urlParams = new URLSearchParams(window.location.search);
     const detectedMode = urlParams.get("mode") || "";
@@ -24,6 +54,10 @@
     if (lang && ["de", "en", "fr"].includes(lang)) {
       localStorage.setItem("preferredLanguage", lang);
     }
+
+    const LANG = (lang || navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en";
+
+    let done = false;
 
     function buildTarget(base) {
       if (detectedMode && detectedMode !== "talk") {
@@ -36,30 +70,82 @@
           explore: "", decide: "", reflect: "", chill: ""
         };
         const sessionMode = SESSION_MAP[detectedMode] !== undefined ? SESSION_MAP[detectedMode] : "";
-        if (sessionMode) {
-          localStorage.setItem("sophie_session_mode", sessionMode);
-        }
+        if (sessionMode) localStorage.setItem("sophie_session_mode", sessionMode);
         return base;
       }
       return base;
     }
 
-    function go(path) {
+    function finish(userId) {
       if (done) return;
       done = true;
-      // This IS the app tab now — just navigate directly
-      window.location.replace(path);
+
+      const defaultTarget = detectedMode ? "/talk" : "/";
+      const target = buildTarget(defaultTarget);
+
+      // Broadcast AUTH_COMPLETED to all same-partition tabs
+      const tabs = new SophieTabManager();
+      tabs.broadcastAuthCompleted(userId);
+
+      // Hide spinner, show completion message
+      document.getElementById("spinner").style.display = "none";
+      const doneEl = document.getElementById("done");
+
+      // Try to close this tab (only works if script-opened)
+      // Always show fallback message — window.close() is unreliable for mail-opened tabs
+      const closeable = window.opener || window.history.length <= 1;
+
+      if (closeable) {
+        document.getElementById("msg").textContent =
+          LANG === "de" ? "Eingeloggt. Weiterleitung…" : "Signed in. Redirecting…";
+        // Brief pause so the broadcast has time to arrive, then navigate
+        setTimeout(() => { window.location.replace(target); }, 400);
+      } else {
+        // This tab was opened by clicking the magic link in email — likely can't close it.
+        // Another Sophie tab should already have the session via broadcast.
+        document.getElementById("msg").textContent =
+          LANG === "de" ? "Login erfolgreich." : "Login successful.";
+        doneEl.textContent =
+          LANG === "de"
+            ? "Du kannst diesen Tab schließen und zurück zu Sophie wechseln."
+            : "You can close this tab and switch back to Sophie.";
+        doneEl.style.display = "block";
+
+        // Still try window.close() — harmless if it fails
+        try { window.close(); } catch {}
+
+        // If we're still here after 1s, navigate to the app as last resort
+        setTimeout(() => {
+          if (!document.hidden) window.location.replace(target);
+        }, 2000);
+      }
     }
 
-    const defaultTarget = detectedMode ? "/talk" : "/";
+    function fail() {
+      if (done) return;
+      done = true;
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("msg").textContent =
+        LANG === "de" ? "Login fehlgeschlagen. Bitte erneut versuchen." : "Login failed. Please try again.";
+      const doneEl = document.getElementById("done");
+      doneEl.innerHTML = '<a href="/login" style="color:white;text-decoration:underline">→ ' +
+        (LANG === "de" ? "Zum Login" : "Go to login") + '</a>';
+      doneEl.style.display = "block";
+    }
 
+    // Listen for SIGNED_IN event (magic link token exchange)
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) go(buildTarget(defaultTarget));
+      if (event === "SIGNED_IN" && session?.user) finish(session.user.id);
     });
 
+    // Fallback: check session after 3s
     setTimeout(async () => {
       const { data } = await supabase.auth.getSession();
-      go(data.session?.user ? buildTarget(defaultTarget) : "/login");
+      if (data.session?.user) {
+        finish(data.session.user.id);
+      } else {
+        fail();
+      }
     }, 3000);
   </script>
 </body>
