@@ -1095,7 +1095,7 @@
       .chat-card.foreground .chat-send{
         width:auto;height:auto;
         border-radius:22px;
-        background:linear-gradient(135deg, #e8453c, #d63031);
+        background:linear-gradient(135deg, #4a5ebd, #5b4db8);
         color:#ffffff;
         font-size:0;
         font-weight:700;
@@ -1108,7 +1108,7 @@
         font-weight:700;
       }
       .chat-card.foreground .chat-send:hover:not(:disabled){
-        background:linear-gradient(135deg, #d63031, #c0392b);
+        background:linear-gradient(135deg, #3d4fa8, #4e40a8);
         transform:none;
       }
       /* --- Upload button anpassen --- */
@@ -1120,6 +1120,35 @@
       /* --- Typing indicator --- */
       .chat-card.foreground .chat-typing span{
         background:rgba(0,0,0,.30);
+      }
+      /* --- Action bar: Vergleich / Challenge --- */
+      .chat-card.foreground .chat-action-bar{
+        padding:6px 16px 8px;
+        gap:8px;
+      }
+      .chat-card.foreground .chat-action-bar button{
+        background:#f0f0f0;
+        border:1px solid rgba(0,0,0,.12);
+        color:#1a1a1a;
+        font-size:13px;
+        font-weight:600;
+        padding:8px 12px;
+        border-radius:12px;
+      }
+      .chat-card.foreground .chat-action-bar button:hover{
+        background:#e4e4e4;
+        border-color:rgba(0,0,0,.18);
+        color:#1a1a1a;
+      }
+      .chat-card.foreground .chat-action-bar .challenge-btn{
+        border-color:rgba(90,77,184,.25);
+        color:#5b4db8;
+        background:rgba(90,77,184,.08);
+      }
+      .chat-card.foreground .chat-action-bar .challenge-btn:hover{
+        background:rgba(90,77,184,.14);
+        border-color:rgba(90,77,184,.35);
+        color:#4e40a8;
       }
       /* --- Settings button --- */
       .chat-card.foreground .chat-settings-btn{
@@ -1613,8 +1642,8 @@
               </div>
               <div class="chat-report chat-hidden" id="chatReport"></div>
               <div class="chat-action-bar chat-hidden" id="chatActionBar">
-                <button id="compareBtn" title="Alle KIs parallel befragen, schnellste Antwort + Abweichungen">⚡ Vergleiche</button>
-                <button id="challengeBtn" class="challenge-btn" title="KIs diskutieren untereinander für beste Antwort (höherer Verbrauch)">🏆 Challenge</button>
+                <button id="compareBtn" title="Alle KIs parallel befragen, schnellste Antwort + Abweichungen">Vergleiche</button>
+                <button id="challengeBtn" class="challenge-btn" title="KIs diskutieren untereinander für beste Antwort (höherer Verbrauch)">Challenge</button>
               </div>
               <div id="tokenCounter" style="display:none;text-align:right;padding:0 12px 2px;font-size:11px;opacity:.55;color:#c8d8ff"></div>
               <div class="chat-file-preview" id="chatFilePreview" style="display:none"></div>
