@@ -1078,6 +1078,11 @@
         padding:10px 12px;
         padding-bottom:max(12px, env(safe-area-inset-bottom, 8px));
       }
+      @media (display-mode: standalone){
+        .chat-card.foreground .chat-footer{
+          padding-bottom:calc(env(safe-area-inset-bottom, 20px) + 10px);
+        }
+      }
       .chat-card.foreground .chat-footer textarea{
         background:#f5f5f5;
         border:1px solid rgba(0,0,0,.10);
