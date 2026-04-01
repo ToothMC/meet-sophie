@@ -2146,7 +2146,8 @@
       wrap.className = "chat-msg sophie";
       const form = document.createElement("div");
       form.className = "chat-email-inline";
-      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:6px;font-size:20px" /><button type="button">${otpLabels.verifyBtn}</button>`;
+      form.style.cssText = "display:flex;flex-direction:column;gap:8px;";
+      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:6px;font-size:20px;width:100%" /><button type="button" style="width:100%;padding:10px;font-size:15px;font-weight:600;border:none;border-radius:8px;background:white;color:#0b0f14;cursor:pointer">${otpLabels.verifyBtn}</button>`;
       wrap.appendChild(form);
       parentEl.appendChild(wrap);
       parentEl.scrollTop = parentEl.scrollHeight;
