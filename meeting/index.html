@@ -508,10 +508,33 @@ body{
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { SophieTabManager } from "/lib/sophie-tab-manager.js";
 
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Tab Manager: single-primary + realtime lock ──────────────────
+const sophieTabManager = new SophieTabManager({
+  onBecamePrimary: () => {},
+  onLostPrimary: () => {
+    // Another tab took over — disconnect Sophie voice if running
+    if (typeof disconnectSophieVoice === "function") try { disconnectSophieVoice(); } catch {}
+  },
+  onAuthCompleted: async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.user) window.location.reload();
+  },
+  onDuplicateTab: () => {
+    // Meeting page: show inline warning instead of blocking overlay
+    const lang = localStorage.getItem("preferredLanguage") || "en";
+    const msg = lang === "de"
+      ? "Sophie Voice ist in einem anderen Tab aktiv. Schließe den anderen Tab oder übernimm dort."
+      : "Sophie Voice is active in another tab. Close the other tab or take over there.";
+    if (typeof appendSystemMsg === "function") appendSystemMsg(msg);
+  },
+});
+sophieTabManager.init();
 
 // ---------------------------------------------------------------------------
 // State
@@ -2087,6 +2110,27 @@ async function fetchRealtimeAnswerSdp(offerSdp, clientSecret) {
 
 async function connectSophieVoice() {
   if (isConnecting || sophieVoicePc) return;
+
+  // Acquire realtime lock (primary → realtime order)
+  if (!sophieTabManager.isPrimary) {
+    const took = await sophieTabManager.requestTakeover();
+    if (!took) {
+      const msg = (localStorage.getItem("preferredLanguage") || "en") === "de"
+        ? "Sophie Voice läuft in einem anderen Tab."
+        : "Sophie Voice is active in another tab.";
+      if (typeof appendSystemMsg === "function") appendSystemMsg(msg);
+      return;
+    }
+  }
+  const gotRealtime = await sophieTabManager.acquireRealtime();
+  if (!gotRealtime) {
+    const msg = (localStorage.getItem("preferredLanguage") || "en") === "de"
+      ? "Konnte Voice-Session nicht starten — anderer Tab aktiv."
+      : "Could not start voice session — another tab is active.";
+    if (typeof appendSystemMsg === "function") appendSystemMsg(msg);
+    return;
+  }
+
   isConnecting = true;
   isSpeaking = true;
   updateParticipantsBar();

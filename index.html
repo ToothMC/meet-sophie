@@ -2066,11 +2066,40 @@
   </script>
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { SophieTabManager } from "/lib/sophie-tab-manager.js";
+    import { sendAuthEmail, verifyOTP, shouldUseOTP, OTP_LABELS } from "/lib/sophie-auth-helper.js";
+
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const AUTH_NUDGE_AT = 50; // TEST: raised to skip auth nudge during voice conversion testing
     let currentLang = localStorage.getItem("preferredLanguage") || "en";
+
+    // ── Tab Manager: single-primary architecture ──────────────────
+    const sophieTabManager = new SophieTabManager({
+      onBecamePrimary: () => {},
+      onLostPrimary: () => {},
+      onAuthCompleted: async (userId) => {
+        // Another tab (callback) completed auth — refresh our session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          _cachedToken = session.access_token;
+          const settingsBtn = document.getElementById("chatSettingsBtn");
+          if (settingsBtn) settingsBtn.style.display = "block";
+          const loginLink = document.getElementById("login-link");
+          if (loginLink) {
+            loginLink.textContent = session.user.email?.split("@")[0] || "Mein Konto";
+            loginLink.href = "/settings/";
+            loginLink.title = session.user.email;
+          }
+          _authReady(true);
+        }
+      },
+      onDuplicateTab: () => {
+        // Landing page doesn't block on duplicate — it's informational
+      },
+    });
+    sophieTabManager.init();
 
     // Update login link based on auth state
     (async () => {
@@ -2105,6 +2134,78 @@
       try { localStorage.setItem(UX_FLAGS_KEY, JSON.stringify(next)); } catch {}
     }
     let uxFlags = readUxFlags();
+
+    // ── OTP helper for iOS standalone PWA ─────────────────────────
+    // Shows a 6-digit code input in the chat after sending OTP email.
+    // Called by all email capture paths when shouldUseOTP() returns true.
+    function showOTPInput(email, parentEl, onSuccess) {
+      const otpLabels = OTP_LABELS[currentLang] || OTP_LABELS.en;
+      appendBubble("sophie", otpLabels.codeSent(email));
+
+      const wrap = document.createElement("div");
+      wrap.className = "chat-msg sophie";
+      const form = document.createElement("div");
+      form.className = "chat-email-inline";
+      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:6px;font-size:20px" /><button type="button">${otpLabels.verifyBtn}</button>`;
+      wrap.appendChild(form);
+      parentEl.appendChild(wrap);
+      parentEl.scrollTop = parentEl.scrollHeight;
+
+      const codeInput = form.querySelector("input");
+      const verifyBtn = form.querySelector("button");
+      setTimeout(() => codeInput.focus(), 80);
+
+      const doVerify = async () => {
+        const code = codeInput.value.trim();
+        if (!code || code.length < 6) return;
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = otpLabels.verifying;
+
+        const { data, error } = await verifyOTP(supabase, email, code);
+        if (error) {
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = otpLabels.verifyBtn;
+          const isExpired = /expired|invalid/i.test(error.message);
+          if (isExpired) {
+            appendBubble("sophie", otpLabels.expired);
+            // Add resend button
+            const resendWrap = document.createElement("div");
+            resendWrap.className = "chat-msg sophie";
+            const resendBtn = document.createElement("button");
+            resendBtn.textContent = otpLabels.resend;
+            resendBtn.className = "chat-voice-btn";
+            resendBtn.style.cssText = "font-size:14px;padding:8px 16px";
+            resendBtn.onclick = async () => {
+              resendBtn.disabled = true;
+              await sendAuthEmail(supabase, email, "");
+              appendBubble("sophie", otpLabels.resent);
+              resendWrap.remove();
+            };
+            resendWrap.appendChild(resendBtn);
+            parentEl.appendChild(resendWrap);
+            parentEl.scrollTop = parentEl.scrollHeight;
+          } else {
+            appendBubble("sophie", otpLabels.wrongCode);
+          }
+          codeInput.value = "";
+          codeInput.focus();
+          return;
+        }
+
+        // Success — session is now in this PWA's localStorage
+        wrap.remove();
+        if (data?.session) {
+          _cachedToken = data.session.access_token;
+          const settingsBtn = document.getElementById("chatSettingsBtn");
+          if (settingsBtn) settingsBtn.style.display = "block";
+        }
+        if (onSuccess) onSuccess(data);
+      };
+
+      verifyBtn.addEventListener("click", doVerify);
+      codeInput.addEventListener("keydown", e => { if (e.key === "Enter") doVerify(); });
+    }
+
     // Get translations from window (set by inline script above)
     const T = window.translations || {};
     let t = (T[currentLang] || T["en"]) || {};
@@ -3125,14 +3226,19 @@
         saveChatState();
         const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeParam) + "&lang=" + encodeURIComponent(currentLang);
 
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: redirectUrl }
-        });
+        const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
 
         if (!error) {
           wrap.remove();
-          appendBubble("sophie", labels.sent(email));
+          if (method === "otp") {
+            // iOS PWA: show code input directly in chat
+            showOTPInput(email, messagesEl, () => {
+              appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
+              _authReady(true);
+            });
+          } else {
+            appendBubble("sophie", labels.sent(email));
+          }
         } else {
           sendBtnEl.disabled = false;
           emailInput.disabled = false;
@@ -3168,14 +3274,19 @@
         saveChatState();
         btn.disabled = true;
         const modeForAuth = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuth) + "&lang=" + encodeURIComponent(currentLang) }
-        });
+        const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuth) + "&lang=" + encodeURIComponent(currentLang);
+        const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
         if (!error) {
           wrap.remove();
-          const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
-          appendBubble("sophie", sentMsg);
+          if (method === "otp") {
+            showOTPInput(email, messagesEl, () => {
+              appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
+              _authReady(true);
+            });
+          } else {
+            const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
+            appendBubble("sophie", sentMsg);
+          }
           inputEl.disabled = false;
           sendBtn.disabled = false;
         } else {
@@ -3271,9 +3382,8 @@
     // Fallback: if no auth event fires within 2s (e.g. no session), resolve anyway
     setTimeout(() => _authReady(false), 2000);
 
-    // Magic link opens a new tab — that tab becomes the app.
-    // This tab stays on the landing page, no duplicate navigation.
-    // (BroadcastChannel removed — callback tab handles everything)
+    // Auth handover: callback tab broadcasts AUTH_COMPLETED via SophieTabManager.
+    // This tab receives it in onAuthCompleted above and refreshes session.
 
     // Also kick off getSession to populate the cache
     getToken().catch(() => {});
@@ -3401,21 +3511,28 @@
         writeUxFlags({ hasRequestedMagicLink: true, lastLanguage: currentLang });
         saveChatState();
         const modeForRedirect = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
-        const { error } = await supabase.auth.signInWithOtp({
-          email: text,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForRedirect) + "&lang=" + encodeURIComponent(currentLang) }
-        });
+        const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForRedirect) + "&lang=" + encodeURIComponent(currentLang);
+        const { error, method } = await sendAuthEmail(supabase, text, redirectUrl);
         inputEl.disabled = false;
         sendBtn.disabled = false;
         if (!error) {
-          chatState = "email_capture";
-          inputEl.placeholder = t.chat_email_placeholder || "different email...";
-          const sentMsg = currentLang === "de"
-            ? `Danke. Ich habe dir gerade eine Einladung an ${text} geschickt.\nSie sollte in wenigen Sekunden da sein. Falsche Adresse? Einfach eine neue eingeben.`
-            : currentLang === "fr"
-            ? `Merci. Je viens de t'envoyer une invitation à ${text}.\nElle devrait arriver dans quelques secondes. Mauvaise adresse ? Entre-en une autre.`
-            : `Got it. I just sent an invitation to ${text}.\nCheck your inbox — it should be there in a few seconds. Wrong address? Just type a new one.`;
-          appendBubble("sophie", sentMsg);
+          if (method === "otp") {
+            chatState = "otp_capture";
+            showOTPInput(text, messagesEl, () => {
+              chatState = "chat_active";
+              appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
+              _authReady(true);
+            });
+          } else {
+            chatState = "email_capture";
+            inputEl.placeholder = t.chat_email_placeholder || "different email...";
+            const sentMsg = currentLang === "de"
+              ? `Danke. Ich habe dir gerade eine Einladung an ${text} geschickt.\nSie sollte in wenigen Sekunden da sein. Falsche Adresse? Einfach eine neue eingeben.`
+              : currentLang === "fr"
+              ? `Merci. Je viens de t'envoyer une invitation à ${text}.\nElle devrait arriver dans quelques secondes. Mauvaise adresse ? Entre-en une autre.`
+              : `Got it. I just sent an invitation to ${text}.\nCheck your inbox — it should be there in a few seconds. Wrong address? Just type a new one.`;
+            appendBubble("sophie", sentMsg);
+          }
         } else {
           chatState = "email_capture";
           inputEl.placeholder = t.chat_email_placeholder || "your email";
@@ -3900,16 +4017,23 @@
       saveChatState();
       authBtn.disabled = true;
       const modeForAuthBtn = localStorage.getItem("sophie_detected_mode") || funnelMode || "talk";
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) + "&lang=" + encodeURIComponent(currentLang) }
-      });
+      const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) + "&lang=" + encodeURIComponent(currentLang);
+      const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
       if (!error) {
-        // Keep email visible so user can verify, just disable editing
-        authEmail.readOnly = true;
-        authBtn.textContent = "✓ Sent";
-        const sentMsg = t.chat_auth_sent_msg || "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.";
-        appendBubble("sophie", sentMsg);
+        if (method === "otp") {
+          // iOS PWA: hide auth form, show OTP input in chat
+          hide(authEl);
+          showOTPInput(email, messagesEl, () => {
+            appendBubble("sophie", currentLang === "de" ? "Perfekt, du bist drin!" : "Perfect, you're in!");
+            _authReady(true);
+          });
+        } else {
+          // Keep email visible so user can verify, just disable editing
+          authEmail.readOnly = true;
+          authBtn.textContent = "✓ Sent";
+          const sentMsg = t.chat_auth_sent_msg || "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.";
+          appendBubble("sophie", sentMsg);
+        }
         saveChatState();
       } else {
         authBtn.disabled = false;

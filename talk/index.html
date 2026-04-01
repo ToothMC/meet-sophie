@@ -1159,10 +1159,67 @@ if (hashParams.get("error")) {
 }
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { SophieTabManager } from "/lib/sophie-tab-manager.js";
 
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Tab Manager: single-primary + realtime lock ──────────────────
+let _dupTabShown = false;
+const sophieTabManager = new SophieTabManager({
+  onBecamePrimary: () => {
+    // If duplicate-tab overlay was shown, remove it
+    const overlay = document.getElementById("dupTabOverlay");
+    if (overlay) overlay.remove();
+    _dupTabShown = false;
+  },
+  onLostPrimary: () => {
+    // Another tab took over — stop voice if running, show overlay
+    if (typeof stopVoice === "function") try { stopVoice(); } catch {}
+    showDuplicateTabOverlay();
+  },
+  onAuthCompleted: async () => {
+    // Session refreshed from another tab — reload to pick it up
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.user) window.location.reload();
+  },
+  onDuplicateTab: () => {
+    showDuplicateTabOverlay();
+  },
+});
+sophieTabManager.init();
+
+function showDuplicateTabOverlay() {
+  if (_dupTabShown) return;
+  _dupTabShown = true;
+  const lang = localStorage.getItem("preferredLanguage") || "en";
+  const isDE = lang === "de";
+  const overlay = document.createElement("div");
+  overlay.id = "dupTabOverlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(11,15,20,.92);display:flex;align-items:center;justify-content:center;text-align:center;padding:24px";
+  overlay.innerHTML = `
+    <div style="max-width:340px">
+      <div style="font-size:40px;margin-bottom:16px">🔇</div>
+      <h2 style="color:white;font-size:20px;margin:0 0 8px">${isDE ? "Sophie läuft in einem anderen Tab" : "Sophie is active in another tab"}</h2>
+      <p style="color:rgba(255,255,255,.6);font-size:14px;margin:0 0 20px">${isDE ? "Voice-Sessions können nur in einem Tab gleichzeitig laufen." : "Voice sessions can only run in one tab at a time."}</p>
+      <button id="dupTabTakeoverBtn" style="padding:12px 24px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:white;color:#0b0f14;cursor:pointer">${isDE ? "Hier übernehmen" : "Take over here"}</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById("dupTabTakeoverBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("dupTabTakeoverBtn");
+    btn.disabled = true;
+    btn.textContent = isDE ? "Übernehme…" : "Taking over…";
+    const ok = await sophieTabManager.requestTakeover();
+    if (ok) {
+      overlay.remove();
+      _dupTabShown = false;
+    } else {
+      btn.disabled = false;
+      btn.textContent = isDE ? "Hier übernehmen" : "Take over here";
+    }
+  });
+}
 
 // Auth init — supports both normal session and magic link landing
 // Set up everything in parallel to avoid race conditions
@@ -4667,6 +4724,20 @@ async function startVoice(){
     console.log("Session already running or starting → ignore");
     return;
   }
+
+  // Acquire realtime lock (primary must be held first — enforced by tab manager)
+  if (!sophieTabManager.isPrimary) {
+    console.log("Not primary tab → cannot start voice");
+    showDuplicateTabOverlay();
+    return;
+  }
+  const gotRealtime = await sophieTabManager.acquireRealtime();
+  if (!gotRealtime) {
+    console.log("Could not acquire realtime lock → another tab holds it");
+    showDuplicateTabOverlay();
+    return;
+  }
+
   _startVoiceLock = true;
   
   await preloadLimitVideo();
