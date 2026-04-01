@@ -110,15 +110,16 @@ export async function webSearch(query) {
   if (googleKey && googleCx) {
     try {
       const gRes = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query)}&num=5&lr=lang_de`,
+        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query)}&num=8`,
         { signal: AbortSignal.timeout(5000) }
       );
       if (gRes.ok) {
         const data = await gRes.json();
-        const results = (data.items || []).slice(0, 5);
+        const results = (data.items || []).slice(0, 8);
         if (results.length > 0) {
-          const items = results.map(r => `- ${r.title}: ${r.snippet}`);
-          return `Web-Suchergebnisse für "${query}":\n${items.join('\n')}`;
+          // Fetch page content for top 3 results in parallel
+          const enriched = await enrichTopResults(results, 3);
+          return `Web-Suchergebnisse für "${query}":\n\n${enriched}`;
         }
       }
     } catch (e) { console.error('[tools] Google search error:', e?.message); }
@@ -129,15 +130,17 @@ export async function webSearch(query) {
   if (bingKey) {
     try {
       const bingRes = await fetch(
-        `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=5&mkt=de-DE`,
+        `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=8`,
         { headers: { 'Ocp-Apim-Subscription-Key': bingKey }, signal: AbortSignal.timeout(5000) }
       );
       if (bingRes.ok) {
         const data = await bingRes.json();
-        const results = (data.webPages?.value || []).slice(0, 5);
+        const results = (data.webPages?.value || []).slice(0, 8).map(r => ({
+          title: r.name, snippet: r.snippet, link: r.url,
+        }));
         if (results.length > 0) {
-          const items = results.map(r => `- ${r.name}: ${r.snippet}`);
-          return `Web-Suchergebnisse für "${query}":\n${items.join('\n')}`;
+          const enriched = await enrichTopResults(results, 3);
+          return `Web-Suchergebnisse für "${query}":\n\n${enriched}`;
         }
       }
     } catch (e) { console.error('[tools] Bing search error:', e?.message); }
@@ -165,6 +168,70 @@ export async function webSearch(query) {
   } catch (_) {}
 
   return `Keine Ergebnisse für "${query}" gefunden.`;
+}
+
+// Fetch actual page content for top N results to give Sophie more context
+async function enrichTopResults(results, topN) {
+  const lines = [];
+
+  // Fetch page content for top N in parallel (3s timeout each)
+  const fetchPromises = results.slice(0, topN).map(async (r) => {
+    const url = r.link || r.formattedUrl;
+    if (!url) return null;
+    try {
+      const resp = await fetch(url, {
+        signal: AbortSignal.timeout(3000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SophieBot/1.0)' },
+      });
+      if (!resp.ok) return null;
+      const html = await resp.text();
+      return extractTextContent(html);
+    } catch { return null; }
+  });
+
+  const pageContents = await Promise.all(fetchPromises);
+
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const title = r.title || r.name || '';
+    const snippet = r.snippet || '';
+    const url = r.link || r.formattedUrl || '';
+
+    if (i < topN && pageContents[i]) {
+      // Rich result with page content (max 800 chars)
+      lines.push(`### ${title}\n${url}\n${pageContents[i]}`);
+    } else {
+      // Snippet-only result
+      lines.push(`- ${title}: ${snippet}`);
+    }
+  }
+
+  return lines.join('\n\n');
+}
+
+// Extract readable text from HTML (no external deps)
+function extractTextContent(html) {
+  if (!html) return null;
+  // Remove script, style, nav, header, footer tags and their content
+  let text = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+    .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+    .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '');
+  // Replace block-level tags with newlines
+  text = text.replace(/<\/?(p|div|br|h[1-6]|li|tr|blockquote)[^>]*>/gi, '\n');
+  // Strip remaining HTML tags
+  text = text.replace(/<[^>]+>/g, '');
+  // Decode common HTML entities
+  text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&nbsp;/g, ' ');
+  // Collapse whitespace and trim
+  text = text.replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
+  // Return first ~800 chars (enough context without bloating)
+  if (text.length < 50) return null;
+  return text.length > 800 ? text.slice(0, 800) + '...' : text;
 }
 
 // ── News: Bing News API (primary) → Google News RSS (fallback) ──
