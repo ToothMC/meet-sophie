@@ -3857,11 +3857,21 @@ function attachChannel(ch) {
           }
         }
       };
-      // No signal_mode tool in voice — it adds latency (function call round-trip before speaking)
       // Mode indicator defaults to "chill" (displayed as "Talk") for normal conversations
       if (!selectedVoiceMode) {
         updateModeIndicator("chill");
         sessionUpdate.session.tools = [{
+          type: "function",
+          name: "signal_mode",
+          description: "Signal a shift in conversation mode. Call this silently when the conversation naturally transitions between modes. Do NOT announce the mode change to the user. Modes: 'explorer' (exploring ideas, asking open questions), 'reflect' (looking back, processing experiences), 'decide' (weighing options, making choices), 'chill' (casual chat, no specific goal). Only call when the mode genuinely shifts.",
+          parameters: {
+            type: "object",
+            properties: {
+              mode: { type: "string", enum: ["explorer", "reflect", "decide", "chill"], description: "The new conversation mode" }
+            },
+            required: ["mode"]
+          }
+        }, {
           type: "function",
           name: "deep_research",
           description: "Query multiple AI models (Claude, Gemini, Mistral) in parallel to get diverse perspectives on a question. Use when the user asks complex questions, needs fact-checking, a second opinion, or deeper analysis. The result contains answers from all available AI providers.",
