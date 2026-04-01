@@ -1121,6 +1121,57 @@
       .chat-card.foreground .chat-typing span{
         background:rgba(0,0,0,.30);
       }
+      /* --- Auth section: Email + Einladung senden --- */
+      .chat-card.foreground .chat-auth{
+        background:#f5f5f5;
+        border:1px solid rgba(0,0,0,.12);
+      }
+      .chat-card.foreground .chat-auth p{
+        color:#555;
+      }
+      .chat-card.foreground .chat-auth input[type="email"]{
+        background:#ffffff;
+        border:1px solid rgba(0,0,0,.18);
+        color:#1a1a1a;
+        font-size:15px;
+        padding:10px 14px;
+        border-radius:12px;
+      }
+      .chat-card.foreground .chat-auth input[type="email"]::placeholder{
+        color:rgba(0,0,0,.40);
+      }
+      .chat-card.foreground .chat-auth input[type="email"]:focus{
+        border-color:rgba(74,94,189,.50);
+      }
+      .chat-card.foreground .chat-auth button{
+        background:linear-gradient(135deg, #4a5ebd, #5b4db8);
+        border:none;
+        color:#ffffff;
+        font-size:15px;
+        font-weight:700;
+        padding:10px 16px;
+        border-radius:12px;
+      }
+      .chat-card.foreground .chat-auth button:hover{
+        background:linear-gradient(135deg, #3d4fa8, #4e40a8);
+      }
+      .chat-card.foreground .chat-auth-sent{
+        color:#27ae60;
+      }
+      /* --- Inline auth bubble variant --- */
+      .chat-card.foreground .chat-auth-bubble input[type="email"]{
+        background:#ffffff;
+        border:1px solid rgba(0,0,0,.18);
+        color:#1a1a1a;
+      }
+      .chat-card.foreground .chat-auth-bubble input[type="email"]::placeholder{
+        color:rgba(0,0,0,.40);
+      }
+      .chat-card.foreground .chat-auth-bubble button{
+        background:linear-gradient(135deg, #4a5ebd, #5b4db8);
+        border:none;
+        color:#ffffff;
+      }
       /* --- Action bar: Vergleich / Challenge --- */
       .chat-card.foreground .chat-action-bar{
         padding:6px 16px 8px;
@@ -1149,6 +1200,17 @@
         background:rgba(90,77,184,.14);
         border-color:rgba(90,77,184,.35);
         color:#4e40a8;
+      }
+      /* --- Token counter --- */
+      .chat-card.foreground #tokenCounter{
+        color:#555;
+      }
+      /* --- Provider badges --- */
+      .chat-card.foreground .chat-provider-icon{
+        opacity:.6;
+      }
+      .chat-card.foreground .chat-verified-badge{
+        color:rgba(74,94,189,.6);
       }
       /* --- Settings button --- */
       .chat-card.foreground .chat-settings-btn{
