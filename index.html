@@ -1956,19 +1956,6 @@
         hero_trust_line: "No signup · Start instantly",
         hero_btn_secondary: "Or type",
         mobile_feature_hint: "You can also send Sophie messages during a conversation.",
-        floating_label: "Stop typing. Start talking.",
-        floating_lines: [
-          "\u201cSophie says: Think one moment longer before you react.\u201d",
-          "\u201cSophie says: Not every decision has to be made immediately.\u201d",
-          "\u201cSophie says: Understand first. Judge later.\u201d",
-          "\u201cSophie says: What would the wiser version of you do now?\u201d",
-          "\u201cSophie says: Pause for a moment. What really matters here?\u201d",
-          "\u201cSophie says: Don\u2019t think only about today.\u201d",
-          "\u201cSophie says: Your first reaction is rarely your best one.\u201d",
-          "\u201cSophie says: What would you advise your best friend to do?\u201d",
-          "\u201cSophie says: Which decision will still feel right tomorrow?\u201d",
-          "\u201cSophie says: Think one step further.\u201d"
-        ],
         chat_greeting: "What\u2019s on your mind right now?",
         chat_demo_user: "I\u2019m feeling stuck deciding whether to take the new job offer or stay at my current job.",
         thinking_eyebrow: "Research-backed",
@@ -2061,19 +2048,6 @@
         hero_trust_line: "Kein Account n\u00f6tig \u00b7 Sofort starten",
         hero_btn_secondary: "Oder schreiben",
         mobile_feature_hint: "Auch w\u00e4hrend des Gespr\u00e4chs kannst du Sophie Nachrichten schicken.",
-        floating_label: "H\u00f6r auf zu tippen. Fang an zu sprechen.",
-        floating_lines: [
-          "\u201eSophie says: Bevor du reagierst, denk einen Moment l\u00e4nger.\u201c",
-          "\u201eSophie says: Nicht jede Entscheidung muss sofort fallen.\u201c",
-          "\u201eSophie says: Versteh zuerst. Urteile sp\u00e4ter.\u201c",
-          "\u201eSophie says: Was w\u00fcrde die kl\u00fcgere Version von dir jetzt tun?\u201c",
-          "\u201eSophie says: Stopp kurz. Was ist hier wirklich wichtig?\u201c",
-          "\u201eSophie says: Denk nicht nur an heute.\u201c",
-          "\u201eSophie says: Die erste Reaktion ist selten die beste.\u201c",
-          "\u201eSophie says: Was w\u00fcrdest du deinem besten Freund raten?\u201c",
-          "\u201eSophie says: Welche Entscheidung f\u00fchlt sich morgen noch richtig an?\u201c",
-          "\u201eSophie says: Denk einen Schritt weiter.\u201c"
-        ],
         chat_greeting: "Was besch\u00e4ftigt dich gerade?",
         chat_demo_user: "Ich stecke fest \u2014 soll ich das neue Jobangebot annehmen oder bei meiner jetzigen Stelle bleiben?",
         thinking_eyebrow: "Fundiert durch Forschung",
@@ -2168,19 +2142,6 @@
       hero_trust_line: "Sans inscription \u00b7 Commencer imm\u00e9diatement",
       hero_btn_secondary: "Ou \u00e9crire",
       mobile_feature_hint: "Vous pouvez aussi envoyer des messages \u00e0 Sophie pendant une conversation.",
-      floating_label: "Arr\u00eatez de taper. Commencez \u00e0 parler.",
-      floating_lines: [
-        "\u00abSophie dit\u00a0: Prenez un instant de plus avant de r\u00e9agir.\u00bb",
-        "\u00abSophie dit\u00a0: Chaque d\u00e9cision n\u2019a pas besoin d\u2019\u00eatre prise imm\u00e9diatement.\u00bb",
-        "\u00abSophie dit\u00a0: Comprenez d\u2019abord. Jugez ensuite.\u00bb",
-        "\u00abSophie dit\u00a0: Que ferait la version plus sage de vous maintenant\u00a0?\u00bb",
-        "\u00abSophie dit\u00a0: Faites une pause. Qu\u2019est-ce qui compte vraiment ici\u00a0?\u00bb",
-        "\u00abSophie dit\u00a0: Ne pensez pas seulement \u00e0 aujourd\u2019hui.\u00bb",
-        "\u00abSophie dit\u00a0: Votre premi\u00e8re r\u00e9action est rarement la meilleure.\u00bb",
-        "\u00abSophie dit\u00a0: Que conseilleriez-vous \u00e0 votre meilleur ami\u00a0?\u00bb",
-        "\u00abSophie dit\u00a0: Quelle d\u00e9cision vous semblera encore juste demain\u00a0?\u00bb",
-        "\u00abSophie dit\u00a0: Pensez un pas plus loin.\u00bb"
-      ],
       chat_greeting: "Qu\u2019est-ce qui vous pr\u00e9occupe en ce moment\u00a0?",
       chat_demo_user: "Je ne sais pas quoi d\u00e9cider \u2014 accepter la nouvelle offre d\u2019emploi ou rester \u00e0 mon poste actuel.",
       thinking_eyebrow: "Fond\u00e9 sur la recherche",
@@ -2259,28 +2220,6 @@
       chat_report_cta: "Créer un compte gratuit",
       chat_err: "Courte pause \u2014 de retour dans un instant."
     };
-    let floatingInterval = null;
-    let currentFloatingIndex = 0;
-    let currentFloatingLang = "en";
-    function startFloatingRotation(lang) {
-      const textEl = document.getElementById("floating-text");
-      const lines = (window.translations[lang] && window.translations[lang].floating_lines) || window.translations.en.floating_lines;
-      if (!textEl || !lines || !lines.length) return;
-      if (floatingInterval) { clearInterval(floatingInterval); floatingInterval = null; }
-      currentFloatingLang = lang;
-      currentFloatingIndex = 0;
-      textEl.classList.remove("is-changing");
-      textEl.textContent = lines[currentFloatingIndex];
-      floatingInterval = setInterval(() => {
-        const activeLines = (window.translations[currentFloatingLang] && window.translations[currentFloatingLang].floating_lines) || window.translations.en.floating_lines;
-        textEl.classList.add("is-changing");
-        setTimeout(() => {
-          currentFloatingIndex = (currentFloatingIndex + 1) % activeLines.length;
-          textEl.textContent = activeLines[currentFloatingIndex];
-          textEl.classList.remove("is-changing");
-        }, 400);
-      }, 4200);
-    }
     function applyTranslations(lang) {
       const t = window.translations[lang] || window.translations.en;
       document.documentElement.lang = lang;
@@ -2294,7 +2233,6 @@
         "login-link": t.login_link,
         "hero-eyebrow": t.hero_eyebrow, "hero-copy": t.hero_copy,
         "hero-btn-primary": t.hero_btn_primary, "hero-btn-secondary": t.hero_btn_secondary, "hero-trust-line": t.hero_trust_line, "mobile-feature-hint": t.mobile_feature_hint,
-        "floating-label": t.floating_label,
         "thinking-eyebrow": t.thinking_eyebrow, "thinking-title": t.thinking_title,
         "thinking-copy-1": t.thinking_copy_1, "thinking-copy-2": t.thinking_copy_2,
         "thinking-copy-3": t.thinking_copy_3, "thinking-sources-label": t.thinking_sources_label,
@@ -2373,7 +2311,6 @@
       document.querySelectorAll("#chatLangSwitch button").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.lang === lang);
       });
-      startFloatingRotation(lang);
       localStorage.setItem("preferredLanguage", lang);
       // Mobile chat foreground labels via CSS custom properties
       const chatLabels = {
