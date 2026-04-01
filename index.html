@@ -1079,6 +1079,9 @@
         padding-bottom:max(12px, env(safe-area-inset-bottom, 8px));
       }
       @media (display-mode: standalone){
+        .chat-card.foreground .chat-card-header{
+          padding-top:calc(env(safe-area-inset-top, 20px) + 14px);
+        }
         .chat-card.foreground .chat-footer{
           padding-bottom:calc(env(safe-area-inset-bottom, 20px) + 28px);
         }
