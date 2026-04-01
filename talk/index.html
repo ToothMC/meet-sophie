@@ -5121,7 +5121,7 @@ async function startVoice(){
     headline.textContent = t("sophie_listening");
     showLiveBadge(false);
     showSessionBar(true);
-    updateSessionBarMode(currentMode || "talk");
+    updateSessionBarMode(selectedVoiceMode || "talk");
     showVoiceChat(true);
 
     setTimeout(() => {
