@@ -154,7 +154,7 @@ body{
   border:1px solid rgba(255,255,255,.3);
 }
 #pauseBtn{
-  background:rgba(255,255,255,.08);
+  background:transparent;
   color:rgba(255,255,255,.7);
   border:1px solid rgba(255,255,255,.25);
   padding:12px 20px;
@@ -162,11 +162,69 @@ body{
   font-weight:600;
   height:48px;
   box-sizing:border-box;
+  display:flex;align-items:center;justify-content:center;gap:10px;
 }
 #pauseBtn.is-paused{
-  background:rgba(100,220,160,.1);
+  background:transparent;
   color:#64dca0;
   border-color:rgba(100,220,160,.3);
+}
+.pause-icon{display:inline-flex;align-items:center}
+.pause-icon svg{width:14px;height:16px}
+
+/* ── Session Bar ── */
+.session-bar{
+  margin:16px auto 0;
+  width:100%;
+  background:rgba(0,0,0,.75);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-radius:14px;
+  padding:8px 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-sizing:border-box;gap:8px;
+}
+.session-bar-modes{
+  display:flex;gap:4px;flex:1;min-width:0;
+}
+.sb-mode{
+  font-size:10px;font-weight:500;color:rgba(255,255,255,.35);
+  padding:4px 8px;border-radius:8px;white-space:nowrap;
+  transition:all .2s;
+}
+.sb-mode.active{
+  font-weight:600;color:#3f8cff;
+  background:rgba(63,140,255,.15);
+}
+.sb-report-toggle{
+  display:flex;align-items:center;gap:5px;
+  flex-shrink:0;cursor:pointer;
+  -webkit-user-select:none;user-select:none;
+}
+.sb-report-toggle input{display:none}
+.sb-report-slider{
+  width:26px;height:14px;
+  background:rgba(255,255,255,.12);
+  border-radius:7px;position:relative;
+  transition:background .2s;
+}
+.sb-report-slider::after{
+  content:'';position:absolute;
+  left:2px;top:2px;width:10px;height:10px;
+  background:rgba(255,255,255,.35);border-radius:50%;
+  transition:transform .2s,background .2s;
+}
+.sb-report-toggle input:checked + .sb-report-slider{
+  background:#6366f1;
+}
+.sb-report-toggle input:checked + .sb-report-slider::after{
+  transform:translateX(12px);background:#fff;
+}
+.sb-report-text{
+  font-size:10px;color:rgba(255,255,255,.5);
+  transition:color .2s;
+}
+.sb-report-toggle input:checked ~ .sb-report-text{
+  color:rgba(255,255,255,.6);
 }
 
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
@@ -280,7 +338,7 @@ body{
 }
 
 .live-badge.active{
-  display:flex;
+  display:none;
 }
 
 .live-dot{
@@ -1040,8 +1098,23 @@ body{
     <span class="report-toggle-text">Report</span>
   </label>
   <button id="start" class="btn">Start conversation</button>
-  <button id="pauseBtn" class="btn btn-pause" style="display:none">⏸ Pause</button>
+  <button id="pauseBtn" class="btn btn-pause" style="display:none"><span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">Pause</span></button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
+
+  <!-- Session bar (mode + report toggle) -->
+  <div class="session-bar" id="sessionBar" style="display:none">
+    <div class="session-bar-modes" id="sessionBarModes">
+      <span class="sb-mode active" data-mode="talk">Talk</span>
+      <span class="sb-mode" data-mode="explorer">Explore</span>
+      <span class="sb-mode" data-mode="decide">Decide</span>
+      <span class="sb-mode" data-mode="reflect">Reflect</span>
+    </div>
+    <label class="sb-report-toggle">
+      <input type="checkbox" id="sessionBarReportToggle">
+      <span class="sb-report-slider"></span>
+      <span class="sb-report-text">Report</span>
+    </label>
+  </div>
 
   <!-- Live chat input during voice session -->
   <div class="voice-chat" id="voiceChat" style="display:none">
@@ -1337,11 +1410,29 @@ const pauseBtn  = document.getElementById("pauseBtn");
 
 // ── Report toggle persistence ───────────────────────────────────────
 const reportToggle = document.getElementById("reportToggle");
-if (reportToggle) {
+const sessionBarReportToggle = document.getElementById("sessionBarReportToggle");
+(function initReportToggles(){
   const saved = localStorage.getItem("sophie_report_enabled");
-  if (saved !== null) reportToggle.checked = saved === "true";
-  reportToggle.addEventListener("change", () => {
-    localStorage.setItem("sophie_report_enabled", reportToggle.checked);
+  const val = saved !== null ? saved === "true" : true;
+  if (reportToggle) reportToggle.checked = val;
+  if (sessionBarReportToggle) sessionBarReportToggle.checked = val;
+  function sync(source, target) {
+    localStorage.setItem("sophie_report_enabled", source.checked);
+    if (target) target.checked = source.checked;
+  }
+  if (reportToggle) reportToggle.addEventListener("change", () => sync(reportToggle, sessionBarReportToggle));
+  if (sessionBarReportToggle) sessionBarReportToggle.addEventListener("change", () => sync(sessionBarReportToggle, reportToggle));
+})();
+
+// ── Session bar ─────────────────────────────────────────────────────
+const sessionBar = document.getElementById("sessionBar");
+function showSessionBar(on) {
+  if (sessionBar) sessionBar.style.display = on ? "flex" : "none";
+}
+function updateSessionBarMode(mode) {
+  if (!sessionBar) return;
+  sessionBar.querySelectorAll(".sb-mode").forEach(el => {
+    el.classList.toggle("active", el.dataset.mode === mode);
   });
 }
 
@@ -1876,6 +1967,7 @@ function updateModeIndicator(mode) {
   modeIndicatorEl.textContent = modeIndicatorLabels[mode] || ("◆ " + mode);
   modeIndicatorEl.dataset.mode = mode;
   modeIndicatorEl.classList.add("visible");
+  updateSessionBarMode(mode);
 }
 function clearModeIndicator() { updateModeIndicator(null); }
 
@@ -3216,7 +3308,7 @@ function pauseSession() {
   if (audioEl){ try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
 
   // UI: paused state
-  pauseBtn.textContent = "▶ " + (t("resume") || "Resume");
+  pauseBtn.innerHTML = '<span class="pause-icon"><svg viewBox="0 0 12 16" fill="currentColor"><path d="M1 1.5L11 8L1 14.5z"/></svg></span> <span id="pauseBtnText">' + (t("resume") || "Resume") + '</span>';
   pauseBtn.classList.add("is-paused");
   startBtn.disabled = true;
   showLiveBadge(false);
@@ -3229,7 +3321,7 @@ async function resumeSession() {
   isPaused = false;
   console.log(`[${runId}] [pause] resuming session`);
 
-  pauseBtn.textContent = "⏸ " + (t("pause") || "Pause");
+  pauseBtn.innerHTML = '<span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">' + (t("pause") || "Pause") + '</span>';
   pauseBtn.classList.remove("is-paused");
   pauseBtn.style.display = "none"; // hide during reconnect
 
@@ -4829,9 +4921,12 @@ async function startVoice(){
       }
     })();
 
-    // Hide mode bar once session starts (can't change mid-call)
+    // Hide mode bar, old report toggle, old mode indicator once session starts
     const modeBarEl = document.getElementById("modeBar");
     if (modeBarEl) modeBarEl.style.display = "none";
+    const reportToggleLabel = document.getElementById("reportToggleLabel");
+    if (reportToggleLabel) reportToggleLabel.style.display = "none";
+    if (modeIndicatorEl) modeIndicatorEl.style.display = "none";
 
     const tokenRes = await fetch("/api/session", {
       headers: {
@@ -5018,13 +5113,15 @@ async function startVoice(){
       startBtn.style.background = "linear-gradient(180deg, #f5c842 0%, #d4a017 100%)";
       startBtn.style.color = "#1a1200";
     }
-    pauseBtn.textContent = "⏸ " + t("pause");
+    pauseBtn.innerHTML = '<span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">' + t("pause") + '</span>';
     pauseBtn.classList.remove("is-paused");
     pauseBtn.style.display = "";
     pauseBtn.onclick = () => { isPaused ? resumeSession() : pauseSession(); };
     showReadyStatus();
     headline.textContent = t("sophie_listening");
-    showLiveBadge(true);
+    showLiveBadge(false);
+    showSessionBar(true);
+    updateSessionBarMode(currentMode || "talk");
     showVoiceChat(true);
 
     setTimeout(() => {
@@ -5158,8 +5255,9 @@ async function stopVoicePitchClean() {
 }
 
 async function stopVoice(triggeredByLimit = false){
-  // Hide pause button + reset pause state on any session end
+  // Hide pause button + session bar, reset pause state on any session end
   pauseBtn.style.display = "none";
+  showSessionBar(false);
   isPaused = false;
 
   // Salespitch: always use clean teardown (preserves audio, generates report correctly)
