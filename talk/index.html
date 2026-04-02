@@ -1756,6 +1756,9 @@ let pc = null;
 let stream = null;
 let audioEl = null;
 let dc = null;
+let voiceWakeLock = null;
+let voiceWakeLockWanted = false;
+let wakeLockHintShown = false;
 let audioCtx = null;
 let gainNode = null;
 let audioSource = null;
@@ -1979,6 +1982,47 @@ function dcSend(obj) {
 
 function setStatus(txt){ statusEl.textContent = txt; }
 function setSoftHint(txt = "") { softHint.textContent = txt; }
+
+async function acquireVoiceWakeLock({ silent = false } = {}) {
+  if (!voiceWakeLockWanted) return false;
+  if (!("wakeLock" in navigator)) return false;
+  if (document.visibilityState !== "visible") return false;
+  if (voiceWakeLock && !voiceWakeLock.released) return true;
+
+  try {
+    const sentinel = await navigator.wakeLock.request("screen");
+    voiceWakeLock = sentinel;
+    wakeLockHintShown = false;
+
+    sentinel.addEventListener("release", () => {
+      if (voiceWakeLock === sentinel) voiceWakeLock = null;
+      if (voiceWakeLockWanted && document.visibilityState === "visible") {
+        void acquireVoiceWakeLock({ silent: true });
+      }
+    }, { once: true });
+
+    return true;
+  } catch (err) {
+    console.warn("[wake-lock] request failed", err);
+    if (!silent && !wakeLockHintShown) {
+      wakeLockHintShown = true;
+      setSoftHint("Der Bildschirm darf nicht wach gehalten werden. Wenn er sich sperrt, stelle Auto-Lock vorübergehend länger ein.");
+    }
+    return false;
+  }
+}
+
+async function releaseVoiceWakeLock() {
+  const sentinel = voiceWakeLock;
+  voiceWakeLock = null;
+  voiceWakeLockWanted = false;
+  if (!sentinel) return;
+  try {
+    await sentinel.release();
+  } catch (err) {
+    console.warn("[wake-lock] release failed", err);
+  }
+}
 
 const modeIndicatorEl = document.getElementById("modeIndicator");
 const modeIndicatorLabels = { chill: "◆ Talk", talk: "◆ Talk", explorer: "◆ Explore", reflect: "◆ Reflect", decide: "◆ Decide", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
@@ -3262,6 +3306,7 @@ async function safeJson(res) {
 }
 
 function cleanupLiveSession() {
+  void releaseVoiceWakeLock();
   stopDynamicResets();
   stopCountdown();
   clearClosingTimers();
@@ -5086,6 +5131,24 @@ async function startVoice(){
     });
     setupDataChannelLogging();
 
+    pc.onconnectionstatechange = () => {
+      const state = pc?.connectionState;
+      console.log("[rtc] connectionState", state);
+
+      if (state === "connected") {
+        setSoftHint("");
+        return;
+      }
+
+      if (
+        talkStartedAt &&
+        !softEndFinalizing &&
+        (state === "disconnected" || state === "failed")
+      ) {
+        setSoftHint("Die Voice-Verbindung wurde unterbrochen. Wenn Sophie im Hintergrund war, starte das Gespräch neu.");
+      }
+    };
+
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
@@ -5124,6 +5187,9 @@ async function startVoice(){
 
     const answer = { type: "answer", sdp: answerSdp };
     await pc.setRemoteDescription(answer);
+
+    voiceWakeLockWanted = true;
+    void acquireVoiceWakeLock();
 
     endBtn.disabled = false;
     startBtn.disabled = false;
@@ -5277,6 +5343,7 @@ async function stopVoicePitchClean() {
 }
 
 async function stopVoice(triggeredByLimit = false){
+  void releaseVoiceWakeLock();
   // Hide pause button + session bar, reset pause state on any session end
   pauseBtn.style.display = "none";
   showSessionBar(false);
@@ -5556,6 +5623,12 @@ logoutBtn.onclick = async () => {
   try { await supabase.auth.signOut(); } catch(e) {}
   window.location.href = "/login";
 };
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && voiceWakeLockWanted) {
+    void acquireVoiceWakeLock({ silent: true });
+  }
+});
 
 showSummaryBtn.addEventListener("click", showSummaryView);
 showTranscriptBtn.addEventListener("click", showTranscriptView);
