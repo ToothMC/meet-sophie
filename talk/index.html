@@ -1573,6 +1573,13 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
           const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${ho.funnelMode}"]`);
           if (pill) pill.classList.add("active");
         }
+        // Force report on for mandatory-report modes (before returning)
+        if (ho.funnelMode === "salespitch" || ho.funnelMode === "brainstorm") {
+          const reportLabel = document.getElementById("reportToggleLabel");
+          if (reportToggle) reportToggle.checked = true;
+          if (sessionBarReportToggle) sessionBarReportToggle.checked = true;
+          if (reportLabel) reportLabel.style.display = "none";
+        }
         return; // funnel mode takes priority
       }
     } catch(_) {}
