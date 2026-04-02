@@ -1436,6 +1436,12 @@ const sessionBarReportToggle = document.getElementById("sessionBarReportToggle")
   if (reportToggle) reportToggle.checked = val;
   if (sessionBarReportToggle) sessionBarReportToggle.checked = val;
   function sync(source, target) {
+    // Sales Pitch & Brainstorm: report is mandatory — ignore attempts to disable
+    if (selectedVoiceMode === "salespitch" || selectedVoiceMode === "brainstorm") {
+      source.checked = true;
+      if (target) target.checked = true;
+      return;
+    }
     localStorage.setItem("sophie_report_enabled", source.checked);
     if (target) target.checked = source.checked;
   }
