@@ -12,7 +12,8 @@ import { getAdapter } from "../lib/ai/adapters/index.js";
 import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
 import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { getSecondOpinion } from "./ai/second-opinion.js";
-import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
+import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
+import { buildSearchContext } from "../lib/search-context.js";
 import { TOKEN_COSTS } from "../lib/billing-constants.js";
 
 const FREE_TURNS_LIMIT = 10;
@@ -483,10 +484,44 @@ async function handleStart(req, res) {
 // Tool execution helper — shared by anonymous and authenticated paths
 // ---------------------------------------------------------------------------
 async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
-  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
   if (!toolMatch) return { reply: rawReply, toolUsed: false };
 
   const [, toolType, toolParam] = toolMatch;
+
+  // Grounded Search: separate path — Gemini provides structured facts,
+  // injected as context into Sophie's prompt (Architecture Rule #1)
+  if (toolType === "grounded_search") {
+    try {
+      const searchResult = await groundedSearch(toolParam.trim());
+      if (!searchResult.facts.length) return { reply: rawReply, toolUsed: false };
+
+      const searchContext = buildSearchContext(searchResult);
+      routerMessages.push({
+        role: "system",
+        content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
+      });
+
+      const adapter = getAdapter(providerConfig.provider);
+      const retryResponse = await Promise.race([
+        adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000)),
+      ]);
+      const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+      return {
+        reply: retryReply || rawReply,
+        toolUsed: true,
+        toolType: "grounded_search",
+        retryResponse,
+        searchSources: searchResult.sources,
+      };
+    } catch (e) {
+      console.error("[chat] grounded_search error:", e?.message);
+      return { reply: rawReply, toolUsed: false };
+    }
+  }
+
+  // Standard tools: weather, search, news, wiki, flight, arrivals, departures
   let toolData;
   try {
     if (toolType === "weather") toolData = await getWeather(toolParam.trim());
@@ -978,10 +1013,11 @@ async function handleMessage(req, res) {
   routerMessages.push({ role: "system", content:
     `ECHTZEIT-TOOLS: Du hast Zugriff auf externe Datenquellen über Tools. Sage NIEMALS "Ich habe keinen Zugriff" oder "Ich kann nicht im Internet suchen". ` +
     `Du HAST Zugriff — nutze die Tools! Antworte NUR mit einem Tool-Tag (sonst nichts), wenn eine dieser Situationen zutrifft:\n` +
+    `[TOOL:grounded_search:Suchanfrage] — BEVORZUGT für volatile, aktuelle Fakten: Wer leitet ein Unternehmen? Aktienkurse, Preise, Ergebnisse, Status, aktuelle Ereignisse. Nutze grounded_search wenn sich die Antwort ändern kann und Aktualität wichtig ist.\n` +
     `[TOOL:weather:Ortsname] — Wetter, Temperatur, Outdoor-Bedingungen\n` +
-    `[TOOL:search:Suchanfrage] — aktuelle Fakten, Preise, Ereignisse, alles was sich ändern kann\n` +
+    `[TOOL:search:Suchanfrage] — Web-Suche für detaillierte Recherche mit Snippets und Links. Nutze search wenn du mehrere Quellen oder ausführliche Informationen brauchst.\n` +
     `[TOOL:news:Thema] — aktuelle Nachrichten und Headlines\n` +
-    `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen. Nutze wiki wenn der User nach konkretem Wissen fragt (Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...)\n` +
+    `[TOOL:wiki:Begriff] — Stabiles Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen. Nutze wiki wenn der User nach zeitlosem Wissen fragt (Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...)\n` +
     `[TOOL:flight:Flugnummer] — Live-Flugstatus, Abflug/Ankunft, Verspätungen, Gate, Terminal. Nutze flight bei jeder Frage zu einem konkreten Flug (z.B. LH1234, EK451)\n` +
     `[TOOL:arrivals:IATA-Code] — Ankunftstafel eines Flughafens (z.B. FRA, PFO, MUC). Nutze arrivals wenn der User fragt was an einem Flughafen landet oder ankommt\n` +
     `[TOOL:departures:IATA-Code] — Abflugtafel eines Flughafens. Nutze departures wenn der User fragt was abfliegt oder wann Maschinen starten\n` +
@@ -1048,12 +1084,12 @@ async function handleMessage(req, res) {
     // Curated responses handle the critical trigger questions instead
 
     // Anonymous users: tools blocked — tease once, then just strip the tag
-    const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+    const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
     if (toolMatch) {
       if (turnNumber <= 2) {
         // First time: tease the capability once
         const [, toolType] = toolMatch;
-        const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge" };
+        const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge", grounded_search: "Live-Fakten" };
         const toolName = toolNames[toolType] || toolType;
         rawReply = `Ich könnte dir das tatsächlich live zeigen — ${toolName} in Echtzeit abrufen. Dafür brauchst du nur einen kostenlosen Account. Dauert 10 Sekunden, kein Abo nötig!`;
       } else {
@@ -1186,8 +1222,10 @@ async function handleMessage(req, res) {
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary);
+  let searchSources = null;
   if (toolResult.toolUsed) {
     rawReply = toolResult.reply;
+    if (toolResult.searchSources?.length > 0) searchSources = toolResult.searchSources;
     if (user && toolResult.retryResponse?.usage) {
       trackCost({
         userId: user.id, provider: toolResult.retryResponse.provider, model: toolResult.retryResponse.model,
@@ -1317,6 +1355,7 @@ async function handleMessage(req, res) {
     import_hint: import_hint,
     ...(tokenDeduction && { remaining_tokens: tokenDeduction.remaining }),
     ...(secondOpinionMeta && { second_opinion: secondOpinionMeta }),
+    ...(searchSources && { search_sources: searchSources }),
   });
 }
 
