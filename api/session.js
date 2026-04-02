@@ -694,13 +694,15 @@ export default async function handler(req, res) {
       `Example: You explain 5 points verbally in detail → send_chat_note with just "1. Point A\\n2. Point B\\n3. Point C". ` +
       `Keep notes very short (max 2-3 lines, max 280 chars). Do NOT use this for every response — only when visual text genuinely helps.`;
 
-    // Greeting block MUST come last — models follow the last instruction most strongly
-    const greetingReminder = `\n\n=== CRITICAL: YOUR VERY FIRST MESSAGE ===
-Ignore ALL context above for your first message. Do NOT continue any previous topic. Do NOT reference memory. Do NOT use tools. Do NOT offer help. Do NOT ask what they want.
-Your first message is ONLY: a short, casual "Hey [name]!" greeting. 1-2 sentences MAX. Then STOP and WAIT in silence.
-Example: "Hey Michael! Schön dass du da bist."
-NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
-    const fullPrompt = sophiePrompt + importedContext + researchInstruction + greetingReminder;
+    // STARTUP RULE: Do NOT greet or speak on session creation.
+    // The frontend sends an explicit kickoff via response.create — that is the ONLY trigger for the first turn.
+    const startupGuard = `\n\n=== STARTUP RULE ===
+Do NOT begin speaking on session creation alone. Do NOT produce any opening message from these instructions.
+Your first spoken turn will be triggered explicitly by a response.create from the frontend.
+Until that trigger arrives, remain silent. Do NOT greet, announce a mode, or ask anything.
+When the trigger arrives, follow the mode-specific instructions in that trigger — not these system instructions — for your opening turn.
+After the first turn, these system instructions apply normally for all subsequent turns.`;
+    const fullPrompt = sophiePrompt + importedContext + researchInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create
