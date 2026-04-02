@@ -3798,7 +3798,7 @@ Skip any question already answered from chat context. Be direct and natural.`;
     if (voiceHandover && selectedVoiceMode === "brainstorm") {
       // BRAINSTORM HANDOVER: structured opener, no generic greeting
       const bsConfig = brainstormVoiceConfig || {};
-      const bsType = bsConfig.type === "team" ? (kickoffLang === "de" ? "Team" : "team") : (kickoffLang === "de" ? "Solo" : "solo");
+      const bsType = bsConfig.mode === "group" ? (kickoffLang === "de" ? "Team" : "team") : (kickoffLang === "de" ? "Solo" : "solo");
       genericKickoff = `You are Sophie. Brainstorming mode (${bsType}).
 
 ${langLock}
@@ -4400,7 +4400,7 @@ No second question. No smalltalk. No "Hey" or "Hi" before.`;
         // BRAINSTORM: short confirmation + mini-framing + one easy entry question
         console.log(`[${runId}] [kickoff_brainstorm] structured opener`);
         const bsConfig = brainstormVoiceConfig || {};
-        const bsType = bsConfig.type === "team" ? (isDE ? "Team" : "team") : (isDE ? "Solo" : "solo");
+        const bsType = bsConfig.mode === "group" ? (isDE ? "Team" : "team") : (isDE ? "Solo" : "solo");
         kickoffInstruction = isDE
           ? `Du bist Sophie. Brainstorming-Modus (${bsType}).
 Dein erster Turn besteht aus genau drei Bausteinen — KEINE Begrüßung davor:
