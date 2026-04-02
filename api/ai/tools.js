@@ -594,10 +594,10 @@ export async function getAirportFlights(airportIata, direction = 'arr') {
 export async function groundedSearch(query) {
   if (!query) return { facts: [], sources: [], confidence: 0, freshness_required: true, grounding_detected: false };
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   if (!apiKey) {
-    console.error('[tools] grounded_search: GEMINI_API_KEY not set');
+    console.error('[tools] grounded_search: GEMINI_API_KEY / GOOGLE_AI_API_KEY not set');
     return { facts: [], sources: [], confidence: 0, freshness_required: true, grounding_detected: false };
   }
 
