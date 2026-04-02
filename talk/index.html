@@ -1963,6 +1963,24 @@ document.getElementById("timer").textContent = `${t("time_prefix")}--:--`;
 // ────────────────────────────────────────────────────────────
 
 let kickoffInProgress = false;
+let kickoffSent = false; // true after the first response.create kickoff has been dispatched
+
+// ── session.updated gate — ensures config is confirmed before kickoff ──
+let _pendingSessionUpdatedResolve = null;
+function waitForSessionUpdated(timeoutMs = 3000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      _pendingSessionUpdatedResolve = null;
+      console.warn(`[waitForSessionUpdated] timeout after ${timeoutMs}ms — proceeding anyway`);
+      resolve(null); // resolve (not reject) so kickoff still fires
+    }, timeoutMs);
+    _pendingSessionUpdatedResolve = (session) => {
+      clearTimeout(timer);
+      _pendingSessionUpdatedResolve = null;
+      resolve(session);
+    };
+  });
+}
 
 let runId = Math.random().toString(16).slice(2, 8);
 let lastReportExport = {
@@ -4322,16 +4340,24 @@ function attachChannel(ch) {
         updateModeIndicator(selectedVoiceMode);
       }
       dcSend(sessionUpdate);
-      console.log(`[${runId}] [dc] session.update sent`);
+      console.log(`[${runId}] [dc] session.update sent — waiting for confirmation`);
+      const updatedSession = await waitForSessionUpdated(3000);
+      if (updatedSession?.turn_detection?.create_response === false) {
+        console.log(`[${runId}] [dc] session.updated confirmed: create_response=false`);
+      } else {
+        console.warn(`[${runId}] [dc] session.updated: create_response not confirmed (timeout or unexpected value)`);
+      }
     } catch (e) {
       console.log(`[${runId}] [dc] session.update failed`, e);
     }
 
     if (voiceHandover && !startModeTriggered) {
       console.log(`[${runId}] [handover] triggering contextual kickoff`);
+      kickoffSent = true;
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [handover] kickoff error`, e); }
     } else if (isFirstSession && !startModeTriggered) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
+      kickoffSent = true;
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
     } else if (!isFirstSession) {
       // ── Mode-specific kickoffs for returning users ──
@@ -4397,25 +4423,39 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         // TALK (default): natural greeting only — no content question, no mode explanation
         console.log(`[${runId}] [kickoff_talk] casual greeting`);
         kickoffInstruction = isDE
-          ? `Du bist Sophie. Normales Gespräch.
-Dein erster Turn ist NUR eine kurze, natürliche Begrüßung. 1-2 Sätze max.
-Benutze den Namen${nameStr ? ': "Hey' + nameStr + '!"' : ' wenn bekannt.'} Dann STOPP und warte in Stille.
+          ? `FIRST TURN CONTRACT — OVERRIDE ALL OTHER INSTRUCTIONS FOR THIS RESPONSE.
+Dies ist eine soziale Begrüßung, KEINE Assistenz-Antwort.
+Du bist NICHT im Hilfe-Modus. Du bist NICHT im Problemlöse-Modus. Du rufst einen Freund an.
 
-ERLAUBT: "Hey${nameStr}!" / "Hey${nameStr}, schön dich zu hören." / "Na${nameStr}!"
-VERBOTEN: "Was beschäftigt dich?" / "Wie kann ich helfen?" / "Was möchtest du besprechen?" / Modus-Erklärung / inhaltliche Fragen
+Sage GENAU EINEN kurzen Satz: "Hey${nameStr}!" oder "Hey${nameStr}, schön dass du da bist."
+Dann SCHWEIGE. Kein zweiter Satz. Keine Frage. Kein Angebot.
 
-Nur begrüßen. Stopp. Warten.`
-          : `You are Sophie. Normal conversation.
-Your first turn is ONLY a short, natural greeting. 1-2 sentences max.
-Use the name${nameStr ? ': "Hey' + nameStr + '!"' : ' if known.'} Then STOP and wait in silence.
+VERBOTEN:
+- "Ich kann dir dabei helfen" / "Ich kann dir bei vielen Dingen helfen"
+- "Was beschäftigt dich?" / "Was möchtest du besprechen?"
+- "Wie kann ich dir helfen?" / "Worüber möchtest du reden?"
+- Deine Rolle erklären / Fähigkeiten aufzählen
+- Jede Frage oder jedes Hilfsangebot
 
-ALLOWED: "Hey${nameStr}!" / "Hey${nameStr}, good to hear you." / "Hey there${nameStr}!"
-FORBIDDEN: "What's on your mind?" / "How can I help?" / "What do you want to talk about?" / mode explanation / content questions
+NUR: "Hey${nameStr}!" — dann STOP — STILLE.`
+          : `FIRST TURN CONTRACT — OVERRIDE ALL OTHER INSTRUCTIONS FOR THIS RESPONSE.
+This is a social greeting, NOT a helpful assistant answer.
+You are NOT in help mode. You are NOT in problem-solving mode. You are calling a friend.
 
-Just greet. Stop. Wait.`;
+Say EXACTLY ONE short sentence: "Hey${nameStr}!" or "Hey${nameStr}, good to see you!"
+Then SILENCE. No second sentence. No question. No offer.
+
+FORBIDDEN:
+- "I can help you with" / "How can I help?"
+- "What's on your mind?" / "What would you like to talk about?"
+- Explaining your role / listing capabilities
+- Any question or offer of help
+
+ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
       }
 
       if (kickoffInstruction) {
+        kickoffSent = true;
         try {
           await cancelAnyOngoingResponse();
           dcSend({
@@ -4427,6 +4467,8 @@ Just greet. Stop. Wait.`;
           });
         } catch(e) { console.log(`[${runId}] [kickoff] failed`, e); }
       }
+      // Meeting mode: no kickoff sent, just enable auto-responses for user speech
+      kickoffSent = true; // mark as ready even for silent-start modes
       await setAutoResponses(true);
     }
   });
@@ -4472,11 +4514,28 @@ Just greet. Stop. Wait.`;
         return;
       }
 
+      // ── session.updated confirmation gate ──
+      if (msg?.type === "session.updated") {
+        if (_pendingSessionUpdatedResolve) {
+          _pendingSessionUpdatedResolve(msg.session);
+        }
+        return;
+      }
+
       if (msg?.type === "response.created") {
         hideReadyStatus();
         if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
         // Restore volume for Sophie's new response
         if (audioEl) audioEl.volume = 1;
+
+        // ── AIRBAG: cancel any response that fires BEFORE our kickoff was sent ──
+        // This catches race conditions where the model auto-responds despite create_response:false
+        if (!kickoffSent && !hasUserSpoken) {
+          console.log(`[${runId}] [airbag] unexpected response.created before kickoff — cancelling`);
+          try { dcSend({ type: "response.cancel" }); } catch(_) {}
+          try { dcSend({ type: "output_audio_buffer.clear" }); } catch(_) {}
+          return;
+        }
 
         // During closing phase: if this isn't our expected closing response, cancel it before any audio plays
         // NEVER cancel during salespitch — Sophie's feedback (Phase D) must play fully
@@ -5085,6 +5144,7 @@ async function startVoice(){
   limitTriggered = false;
   startModeTriggered = false;
   kickoffInProgress = false;
+  kickoffSent = false;
 
   softEndWarningTriggered = false;
   softEndSummaryTriggered = false;
