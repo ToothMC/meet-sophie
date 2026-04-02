@@ -586,3 +586,98 @@ export async function getAirportFlights(airportIata, direction = 'arr') {
     return `${label} für ${normalized} konnten nicht abgerufen werden.`;
   }
 }
+
+// ── Grounded Search: Gemini 2.5 Flash + google_search (Search Isolation) ──
+// Architecture Rule #1: Gemini darf nie direkt an den User sprechen.
+// Returns structured search_result — kein answer-Feld.
+
+export async function groundedSearch(query) {
+  if (!query) return { facts: [], sources: [], confidence: 0, freshness_required: true, grounding_detected: false };
+
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  if (!apiKey) {
+    console.error('[tools] grounded_search: GEMINI_API_KEY / GOOGLE_AI_API_KEY not set');
+    return { facts: [], sources: [], confidence: 0, freshness_required: true, grounding_detected: false };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Recherchiere die folgende Frage. Antworte NUR als JSON-Objekt ohne Markdown:\n{\n  "facts": ["Fakt 1", "Fakt 2"],\n  "confidence": 0.85\n}\n\nFrage: ${query}`
+            }]
+          }],
+          tools: [{ google_search: {} }]
+        })
+      }
+    );
+
+    clearTimeout(timeout);
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error(`[tools] grounded_search Gemini HTTP ${geminiRes.status}:`, errText);
+      return { facts: [], sources: [], confidence: 0, freshness_required: true, grounding_detected: false };
+    }
+
+    const geminiData = await geminiRes.json();
+
+    // parts[0].text is a STRING, not an object
+    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const chunks = geminiData?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+
+    // Parse JSON from text — Gemini may wrap in markdown fences
+    let parsed = { facts: [], confidence: 0.5 };
+    try {
+      const clean = rawText
+        .replace(/```json\s*/gi, '')
+        .replace(/```/g, '')
+        .trim();
+      parsed = JSON.parse(clean);
+    } catch {
+      // Fallback: treat entire text as a single fact
+      if (rawText) parsed.facts = [rawText.slice(0, 400)];
+    }
+
+    // Extract sources from groundingChunks — deduplicated
+    const seenUrls = new Set();
+    const sources = chunks
+      .filter(c => c?.web?.uri)
+      .reduce((acc, c) => {
+        if (!seenUrls.has(c.web.uri)) {
+          seenUrls.add(c.web.uri);
+          acc.push({ title: c.web.title ?? 'Quelle', url: c.web.uri });
+        }
+        return acc;
+      }, []);
+
+    // Normalized search_result — no answer field
+    return {
+      facts: (parsed.facts ?? []).slice(0, 6),
+      sources,
+      confidence: parsed.confidence ?? 0.7,
+      freshness_required: true,
+      grounding_detected: chunks.length > 0,
+      retrieved_at: new Date().toISOString()
+    };
+
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      console.error('[tools] grounded_search timeout 8s');
+    } else {
+      console.error('[tools] grounded_search error:', err?.message);
+    }
+    return { facts: [], sources: [], confidence: 0, freshness_required: true, grounding_detected: false };
+  }
+}

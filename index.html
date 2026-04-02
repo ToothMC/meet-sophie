@@ -1386,6 +1386,24 @@
       width:9px;height:9px;max-width:9px;max-height:9px;
       opacity:.5;
     }
+    .chat-citation-bar{
+      display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;
+      border-radius:8px;background:rgba(142,178,255,.06);border:1px solid rgba(142,178,255,.12);
+      flex-wrap:wrap;
+    }
+    .chat-citation-label{
+      font-size:9px;color:rgba(180,210,255,.45);letter-spacing:.4px;text-transform:uppercase;
+      font-weight:600;flex-shrink:0;
+    }
+    .chat-citation-link{
+      font-size:10px;color:rgba(180,210,255,.55);text-decoration:none;
+      padding:2px 6px;border-radius:4px;background:rgba(142,178,255,.08);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;
+      transition:color .15s,background .15s;
+    }
+    .chat-citation-link:hover{
+      color:rgba(200,220,255,.85);background:rgba(142,178,255,.15);
+    }
     .chat-typing{
       display:none!important;
     }
@@ -3320,7 +3338,7 @@
       openai: "GPT", anthropic: "Claude", google: "Gemini", mistral: "Mistral",
     };
 
-    function appendBubble(role, text, providers, secondOpinion, files) {
+    function appendBubble(role, text, providers, secondOpinion, files, searchSources) {
       const wrap   = document.createElement("div");
       wrap.className = `chat-msg ${role}`;
       if (role === "sophie" && secondOpinion) wrap.classList.add("verified");
@@ -3390,6 +3408,26 @@
         conf.textContent = `· Confidence ${Math.round((secondOpinion.confidence || 0) * 100)}%`;
         badge.appendChild(conf);
         wrap.appendChild(badge);
+      }
+
+      // Show citation bar for grounded search sources
+      if (role === "sophie" && searchSources && searchSources.length > 0) {
+        const bar = document.createElement("div");
+        bar.className = "chat-citation-bar";
+        const label = document.createElement("span");
+        label.className = "chat-citation-label";
+        label.textContent = "Quellen";
+        bar.appendChild(label);
+        for (const src of searchSources.slice(0, 4)) {
+          const a = document.createElement("a");
+          a.className = "chat-citation-link";
+          a.href = src.url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = src.title || new URL(src.url).hostname;
+          bar.appendChild(a);
+        }
+        wrap.appendChild(bar);
       }
 
       messagesEl.appendChild(wrap);
@@ -3914,6 +3952,7 @@
         const detectedMode   = data.detected_mode || null;
         const aiProvider     = data.provider ? [data.provider] : [];
         const secondOpinion  = data.second_opinion || null;
+        const searchSources  = data.search_sources || null;
         turnCount++;
 
         // Update token counter
@@ -3928,7 +3967,7 @@
 
         if (voiceConfirmed) {
           history.push({ role: "assistant", content: reply });
-          appendBubble("sophie", reply, aiProvider, secondOpinion);
+          appendBubble("sophie", reply, aiProvider, secondOpinion, null, searchSources);
           saveChatState();
           goToVoiceFromChat();
           return;
@@ -3941,7 +3980,7 @@
         }
 
         history.push({ role: "assistant", content: reply });
-        appendBubble("sophie", reply, aiProvider, secondOpinion);
+        appendBubble("sophie", reply, aiProvider, secondOpinion, null, searchSources);
         maybeShowActionBar();
 
         // ── Import Hint: show settings link ──
@@ -4028,17 +4067,18 @@
             const retryVoiceOffer     = !!retryData.voice_offer;
             const retryVoiceConfirmed = !!retryData.voice_confirmed;
             const retryProvider       = retryData.provider ? [retryData.provider] : [];
+            const retrySearchSources  = retryData.search_sources || null;
             turnCount++;
             if (retryVoiceConfirmed) {
               history.push({ role: "assistant", content: retryReply });
-              appendBubble("sophie", retryReply, retryProvider);
+              appendBubble("sophie", retryReply, retryProvider, null, null, retrySearchSources);
               saveChatState();
               goToVoiceFromChat();
               return;
             }
             chatState = retryVoiceOffer ? "voice_offer_pending" : "chat_active";
             history.push({ role: "assistant", content: retryReply });
-            appendBubble("sophie", retryReply, retryProvider);
+            appendBubble("sophie", retryReply, retryProvider, null, null, retrySearchSources);
             maybeActivateVoiceBtn(retryVoiceOffer);
             saveChatState();
             // AUTH NUDGE DISABLED for voice conversion testing
