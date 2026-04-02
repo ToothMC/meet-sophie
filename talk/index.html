@@ -1857,6 +1857,7 @@ const _i18n = {
   end:                { en: "End conversation",              de: "Gespräch beenden",                  fr: "Terminer la conversation" },
   start_brainstorm:   { en: "Start Brainstorming",          de: "Brainstorming starten",              fr: "Démarrer le brainstorming" },
   end_brainstorm:     { en: "End Brainstorming",            de: "Brainstorming beenden",              fr: "Terminer le brainstorming" },
+  end_salespitch:     { en: "End Sales Pitch",              de: "Sales Pitch beenden",                fr: "Terminer le Sales Pitch" },
   connecting:         { en: "Connecting …",                  de: "Verbinde …",                        fr: "Connexion …" },
   sophie_coming:      { en: "Sophie is coming …",            de: "Sophie kommt …",                    fr: "Sophie arrive …" },
   sophie_listening:   { en: "Sophie is listening.",           de: "Sophie hört zu.",                   fr: "Sophie écoute." },
@@ -5193,7 +5194,7 @@ async function startVoice(){
 
     endBtn.disabled = false;
     startBtn.disabled = false;
-    startBtn.textContent = selectedVoiceMode === "brainstorm" ? t("end_brainstorm") : t("end");
+    startBtn.textContent = selectedVoiceMode === "brainstorm" ? t("end_brainstorm") : selectedVoiceMode === "salespitch" ? t("end_salespitch") : t("end");
     startBtn.onclick = () => stopVoice(false);
     // Brainstorm: yellow end button
     if (selectedVoiceMode === "brainstorm") {
