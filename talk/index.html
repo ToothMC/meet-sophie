@@ -5201,6 +5201,11 @@ async function startVoice(){
       startBtn.style.background = "linear-gradient(180deg, #f5c842 0%, #d4a017 100%)";
       startBtn.style.color = "#1a1200";
     }
+    // Sales Pitch: red end button
+    if (selectedVoiceMode === "salespitch") {
+      startBtn.style.background = "linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)";
+      startBtn.style.color = "#fff";
+    }
     pauseBtn.innerHTML = '<span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">' + t("pause") + '</span>';
     pauseBtn.classList.remove("is-paused");
     pauseBtn.style.display = "";
