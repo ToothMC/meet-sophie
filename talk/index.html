@@ -1533,6 +1533,15 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
       btn.classList.add("active");
       localStorage.setItem("sophie_session_mode", mode);
     }
+    // Sales Pitch & Brainstorm: report is mandatory — hide toggle, force on
+    const reportLabel = document.getElementById("reportToggleLabel");
+    if (selectedVoiceMode === "salespitch" || selectedVoiceMode === "brainstorm") {
+      if (reportToggle) reportToggle.checked = true;
+      if (sessionBarReportToggle) sessionBarReportToggle.checked = true;
+      if (reportLabel) reportLabel.style.display = "none";
+    } else {
+      if (reportLabel) reportLabel.style.display = "";
+    }
   });
 });
 
@@ -1570,6 +1579,13 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
+  }
+  // Hide report toggle for modes where report is mandatory
+  if (selectedVoiceMode === "salespitch" || selectedVoiceMode === "brainstorm") {
+    const reportLabel = document.getElementById("reportToggleLabel");
+    if (reportToggle) reportToggle.checked = true;
+    if (sessionBarReportToggle) sessionBarReportToggle.checked = true;
+    if (reportLabel) reportLabel.style.display = "none";
   }
 })();
 const statusEl = document.getElementById("status");
