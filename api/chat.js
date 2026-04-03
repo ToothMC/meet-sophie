@@ -1309,6 +1309,7 @@ async function handleEnd(req, res) {
           transcript,
           session_started_at: null,
           session_ended_at: new Date().toISOString(),
+          chat_session_id: session_id,
         }),
       });
     } catch (e) {

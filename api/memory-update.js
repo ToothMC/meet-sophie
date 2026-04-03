@@ -4,6 +4,8 @@ import { getAdapter } from "../lib/ai/adapters/index.js";
 import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
+import { mapPlanToTier } from "../lib/sophie-core.js";
+import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
@@ -1087,22 +1089,23 @@ export default async function handler(req, res) {
     const userOnlyText = userOnlyJoined.toLowerCase();
 
     // ---- Load existing rows (optional) ----
-    const { data: rel, error: relSelErr } = await supabase
-      .from("user_relationship")
-      .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const [
+      { data: rel, error: relSelErr },
+      { data: prof, error: profSelErr },
+      { data: sub },
+      { data: existingLtm },
+    ] = await Promise.all([
+      supabase.from("user_relationship").select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_profile").select("first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode, memory_file").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
+      supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
+    ]);
     if (relSelErr) console.error("user_relationship select failed:", relSelErr);
-
-    const { data: prof, error: profSelErr } = await supabase
-      .from("user_profile")
-      .select(
-        "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes," +
-          "age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode, memory_file"
-      )
-      .eq("user_id", user.id)
-      .maybeSingle();
     if (profSelErr) console.error("user_profile select failed:", profSelErr);
+
+    const isPremium = !!(sub?.is_active || sub?.status === "active");
+    const tier = mapPlanToTier(sub?.plan, isPremium);
+    const memConfig = TIER_MEMORY_CONFIG[tier] || TIER_MEMORY_CONFIG.free;
 
     const existing = {
       first_name: String(prof?.first_name || "").trim(),
@@ -1263,12 +1266,21 @@ export default async function handler(req, res) {
       "Assistant statements are untrusted for durable USER facts. " +
       "PROFILE: Only store durable facts/preferences explicitly stated BY THE USER in USER messages. " +
       "Never guess or infer PROFILE fields. If unsure, return empty strings/empty arrays/null. " +
-      "Do NOT copy the assistant persona (e.g., interior designer) into the user's profile. " +
+      "Do NOT copy the assistant persona (e.g., interior designer) into the user’s profile. " +
       "RELATIONSHIP: These fields are Sophie’s conservative best-guess assessment based on the interaction. " +
       "You MAY infer them from the transcript (tone, openness, recurring emotional patterns), even if the user did not state them explicitly. " +
       "Do not hallucinate specific life facts; keep it general and grounded in the transcript. " +
       "Always provide a reasonable best-guess for tone_baseline and openness_level; use neutral/low if uncertain. " +
-      "emotional_patterns should be short, concrete patterns (or empty if nothing is evident).";
+      "emotional_patterns should be short, concrete patterns (or empty if nothing is evident). " +
+      "STRUCTURED_MEMORY: Extract durable structured facts for long-term memory. " +
+      "recurring_topics: Topics the user cares about across sessions — MERGE with existing, don’t replace. " +
+      "long_term_goals: Goals explicitly stated by the user. " +
+      "communication_style: How the user communicates (brief/verbose, formal/casual). " +
+      "personal_patterns: Behavioral patterns observed (e.g. ‘tends to overthink decisions’). " +
+      "significant_developments: Major life events worth remembering long-term. " +
+      "session_summary: 1-2 sentence summary of THIS session. " +
+      "open_topics/pending_decisions/next_steps: Unresolved items from this session. " +
+      "importance_score: 0.0–1.0, how significant this session was (casual chat=0.2, major decision=0.9).";
 
     const userMsg = `
 CURRENT structured profile (existing DB values):
@@ -1289,6 +1301,13 @@ tone_baseline: ${existing.tone_baseline}
 openness_level: ${existing.openness_level}
 emotional_patterns: ${existing.emotional_patterns}
 last_interaction_summary: ${existing.last_interaction_summary}
+
+CURRENT structured long-term memory:
+communication_style: ${existingLtm?.communication_style || ""}
+recurring_topics: ${(existingLtm?.recurring_topics || []).join(", ")}
+long_term_goals: ${(existingLtm?.long_term_goals || []).join(", ")}
+personal_patterns: ${(existingLtm?.personal_patterns || []).join(", ")}
+significant_developments: ${(existingLtm?.significant_developments || []).join(", ")}
 
 NEW transcript (includes USER + ASSISTANT; remember: only USER messages count):
 ${transcriptText}
@@ -1349,7 +1368,29 @@ ${transcriptText}
           required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
       },
-      required: ["profile", "relationship", "session"],
+        structured_memory: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            communication_style: { type: "string" },
+            recurring_topics: { type: "array", items: { type: "string" } },
+            long_term_goals: { type: "array", items: { type: "string" } },
+            personal_patterns: { type: "array", items: { type: "string" } },
+            emotional_tones: { type: "array", items: { type: "string" } },
+            typical_conflicts: { type: "array", items: { type: "string" } },
+            significant_developments: { type: "array", items: { type: "string" } },
+            relationship_milestones: { type: "array", items: { type: "string" } },
+            session_summary: { type: "string" },
+            open_topics: { type: "array", items: { type: "string" } },
+            pending_decisions: { type: "array", items: { type: "string" } },
+            next_steps: { type: "array", items: { type: "string" } },
+            importance_score: { type: "number" },
+          },
+          required: ["session_summary", "open_topics", "pending_decisions", "next_steps", "importance_score",
+                     "communication_style", "recurring_topics", "long_term_goals"],
+        },
+      },
+      required: ["profile", "relationship", "session", "structured_memory"],
     };
 
     // Start memory file update in parallel (free-form personal dossier)
@@ -1652,6 +1693,65 @@ ${transcriptText}
 
     const { error: relUpErr } = await supabase.from("user_relationship").upsert(relRow, { onConflict: "user_id" });
     if (relUpErr) console.error("user_relationship upsert failed:", relUpErr);
+
+    // ---- Write structured long-term memory (if paid tier) ----
+    const sm = parsed.structured_memory || {};
+    if (memConfig.depth) {
+      try {
+        const ltmRow = {
+          user_id: user.id,
+          depth: memConfig.depth,
+          communication_style: clean(sm.communication_style) || existingLtm?.communication_style || null,
+          work_preferences: mergeJsonb(existingLtm?.work_preferences, null),
+          recurring_topics: mergeArrays(existingLtm?.recurring_topics, sm.recurring_topics, 20),
+          long_term_goals: mergeArrays(existingLtm?.long_term_goals, sm.long_term_goals, 15),
+          updated_at: nowIso,
+          last_condensed_at: nowIso,
+        };
+        // Medium+ fields
+        if (memConfig.depth === "medium" || memConfig.depth === "deep") {
+          ltmRow.personal_patterns = mergeArrays(existingLtm?.personal_patterns, sm.personal_patterns, 15);
+          ltmRow.emotional_tones = mergeArrays(existingLtm?.emotional_tones, sm.emotional_tones, 10);
+          ltmRow.typical_conflicts = mergeArrays(existingLtm?.typical_conflicts, sm.typical_conflicts, 10);
+        }
+        // Deep-only fields
+        if (memConfig.depth === "deep") {
+          ltmRow.significant_developments = mergeArrays(existingLtm?.significant_developments, sm.significant_developments, 20);
+          ltmRow.relationship_milestones = mergeArrays(existingLtm?.relationship_milestones, sm.relationship_milestones, 10);
+        }
+        const filteredRow = filterLtmByDepth(memConfig.depth, ltmRow);
+        const { error: ltmErr } = await supabase.from("sophie_long_term_memory").upsert(filteredRow, { onConflict: "user_id" });
+        if (ltmErr) console.error("[memory-update] sophie_long_term_memory upsert failed:", ltmErr);
+        else console.log("[memory-update] LTM updated for", user.id.slice(0, 8), "depth:", memConfig.depth);
+      } catch (e) {
+        console.error("[memory-update] LTM write error:", e?.message);
+      }
+    }
+
+    // ---- Write short-term memory (session summary with TTL) ----
+    const chatSessionId = body.chat_session_id || null;
+    if (memConfig.depth && chatSessionId) {
+      try {
+        const expiresAt = new Date(Date.now() + memConfig.ttlDays * 86400000).toISOString();
+        const modeMap = { assistant: "assistant", friend: "friend", partner: "partner" };
+        const stmRow = {
+          user_id: user.id,
+          conversation_id: chatSessionId,
+          mode: modeMap[tier] || "assistant",
+          summary: clean(sm.session_summary || ss.short_summary).slice(0, 2000),
+          open_topics: (sm.open_topics || []).map(s => String(s).slice(0, 200)).slice(0, 10),
+          pending_decisions: (sm.pending_decisions || []).map(s => String(s).slice(0, 200)).slice(0, 10),
+          next_steps: (sm.next_steps || []).map(s => String(s).slice(0, 200)).slice(0, 10),
+          importance_score: Math.max(0, Math.min(1, Number(sm.importance_score) || 0.5)),
+          expires_at: expiresAt,
+        };
+        const { error: stmErr } = await supabase.from("sophie_short_term_memory").insert(stmRow);
+        if (stmErr) console.error("[memory-update] sophie_short_term_memory insert failed:", stmErr);
+        else console.log("[memory-update] STM written for session", chatSessionId.slice(0, 8));
+      } catch (e) {
+        console.error("[memory-update] STM write error:", e?.message);
+      }
+    }
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
 

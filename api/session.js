@@ -349,6 +349,30 @@ export default async function handler(req, res) {
     }
 
     // ---------------------------
+    // Structured memory (long-term + short-term + reports)
+    // ---------------------------
+    let structuredMemory = null;
+    let recentMemories = [];
+    let recentReports = [];
+    try {
+      const [ltmRes, stmRes, reportsRes] = await Promise.all([
+        supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
+        supabase.from("sophie_short_term_memory").select("summary,open_topics,pending_decisions,next_steps,importance_score,mode,created_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("importance_score", { ascending: false }).limit(5),
+        supabase.from("conversation_outputs").select("title,report_text,session_mode,created_at").eq("user_id", user.id).not("report_text", "is", null).order("created_at", { ascending: false }).limit(3),
+      ]);
+      structuredMemory = ltmRes?.data || null;
+      recentMemories = stmRes?.data || [];
+      recentReports = (reportsRes?.data || []).map(r => ({
+        title: r.title || "Report",
+        summary: (r.report_text || "").slice(0, 500),
+        mode: r.session_mode || null,
+        date: r.created_at,
+      }));
+    } catch (e) {
+      console.warn("Structured memory lookup crashed:", e?.message || e);
+    }
+
+    // ---------------------------
     // Backward compat: SOPHIE_PREFS in notes (optional, but WITHOUT language fallback)
     // ---------------------------
     const prefsLine =
@@ -650,6 +674,9 @@ export default async function handler(req, res) {
         sessions: recentSessions,
         relationship: rel,
       },
+      structuredMemory,
+      recentMemories,
+      recentReports,
       channel: "voice",
     });
 
