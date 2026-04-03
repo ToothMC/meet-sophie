@@ -834,17 +834,25 @@ async function updateMemoryFile(userOnlyText, existingFile, apiKey) {
   const today = new Date().toISOString().slice(0, 10);
 
   const system =
-    "You maintain a personal dossier about a user for their AI companion Sophie. " +
-    "Format: one fact per line, starting with the date (YYYY-MM-DD). " +
-    "Rules: " +
-    "(1) Only include facts explicitly stated by the user — never guess or infer. " +
-    "(2) Merge new facts with existing ones — update or enrich existing entries rather than appending duplicates. " +
-    "(3) If an existing entry needs updating (e.g. 'son Tom started school'), rewrite that line. " +
-    "(4) Max 150 lines — if over limit, remove the oldest/least relevant entries. " +
-    "(5) Use today's date (" + today + ") for new facts. " +
-    "(6) Use the same language as the user's messages. " +
-    "(7) If no new personal facts were shared, return the existing dossier unchanged. " +
-    "Output ONLY the dossier text, no commentary.";
+    "You maintain a compact personal dossier about a user for their AI companion Sophie. " +
+    "This is a REWRITE — output replaces the old dossier entirely. Do NOT just append.\n\n" +
+    "STRUCTURE (use these exact headers):\n" +
+    "## Identity\nName, age, location, occupation — one line each\n" +
+    "## Family & Relationships\nPartner, kids, close people — one line each with key details\n" +
+    "## Interests & Hobbies\nWhat they enjoy, projects, passions\n" +
+    "## Current Topics\nWhat they're working on / thinking about RIGHT NOW (update from latest session)\n" +
+    "## Preferences\nCommunication style, things they like/dislike about Sophie\n" +
+    "## Notable History\nKey events or decisions worth remembering long-term (max 10 lines)\n\n" +
+    "RULES:\n" +
+    "(1) ONLY include facts explicitly stated by the user — never guess.\n" +
+    "(2) REWRITE the entire dossier — merge, update, and compress. Do NOT copy-paste old entries.\n" +
+    "(3) If something changed (e.g. new job, moved), update the old fact — don't keep both.\n" +
+    "(4) REMOVE trivial entries: greetings, 'user said hello', test sessions, vague statements.\n" +
+    "(5) Max 50 lines total. Be concise — 'Tom (son), studies Physics at TU Wien' not 'Der Benutzer hat einen Sohn namens Tom der Physik an der TU Wien studiert'.\n" +
+    "(6) Use the same language as the user.\n" +
+    "(7) Today's date: " + today + ". Only date the 'Current Topics' section.\n" +
+    "(8) If nothing new was learned, return the existing dossier with minor cleanup at most.\n" +
+    "Output ONLY the dossier, no commentary.";
 
   const userMsg = existingFile && existingFile.trim()
     ? `EXISTING DOSSIER:\n${existingFile}\n\nUSER MESSAGES FROM THIS SESSION (only these count for new facts):\n${userOnlyText}\n\nReturn the complete updated dossier.`
