@@ -1093,7 +1093,7 @@
         border-radius:22px;
         padding:10px 16px;
         font-size:16px;
-        color-scheme:dark;
+        color-scheme:light;
       }
       .chat-card.foreground .chat-footer textarea::placeholder{
         color:rgba(0,0,0,.40);
@@ -1488,30 +1488,51 @@
       color:rgba(255,210,160,.8);
     }
     .chat-compare-result{
-      margin:0 4px;padding:6px 8px;border-radius:10px;
-      background:rgba(142,178,255,.06);
-      border:1px solid rgba(142,178,255,.12);
-      font-size:10px;line-height:1.4;color:rgba(255,255,255,.6);
+      margin:0 4px;padding:10px 12px;border-radius:12px;
+      background:rgba(142,178,255,.1);
+      border:1px solid rgba(142,178,255,.18);
+      font-size:13px;line-height:1.5;color:rgba(255,255,255,.85);
     }
     .chat-compare-result .compare-header{
-      font-weight:600;color:rgba(200,216,255,.8);margin-bottom:4px;
-      display:flex;align-items:center;gap:4px;
+      font-weight:600;color:rgba(200,216,255,.95);margin-bottom:6px;
+      display:flex;align-items:center;gap:6px;font-size:14px;
     }
     .chat-compare-result .compare-provider{
-      display:flex;align-items:center;gap:3px;margin-top:3px;
-      padding:3px 0;border-top:1px solid rgba(255,255,255,.05);
+      display:flex;align-items:flex-start;gap:6px;margin-top:6px;
+      padding:6px 0;border-top:1px solid rgba(255,255,255,.1);
     }
     .chat-compare-result .compare-provider img{
-      width:10px;height:10px;opacity:.5;
+      width:14px;height:14px;opacity:.7;margin-top:2px;flex-shrink:0;
     }
     .chat-compare-result .compare-provider .provider-label{
-      font-weight:600;min-width:45px;
+      font-weight:600;min-width:50px;flex-shrink:0;color:rgba(200,216,255,.9);
     }
     .chat-compare-result .compare-diff{
-      color:rgba(255,255,255,.4);font-style:italic;
+      color:rgba(255,255,255,.7);font-style:italic;word-break:break-word;
     }
     .chat-compare-cost{
-      margin-top:4px;font-size:8px;color:rgba(255,255,255,.25);
+      margin-top:6px;font-size:11px;color:rgba(255,255,255,.5);
+    }
+    /* --- Compare/Challenge: foreground (light) mode --- */
+    .chat-card.foreground .chat-compare-result{
+      background:rgba(0,0,0,.04);
+      border-color:rgba(0,0,0,.08);
+      color:#1a1a1a;
+    }
+    .chat-card.foreground .chat-compare-result .compare-header{
+      color:#1a1a1a;
+    }
+    .chat-card.foreground .chat-compare-result .compare-provider{
+      border-top-color:rgba(0,0,0,.08);
+    }
+    .chat-card.foreground .chat-compare-result .compare-provider .provider-label{
+      color:#1a1a1a;
+    }
+    .chat-card.foreground .chat-compare-result .compare-diff{
+      color:#333;
+    }
+    .chat-card.foreground .chat-compare-cost{
+      color:rgba(0,0,0,.45);
     }
     .chat-footer{
       display:flex;align-items:center;gap:7px;
@@ -4218,11 +4239,22 @@
         const wrap = document.createElement("div");
         wrap.className = "chat-msg sophie";
         const result = document.createElement("div");
-        result.className = "chat-compare-result";
+        result.className = "chat-msg-bubble chat-compare-result";
+
+        // Detect light mode
+        const isLight = chatCard.classList.contains("foreground");
+        const txtColor = isLight ? "#1a1a1a" : "rgba(255,255,255,.85)";
+        const subColor = isLight ? "#333" : "rgba(255,255,255,.7)";
+        const hdrColor = isLight ? "#1a1a1a" : "rgba(200,216,255,.95)";
+        const borderColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.1)";
+
+        result.style.color = txtColor;
+        if (isLight) { result.style.background = "rgba(0,0,0,.04)"; result.style.borderColor = "rgba(0,0,0,.08)"; }
 
         // Header: fastest
         const hdr = document.createElement("div");
         hdr.className = "compare-header";
+        hdr.style.color = hdrColor;
         const fIcon = PROVIDER_ICONS[data.fastest.provider];
         if (fIcon) { const img = document.createElement("img"); img.src = fIcon; img.style.cssText = "width:12px;height:12px;"; hdr.appendChild(img); }
         hdr.appendChild(document.createTextNode(`${PROVIDER_LABELS[data.fastest.provider] || data.fastest.provider} — ${data.fastest.latencyMs}ms`));
@@ -4230,23 +4262,26 @@
 
         // Fastest answer
         const fBubble = document.createElement("div");
-        fBubble.style.cssText = "margin:4px 0;color:rgba(255,255,255,.75);";
-        fBubble.textContent = data.fastest.content.slice(0, 300) + (data.fastest.content.length > 300 ? "…" : "");
+        fBubble.style.cssText = `margin:6px 0 8px;font-size:14px;line-height:1.5;word-break:break-word;color:${txtColor}`;
+        fBubble.textContent = data.fastest.content.slice(0, 600) + (data.fastest.content.length > 600 ? "…" : "");
         result.appendChild(fBubble);
 
         // Others: deviations
         for (const other of (data.others || [])) {
           const row = document.createElement("div");
           row.className = "compare-provider";
+          row.style.borderTopColor = borderColor;
           const oIcon = PROVIDER_ICONS[other.provider];
           if (oIcon) { const img = document.createElement("img"); img.src = oIcon; img.alt = other.provider; row.appendChild(img); }
           const label = document.createElement("span");
           label.className = "provider-label";
+          label.style.color = hdrColor;
           label.textContent = PROVIDER_LABELS[other.provider] || other.provider;
           row.appendChild(label);
           const diff = document.createElement("span");
           diff.className = "compare-diff";
-          diff.textContent = other.content.slice(0, 150) + (other.content.length > 150 ? "…" : "");
+          diff.style.color = subColor;
+          diff.textContent = other.content.slice(0, 300) + (other.content.length > 300 ? "…" : "");
           row.appendChild(diff);
           result.appendChild(row);
         }
@@ -4254,6 +4289,7 @@
         // Cost
         const cost = document.createElement("div");
         cost.className = "chat-compare-cost";
+        cost.style.color = isLight ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.5)";
         cost.textContent = `${data.providerCount} Provider · $${data.totalCost.toFixed(4)}`;
         result.appendChild(cost);
 
@@ -4320,10 +4356,12 @@
         const meta = document.createElement("div");
         meta.className = "chat-msg sophie";
         const metaResult = document.createElement("div");
-        metaResult.className = "chat-compare-result";
+        metaResult.className = "chat-msg-bubble chat-compare-result";
+        const cIsLight = chatCard.classList.contains("foreground");
+        if (cIsLight) { metaResult.style.cssText = "background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08);color:#1a1a1a"; }
         metaResult.innerHTML =
-          `<div class="compare-header">🏆 Challenge — ${data.rounds} Runden</div>` +
-          `<div class="chat-compare-cost">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
+          `<div class="compare-header" style="color:${cIsLight ? '#1a1a1a' : 'rgba(200,216,255,.95)'}">🏆 Challenge — ${data.rounds} Runden</div>` +
+          `<div class="chat-compare-cost" style="color:${cIsLight ? 'rgba(0,0,0,.45)' : 'rgba(255,255,255,.5)'}">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
         meta.appendChild(metaResult);
         messagesEl.appendChild(meta);
         messagesEl.scrollTop = messagesEl.scrollHeight;
