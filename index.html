@@ -4341,7 +4341,7 @@
         const meta = document.createElement("div");
         meta.className = "chat-msg sophie";
         const metaResult = document.createElement("div");
-        metaResult.className = "chat-compare-result";
+        metaResult.className = "chat-msg-bubble chat-compare-result";
         metaResult.innerHTML =
           `<div class="compare-header">🏆 Challenge — ${data.rounds} Runden</div>` +
           `<div class="chat-compare-cost">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
