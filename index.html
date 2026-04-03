@@ -4289,6 +4289,7 @@
         // Cost
         const cost = document.createElement("div");
         cost.className = "chat-compare-cost";
+        cost.style.color = isLight ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.5)";
         cost.textContent = `${data.providerCount} Provider · $${data.totalCost.toFixed(4)}`;
         result.appendChild(cost);
 
