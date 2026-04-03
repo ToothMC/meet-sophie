@@ -993,9 +993,9 @@
         top:0;
         transform:none;
         width:100%;
-        height:100dvh;
-        min-height:100dvh;
-        max-height:100dvh;
+        height:100%;
+        min-height:100vh;
+        max-height:100vh;
         border-radius:0;
         position:fixed;
         /* --- Helles Chat-Design mobile --- */
@@ -1071,11 +1071,12 @@
       }
       /* --- Footer: hell mit rotem Senden-Button --- */
       .chat-card.foreground .chat-footer{
+        position:sticky;
+        bottom:0;
         background:#ffffff;
         border-top:1px solid rgba(0,0,0,.08);
         padding:10px 12px;
         padding-bottom:max(12px, env(safe-area-inset-bottom, 8px));
-        flex-shrink:0;
       }
       @media (display-mode: standalone){
         .chat-card.foreground .chat-card-header{
@@ -3815,20 +3816,6 @@
         openChatForeground();
       }
     });
-
-    // Mobile keyboard: keep chat pinned to visible area
-    if (window.visualViewport) {
-      const chatEl = document.getElementById("sophieChat");
-      const update = () => {
-        if (!chatEl || !chatEl.classList.contains("foreground")) return;
-        if (window.innerWidth > 640) return;
-        const vv = window.visualViewport;
-        chatEl.style.top = vv.offsetTop + "px";
-        chatEl.style.height = vv.height + "px";
-      };
-      window.visualViewport.addEventListener("resize", update);
-      window.visualViewport.addEventListener("scroll", update);
-    }
 
     async function sendMessage() {
       if (sending || sessionEnded) return;
