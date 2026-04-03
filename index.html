@@ -993,9 +993,9 @@
         top:0;
         transform:none;
         width:100%;
-        height:100dvh;
+        height:100%;
         min-height:0;
-        max-height:100dvh;
+        max-height:100%;
         border-radius:0;
         position:fixed;
         /* --- Helles Chat-Design mobile --- */
@@ -3835,19 +3835,31 @@
       }
     });
 
-    // Mobile keyboard: resize chat to visible viewport
+    // Mobile keyboard: pin chat to visible viewport (top fixed, bottom follows keyboard)
     if (window.visualViewport) {
       const chatEl = document.getElementById("sophieChat");
-      const onViewportResize = () => {
+      const onViewportChange = () => {
         if (!chatEl || !chatEl.classList.contains("foreground")) return;
         if (window.innerWidth > 640) return;
-        const vh = window.visualViewport.height;
-        chatEl.style.height = vh + "px";
-        chatEl.style.maxHeight = vh + "px";
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        const vv = window.visualViewport;
+        chatEl.style.top = vv.offsetTop + "px";
+        chatEl.style.height = vv.height + "px";
+        chatEl.style.maxHeight = vv.height + "px";
+        requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
       };
-      window.visualViewport.addEventListener("resize", onViewportResize);
-      window.visualViewport.addEventListener("scroll", onViewportResize);
+      window.visualViewport.addEventListener("resize", onViewportChange);
+      window.visualViewport.addEventListener("scroll", onViewportChange);
+      // Reset when keyboard closes
+      inputEl.addEventListener("blur", () => {
+        if (window.innerWidth > 640) return;
+        setTimeout(() => {
+          if (chatEl && chatEl.classList.contains("foreground")) {
+            chatEl.style.top = "0";
+            chatEl.style.height = "";
+            chatEl.style.maxHeight = "";
+          }
+        }, 100);
+      });
     }
 
     async function sendMessage() {
