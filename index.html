@@ -1488,30 +1488,30 @@
       color:rgba(255,210,160,.8);
     }
     .chat-compare-result{
-      margin:0 4px;padding:10px 12px;border-radius:12px;
-      background:rgba(142,178,255,.1);
-      border:1px solid rgba(142,178,255,.18);
-      font-size:13px;line-height:1.5;color:rgba(255,255,255,.85);
+      margin:0 4px;padding:12px 14px;border-radius:12px;
+      background:rgba(142,178,255,.12);
+      border:1px solid rgba(142,178,255,.22);
+      font-size:14px;line-height:1.5;color:#fff;
     }
     .chat-compare-result .compare-header{
-      font-weight:600;color:rgba(200,216,255,.95);margin-bottom:6px;
-      display:flex;align-items:center;gap:6px;font-size:14px;
+      font-weight:700;color:#c8d8ff;margin-bottom:8px;
+      display:flex;align-items:center;gap:6px;font-size:15px;
     }
     .chat-compare-result .compare-provider{
-      display:flex;align-items:flex-start;gap:6px;margin-top:6px;
-      padding:6px 0;border-top:1px solid rgba(255,255,255,.1);
+      display:flex;align-items:flex-start;gap:8px;margin-top:8px;
+      padding:8px 0;border-top:1px solid rgba(255,255,255,.15);
     }
     .chat-compare-result .compare-provider img{
-      width:14px;height:14px;opacity:.7;margin-top:2px;flex-shrink:0;
+      width:16px;height:16px;opacity:.85;margin-top:2px;flex-shrink:0;
     }
     .chat-compare-result .compare-provider .provider-label{
-      font-weight:600;min-width:50px;flex-shrink:0;color:rgba(200,216,255,.9);
+      font-weight:700;min-width:55px;flex-shrink:0;color:#c8d8ff;
     }
     .chat-compare-result .compare-diff{
-      color:rgba(255,255,255,.7);font-style:italic;word-break:break-word;
+      color:rgba(255,255,255,.9);word-break:break-word;
     }
     .chat-compare-cost{
-      margin-top:6px;font-size:11px;color:rgba(255,255,255,.5);
+      margin-top:8px;font-size:12px;color:rgba(255,255,255,.6);
     }
     .chat-footer{
       display:flex;align-items:center;gap:7px;
@@ -4230,7 +4230,7 @@
 
         // Fastest answer
         const fBubble = document.createElement("div");
-        fBubble.style.cssText = "margin:6px 0 8px;color:rgba(255,255,255,.9);font-size:14px;line-height:1.5;word-break:break-word;";
+        fBubble.style.cssText = "margin:8px 0 10px;color:#fff;font-size:14px;line-height:1.5;word-break:break-word;";
         fBubble.textContent = data.fastest.content.slice(0, 600) + (data.fastest.content.length > 600 ? "…" : "");
         result.appendChild(fBubble);
 
