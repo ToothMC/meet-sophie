@@ -355,10 +355,11 @@ export default async function handler(req, res) {
     let recentMemories = [];
     let recentReports = [];
     try {
-      const [ltmRes, stmRes, reportsRes] = await Promise.all([
+      const [ltmRes, stmRes, reportsRes, recentMsgsRes] = await Promise.all([
         supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
         supabase.from("sophie_short_term_memory").select("summary,open_topics,pending_decisions,next_steps,importance_score,mode,created_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("importance_score", { ascending: false }).limit(5),
         supabase.from("conversation_outputs").select("title,short_summary,report_html,report_style,created_at,session_id,user_sessions!inner(user_id)").eq("user_sessions.user_id", user.id).not("report_html", "is", null).order("created_at", { ascending: false }).limit(3),
+        supabase.from("conversation_messages").select("text,role,created_at,session_id,user_sessions!inner(user_id,session_date)").eq("user_sessions.user_id", user.id).eq("role", "user").order("created_at", { ascending: false }).limit(30),
       ]);
       structuredMemory = ltmRes?.data || null;
       recentMemories = stmRes?.data || [];
@@ -677,6 +678,7 @@ export default async function handler(req, res) {
       structuredMemory,
       recentMemories,
       recentReports,
+      recentConversations: recentMsgsRes?.data || [],
       channel: "voice",
     });
 
