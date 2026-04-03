@@ -1236,26 +1236,23 @@
         border-color:rgba(90,77,184,.35);
         color:#4e40a8;
       }
-      /* --- Compare/Challenge results: dark text on white bg --- */
+      /* --- Compare/Challenge results: BLACK text on white bg --- */
+      .chat-card.foreground .chat-compare-result,
+      .chat-card.foreground .chat-compare-result *{
+        color:#000 !important;
+      }
       .chat-card.foreground .chat-compare-result{
-        background:rgba(0,0,0,.04);
-        border:1px solid rgba(0,0,0,.1);
-        color:#1a1a1a;
+        background:#f0f0f0 !important;
+        border:1px solid rgba(0,0,0,.15) !important;
       }
       .chat-card.foreground .chat-compare-result .compare-header{
-        color:#2a3a6b;
+        color:#1a1a6b !important;
       }
-      .chat-card.foreground .chat-compare-result .compare-provider{
-        border-top-color:rgba(0,0,0,.08);
-      }
-      .chat-card.foreground .chat-compare-result .compare-provider .provider-label{
-        color:#2a3a6b;
-      }
-      .chat-card.foreground .chat-compare-result .compare-diff{
-        color:#333;
+      .chat-card.foreground .chat-compare-result .provider-label{
+        color:#1a1a6b !important;
       }
       .chat-card.foreground .chat-compare-cost{
-        color:#777;
+        color:#555 !important;
       }
       /* --- Token counter --- */
       .chat-card.foreground #tokenCounter{
