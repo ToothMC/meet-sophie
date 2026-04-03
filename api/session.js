@@ -354,6 +354,7 @@ export default async function handler(req, res) {
     let structuredMemory = null;
     let recentMemories = [];
     let recentReports = [];
+    let recentConversations = [];
     try {
       const [ltmRes, stmRes, reportsRes, recentMsgsRes] = await Promise.all([
         supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
@@ -369,6 +370,7 @@ export default async function handler(req, res) {
         mode: r.report_style || null,
         date: r.created_at,
       }));
+      recentConversations = recentMsgsRes?.data || [];
     } catch (e) {
       console.warn("Structured memory lookup crashed:", e?.message || e);
     }
@@ -678,7 +680,7 @@ export default async function handler(req, res) {
       structuredMemory,
       recentMemories,
       recentReports,
-      recentConversations: recentMsgsRes?.data || [],
+      recentConversations,
       channel: "voice",
     });
 
