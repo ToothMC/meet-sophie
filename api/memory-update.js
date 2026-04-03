@@ -1,8 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import { getAdapter } from "../lib/ai/adapters/index.js";
 import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
+
+function hashIp(ip) {
+  if (!ip) return "none";
+  return createHash("sha256").update(ip).digest("hex").slice(0, 16);
+}
 
 function cleanText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -910,15 +916,36 @@ async function updateMemoryFile(userOnlyText, existingFile, apiKey) {
  */
 export default async function handler(req, res) {
   try {
-    // --- CORS / Preflight ---
-    const allowedOrigins = ["https://www.meet-sophie.com", "https://meet-sophie.com"];
-    const reqOrigin = (req.headers.origin || "").toString();
-    const corsOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin
-      : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : allowedOrigins[0];
-    res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+    // --- CORS / Preflight (hardened: fixed allowlist, no VERCEL_URL fallback) ---
+    const ALLOWED_ORIGINS = new Set([
+      "https://meet-sophie.com",
+      "https://www.meet-sophie.com",
+      "https://meet-sophie.ai",
+      "https://www.meet-sophie.ai",
+    ]);
+    const origin = (req.headers.origin || "").toString();
+
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+    }
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    if (req.method === "OPTIONS") return res.status(204).end();
+
+    if (req.method === "OPTIONS") {
+      if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+        // Security logging: rejected CORS origin
+        try {
+          const logSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+          await logSupabase.from("analytics_events").insert({
+            event_name: "security_cors_rejected_origin",
+            meta: { route: "/api/memory-update", origin: origin || "none", ip_hash: hashIp(req.headers["x-forwarded-for"] || req.socket?.remoteAddress) },
+          });
+        } catch { /* non-fatal */ }
+        return res.status(403).end();
+      }
+      return res.status(204).end();
+    }
 
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
