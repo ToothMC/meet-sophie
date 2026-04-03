@@ -994,8 +994,8 @@
         transform:none;
         width:100%;
         height:100%;
-        min-height:0;
-        max-height:100%;
+        min-height:100vh;
+        max-height:100vh;
         border-radius:0;
         position:fixed;
         /* --- Helles Chat-Design mobile --- */
@@ -1236,7 +1236,7 @@
         border-color:rgba(90,77,184,.35);
         color:#4e40a8;
       }
-      /* --- Compare/Challenge results: BLACK text on white bg --- */
+      /* --- Compare/Challenge results: dark text on mobile white bg --- */
       .chat-card.foreground .chat-compare-result,
       .chat-card.foreground .chat-compare-result *{
         color:#000 !important;
@@ -3835,33 +3835,6 @@
       }
     });
 
-    // Mobile keyboard: pin chat to visible viewport (top fixed, bottom follows keyboard)
-    if (window.visualViewport) {
-      const chatEl = document.getElementById("sophieChat");
-      const onViewportChange = () => {
-        if (!chatEl || !chatEl.classList.contains("foreground")) return;
-        if (window.innerWidth > 640) return;
-        const vv = window.visualViewport;
-        chatEl.style.top = vv.offsetTop + "px";
-        chatEl.style.height = vv.height + "px";
-        chatEl.style.maxHeight = vv.height + "px";
-        requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
-      };
-      window.visualViewport.addEventListener("resize", onViewportChange);
-      window.visualViewport.addEventListener("scroll", onViewportChange);
-      // Reset when keyboard closes
-      inputEl.addEventListener("blur", () => {
-        if (window.innerWidth > 640) return;
-        setTimeout(() => {
-          if (chatEl && chatEl.classList.contains("foreground")) {
-            chatEl.style.top = "0";
-            chatEl.style.height = "";
-            chatEl.style.maxHeight = "";
-          }
-        }, 100);
-      });
-    }
-
     async function sendMessage() {
       if (sending || sessionEnded) return;
       const text = inputEl.value.trim();
@@ -4275,7 +4248,6 @@
 
         // Fastest answer
         const fBubble = document.createElement("div");
-        fBubble.className = "compare-fastest-content";
         fBubble.style.cssText = "margin:8px 0 10px;font-size:14px;line-height:1.5;word-break:break-word;";
         fBubble.textContent = data.fastest.content.slice(0, 600) + (data.fastest.content.length > 600 ? "…" : "");
         result.appendChild(fBubble);
