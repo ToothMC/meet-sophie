@@ -4357,9 +4357,11 @@
         meta.className = "chat-msg sophie";
         const metaResult = document.createElement("div");
         metaResult.className = "chat-msg-bubble chat-compare-result";
+        const cIsLight = chatCard.classList.contains("foreground");
+        if (cIsLight) { metaResult.style.cssText = "background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08);color:#1a1a1a"; }
         metaResult.innerHTML =
-          `<div class="compare-header">🏆 Challenge — ${data.rounds} Runden</div>` +
-          `<div class="chat-compare-cost">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
+          `<div class="compare-header" style="color:${cIsLight ? '#1a1a1a' : 'rgba(200,216,255,.95)'}">🏆 Challenge — ${data.rounds} Runden</div>` +
+          `<div class="chat-compare-cost" style="color:${cIsLight ? 'rgba(0,0,0,.45)' : 'rgba(255,255,255,.5)'}">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
         meta.appendChild(metaResult);
         messagesEl.appendChild(meta);
         messagesEl.scrollTop = messagesEl.scrollHeight;
