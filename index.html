@@ -3817,6 +3817,20 @@
       }
     });
 
+    // Mobile keyboard: keep chat pinned to visible area
+    if (window.visualViewport) {
+      const chatEl = document.getElementById("sophieChat");
+      const update = () => {
+        if (!chatEl || !chatEl.classList.contains("foreground")) return;
+        if (window.innerWidth > 640) return;
+        const vv = window.visualViewport;
+        chatEl.style.top = vv.offsetTop + "px";
+        chatEl.style.height = vv.height + "px";
+      };
+      window.visualViewport.addEventListener("resize", update);
+      window.visualViewport.addEventListener("scroll", update);
+    }
+
     async function sendMessage() {
       if (sending || sessionEnded) return;
       const text = inputEl.value.trim();
