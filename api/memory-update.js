@@ -1367,7 +1367,6 @@ ${transcriptText}
           },
           required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
-      },
         structured_memory: {
           type: "object",
           additionalProperties: false,
