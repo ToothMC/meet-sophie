@@ -4242,7 +4242,7 @@
         result.className = "chat-msg-bubble chat-compare-result";
 
         // Detect light mode
-        const isLight = chatCard.classList.contains("foreground");
+        const isLight = document.getElementById("sophieChat")?.classList.contains("foreground");
         const txtColor = isLight ? "#1a1a1a" : "rgba(255,255,255,.85)";
         const subColor = isLight ? "#333" : "rgba(255,255,255,.7)";
         const hdrColor = isLight ? "#1a1a1a" : "rgba(200,216,255,.95)";
@@ -4298,6 +4298,7 @@
         messagesEl.scrollTop = messagesEl.scrollHeight;
       } catch (err) {
         hide(typingEl);
+        console.error("[compare] render error:", err, err?.message);
         appendBubble("sophie", "Vergleich fehlgeschlagen — versuch es nochmal.");
       } finally {
         sending = false;
@@ -4357,7 +4358,7 @@
         meta.className = "chat-msg sophie";
         const metaResult = document.createElement("div");
         metaResult.className = "chat-msg-bubble chat-compare-result";
-        const cIsLight = chatCard.classList.contains("foreground");
+        const cIsLight = document.getElementById("sophieChat")?.classList.contains("foreground");
         if (cIsLight) { metaResult.style.cssText = "background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08);color:#1a1a1a"; }
         metaResult.innerHTML =
           `<div class="compare-header" style="color:${cIsLight ? '#1a1a1a' : 'rgba(200,216,255,.95)'}">🏆 Challenge — ${data.rounds} Runden</div>` +
