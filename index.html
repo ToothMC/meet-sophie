@@ -1071,12 +1071,11 @@
       }
       /* --- Footer: hell mit rotem Senden-Button --- */
       .chat-card.foreground .chat-footer{
-        position:sticky;
-        bottom:0;
         background:#ffffff;
         border-top:1px solid rgba(0,0,0,.08);
         padding:10px 12px;
         padding-bottom:max(12px, env(safe-area-inset-bottom, 8px));
+        flex-shrink:0;
       }
       @media (display-mode: standalone){
         .chat-card.foreground .chat-card-header{
