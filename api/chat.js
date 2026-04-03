@@ -323,6 +323,7 @@ async function handleStart(req, res) {
       brainstorm_config: brainstormConfig || null,
       session_mode: sessionMode || null,
       language: preferredLanguage,
+      conversation_policy: conversationPolicy || null,
     })
     .select("id, turn_count, created_at")
     .single();
@@ -695,7 +696,7 @@ async function handleMessage(req, res) {
   // Load session (including session_mode + language for prompt rebuild)
   const { data: session, error: sessErr } = await supabase
     .from("chat_sessions")
-    .select("id, user_id, status, turn_count, brainstorm_config, session_mode, language, created_at")
+    .select("id, user_id, status, turn_count, brainstorm_config, session_mode, language, conversation_policy, created_at")
     .eq("id", session_id)
     .maybeSingle();
 
@@ -894,7 +895,7 @@ async function handleMessage(req, res) {
     sessionMode: session.session_mode || null,
     brainstormConfig: session.brainstorm_config || null,
     language: session.language || "en",
-    conversationPolicy: null, // only used at start for first-visit detection
+    conversationPolicy: session.conversation_policy || null,
   });
 
   const routerMessages = [
