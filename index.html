@@ -994,8 +994,8 @@
         transform:none;
         width:100%;
         height:100%;
-        min-height:0;
-        max-height:100%;
+        min-height:100vh;
+        max-height:100vh;
         border-radius:0;
         position:fixed;
         /* --- Helles Chat-Design mobile --- */
@@ -1235,24 +1235,6 @@
         background:rgba(90,77,184,.14);
         border-color:rgba(90,77,184,.35);
         color:#4e40a8;
-      }
-      /* --- Compare/Challenge results: BLACK text on white bg --- */
-      .chat-card.foreground .chat-compare-result,
-      .chat-card.foreground .chat-compare-result *{
-        color:#000 !important;
-      }
-      .chat-card.foreground .chat-compare-result{
-        background:#f0f0f0 !important;
-        border:1px solid rgba(0,0,0,.15) !important;
-      }
-      .chat-card.foreground .chat-compare-result .compare-header{
-        color:#1a1a6b !important;
-      }
-      .chat-card.foreground .chat-compare-result .provider-label{
-        color:#1a1a6b !important;
-      }
-      .chat-card.foreground .chat-compare-cost{
-        color:#555 !important;
       }
       /* --- Token counter --- */
       .chat-card.foreground #tokenCounter{
@@ -1506,30 +1488,30 @@
       color:rgba(255,210,160,.8);
     }
     .chat-compare-result{
-      margin:0 4px;padding:12px 14px;border-radius:12px;
-      background:rgba(142,178,255,.12);
-      border:1px solid rgba(142,178,255,.22);
-      font-size:14px;line-height:1.5;color:#fff;
+      margin:0 4px;padding:6px 8px;border-radius:10px;
+      background:rgba(142,178,255,.06);
+      border:1px solid rgba(142,178,255,.12);
+      font-size:10px;line-height:1.4;color:rgba(255,255,255,.6);
     }
     .chat-compare-result .compare-header{
-      font-weight:700;color:#c8d8ff;margin-bottom:8px;
-      display:flex;align-items:center;gap:6px;font-size:15px;
+      font-weight:600;color:rgba(200,216,255,.8);margin-bottom:4px;
+      display:flex;align-items:center;gap:4px;
     }
     .chat-compare-result .compare-provider{
-      display:flex;align-items:flex-start;gap:8px;margin-top:8px;
-      padding:8px 0;border-top:1px solid rgba(255,255,255,.15);
+      display:flex;align-items:center;gap:3px;margin-top:3px;
+      padding:3px 0;border-top:1px solid rgba(255,255,255,.05);
     }
     .chat-compare-result .compare-provider img{
-      width:16px;height:16px;opacity:.85;margin-top:2px;flex-shrink:0;
+      width:10px;height:10px;opacity:.5;
     }
     .chat-compare-result .compare-provider .provider-label{
-      font-weight:700;min-width:55px;flex-shrink:0;color:#c8d8ff;
+      font-weight:600;min-width:45px;
     }
     .chat-compare-result .compare-diff{
-      color:rgba(255,255,255,.9);word-break:break-word;
+      color:rgba(255,255,255,.4);font-style:italic;
     }
     .chat-compare-cost{
-      margin-top:8px;font-size:12px;color:rgba(255,255,255,.6);
+      margin-top:4px;font-size:8px;color:rgba(255,255,255,.25);
     }
     .chat-footer{
       display:flex;align-items:center;gap:7px;
@@ -3835,33 +3817,6 @@
       }
     });
 
-    // Mobile keyboard: pin chat to visible viewport (top fixed, bottom follows keyboard)
-    if (window.visualViewport) {
-      const chatEl = document.getElementById("sophieChat");
-      const onViewportChange = () => {
-        if (!chatEl || !chatEl.classList.contains("foreground")) return;
-        if (window.innerWidth > 640) return;
-        const vv = window.visualViewport;
-        chatEl.style.top = vv.offsetTop + "px";
-        chatEl.style.height = vv.height + "px";
-        chatEl.style.maxHeight = vv.height + "px";
-        requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; });
-      };
-      window.visualViewport.addEventListener("resize", onViewportChange);
-      window.visualViewport.addEventListener("scroll", onViewportChange);
-      // Reset when keyboard closes
-      inputEl.addEventListener("blur", () => {
-        if (window.innerWidth > 640) return;
-        setTimeout(() => {
-          if (chatEl && chatEl.classList.contains("foreground")) {
-            chatEl.style.top = "0";
-            chatEl.style.height = "";
-            chatEl.style.maxHeight = "";
-          }
-        }, 100);
-      });
-    }
-
     async function sendMessage() {
       if (sending || sessionEnded) return;
       const text = inputEl.value.trim();
@@ -4275,9 +4230,8 @@
 
         // Fastest answer
         const fBubble = document.createElement("div");
-        fBubble.className = "compare-fastest-content";
-        fBubble.style.cssText = "margin:8px 0 10px;font-size:14px;line-height:1.5;word-break:break-word;";
-        fBubble.textContent = data.fastest.content.slice(0, 600) + (data.fastest.content.length > 600 ? "…" : "");
+        fBubble.style.cssText = "margin:4px 0;color:rgba(255,255,255,.75);";
+        fBubble.textContent = data.fastest.content.slice(0, 300) + (data.fastest.content.length > 300 ? "…" : "");
         result.appendChild(fBubble);
 
         // Others: deviations
@@ -4292,7 +4246,7 @@
           row.appendChild(label);
           const diff = document.createElement("span");
           diff.className = "compare-diff";
-          diff.textContent = other.content.slice(0, 300) + (other.content.length > 300 ? "…" : "");
+          diff.textContent = other.content.slice(0, 150) + (other.content.length > 150 ? "…" : "");
           row.appendChild(diff);
           result.appendChild(row);
         }
