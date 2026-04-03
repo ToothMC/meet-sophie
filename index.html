@@ -4192,10 +4192,9 @@
         const token = await getToken();
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
-        // Build clean messages: system prompt + conversation (no compare/challenge results)
+        // Build clean messages: conversation only (system prompt is rebuilt server-side)
         const lastAssistant = [...history].reverse().find(m => m.role === "assistant");
         const cleanMessages = [
-          { role: "system", content: systemPrompt || "" },
           ...history.filter(m => m.role === "user" || m.role === "assistant").slice(-20),
         ];
         const res = await fetch("/api/ai/compare", {
@@ -4205,6 +4204,7 @@
             messages: cleanMessages,
             priorAnswer: lastAssistant?.content || null,
             userId: window.__sophieUserId || null,
+            session_id: sessionId,
           }),
         });
         hide(typingEl);
@@ -4291,10 +4291,9 @@
         const token = await getToken();
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
-        // Build clean messages: system prompt + conversation
+        // Build clean messages: conversation only (system prompt is rebuilt server-side)
         const lastAssistantChallenge = [...history].reverse().find(m => m.role === "assistant");
         const cleanChallengeMessages = [
-          { role: "system", content: systemPrompt || "" },
           ...history.filter(m => m.role === "user" || m.role === "assistant").slice(-20),
         ];
         const res = await fetch("/api/ai/challenge", {
@@ -4304,6 +4303,7 @@
             messages: cleanChallengeMessages,
             priorAnswer: lastAssistantChallenge?.content || null,
             userId: window.__sophieUserId || null,
+            session_id: sessionId,
           }),
         });
         hide(typingEl);

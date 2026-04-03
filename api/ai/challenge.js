@@ -9,6 +9,7 @@ import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 import { normalizeResponse } from '../../lib/ai/persona-normalizer.js';
 import { TOKEN_COSTS } from '../../lib/billing-constants.js';
+import { buildServerSystemPrompt } from '../../lib/server-prompt.js';
 
 const CHALLENGE_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === 'object' ? body : {};
 
-  const { messages, priorAnswer, userId } = body;
+  const { messages, priorAnswer, userId, session_id } = body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Missing messages array' });
   }
@@ -43,15 +44,44 @@ export default async function handler(req, res) {
   const allCosts = [];
   const startTotal = Date.now();
 
-  // Check eco mode
+  // Check eco mode + rebuild system prompt server-side
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   let isEco = false;
+  let serverSystemPrompt = "";
   if (userId) {
     try {
       const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', userId).maybeSingle();
       isEco = !!prof?.eco_mode;
     } catch (_) {}
+
+    // SECURITY: rebuild system prompt server-side instead of trusting client messages
+    if (session_id) {
+      try {
+        const { data: session } = await supabase.from('chat_sessions')
+          .select('session_mode, language, brainstorm_config, user_id')
+          .eq('id', session_id).maybeSingle();
+        if (session) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(session.user_id || userId);
+          const { fullSystemPrompt } = await buildServerSystemPrompt({
+            supabase, user: user || { id: userId },
+            sessionMode: session.session_mode || null,
+            brainstormConfig: session.brainstorm_config || null,
+            language: session.language || 'en',
+            conversationPolicy: null,
+          });
+          serverSystemPrompt = fullSystemPrompt;
+        }
+      } catch (e) { console.warn('[challenge] server prompt rebuild failed:', e?.message); }
+    }
   }
   const providers = isEco ? ECO_CHALLENGE_PROVIDERS : CHALLENGE_PROVIDERS;
+
+  // Replace client system prompt with server-built one
+  const filteredMessages = messages.filter(m => m.role !== 'system');
+  const baseMessages = [
+    ...(serverSystemPrompt ? [{ role: 'system', content: serverSystemPrompt }] : []),
+    ...filteredMessages,
+  ];
 
   // Build context-aware prompt for Round 1
   // Each provider gets the full conversation + the prior answer to improve upon
@@ -64,7 +94,7 @@ export default async function handler(req, res) {
     providers.map(async ({ provider, model }) => {
       const adapter = getAdapter(provider);
       const challengeMessages = [
-        ...messages,
+        ...baseMessages,
         ...(contextBlock ? [{ role: 'user', content: contextBlock }] : []),
       ];
       try {

@@ -5,6 +5,7 @@ import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 import { normalizeResponse } from '../../lib/ai/persona-normalizer.js';
 import { TOKEN_COSTS } from '../../lib/billing-constants.js';
+import { buildServerSystemPrompt } from '../../lib/server-prompt.js';
 
 const COMPARE_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
@@ -29,24 +30,49 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === 'object' ? body : {};
 
-  const { messages, priorAnswer, userId } = body;
+  const { messages, priorAnswer, userId, session_id } = body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Missing messages array' });
   }
 
-  // Check eco mode
+  // Check eco mode + rebuild system prompt server-side
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   let isEco = false;
+  let serverSystemPrompt = "";
   if (userId) {
     try {
       const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', userId).maybeSingle();
       isEco = !!prof?.eco_mode;
     } catch (_) {}
+
+    // SECURITY: rebuild system prompt server-side instead of trusting client messages
+    if (session_id) {
+      try {
+        const { data: session } = await supabase.from('chat_sessions')
+          .select('session_mode, language, brainstorm_config, user_id')
+          .eq('id', session_id).maybeSingle();
+        if (session) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(session.user_id || userId);
+          const { fullSystemPrompt } = await buildServerSystemPrompt({
+            supabase, user: user || { id: userId },
+            sessionMode: session.session_mode || null,
+            brainstormConfig: session.brainstorm_config || null,
+            language: session.language || 'en',
+            conversationPolicy: null,
+          });
+          serverSystemPrompt = fullSystemPrompt;
+        }
+      } catch (e) { console.warn('[compare] server prompt rebuild failed:', e?.message); }
+    }
   }
   const compareProviders = isEco ? ECO_COMPARE_PROVIDERS : COMPARE_PROVIDERS;
 
-  // Build context-aware messages: include prior answer so all providers see it
-  const contextMessages = [...messages];
+  // Build context-aware messages: replace client system prompt with server-built one
+  const filteredMessages = messages.filter(m => m.role !== 'system');
+  const contextMessages = [
+    ...(serverSystemPrompt ? [{ role: 'system', content: serverSystemPrompt }] : []),
+    ...filteredMessages,
+  ];
   if (priorAnswer) {
     contextMessages.push({
       role: 'user',
