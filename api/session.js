@@ -349,6 +349,33 @@ export default async function handler(req, res) {
     }
 
     // ---------------------------
+    // Structured memory (long-term + short-term + reports)
+    // ---------------------------
+    let structuredMemory = null;
+    let recentMemories = [];
+    let recentReports = [];
+    let recentConversations = [];
+    try {
+      const [ltmRes, stmRes, reportsRes, recentMsgsRes] = await Promise.all([
+        supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
+        supabase.from("sophie_short_term_memory").select("summary,open_topics,pending_decisions,next_steps,importance_score,mode,created_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("importance_score", { ascending: false }).limit(5),
+        supabase.from("conversation_outputs").select("title,short_summary,report_html,report_style,created_at,session_id,user_sessions!inner(user_id)").eq("user_sessions.user_id", user.id).not("report_html", "is", null).order("created_at", { ascending: false }).limit(3),
+        supabase.from("conversation_messages").select("text,role,created_at,session_id,user_sessions!inner(user_id,session_date)").eq("user_sessions.user_id", user.id).eq("role", "user").order("created_at", { ascending: false }).limit(30),
+      ]);
+      structuredMemory = ltmRes?.data || null;
+      recentMemories = stmRes?.data || [];
+      recentReports = (reportsRes?.data || []).map(r => ({
+        title: r.title || "Report",
+        summary: r.short_summary || (r.report_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
+        mode: r.report_style || null,
+        date: r.created_at,
+      }));
+      recentConversations = recentMsgsRes?.data || [];
+    } catch (e) {
+      console.warn("Structured memory lookup crashed:", e?.message || e);
+    }
+
+    // ---------------------------
     // Backward compat: SOPHIE_PREFS in notes (optional, but WITHOUT language fallback)
     // ---------------------------
     const prefsLine =
@@ -650,6 +677,10 @@ export default async function handler(req, res) {
         sessions: recentSessions,
         relationship: rel,
       },
+      structuredMemory,
+      recentMemories,
+      recentReports,
+      recentConversations,
       channel: "voice",
     });
 
@@ -694,13 +725,13 @@ export default async function handler(req, res) {
       `Example: You explain 5 points verbally in detail → send_chat_note with just "1. Point A\\n2. Point B\\n3. Point C". ` +
       `Keep notes very short (max 2-3 lines, max 280 chars). Do NOT use this for every response — only when visual text genuinely helps.`;
 
-    // Greeting block MUST come last — models follow the last instruction most strongly
-    const greetingReminder = `\n\n=== CRITICAL: YOUR VERY FIRST MESSAGE ===
-Ignore ALL context above for your first message. Do NOT continue any previous topic. Do NOT reference memory. Do NOT use tools. Do NOT offer help. Do NOT ask what they want.
-Your first message is ONLY: a short, casual "Hey [name]!" greeting. 1-2 sentences MAX. Then STOP and WAIT in silence.
-Example: "Hey Michael! Schön dass du da bist."
-NOTHING ELSE. No follow-up question. No topic. No offer. Just the greeting.`;
-    const fullPrompt = sophiePrompt + importedContext + researchInstruction + greetingReminder;
+    // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
+    // This block just tells the model not to self-generate a greeting from the system prompt alone.
+    const startupGuard = `\n\n=== OPENING TURN ===
+Your opening turn will come with its own specific instructions. For your opening turn, follow THOSE instructions, not the general rules above.
+Do NOT reference memory, past topics, or tools in your opening turn. Do NOT add questions like "Was möchtest du besprechen?" or "Wie kann ich helfen?" unless the opening instructions explicitly tell you to.
+After the opening turn, all the rules above apply normally.`;
+    const fullPrompt = sophiePrompt + importedContext + researchInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create

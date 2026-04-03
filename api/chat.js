@@ -6,14 +6,26 @@
 // ?action=usage   — Free-Limit prüfen (Turns)
 
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import { buildSophiePrompt, mapPlanToTier, calcBrainstormPhase, buildBrainstormPhaseInjection } from "../lib/sophie-core.js";
+import { buildServerSystemPrompt } from "../lib/server-prompt.js";
 import { classify, route, shouldTriggerSecondOpinion } from "../lib/ai/classifier.js";
 import { getAdapter } from "../lib/ai/adapters/index.js";
 import { trackCost, checkDailyBudget } from "../lib/ai/cost-tracker.js";
 import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { getSecondOpinion } from "./ai/second-opinion.js";
-import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
+import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
+import { buildSearchContext } from "../lib/search-context.js";
 import { TOKEN_COSTS } from "../lib/billing-constants.js";
+
+function hashIp(ip) {
+  if (!ip) return "none";
+  return createHash("sha256").update(ip).digest("hex").slice(0, 16);
+}
+
+async function logSecurityEvent(supabase, eventName, meta) {
+  try { await supabase.from("analytics_events").insert({ event_name: eventName, meta }); } catch { /* non-fatal */ }
+}
 
 const FREE_TURNS_LIMIT = 10;
 const AUTH_NUDGE_AT_TURN = 3;
@@ -258,127 +270,6 @@ async function handleStart(req, res) {
   const token = getToken(req);
   const user  = await getUser(token, supabaseUrl, serviceKey);
 
-  // Load context if authenticated
-  let profile = { first_name: "", preferred_name: "", preferred_addressing: "", preferred_pronoun: "", preferred_language: "en", notes: "", occupation: "", conversation_style: "", topics_like: [], topics_avoid: [] };
-  let rel     = { tone_baseline: "", openness_level: "", emotional_patterns: "", last_interaction_summary: "" };
-  let recentSessions = [];
-  let isPremium = false;
-  let plan = null;
-  let importedContext = "";
-
-  if (user) {
-    try {
-      const [profRes, relRes, subRes, sessRes, importRes] = await Promise.all([
-        supabase.from("user_profile").select("first_name,preferred_name,preferred_addressing,preferred_pronoun,preferred_language,notes,occupation,conversation_style,topics_like,topics_avoid,eco_mode,memory_file").eq("user_id", user.id).maybeSingle(),
-        supabase.from("user_relationship").select("tone_baseline,openness_level,emotional_patterns,last_interaction_summary,communication_style,thinking_pattern").eq("user_id", user.id).maybeSingle(),
-        supabase.from("user_subscriptions").select("is_active,status,plan").eq("user_id", user.id).maybeSingle(),
-        supabase.from("user_sessions").select("session_date,emotional_tone,stress_level,closeness_level,short_summary").eq("user_id", user.id).order("session_date", { ascending: false }).limit(5),
-        // Load imported insights (Zone B + C) from all active sources
-        supabase.from("source_connections").select("id").eq("user_id", user.id).eq("status", "active"),
-      ]);
-
-      if (profRes.data) {
-        profile = {
-          first_name: (profRes.data.first_name || "").trim(),
-          preferred_name: (profRes.data.preferred_name || "").trim(),
-          preferred_addressing: (profRes.data.preferred_addressing || "").trim(),
-          preferred_pronoun: (profRes.data.preferred_pronoun || "").trim(),
-          preferred_language: (profRes.data.preferred_language || "en").toLowerCase().trim(),
-          notes: (profRes.data.notes || "").trim(),
-          occupation: (profRes.data.occupation || "").trim(),
-          conversation_style: (profRes.data.conversation_style || "").trim(),
-          topics_like: Array.isArray(profRes.data.topics_like) ? profRes.data.topics_like : [],
-          topics_avoid: Array.isArray(profRes.data.topics_avoid) ? profRes.data.topics_avoid : [],
-          eco_mode: !!profRes.data.eco_mode,
-          memory_file: (profRes.data.memory_file || "").trim(),
-        };
-      }
-      if (relRes.data) rel = relRes.data;
-      if (subRes.data) {
-        isPremium = !!(subRes.data.is_active || subRes.data.status === "active");
-        plan = subRes.data.plan || null;
-      }
-      if (Array.isArray(sessRes.data)) recentSessions = sessRes.data;
-
-      // Load imported data from active sources
-      if (importRes.data?.length > 0) {
-        const sourceIds = importRes.data.map(s => s.id);
-
-        // First try Zone B+C (extracted insights)
-        const { data: insights } = await supabase
-          .from("source_items")
-          .select("summary, extracted_insights, content_type, zone")
-          .in("source_id", sourceIds)
-          .in("zone", ["B", "C"])
-          .limit(30);
-
-        const insightTexts = (insights || [])
-          .map(i => {
-            if (i.extracted_insights && Object.keys(i.extracted_insights).length > 0) {
-              return JSON.stringify(i.extracted_insights);
-            }
-            return i.summary;
-          })
-          .filter(t => t && t !== "Import von claude" && t !== "Import von chatgpt" && t.length > 10);
-
-        if (insightTexts.length > 0) {
-          importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users):\n" + insightTexts.slice(0, 20).join("\n");
-        } else {
-          // Fallback: build structured overview from Zone A raw content
-          const { data: rawItems } = await supabase
-            .from("source_items")
-            .select("raw_content")
-            .in("source_id", sourceIds)
-            .eq("zone", "A")
-            .limit(5);
-
-          const rawTexts = (rawItems || [])
-            .map(i => i.raw_content)
-            .filter(Boolean)
-            .join("\n\n");
-
-          if (rawTexts.length > 0) {
-            // Extract conversation titles for overview
-            const titles = rawTexts.split("\n")
-              .filter(line => line.startsWith("# ") && line !== "# Untitled")
-              .map(line => line.replace("# ", "").trim())
-              .filter(t => t.length > 3);
-
-            // Extract user messages for key topics (skip short/trivial ones)
-            const userMsgs = rawTexts.split("\n")
-              .filter(line => line.startsWith("[human]: "))
-              .map(line => line.replace("[human]: ", "").trim())
-              .filter(msg => msg.length > 30 && !msg.match(/^(ja|nein|ok|danke|hi|hallo|gut)/i));
-
-            // Build structured context
-            const parts = [];
-            if (titles.length > 0) {
-              parts.push("GESPRÄCHSTHEMEN (" + titles.length + " Gespräche):\n" + titles.slice(0, 40).map(t => "- " + t).join("\n"));
-            }
-            if (userMsgs.length > 0) {
-              // Sample diverse user messages (first, middle, recent)
-              const sampled = [];
-              if (userMsgs.length > 0) sampled.push(userMsgs[0]);
-              if (userMsgs.length > 5) sampled.push(userMsgs[Math.floor(userMsgs.length / 3)]);
-              if (userMsgs.length > 10) sampled.push(userMsgs[Math.floor(userMsgs.length * 2 / 3)]);
-              if (userMsgs.length > 2) sampled.push(userMsgs[userMsgs.length - 1]);
-              parts.push("BEISPIEL-ANFRAGEN DES USERS:\n" + sampled.map(m => "- " + m.slice(0, 150)).join("\n"));
-            }
-
-            if (parts.length > 0) {
-              importedContext = "\n\nIMPORTIERTER KONTEXT (aus früheren KI-Gesprächen des Users — nutze diese Informationen um den User besser zu verstehen und auf seine Projekte/Themen einzugehen):\n" + parts.join("\n\n");
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Context load error:", e?.message);
-    }
-  }
-
-  const tier = mapPlanToTier(plan, isPremium);
-  const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion"; // returned to frontend
-
   // Session mode from request body (user-selected via UI)
   const rawSessionMode = String(body.session_mode || "").toLowerCase().trim();
   const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
@@ -398,27 +289,42 @@ async function handleStart(req, res) {
     };
   }
 
-  // Prefer request lang; fall back to profile setting
-  let preferredLanguage = ["en", "de", "fr"].includes(lang) ? lang : (profile.preferred_language || "en").toLowerCase().trim();
-  if (!["en", "de", "fr"].includes(preferredLanguage)) preferredLanguage = "en";
+  // Prefer request lang; fall back to profile setting (loaded via helper below)
+  let preferredLanguage = ["en", "de", "fr"].includes(lang) ? lang : "en";
 
-  const isFirstSession =
-    (!profile.first_name || profile.first_name.trim() === "") &&
-    (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
+  // Build system prompt server-side (never sent to client)
+  const { fullSystemPrompt, tier, isPremium, isFirstSession, profile } = await buildServerSystemPrompt({
+    supabase, user, sessionMode, brainstormConfig, language: preferredLanguage, conversationPolicy,
+  });
+
+  // Refine language from profile if not explicitly set in request
+  if (!["en", "de", "fr"].includes(lang) && profile.preferred_language) {
+    const profLang = profile.preferred_language.toLowerCase().trim();
+    if (["en", "de", "fr"].includes(profLang)) preferredLanguage = profLang;
+  }
+
+  const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion";
 
   console.log("[chat] start:", {
     userId: user?.id?.slice(0, 8) || "anon",
     isFirstSession,
     firstName: profile.first_name || "(empty)",
-    hasSummary: !!(rel.last_interaction_summary?.trim()),
     tier,
     lang: preferredLanguage,
   });
 
-  // Create chat session
+  // Create chat session — store session_mode + language for server-side prompt rebuild
   const { data: session, error: sessErr } = await supabase
     .from("chat_sessions")
-    .insert({ user_id: user?.id || null, status: "open", mode: "text", brainstorm_config: brainstormConfig || null })
+    .insert({
+      user_id: user?.id || null,
+      status: "open",
+      mode: "text",
+      brainstorm_config: brainstormConfig || null,
+      session_mode: sessionMode || null,
+      language: preferredLanguage,
+      conversation_policy: conversationPolicy || null,
+    })
     .select("id, turn_count, created_at")
     .single();
 
@@ -427,43 +333,9 @@ async function handleStart(req, res) {
     return res.status(500).json({ error: "Failed to create chat session" });
   }
 
-  const systemPrompt = buildSophiePrompt({
-    tier,
-    sessionMode,
-    isFirstSession,
-    hasHandover: false,
-    language: preferredLanguage,
-    user: {
-      name: (profile.preferred_name || profile.first_name || "").trim(),
-      addressing: profile.preferred_addressing,
-      pronoun: profile.preferred_pronoun,
-      occupation: profile.occupation,
-      conversationStyle: profile.conversation_style,
-      topicsLike: profile.topics_like,
-      topicsAvoid: profile.topics_avoid,
-      memoryFile: profile.memory_file || "",
-    },
-    memory: {
-      sessions: recentSessions,
-      relationship: rel,
-    },
-    channel: "chat",
-    brainstormConfig,
-    conversationPolicy,
-  });
-
-  // Append imported context to system prompt
-  if (importedContext) {
-    console.log("[chat] imported context loaded:", importedContext.length, "chars");
-  } else {
-    console.log("[chat] no imported context found for user:", user?.id?.slice(0, 8) || "anon");
-  }
-  const fullSystemPrompt = importedContext
-    ? systemPrompt + importedContext
-    : systemPrompt;
-
   const opener = getOpener(preferredLanguage, isPremium, sessionMode, brainstormConfig);
 
+  // SECURITY: system_prompt is NEVER returned to the client
   return res.status(200).json({
     ok: true,
     session_id: session.id,
@@ -475,7 +347,6 @@ async function handleStart(req, res) {
     mode,
     free_turns_limit: FREE_TURNS_LIMIT,
     auth_nudge_at_turn: AUTH_NUDGE_AT_TURN,
-    system_prompt: fullSystemPrompt,
   });
 }
 
@@ -483,10 +354,44 @@ async function handleStart(req, res) {
 // Tool execution helper — shared by anonymous and authenticated paths
 // ---------------------------------------------------------------------------
 async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
-  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
   if (!toolMatch) return { reply: rawReply, toolUsed: false };
 
   const [, toolType, toolParam] = toolMatch;
+
+  // Grounded Search: separate path — Gemini provides structured facts,
+  // injected as context into Sophie's prompt (Architecture Rule #1)
+  if (toolType === "grounded_search") {
+    try {
+      const searchResult = await groundedSearch(toolParam.trim());
+      if (!searchResult.facts.length) return { reply: rawReply, toolUsed: false };
+
+      const searchContext = buildSearchContext(searchResult);
+      routerMessages.push({
+        role: "system",
+        content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
+      });
+
+      const adapter = getAdapter(providerConfig.provider);
+      const retryResponse = await Promise.race([
+        adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000)),
+      ]);
+      const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+      return {
+        reply: retryReply || rawReply,
+        toolUsed: true,
+        toolType: "grounded_search",
+        retryResponse,
+        searchSources: searchResult.sources,
+      };
+    } catch (e) {
+      console.error("[chat] grounded_search error:", e?.message);
+      return { reply: rawReply, toolUsed: false };
+    }
+  }
+
+  // Standard tools: weather, search, news, wiki, flight, arrivals, departures
   let toolData;
   try {
     if (toolType === "weather") toolData = await getWeather(toolParam.trim());
@@ -770,7 +675,17 @@ async function handleMessage(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === "object" ? body : {};
 
-  const { session_id, messages, system_prompt } = body;
+  const { session_id, messages, system_prompt: clientSystemPrompt } = body;
+  // SECURITY: system_prompt from client is deliberately ignored — log if supplied
+  if (clientSystemPrompt) {
+    const ipHash = hashIp(req.headers["x-forwarded-for"] || req.socket?.remoteAddress);
+    console.warn("[security] client sent system_prompt in message request — ignored", { session_id, ipHash });
+    // Deferred log — don't block the request
+    const logSupa = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    logSecurityEvent(logSupa, "security_chat_prompt_injection_attempt", {
+      route: "/api/chat?action=message", session_id, ip_hash: ipHash,
+    });
+  }
   if (!session_id) return res.status(400).json({ error: "Missing session_id" });
   if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: "Missing messages" });
 
@@ -778,19 +693,30 @@ async function handleMessage(req, res) {
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase    = createClient(supabaseUrl, serviceKey);
 
-  // Load session
+  // Load session (including session_mode + language for prompt rebuild)
   const { data: session, error: sessErr } = await supabase
     .from("chat_sessions")
-    .select("id, user_id, status, turn_count, brainstorm_config, created_at")
+    .select("id, user_id, status, turn_count, brainstorm_config, session_mode, language, conversation_policy, created_at")
     .eq("id", session_id)
     .maybeSingle();
 
   if (sessErr || !session) return res.status(404).json({ error: "Session not found" });
   if (session.status === "closed") return res.status(410).json({ error: "Session is closed" });
 
-  // Free-limit check
+  // Auth + ownership check
   const token = getToken(req);
   const user  = await getUser(token, supabaseUrl, serviceKey);
+
+  // SECURITY: session ownership — authenticated sessions require matching user
+  if (session.user_id && (!user || user.id !== session.user_id)) {
+    logSecurityEvent(supabase, "security_session_ownership_blocked", {
+      route: "/api/chat?action=message", session_id,
+      owner_id: session.user_id?.slice(0, 8),
+      caller_id: user?.id?.slice(0, 8) || "anon",
+      ip_hash: hashIp(req.headers["x-forwarded-for"] || req.socket?.remoteAddress),
+    });
+    return res.status(403).json({ error: "Not your session" });
+  }
 
   if (!user && session.turn_count >= FREE_TURNS_LIMIT) {
     return res.status(402).json({ error: "Free limit reached", turns_used: session.turn_count, auth_required: true });
@@ -963,8 +889,17 @@ async function handleMessage(req, res) {
     return parts.length > 1 ? parts : text;
   };
 
+  // SECURITY: rebuild system prompt server-side — never trust client input
+  const { fullSystemPrompt: serverSystemPrompt } = await buildServerSystemPrompt({
+    supabase, user,
+    sessionMode: session.session_mode || null,
+    brainstormConfig: session.brainstorm_config || null,
+    language: session.language || "en",
+    conversationPolicy: session.conversation_policy || null,
+  });
+
   const routerMessages = [
-    { role: "system", content: system_prompt || "" },
+    { role: "system", content: serverSystemPrompt },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: m.role === "user" ? buildContent(m) : String(m.content || "").slice(0, 4000) })),
@@ -978,10 +913,11 @@ async function handleMessage(req, res) {
   routerMessages.push({ role: "system", content:
     `ECHTZEIT-TOOLS: Du hast Zugriff auf externe Datenquellen über Tools. Sage NIEMALS "Ich habe keinen Zugriff" oder "Ich kann nicht im Internet suchen". ` +
     `Du HAST Zugriff — nutze die Tools! Antworte NUR mit einem Tool-Tag (sonst nichts), wenn eine dieser Situationen zutrifft:\n` +
+    `[TOOL:grounded_search:Suchanfrage] — BEVORZUGT für volatile, aktuelle Fakten: Wer leitet ein Unternehmen? Aktienkurse, Preise, Ergebnisse, Status, aktuelle Ereignisse. Nutze grounded_search wenn sich die Antwort ändern kann und Aktualität wichtig ist.\n` +
     `[TOOL:weather:Ortsname] — Wetter, Temperatur, Outdoor-Bedingungen\n` +
-    `[TOOL:search:Suchanfrage] — aktuelle Fakten, Preise, Ereignisse, alles was sich ändern kann\n` +
+    `[TOOL:search:Suchanfrage] — Web-Suche für detaillierte Recherche mit Snippets und Links. Nutze search wenn du mehrere Quellen oder ausführliche Informationen brauchst.\n` +
     `[TOOL:news:Thema] — aktuelle Nachrichten und Headlines\n` +
-    `[TOOL:wiki:Begriff] — Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen. Nutze wiki wenn der User nach konkretem Wissen fragt (Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...)\n` +
+    `[TOOL:wiki:Begriff] — Stabiles Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen. Nutze wiki wenn der User nach zeitlosem Wissen fragt (Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...)\n` +
     `[TOOL:flight:Flugnummer] — Live-Flugstatus, Abflug/Ankunft, Verspätungen, Gate, Terminal. Nutze flight bei jeder Frage zu einem konkreten Flug (z.B. LH1234, EK451)\n` +
     `[TOOL:arrivals:IATA-Code] — Ankunftstafel eines Flughafens (z.B. FRA, PFO, MUC). Nutze arrivals wenn der User fragt was an einem Flughafen landet oder ankommt\n` +
     `[TOOL:departures:IATA-Code] — Abflugtafel eines Flughafens. Nutze departures wenn der User fragt was abfliegt oder wann Maschinen starten\n` +
@@ -1000,14 +936,8 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Detect language from system prompt, user messages, or default
-  const promptText = (system_prompt || "").toLowerCase();
-  const lastMsgText = (messages.filter(m => m.role === "user").pop()?.content || "").toLowerCase();
-  const sessionLang = (promptText.includes("sprich deutsch") || promptText.includes("sprache: de") || /[äöüß]/.test(lastMsgText))
-    ? "de"
-    : (promptText.includes("parle français") || promptText.includes("langue: fr") || /[éèêëàâùûç]/.test(lastMsgText))
-    ? "fr"
-    : "en";
+  // Language from stored session — no more parsing from client-supplied prompt
+  const sessionLang = session.language || "en";
 
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
@@ -1048,12 +978,12 @@ async function handleMessage(req, res) {
     // Curated responses handle the critical trigger questions instead
 
     // Anonymous users: tools blocked — tease once, then just strip the tag
-    const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+    const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
     if (toolMatch) {
       if (turnNumber <= 2) {
         // First time: tease the capability once
         const [, toolType] = toolMatch;
-        const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge" };
+        const toolNames = { weather: "Wetter", search: "Web-Suche", news: "News", wiki: "Wikipedia", flight: "Flugstatus", arrivals: "Ankünfte", departures: "Abflüge", grounded_search: "Live-Fakten" };
         const toolName = toolNames[toolType] || toolType;
         rawReply = `Ich könnte dir das tatsächlich live zeigen — ${toolName} in Echtzeit abrufen. Dafür brauchst du nur einen kostenlosen Account. Dauert 10 Sekunden, kein Abo nötig!`;
       } else {
@@ -1186,8 +1116,10 @@ async function handleMessage(req, res) {
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary);
+  let searchSources = null;
   if (toolResult.toolUsed) {
     rawReply = toolResult.reply;
+    if (toolResult.searchSources?.length > 0) searchSources = toolResult.searchSources;
     if (user && toolResult.retryResponse?.usage) {
       trackCost({
         userId: user.id, provider: toolResult.retryResponse.provider, model: toolResult.retryResponse.model,
@@ -1317,6 +1249,7 @@ async function handleMessage(req, res) {
     import_hint: import_hint,
     ...(tokenDeduction && { remaining_tokens: tokenDeduction.remaining }),
     ...(secondOpinionMeta && { second_opinion: secondOpinionMeta }),
+    ...(searchSources && { search_sources: searchSources }),
   });
 }
 
@@ -1376,6 +1309,7 @@ async function handleEnd(req, res) {
           transcript,
           session_started_at: null,
           session_ended_at: new Date().toISOString(),
+          chat_session_id: session_id,
         }),
       });
     } catch (e) {

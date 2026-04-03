@@ -19,6 +19,9 @@ body{
   position:sticky;top:0;z-index:10;
   display:flex;align-items:center;gap:12px;
   padding:12px 16px;
+  padding-top:max(12px, env(safe-area-inset-top));
+  padding-left:max(16px, env(safe-area-inset-left));
+  padding-right:max(16px, env(safe-area-inset-right));
   background:rgba(250,249,246,.92);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-bottom:1px solid #ede8e2;
