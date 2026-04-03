@@ -47,9 +47,23 @@ export default async function handler(req, res) {
         .maybeSingle(),
     ]);
 
-    const usage = usageRes.data;
+    let usage = usageRes.data;
     const sub = subRes.data;
     const active = !!(sub?.is_active || sub?.status === 'active' || sub?.status === 'trialing');
+
+    // Ensure user_usage row exists (new users won't have one yet)
+    if (!usage) {
+      const { data: created } = await supabase
+        .from('user_usage')
+        .upsert({
+          user_id: user.id,
+          free_tokens_total: 50, free_tokens_used: 0,
+          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+        }, { onConflict: 'user_id' })
+        .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
+        .single();
+      if (created) usage = created;
+    }
 
     const freeTotal = usage?.free_tokens_total ?? 50;
     const freeUsed = usage?.free_tokens_used ?? 0;

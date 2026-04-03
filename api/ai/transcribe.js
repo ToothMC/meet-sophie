@@ -94,11 +94,24 @@ export default async function handler(req, res) {
     console.log(`[transcribe] ${user.id}: ${(audioBuffer.length / 1024).toFixed(0)}KB, file=${filename || 'audio.webm'}`);
 
     // Pre-check token balance before expensive Whisper API call
-    const { data: usagePre } = await supabase
+    let usagePre = (await supabase
       .from('user_usage')
       .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
       .eq('user_id', user.id)
-      .maybeSingle();
+      .maybeSingle()).data;
+    // Ensure user_usage row exists (new users won't have one yet)
+    if (!usagePre) {
+      const { data: created } = await supabase
+        .from('user_usage')
+        .upsert({
+          user_id: user.id,
+          free_tokens_total: 50, free_tokens_used: 0,
+          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+        }, { onConflict: 'user_id' })
+        .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
+        .single();
+      if (created) usagePre = created;
+    }
     if (usagePre) {
       const totalRem = Math.max(0, (usagePre.free_tokens_total || 0) - (usagePre.free_tokens_used || 0))
         + Math.max(0, (usagePre.paid_tokens_total || 0) - (usagePre.paid_tokens_used || 0))

@@ -140,10 +140,17 @@ export default async function handler(req, res) {
     // Deduct compare tokens (waterfall: free → paid → topup)
     try {
       const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-      const { data: usage } = await supabase
+      let usage = (await supabase
         .from('user_usage')
         .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
-        .eq('user_id', userId).maybeSingle();
+        .eq('user_id', userId).maybeSingle()).data;
+      if (!usage) {
+        const { data: created } = await supabase.from('user_usage').upsert({
+          user_id: userId, free_tokens_total: 50, free_tokens_used: 0,
+          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+        }, { onConflict: 'user_id' }).select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance').single();
+        if (created) usage = created;
+      }
       if (usage) {
         const freeRem = Math.max(0, (usage.free_tokens_total || 0) - (usage.free_tokens_used || 0));
         const paidRem = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
