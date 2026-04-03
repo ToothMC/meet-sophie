@@ -731,7 +731,7 @@ PERSÖNLICHE ANWEISUNGEN (vom User beigebracht — IMMER befolgen):
 
 REGEL-ERKENNUNG:
 Wenn User eine VERHALTENSREGEL beibringt ("merk dir...", "ab jetzt...", "wenn ich X sage, mach Y"):
-1. Bestätige kurz und natürlich in eigenem Stil (NICHT "Alles klar" — variiere!).
+1. Bestätige kurz und natürlich — variiere! Nicht immer mit derselben Floskel.
 2. Formuliere als klaren Satz (max 1 Zeile)
 3. Tag: [LEARN_RULE: Kurzer Titel | Regel als Satz]
 
