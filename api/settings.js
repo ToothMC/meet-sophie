@@ -143,26 +143,18 @@ export default async function handler(req, res) {
 
   // ── GET: Reports list ──
   if (action === 'reports' && req.method === 'GET') {
-    // Load Talk reports from conversation_outputs
-    const { data: sessions } = await supabase
-      .from('user_sessions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('has_output', true)
-      .order('started_at', { ascending: false })
-      .limit(50);
-
+    // Load Talk reports directly from conversation_outputs (joined via user_sessions)
     const talkReports = [];
-    if (sessions?.length) {
-      const sessionIds = sessions.map(s => s.id);
+    {
       const { data } = await supabase
         .from('conversation_outputs')
-        .select('session_id, title, report_status, report_style, created_at')
-        .in('session_id', sessionIds)
+        .select('session_id, title, report_status, report_style, created_at, user_sessions!inner(user_id)')
+        .eq('user_sessions.user_id', user.id)
         .not('report_html', 'is', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
       for (const r of (data || [])) {
-        talkReports.push({ ...r, source: 'talk', id: r.session_id });
+        talkReports.push({ session_id: r.session_id, title: r.title, report_status: r.report_status, report_style: r.report_style, created_at: r.created_at, source: 'talk', id: r.session_id });
       }
     }
 
