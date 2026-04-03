@@ -4274,10 +4274,12 @@
           if (oIcon) { const img = document.createElement("img"); img.src = oIcon; img.alt = other.provider; row.appendChild(img); }
           const label = document.createElement("span");
           label.className = "provider-label";
+          label.style.color = hdrColor;
           label.textContent = PROVIDER_LABELS[other.provider] || other.provider;
           row.appendChild(label);
           const diff = document.createElement("span");
           diff.className = "compare-diff";
+          diff.style.color = subColor;
           diff.textContent = other.content.slice(0, 300) + (other.content.length > 300 ? "…" : "");
           row.appendChild(diff);
           result.appendChild(row);
