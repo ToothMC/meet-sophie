@@ -1,7 +1,7 @@
 {
   "name": "Meet Sophie",
   "short_name": "Sophie",
-  "start_url": "/",
+  "start_url": "/?v=2",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#06070b",
