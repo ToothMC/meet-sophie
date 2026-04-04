@@ -1792,6 +1792,8 @@ function closePostCallPanel() {
   reopenReportBtn.style.display = "block";
 }
 
+document.getElementById("postCallCloseX").onclick = closePostCallPanel;
+
 reopenReportBtn.onclick = () => {
   reopenReportBtn.style.display = "none";
   postCallPanel.style.display = "block";
