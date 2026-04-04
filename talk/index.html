@@ -1724,8 +1724,9 @@ if (vcUploadBtn && vcFileInput) {
       if (!VC_ALLOWED_TYPES.has(f.type) && !VC_ALLOWED_EXT.has(ext)) { alert(`Dateityp nicht unterstützt: ${f.name}`); continue; }
       if (f.size > VC_MAX_FILE_SIZE) { alert(`Datei zu groß (max 5MB): ${f.name}`); continue; }
       let dataUrl = await vcReadFile(f);
-      if (f.type.startsWith("image/") && dataUrl.length > 500000) {
-        dataUrl = await vcCompressImage(dataUrl, 1024, 0.7);
+      // Aggressively compress for WebRTC DataChannel size limits
+      if (f.type.startsWith("image/")) {
+        dataUrl = await vcCompressImage(dataUrl, 512, 0.6);
       }
       vcPendingFiles.push({ name: f.name, type: f.type, size: f.size, dataUrl });
     }
@@ -1851,6 +1852,7 @@ function sendVoiceChatMessage() {
   // Build content array for Realtime API
   const content = [];
   for (const f of imageFiles) {
+    console.log(`[vc-upload] image ${f.name}: ${Math.round(f.dataUrl.length / 1024)}KB base64`);
     content.push({ type: "input_image", image_url: f.dataUrl });
   }
   let msgText = text || "";
