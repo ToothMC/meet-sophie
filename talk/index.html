@@ -1851,8 +1851,7 @@ function sendVoiceChatMessage() {
   // Build content array for Realtime API
   const content = [];
   for (const f of imageFiles) {
-    const base64 = f.dataUrl.split(",")[1];
-    content.push({ type: "input_image", image: base64 });
+    content.push({ type: "input_image", image_url: f.dataUrl });
   }
   let msgText = text || "";
   if (nonImageFiles.length) {
