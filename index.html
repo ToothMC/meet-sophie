@@ -2665,8 +2665,12 @@
     let selectedChatMode = null;
     let brainstormChatConfig = null;
 
-    const heroCtaDefault = heroCta ? heroCta.textContent : "Talk to Sophie";
-    const heroModeLabels = { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" };
+    function getHeroCtaDefault() { return (window.translations[currentLang] || window.translations.en).hero_btn_primary; }
+    const HERO_MODE_LABELS = {
+      en: { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" },
+      de: { brainstorm: "Brainstorming starten", meeting: "Meeting starten", salespitch: "Pitch starten" },
+      fr: { brainstorm: "Lancer le brainstorming", meeting: "Lancer la r\u00e9union", salespitch: "Lancer le pitch" }
+    };
 
     function detectFunnelIntent(text) {
       const t = (text || "").toLowerCase();
@@ -2690,7 +2694,8 @@
       if (heroCta) {
         heroCta.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
         if (mode) heroCta.classList.add("mode-" + mode);
-        heroCta.textContent = mode ? (heroModeLabels[mode] || heroCtaDefault) : heroCtaDefault;
+        const labels = HERO_MODE_LABELS[currentLang] || HERO_MODE_LABELS.en;
+        heroCta.textContent = mode ? (labels[mode] || getHeroCtaDefault()) : getHeroCtaDefault();
       }
     }
 
