@@ -1153,34 +1153,31 @@ body{
 </div>
 
 <div id="postCallPanel">
-  <div style="position:relative;">
-    <div style="
-      width:36px;
-      height:4px;
-      background:#d4ccc4;
-      border-radius:2px;
-      margin:12px auto 8px;
-    "></div>
-    <button id="postCallCloseX" type="button" style="
-      position:absolute;
-      top:6px;
-      right:12px;
-      width:32px;
-      height:32px;
-      border:none;
-      background:rgba(0,0,0,.06);
-      border-radius:50%;
-      font-size:18px;
-      line-height:1;
-      color:#666;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    " aria-label="Close">✕</button>
-  </div>
+  <div style="
+    width:36px;
+    height:4px;
+    background:#d4ccc4;
+    border-radius:2px;
+    margin:12px auto 8px;
+  "></div>
 
   <div class="postCallInner">
+    <div style="position:sticky;top:0;z-index:2;display:flex;justify-content:flex-end;padding:0 0 8px;">
+      <button id="postCallCloseX" type="button" style="
+        width:36px;
+        height:36px;
+        border:none;
+        background:rgba(0,0,0,.08);
+        border-radius:50%;
+        font-size:20px;
+        line-height:1;
+        color:#555;
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      " aria-label="Close">✕</button>
+    </div>
     <div class="postCallHero">
       <h3 class="postCallTitle">Report</h3>
       <p class="postCallSubtitle">A short summary of your conversation with Sophie.</p>
