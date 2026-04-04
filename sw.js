@@ -1,12 +1,16 @@
-// Service Worker v2 — Network First, bypass HTTP cache
-const CACHE = "sophie-v2";
+// Service Worker v3 — Network First, bypass HTTP cache, auto-reload on update
+const CACHE = "sophie-v3";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    )
+    .then(() => self.clients.claim())
+    .then(() => self.clients.matchAll().then((clients) =>
+      clients.forEach((c) => c.postMessage({ type: "SW_UPDATED" }))
+    ))
   );
 });
 
@@ -17,7 +21,6 @@ self.addEventListener("fetch", (e) => {
   if (request.url.includes("/auth/")) return;
 
   e.respondWith(
-    // cache:"no-store" bypasses HTTP cache — always hits the server
     fetch(request, { cache: "no-store" })
       .then((res) => {
         if (res.ok) {
