@@ -1801,13 +1801,6 @@ function closePostCallPanel() {
 
 document.getElementById("postCallCloseX").onclick = closePostCallPanel;
 
-// iOS PWA standalone: push panel content below status bar
-if (window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches) {
-  postCallPanel.style.paddingTop = "calc(env(safe-area-inset-top, 44px) + 20px)";
-  postCallPanel.style.height = "100%";
-  postCallPanel.style.borderRadius = "0";
-}
-
 reopenReportBtn.onclick = () => {
   reopenReportBtn.style.display = "none";
   postCallPanel.style.display = "block";
