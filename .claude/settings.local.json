@@ -159,7 +159,8 @@
       "Bash(sips -z 512 512 apple-touch-icon.png --out android-chrome-512x512.png)",
       "Bash(grep -r \"Vergleiche\\\\|Challenge\" . --include=*.tsx --include=*.jsx --include=*.ts --include=*.js)",
       "Bash(find . -path */components/* -name *.tsx -o -path */components/* -name *.jsx)",
-      "Bash(curl -s 'https://www.meet-sophie.com/talk/index.html')"
+      "Bash(curl -s 'https://www.meet-sophie.com/talk/index.html')",
+      "Bash(curl -s 'https://www.meet-sophie.com/sw.js')"
     ]
   },
   "hooks": {

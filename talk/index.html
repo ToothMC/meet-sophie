@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="icon" href="/favicon.ico">
 <link rel="manifest" href="/site.webmanifest">
-<script>if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js");</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js");navigator.serviceWorker.addEventListener("message",e=>{if(e.data?.type==="SW_UPDATED")location.reload()})}</script>
 <link rel="preconnect" href="https://api.openai.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
