@@ -27,7 +27,43 @@ async function logSecurityEvent(supabase, eventName, meta) {
   try { await supabase.from("analytics_events").insert({ event_name: eventName, meta }); } catch { /* non-fatal */ }
 }
 
+export const config = { maxDuration: 30 };
+
 const FREE_TURNS_LIMIT = 10;
+
+// ---------------------------------------------------------------------------
+// SSE Streaming helpers
+// ---------------------------------------------------------------------------
+function sseWrite(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+const TOOL_STATUS = {
+  de: {
+    weather:         "Sophie prüft das Wetter.",
+    search:          "Sophie schaut kurz nach.",
+    news:            "Sophie prüft aktuelle Nachrichten.",
+    wiki:            "Sophie schlägt das kurz nach.",
+    flight:          "Sophie prüft die Flugdaten.",
+    arrivals:        "Sophie prüft die Ankünfte.",
+    departures:      "Sophie prüft die Abflüge.",
+    grounded_search: "Sophie recherchiert.",
+  },
+  en: {
+    weather:         "Sophie is checking the weather.",
+    search:          "Sophie is looking that up.",
+    news:            "Sophie is checking the latest news.",
+    wiki:            "Sophie is looking that up.",
+    flight:          "Sophie is checking flight data.",
+    arrivals:        "Sophie is checking arrivals.",
+    departures:      "Sophie is checking departures.",
+    grounded_search: "Sophie is researching.",
+  },
+};
+
+function statusText(type, lang) {
+  return TOOL_STATUS[lang]?.[type] || TOOL_STATUS.en[type] || null;
+}
 const AUTH_NUDGE_AT_TURN = 3;
 
 // ---------------------------------------------------------------------------
@@ -353,11 +389,12 @@ async function handleStart(req, res) {
 // ---------------------------------------------------------------------------
 // Tool execution helper — shared by anonymous and authenticated paths
 // ---------------------------------------------------------------------------
-async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
+async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}) {
   const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
   if (!toolMatch) return { reply: rawReply, toolUsed: false };
 
   const [, toolType, toolParam] = toolMatch;
+  onStatus(toolType);
 
   // Grounded Search: separate path — Gemini provides structured facts,
   // injected as context into Sophie's prompt (Architecture Rule #1)
@@ -375,7 +412,7 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
       const adapter = getAdapter(providerConfig.provider);
       const retryResponse = await Promise.race([
         adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
       ]);
       const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
       return {
@@ -419,7 +456,7 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
     const adapter = getAdapter(providerConfig.provider);
     const retryResponse = await Promise.race([
       adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
     ]);
     const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
     return { reply: retryReply || cleanRawReply, toolUsed: true, toolType, retryResponse };
@@ -950,6 +987,54 @@ async function handleMessage(req, res) {
   // Language from stored session — no more parsing from client-supplied prompt
   const sessionLang = session.language || "en";
 
+  // SSE streaming mode — opt-in via ?stream=1
+  const wantsStream = req.query?.stream === "1";
+  let sseStarted = false;
+  let clientDisconnected = false;
+  let heartbeatTimer = null;
+
+  function startSSE() {
+    if (sseStarted) return;
+    sseStarted = true;
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    req.on("close", () => { clientDisconnected = true; clearInterval(heartbeatTimer); });
+    // Keepalive every 5s — prevents proxies/browsers from killing "idle" connections
+    heartbeatTimer = setInterval(() => {
+      if (!clientDisconnected) res.write(":keepalive\n\n");
+    }, 5000);
+  }
+
+  function emitStatus(type) {
+    if (!wantsStream || clientDisconnected) return;
+    if (!sseStarted) startSSE();
+    const text = statusText(type, sessionLang);
+    if (text) sseWrite(res, "status", { text });
+  }
+
+  function emitDone(payload) {
+    clearInterval(heartbeatTimer);
+    if (wantsStream) {
+      if (!sseStarted) startSSE();
+      if (!clientDisconnected) { sseWrite(res, "done", payload); res.end(); }
+      return true;
+    }
+    return false;
+  }
+
+  function emitError(code, error) {
+    clearInterval(heartbeatTimer);
+    if (wantsStream && sseStarted) {
+      if (!clientDisconnected) { sseWrite(res, "error", { error, code }); res.end(); }
+      return true;
+    }
+    return false;
+  }
+
   // Anonymous users → always OpenAI (no multi-AI routing)
   if (!user) {
     // Curated responses for predictable trigger questions (bypass AI entirely)
@@ -1089,7 +1174,8 @@ async function handleMessage(req, res) {
     }
   }
 
-  // Execute with fallback
+  // Execute with fallback — start SSE stream for streaming clients
+  if (wantsStream) startSSE();
   let aiResponse;
   const routerStartMs = Date.now();
   try {
@@ -1109,10 +1195,12 @@ async function handleMessage(req, res) {
         decision.reason += "+fallback";
       } catch (fallbackErr) {
         console.error("AI Router: all providers failed", primaryErr?.message, fallbackErr?.message);
+        if (emitError(502, "AI unavailable")) return;
         return res.status(502).json({ error: "AI unavailable" });
       }
     } else {
       console.error("AI Router: primary failed, no fallback", primaryErr?.message);
+      if (emitError(502, "AI unavailable")) return;
       return res.status(502).json({ error: "AI unavailable" });
     }
   }
@@ -1120,13 +1208,13 @@ async function handleMessage(req, res) {
   // Normalize response
   let rawReply = normalizeResponse(aiResponse.content || "", aiResponse.provider);
 
-  if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
-
-  // Question loop guard — regenerate if 3rd consecutive question
-  // Guards disabled — curated responses handle critical triggers instead
+  if (!rawReply) {
+    if (emitError(502, "Empty response from AI")) return;
+    return res.status(502).json({ error: "Empty response from AI" });
+  }
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
-  const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary);
+  const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
   let searchSources = null;
   if (toolResult.toolUsed) {
     rawReply = toolResult.reply;
@@ -1247,7 +1335,7 @@ async function handleMessage(req, res) {
 
   await supabase.from("chat_sessions").update(updatePatch).eq("id", session_id);
 
-  return res.status(200).json({
+  const responsePayload = {
     ok: true,
     reply,
     voice_offer,
@@ -1261,7 +1349,10 @@ async function handleMessage(req, res) {
     ...(tokenDeduction && { remaining_tokens: tokenDeduction.remaining }),
     ...(secondOpinionMeta && { second_opinion: secondOpinionMeta }),
     ...(searchSources && { search_sources: searchSources }),
-  });
+  };
+
+  if (emitDone(responsePayload)) return;
+  return res.status(200).json(responsePayload);
 }
 
 // ---------------------------------------------------------------------------
