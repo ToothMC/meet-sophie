@@ -1728,30 +1728,7 @@ ${transcriptText}
       }
     }
 
-    // ---- Write short-term memory (session summary with TTL) ----
-    const chatSessionId = body.chat_session_id || null;
-    if (memConfig.depth && chatSessionId) {
-      try {
-        const expiresAt = new Date(Date.now() + memConfig.ttlDays * 86400000).toISOString();
-        const modeMap = { assistant: "assistant", friend: "friend", partner: "partner" };
-        const stmRow = {
-          user_id: user.id,
-          conversation_id: chatSessionId,
-          mode: modeMap[tier] || "assistant",
-          summary: clean(sm.session_summary || ss.short_summary).slice(0, 2000),
-          open_topics: (sm.open_topics || []).map(s => String(s).slice(0, 200)).slice(0, 10),
-          pending_decisions: (sm.pending_decisions || []).map(s => String(s).slice(0, 200)).slice(0, 10),
-          next_steps: (sm.next_steps || []).map(s => String(s).slice(0, 200)).slice(0, 10),
-          importance_score: Math.max(0, Math.min(1, Number(sm.importance_score) || 0.5)),
-          expires_at: expiresAt,
-        };
-        const { error: stmErr } = await supabase.from("sophie_short_term_memory").insert(stmRow);
-        if (stmErr) console.error("[memory-update] sophie_short_term_memory insert failed:", stmErr);
-        else console.log("[memory-update] STM written for session", chatSessionId.slice(0, 8));
-      } catch (e) {
-        console.error("[memory-update] STM write error:", e?.message);
-      }
-    }
+    // ---- STM is written after user_sessions insert (see below) ----
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
 
@@ -1794,6 +1771,41 @@ ${transcriptText}
       if (msgErr) {
         console.error("conversation_messages insert failed:", msgErr);
       }
+    }
+
+    // ---- Write short-term memory (references user_sessions, works for voice + text) ----
+    const memorySessionRef = insertedSession?.id || null;
+    if (memConfig.depth && memorySessionRef) {
+      try {
+        const expiresAt = new Date(Date.now() + memConfig.ttlDays * 86400000).toISOString();
+        const modeMap = { assistant: "assistant", friend: "friend", partner: "partner" };
+        const openTopics = (sm.open_topics || []).map(s => String(s).slice(0, 200)).slice(0, 10);
+        const pendingDecisions = (sm.pending_decisions || []).map(s => String(s).slice(0, 200)).slice(0, 10);
+        const nextSteps = (sm.next_steps || []).map(s => String(s).slice(0, 200)).slice(0, 10);
+        const stmRow = {
+          user_id: user.id,
+          conversation_id: memorySessionRef,
+          mode: modeMap[tier] || "assistant",
+          summary: clean(sm.session_summary || ss.short_summary).slice(0, 2000),
+          open_topics: openTopics,
+          pending_decisions: pendingDecisions,
+          next_steps: nextSteps,
+          importance_score: Math.max(0, Math.min(1, Number(sm.importance_score) || 0.5)),
+          expires_at: expiresAt,
+        };
+        const { error: stmErr } = await supabase.from("sophie_short_term_memory").insert(stmRow);
+        if (stmErr) {
+          console.error("[memory-update] STM write failed:", { error: stmErr.message, session_id: memorySessionRef, user: user.id.slice(0, 8), depth: memConfig.depth });
+        } else {
+          console.log("[memory-update] STM written", { session_id: memorySessionRef.slice(0, 8), user: user.id.slice(0, 8), open_topics: openTopics.length, pending_decisions: pendingDecisions.length, next_steps: nextSteps.length });
+        }
+      } catch (e) {
+        console.error("[memory-update] STM write error:", e?.message);
+      }
+    } else if (!memConfig.depth) {
+      console.log("[memory-update] STM skipped: depth disabled", { user: user.id.slice(0, 8), tier });
+    } else {
+      console.warn("[memory-update] STM skipped: no session reference", { user: user.id.slice(0, 8), depth: memConfig.depth, has_inserted_session: !!insertedSession?.id });
     }
 
     // Insert output row with "pending" status — report will be generated async
