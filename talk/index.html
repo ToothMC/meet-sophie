@@ -415,12 +415,38 @@ body{
 }
 .voice-chat-messages::-webkit-scrollbar{display:none}
 
+.voice-chat-file-preview{
+  display:flex;gap:6px;padding:4px 12px 0;flex-wrap:wrap;
+  border-top:1px solid rgba(255,255,255,.035);
+}
+.vc-file-chip{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 8px;border-radius:8px;
+  background:rgba(142,178,255,.12);border:1px solid rgba(142,178,255,.2);
+  font-size:11px;color:rgba(246,247,251,.7);max-width:180px;
+}
+.vc-file-chip img{width:28px;height:28px;border-radius:4px;object-fit:cover}
+.vc-file-chip .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.vc-file-chip .remove{cursor:pointer;opacity:.5;font-size:13px;line-height:1;padding:0 2px}
+.vc-file-chip .remove:hover{opacity:1}
+
 .voice-chat-input{
   display:flex;
   gap:8px;
   padding:10px 16px 12px;
   border-top:1px solid rgba(255,255,255,.08);
 }
+
+.vc-upload-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+  color:rgba(246,247,251,.5);font-size:20px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all .15s ease;font-family:inherit;
+  line-height:1;padding:0;
+}
+.vc-upload-btn:hover{background:rgba(255,255,255,.14);color:rgba(246,247,251,.8);border-color:rgba(255,255,255,.2)}
+.vc-upload-btn:disabled{opacity:.3;cursor:not-allowed}
 
 #voiceChatInput{
   flex:1;
@@ -1145,7 +1171,10 @@ body{
   <!-- Live chat input during voice session -->
   <div class="voice-chat" id="voiceChat" style="display:none">
     <div class="voice-chat-messages" id="voiceChatMessages"></div>
+    <div class="voice-chat-file-preview" id="vcFilePreview" style="display:none"></div>
     <div class="voice-chat-input">
+      <button class="vc-upload-btn" id="vcUploadBtn" type="button" aria-label="Datei anhängen" title="Datei anhängen">+</button>
+      <input type="file" id="vcFileInput" multiple accept="image/png,image/jpeg,image/webp,.pdf,.docx,.txt,.pptx,.ppt" style="display:none">
       <input type="text" id="voiceChatInput" placeholder="Nachricht an Sophie...">
       <button id="voiceChatSend" type="button">➤</button>
     </div>
@@ -1665,6 +1694,79 @@ const voiceChatMessages = document.getElementById("voiceChatMessages");
 const voiceChatInput = document.getElementById("voiceChatInput");
 const voiceChatSendBtn = document.getElementById("voiceChatSend");
 
+// ── Voice Chat File Upload ──
+const vcUploadBtn = document.getElementById("vcUploadBtn");
+const vcFileInput = document.getElementById("vcFileInput");
+const vcFilePreview = document.getElementById("vcFilePreview");
+let vcPendingFiles = [];
+const VC_MAX_FILES = 3;
+const VC_MAX_FILE_SIZE = 5 * 1024 * 1024;
+const VC_ALLOWED_TYPES = new Set(["image/png","image/jpeg","image/webp","application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.openxmlformats-officedocument.presentationml.presentation","application/vnd.ms-powerpoint","text/plain"]);
+const VC_ALLOWED_EXT = new Set(["png","jpg","jpeg","webp","pdf","docx","txt","pptx","ppt"]);
+
+if (vcUploadBtn && vcFileInput) {
+  vcUploadBtn.addEventListener("click", () => { vcFileInput.value = ""; vcFileInput.click(); });
+  vcFileInput.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const f of files) {
+      if (vcPendingFiles.length >= VC_MAX_FILES) { alert(`Max ${VC_MAX_FILES} Dateien pro Nachricht.`); break; }
+      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      if (!VC_ALLOWED_TYPES.has(f.type) && !VC_ALLOWED_EXT.has(ext)) { alert(`Dateityp nicht unterstützt: ${f.name}`); continue; }
+      if (f.size > VC_MAX_FILE_SIZE) { alert(`Datei zu groß (max 5MB): ${f.name}`); continue; }
+      let dataUrl = await vcReadFile(f);
+      if (f.type.startsWith("image/") && dataUrl.length > 500000) {
+        dataUrl = await vcCompressImage(dataUrl, 1024, 0.7);
+      }
+      vcPendingFiles.push({ name: f.name, type: f.type, size: f.size, dataUrl });
+    }
+    vcRenderPreview();
+  });
+}
+
+function vcReadFile(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function vcCompressImage(dataUrl, maxDim, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const scale = maxDim / Math.max(w, h);
+        w = Math.round(w * scale); h = Math.round(h * scale);
+      }
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function vcRenderPreview() {
+  if (!vcFilePreview) return;
+  if (!vcPendingFiles.length) { vcFilePreview.style.display = "none"; vcFilePreview.innerHTML = ""; return; }
+  vcFilePreview.style.display = "flex";
+  vcFilePreview.innerHTML = vcPendingFiles.map((f, i) => {
+    const isImg = f.type.startsWith("image/");
+    const thumb = isImg ? `<img src="${f.dataUrl}" alt="">` : "";
+    const sizeKb = Math.round(f.size / 1024);
+    return `<div class="vc-file-chip">${thumb}<span class="name">${f.name} (${sizeKb}KB)</span><span class="remove" onclick="window._vcRemoveFile(${i})">✕</span></div>`;
+  }).join("");
+}
+window._vcRemoveFile = function(idx) {
+  vcPendingFiles.splice(idx, 1);
+  vcRenderPreview();
+};
+
 function showVoiceChat(show) {
   if (!voiceChatEl) return;
   const wrap = document.querySelector(".wrap");
@@ -1677,6 +1779,8 @@ function showVoiceChat(show) {
     voiceChatEl.style.display = "none";
     voiceChatMessages.innerHTML = "";
     voiceChatInput.value = "";
+    vcPendingFiles = [];
+    vcRenderPreview();
     if (wrap) wrap.classList.remove("vc-active");
   }
 }
@@ -1692,29 +1796,58 @@ function appendVoiceChatBubble(role, text) {
 
 function sendVoiceChatMessage() {
   const text = (voiceChatInput.value || "").trim();
-  if (!text || !dc || dc.readyState !== "open") return;
+  const hasFiles = vcPendingFiles.length > 0;
+  if ((!text && !hasFiles) || !dc || dc.readyState !== "open") return;
+
+  // Build display text
+  const fileNames = vcPendingFiles.map(f => f.name);
+  const displayText = hasFiles
+    ? (text ? `${text} [${fileNames.join(", ")}]` : `[${fileNames.join(", ")}]`)
+    : text;
 
   // Show user bubble
-  appendVoiceChatBubble("user", text);
+  appendVoiceChatBubble("user", displayText);
 
   // Track in convoLog
-  convoLog.push({ role: "user", text: "[chat] " + text });
+  convoLog.push({ role: "user", text: "[chat] " + displayText });
+
+  // Build content array for Realtime API
+  const content = [];
+  // Add images as input_image items
+  for (const f of vcPendingFiles) {
+    if (f.type.startsWith("image/")) {
+      const base64 = f.dataUrl.split(",")[1];
+      content.push({ type: "input_image", image: base64 });
+    }
+  }
+  // Add text (include non-image file names as context)
+  const nonImageFiles = vcPendingFiles.filter(f => !f.type.startsWith("image/"));
+  let msgText = text || "";
+  if (nonImageFiles.length) {
+    const names = nonImageFiles.map(f => f.name).join(", ");
+    msgText = msgText
+      ? `[CHAT MESSAGE] ${msgText} (Angehängte Dateien: ${names})`
+      : `[CHAT MESSAGE] (Angehängte Dateien: ${names})`;
+  } else if (msgText) {
+    msgText = "[CHAT MESSAGE] " + msgText;
+  } else if (content.length) {
+    msgText = "[CHAT MESSAGE] Schau dir dieses Bild an.";
+  }
+  if (msgText) content.push({ type: "input_text", text: msgText });
 
   // Send to Realtime API via DataChannel
   dcSend({
     type: "conversation.item.create",
-    item: {
-      type: "message",
-      role: "user",
-      content: [{ type: "input_text", text: "[CHAT MESSAGE] " + text }]
-    }
+    item: { type: "message", role: "user", content }
   });
 
   // Trigger response — OpenAI handles parallel queuing
   dcSend({ type: "response.create" });
 
-  // Clear input
+  // Clear input and files
   voiceChatInput.value = "";
+  vcPendingFiles = [];
+  vcRenderPreview();
   voiceChatInput.focus();
 }
 
