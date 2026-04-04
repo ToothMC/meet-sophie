@@ -518,6 +518,16 @@ body{
   color:#1a1a1a;
   border-radius:18px 18px 18px 4px;
 }
+.vc-msg-images{
+  display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;
+}
+.vc-msg-images img{
+  max-width:160px;max-height:120px;border-radius:10px;
+  object-fit:cover;cursor:pointer;
+}
+.vc-msg-images img:only-child{
+  max-width:220px;max-height:180px;
+}
 
 #limitOverlay{
   position:fixed;
@@ -1799,29 +1809,51 @@ function sendVoiceChatMessage() {
   const hasFiles = vcPendingFiles.length > 0;
   if ((!text && !hasFiles) || !dc || dc.readyState !== "open") return;
 
-  // Build display text
-  const fileNames = vcPendingFiles.map(f => f.name);
-  const displayText = hasFiles
-    ? (text ? `${text} [${fileNames.join(", ")}]` : `[${fileNames.join(", ")}]`)
-    : text;
+  // Grab file snapshots before clearing
+  const filesToSend = hasFiles ? [...vcPendingFiles] : [];
+  const imageFiles = filesToSend.filter(f => f.type.startsWith("image/"));
+  const nonImageFiles = filesToSend.filter(f => !f.type.startsWith("image/"));
 
-  // Show user bubble
-  appendVoiceChatBubble("user", displayText);
+  // Show user bubble with image thumbnails
+  {
+    const el = document.createElement("div");
+    el.className = "vc-msg vc-user";
+    if (imageFiles.length) {
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "vc-msg-images";
+      imageFiles.forEach(f => {
+        const img = document.createElement("img");
+        img.src = f.dataUrl;
+        img.alt = f.name;
+        imgWrap.appendChild(img);
+      });
+      el.appendChild(imgWrap);
+    }
+    if (nonImageFiles.length) {
+      const names = document.createElement("div");
+      names.style.cssText = "font-size:12px;opacity:.7;margin-bottom:2px";
+      names.textContent = nonImageFiles.map(f => f.name).join(", ");
+      el.appendChild(names);
+    }
+    if (text) {
+      const txt = document.createElement("div");
+      txt.textContent = text;
+      el.appendChild(txt);
+    }
+    voiceChatMessages.appendChild(el);
+    voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
+  }
 
   // Track in convoLog
-  convoLog.push({ role: "user", text: "[chat] " + displayText });
+  const logText = text || (imageFiles.length ? "(Bild)" : filesToSend.map(f => f.name).join(", "));
+  convoLog.push({ role: "user", text: "[chat] " + logText });
 
   // Build content array for Realtime API
   const content = [];
-  // Add images as input_image items
-  for (const f of vcPendingFiles) {
-    if (f.type.startsWith("image/")) {
-      const base64 = f.dataUrl.split(",")[1];
-      content.push({ type: "input_image", image: base64 });
-    }
+  for (const f of imageFiles) {
+    const base64 = f.dataUrl.split(",")[1];
+    content.push({ type: "input_image", image: base64 });
   }
-  // Add text (include non-image file names as context)
-  const nonImageFiles = vcPendingFiles.filter(f => !f.type.startsWith("image/"));
   let msgText = text || "";
   if (nonImageFiles.length) {
     const names = nonImageFiles.map(f => f.name).join(", ");
