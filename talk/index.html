@@ -558,7 +558,8 @@ body{
   border-top-left-radius:28px;
   border-top-right-radius:28px;
   box-shadow:0 -8px 40px rgba(0,0,0,.12), 0 -1px 0 #e8e2da;
-  padding:0;
+  padding:max(0px, env(safe-area-inset-top)) 0 0 0;
+  box-sizing:border-box;
 }
 
 .postCallInner{
