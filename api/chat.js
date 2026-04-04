@@ -1046,13 +1046,15 @@ async function handleMessage(req, res) {
         last_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq("id", session_id);
-      return res.status(200).json({
+      const payload = {
         ok: true, reply: curatedReply,
         voice_offer: false, voice_confirmed: false,
         detected_mode: null, turn_count: session.turn_count + 1,
         model: "curated", provider: "curated",
         routing_reason: "curated-trigger", import_hint: false,
-      });
+      };
+      if (emitDone(payload)) return;
+      return res.status(200).json(payload);
     }
 
     // Soft onboarding — respond to the user FIRST, then weave in naturally
@@ -1067,7 +1069,10 @@ async function handleMessage(req, res) {
       messages: routerMessages, model: "gpt-4o-mini", maxTokens: 1024, temperature: 0.85,
     });
     let rawReply = normalizeResponse(aiResp.content || "", aiResp.provider);
-    if (!rawReply) return res.status(502).json({ error: "Empty response from AI" });
+    if (!rawReply) {
+      if (emitError(502, "Empty response from AI")) return;
+      return res.status(502).json({ error: "Empty response from AI" });
+    }
 
     // Question loop guard — regenerate if 3rd consecutive question
     // Guards disabled — caused more harm than good (generic rewrites, language bugs, latency)
@@ -1107,13 +1112,15 @@ async function handleMessage(req, res) {
       updated_at: new Date().toISOString(),
     }).eq("id", session_id);
 
-    return res.status(200).json({
+    const anonPayload = {
       ok: true, reply,
       voice_offer: !!detected_mode, voice_confirmed: false,
       detected_mode, turn_count: session.turn_count + 1,
       model: aiResp.model, provider: aiResp.provider,
       routing_reason: "anonymous-openai", import_hint,
-    });
+    };
+    if (emitDone(anonPayload)) return;
+    return res.status(200).json(anonPayload);
   }
 
   // Load profile for onboarding check + eco_mode
@@ -1134,13 +1141,15 @@ async function handleMessage(req, res) {
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", session_id);
-    return res.status(200).json({
+    const curatedPayload = {
       ok: true, reply: curatedReplyAuth,
       voice_offer: false, voice_confirmed: false,
       detected_mode: null, turn_count: session.turn_count + 1,
       model: "curated", provider: "curated",
       routing_reason: "curated-trigger", import_hint: false,
-    });
+    };
+    if (emitDone(curatedPayload)) return;
+    return res.status(200).json(curatedPayload);
   }
 
   // Soft onboarding for authenticated first-session users — user's question has priority
