@@ -387,22 +387,29 @@
       font-size:12.5px;
       letter-spacing:.2px;
     }
-    .hero-write-link{
+    .hero-write-btn{
       display:none;
       appearance:none;
       -webkit-appearance:none;
-      border:none;
-      background:none;
-      text-decoration:none;
-      color:rgba(246,247,251,.72);
+      border:2px solid rgba(100,120,220,.55);
+      background:rgba(255,255,255,.97);
+      border-radius:999px;
+      color:#1a1a2e;
       font-size:16px;
       font-weight:500;
       font-family:inherit;
       letter-spacing:.01em;
       cursor:pointer;
-      transition:color .15s;
+      transition:border-color .15s,box-shadow .15s;
+      align-items:center;
+      gap:10px;
+      padding:0 18px;
+      min-height:52px;
     }
-    .hero-write-link:hover{color:rgba(246,247,251,.95)}
+    .hero-write-btn:hover{border-color:rgba(100,120,220,.8);box-shadow:0 0 0 3px rgba(100,120,220,.15)}
+    .hero-write-icon{flex-shrink:0;color:#999;opacity:.45;width:13px;height:13px}
+    .hero-write-text{flex:1;text-align:left;color:#888;font-weight:400}
+    .hero-write-arrow{flex-shrink:0;color:#4a5ebd;opacity:.45;width:13px;height:13px}
     .mobile-feature-hint{
       display:none;
       margin:14px 0 0;
@@ -787,7 +794,7 @@
         position:relative;
         z-index:1;
         padding-top:max(56px, env(safe-area-inset-top));
-        padding-bottom:max(24px, env(safe-area-inset-bottom));
+        padding-bottom:max(16px, env(safe-area-inset-bottom));
         width:100%;
         text-align:center;
         display:flex;
@@ -842,39 +849,33 @@
       .btn{min-width:0;min-height:48px;font-size:15px;padding:0 22px}
       .hero-actions .btn-primary{width:100%;min-height:62px;font-size:22px;border-radius:20px}
 
-      /* --- Secondary link --- */
-      .hero-write-link{
+      /* --- Secondary write button (chat-input style) --- */
+      .hero-write-btn{
         display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        width:100%;
-        min-height:28px;
-        font-size:18px;
-        color:rgba(255,255,255,.86);
+        min-height:36px;
+        font-size:13px;
+        padding:0 14px;
+        border-radius:18px;
+        white-space:nowrap;
+        border-width:1px;
+        margin:0 auto;
       }
 
-      /* --- Feature hint --- */
+      /* --- Feature hint (removed — redundant with write button) --- */
       .mobile-feature-hint{
-        display:block;
-        margin-top:6px;
-        font-size:15px;
-        line-height:1.4;
-        color:rgba(246,247,251,.72);
-        max-width:28ch;
-        margin-left:auto;
-        margin-right:auto;
+        display:none;
       }
 
       /* --- Trust line --- */
       .hero-copy-col .trust-line{
-        margin-top:14px;
+        margin-top:20px;
         font-size:15px;
         color:rgba(246,247,251,.72);
       }
 
       /* --- Mode pills deprioritized --- */
       .hero-mode-bar{
-        margin-top:18px;
+        margin-top:24px;
         justify-content:center;
       }
       .hero-mode-pill{
@@ -1742,7 +1743,7 @@
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
           <div class="hero-actions">
             <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
-            <button class="hero-write-link" id="hero-btn-secondary" type="button">Or type</button>
+            <button class="hero-write-btn" id="hero-btn-secondary" type="button"><svg class="hero-write-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg><span class="hero-write-text">Write to Sophie…</span><svg class="hero-write-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
           </div>
           <div class="hero-mode-bar" id="heroModeBar">
             <div class="bs-pill-wrap">
@@ -2001,8 +2002,8 @@
         hero_title: "THINK FIRST.<br>THEN ACT.",
         hero_copy: "Talk to Sophie to sort through your thoughts, prepare decisions, and handle important conversations with more clarity.",
         hero_btn_primary: "Talk to Sophie",
-        hero_trust_line: "No signup · Start instantly",
-        hero_btn_secondary: "Or type",
+        hero_trust_line: "Start free \u00b7 No subscription",
+        hero_btn_secondary: "Write to Sophie\u2026",
         mobile_feature_hint: "You can also send Sophie messages during a conversation.",
         chat_greeting: "What\u2019s on your mind right now?",
         chat_demo_user: "I\u2019m feeling stuck deciding whether to take the new job offer or stay at my current job.",
@@ -2093,8 +2094,8 @@
         hero_title: "ERST DENKEN.<br>DANN HANDELN.",
         hero_copy: "Sprich mit Sophie, um Gedanken zu sortieren, Entscheidungen vorzubereiten und wichtige Gespr\u00e4che klarer zu f\u00fchren.",
         hero_btn_primary: "Mit Sophie sprechen",
-        hero_trust_line: "Kein Account n\u00f6tig \u00b7 Sofort starten",
-        hero_btn_secondary: "Oder schreiben",
+        hero_trust_line: "Kostenlos starten \u00b7 Kein Abo n\u00f6tig",
+        hero_btn_secondary: "Mit Sophie schreiben\u2026",
         mobile_feature_hint: "Auch w\u00e4hrend des Gespr\u00e4chs kannst du Sophie Nachrichten schicken.",
         chat_greeting: "Was besch\u00e4ftigt dich gerade?",
         chat_demo_user: "Ich stecke fest \u2014 soll ich das neue Jobangebot annehmen oder bei meiner jetzigen Stelle bleiben?",
@@ -2187,8 +2188,8 @@
       hero_title: "PENSER D\u2019ABORD.<br>AGIR ENSUITE.",
       hero_copy: "Parlez \u00e0 Sophie pour organiser vos pens\u00e9es, pr\u00e9parer vos d\u00e9cisions et aborder les conversations importantes avec plus de clart\u00e9.",
       hero_btn_primary: "Parler \u00e0 Sophie",
-      hero_trust_line: "Sans inscription \u00b7 Commencer imm\u00e9diatement",
-      hero_btn_secondary: "Ou \u00e9crire",
+      hero_trust_line: "Commencer gratuitement \u00b7 Sans abonnement",
+      hero_btn_secondary: "\u00c9crire \u00e0 Sophie\u2026",
       mobile_feature_hint: "Vous pouvez aussi envoyer des messages \u00e0 Sophie pendant une conversation.",
       chat_greeting: "Qu\u2019est-ce qui vous pr\u00e9occupe en ce moment\u00a0?",
       chat_demo_user: "Je ne sais pas quoi d\u00e9cider \u2014 accepter la nouvelle offre d\u2019emploi ou rester \u00e0 mon poste actuel.",
@@ -2335,7 +2336,13 @@
       };
       Object.entries(textMap).forEach(([id, value]) => {
         const el = document.getElementById(id);
-        if (el) el.textContent = value;
+        if (!el) return;
+        if (id === "hero-btn-secondary") {
+          const span = el.querySelector(".hero-write-text");
+          if (span) span.textContent = value; else el.textContent = value;
+        } else {
+          el.textContent = value;
+        }
       });
       const htmlMap = {
         "hero-title": t.hero_title, "thinking-highlight": t.thinking_highlight,
