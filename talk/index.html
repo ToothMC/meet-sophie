@@ -1039,9 +1039,14 @@ body{
     padding-bottom:env(safe-area-inset-bottom);
   }
   #postCallPanel{
+    top:0;
     height:100%;
     border-radius:0;
-    padding-top:calc(env(safe-area-inset-top) + 20px);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+  }
+  #postCallPanel>.postCallInner{
+    padding-top:calc(env(safe-area-inset-top) + 48px);
   }
 }
 
