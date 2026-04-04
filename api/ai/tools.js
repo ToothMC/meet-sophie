@@ -281,14 +281,17 @@ export async function getNews(topic) {
     } catch (e) { console.error('[tools] Bing news error:', e?.message); }
   }
 
-  // Fallback: Google News RSS
+  // Fallback: Google News RSS (may be blocked on some serverless platforms)
   const lang = 'de';
   const url = topic === 'world'
     ? `https://news.google.com/rss?hl=${lang}&gl=DE&ceid=DE:de`
     : `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=${lang}&gl=DE&ceid=DE:de`;
 
   try {
-    const rssRes = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const rssRes = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SophieBot/1.0)' },
+    });
     if (!rssRes.ok) throw new Error(`RSS fetch failed: ${rssRes.status}`);
     const xml = await rssRes.text();
 
@@ -322,7 +325,7 @@ export async function getNews(topic) {
     console.error('[tools] news RSS error:', e?.message);
   }
 
-  return `Keine aktuellen Nachrichten zu "${topic}" verfügbar.`;
+  return `[NEWS-TOOL FEHLGESCHLAGEN] Nachrichten konnten nicht geladen werden (alle Quellen nicht erreichbar). Sag dem Nutzer ehrlich, dass die Nachrichten-Suche gerade nicht funktioniert hat, und biete an es später nochmal zu versuchen. Erfinde KEINE Nachrichten.`;
 }
 
 // ── Wikipedia: REST API + MediaWiki API (kostenlos, kein API-Key) ──

@@ -405,7 +405,10 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
     console.error(`[chat] tool ${toolType} error:`, e?.message);
   }
 
-  if (!toolData) return { reply: rawReply, toolUsed: false };
+  // Strip tool tag from raw reply so it never leaks to the user
+  const cleanRawReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
+
+  if (!toolData) return { reply: cleanRawReply || rawReply, toolUsed: false };
 
   routerMessages.push({
     role: "system",
@@ -416,13 +419,21 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig) {
     const adapter = getAdapter(providerConfig.provider);
     const retryResponse = await Promise.race([
       adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000)),
     ]);
     const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
-    return { reply: retryReply || rawReply, toolUsed: true, toolType, retryResponse };
+    return { reply: retryReply || cleanRawReply, toolUsed: true, toolType, retryResponse };
   } catch (e) {
     console.error(`[chat] tool retry error:`, e?.message);
-    return { reply: rawReply, toolUsed: false };
+    // Tool data was fetched but AI couldn't format it — return graceful fallback
+    const fallbackMsg = toolType === "news"
+      ? "Ich konnte die Nachrichten gerade nicht laden. Versuch es bitte gleich nochmal."
+      : toolType === "weather"
+      ? "Die Wetterdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal."
+      : toolType === "search"
+      ? "Die Suche hat gerade nicht funktioniert. Versuch es bitte gleich nochmal."
+      : "Die Echtzeitdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal.";
+    return { reply: cleanRawReply || fallbackMsg, toolUsed: false };
   }
 }
 
