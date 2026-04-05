@@ -1336,7 +1336,7 @@ async function handleMessage(req, res) {
     }
   }
 
-  const reply = rawReply
+  let reply = rawReply
     .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
     .replace(/\s*signal_mode\([^)]*\)\s*/g, "")
     .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
@@ -1346,6 +1346,14 @@ async function handleMessage(req, res) {
     .replace(/\s*\[TOOL:[^\]]*\]\s*/g, "")
     .replace(/\s*\[ECHTZEIT-DATEN\][\s\S]*$/g, "")
     .trim();
+
+  // Safety net: never return empty reply to client
+  if (!reply) {
+    console.warn("[chat] reply empty after tag-stripping, rawReply was:", rawReply.slice(0, 200));
+    reply = searchSources?.length
+      ? "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal."
+      : "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+  }
 
   // Increment turn count + link user if just authenticated
   const updatePatch = {
