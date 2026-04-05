@@ -1057,19 +1057,47 @@ export default async function handler(req, res) {
         ? body.session_ended_at.trim()
         : nowIso;
 
-    // ---- Track realtime voice session cost (estimated from duration) ----
+    // ---- Track realtime voice session cost (three-ledger model) ----
     if (secondsUsed > 0) {
-      const realtimeCostUsd = estimateRealtimeCost(secondsUsed);
+      const validatedUsage = validateRealtimeUsage(rawRealtimeUsage, secondsUsed);
+      const providerCost = validatedUsage
+        ? calculateRealtimeProviderCost(validatedUsage)
+        : estimateRealtimeCost(secondsUsed);
+      const billedValue = estimateRealtimeCost(secondsUsed); // user-facing: duration × margin
+
+      const totalTokensIn = validatedUsage
+        ? (validatedUsage.audio_tokens_in + validatedUsage.text_tokens_in + validatedUsage.cached_tokens_in)
+        : 0;
+      const totalTokensOut = validatedUsage
+        ? (validatedUsage.audio_tokens_out + validatedUsage.text_tokens_out)
+        : 0;
+
       trackCost({
         userId: user.id,
         provider: 'openai',
         model: 'gpt-realtime',
-        inputTokens: 0,
-        outputTokens: 0,
-        costUsd: realtimeCostUsd,
+        inputTokens: totalTokensIn,
+        outputTokens: totalTokensOut,
+        costUsd: providerCost,
         latencyMs: secondsUsed * 1000,
         routingReason: `realtime-voice-${sessionMode || 'unknown'}`,
+        providerCost,
+        billedValue,
+        hasRealUsage: !!validatedUsage,
+        realtimeUsageDetail: validatedUsage,
       }).catch(err => console.error("Realtime cost tracking error:", err?.message));
+    }
+
+    // ---- Timestamp sanity logging ----
+    if (sessionStartedAt && sessionEndedAt) {
+      const startMs = new Date(sessionStartedAt).getTime();
+      const endMs = new Date(sessionEndedAt).getTime();
+      if (isNaN(startMs) || isNaN(endMs) || endMs < startMs || (endMs - startMs) > 7_200_000) {
+        console.warn('[memory-update] suspicious timestamps', {
+          sessionStartedAt, sessionEndedAt, secondsUsed,
+          delta: isNaN(endMs - startMs) ? 'NaN' : Math.round((endMs - startMs) / 1000),
+        });
+      }
     }
 
     // ---- Transcript normalization with strict role mapping ----
