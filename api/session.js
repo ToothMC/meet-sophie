@@ -613,46 +613,36 @@ export default async function handler(req, res) {
       channel: "voice",
     });
 
-    // Add deep_research capability to prompt
-    const researchInstruction = `\n\nDEEP RESEARCH: Du hast Zugriff auf ein Tool namens "deep_research". ` +
+    // Tool instructions — only for modes that have tools active
+    // Brainstorm/Meeting only get send_chat_note, no research/weather/news tools
+    const hasFullTools = !sessionMode || sessionMode === "salespitch";
+    const toolInstructions = hasFullTools ? `\n\nDEEP RESEARCH: Du hast Zugriff auf ein Tool namens "deep_research". ` +
       `Nutze es wenn der User eine Frage stellt die tiefere Analyse, Faktenprüfung, oder eine zweite Meinung braucht. ` +
-      `Beispiele: komplexe Sachfragen, Vergleiche, Analysen, oder wenn du dir bei einer Antwort unsicher bist. ` +
-      `Sage dabei natürlich etwas wie "Lass mich das kurz prüfen..." oder "Einen Moment, ich schaue nach..." ` +
-      `und nutze dann das Tool. Die Ergebnisse kommen von anderen KI-Modellen (Claude, Gemini, Mistral) ` +
-      `die die gleiche Frage unabhängig beantworten. Nutze ihre Insights um deine Antwort zu verbessern. ` +
+      `Sage dabei "Lass mich das kurz prüfen..." und nutze dann das Tool. ` +
       `Erwähne NICHT dass du andere KIs befragt hast — sage einfach die verbesserte Antwort.` +
-      `\n\nSEARCH HISTORY: Du hast Zugriff auf ein Tool namens "search_history". ` +
-      `Nutze es wenn der User nach früheren Gesprächen, Projekten oder Informationen aus seiner Chat-History fragt. ` +
-      `Beispiele: "Was hatten wir zum Thema X besprochen?", "Finde den Chat über Y", "Woran habe ich zuletzt gearbeitet?", ` +
-      `"Erinnerst du dich an...". Sage natürlich "Moment, ich schaue in deiner History nach..." und nutze dann das Tool. ` +
-      `Das Ergebnis enthält Auszüge aus importierten Gesprächen. Fasse die relevanten Informationen zusammen.` +
+      `\n\nSEARCH HISTORY: Du hast ein Tool namens "search_history". ` +
+      `Nutze es wenn der User nach früheren Gesprächen oder Projekten fragt. ` +
+      `Sage "Moment, ich schaue in deiner History nach..." und nutze dann das Tool.` +
       `\n\nWETTER: Du hast ein Tool namens "get_weather". ` +
-      `Nutze es wenn der User nach dem Wetter, der Temperatur, Regen, oder Outdoor-Bedingungen fragt. ` +
-      `Sage "Moment, ich schaue nach dem Wetter..." und nutze dann das Tool. ` +
-      `Das Ergebnis enthält aktuelle Wetterdaten und eine 3-Tage-Vorhersage.` +
+      `Nutze es bei Fragen nach Wetter, Temperatur oder Outdoor-Bedingungen. ` +
+      `Sage "Moment, ich schaue nach dem Wetter..." und nutze das Tool.` +
       `\n\nWEB-SUCHE: Du hast ein Tool namens "web_search". ` +
-      `Nutze es für aktuelle Fakten, Preise, Ereignisse oder alles was aktueller ist als dein Trainingsdaten-Cutoff. ` +
-      `Sage "Lass mich das kurz nachschauen..." und nutze dann das Tool.` +
+      `Nutze es für aktuelle Fakten, Preise, Ereignisse. Sage "Lass mich das kurz nachschauen..."` +
       `\n\nNACHRICHTEN: Du hast ein Tool namens "get_news". ` +
-      `Nutze es wenn der User nach aktuellen Nachrichten, News-Headlines oder Neuigkeiten fragt. ` +
-      `Sage "Ich prüfe die aktuellen Nachrichten..." und nutze dann das Tool.` +
+      `Nutze es bei Fragen nach aktuellen Nachrichten. Sage "Ich prüfe die Nachrichten..."` +
       `\n\nWIKIPEDIA: Du hast ein Tool namens "get_wikipedia". ` +
-      `Nutze es für Faktenwissen, Definitionen, Biographien, Geschichte, Erklärungen — immer wenn der User nach konkretem Wissen fragt ` +
-      `(Was ist...? Wer war...? Wie funktioniert...? Erkläre mir...). ` +
-      `Sage "Moment, ich schaue das nach..." und nutze dann das Tool. ` +
-      `Sage NIEMALS "Ich habe keinen Zugriff" — du HAST Zugriff über deine Tools!` +
-      `\n\nCHAT MESSAGES: ` +
-      `Messages prefixed with [CHAT MESSAGE] are text messages the user typed during your voice conversation. ` +
-      `This is parallel communication — like someone showing you a note while talking. ` +
-      `Acknowledge naturally: "Ah, I see your message..." or "Good point, you wrote..." ` +
-      `Then incorporate the content into your voice response. Keep it concise since the user can also read your answer in the chat panel. ` +
-      `Always respond in the same language the conversation is in.` +
+      `Nutze es für Faktenwissen, Definitionen, Biographien. ` +
+      `Sage NIEMALS "Ich habe keinen Zugriff" — du HAST Zugriff über deine Tools!` : "";
+
+    // Chat interaction instructions — always active (user can type during any mode)
+    const chatInstruction = `\n\nCHAT MESSAGES: ` +
+      `Messages prefixed with [CHAT MESSAGE] are text messages typed during the voice session. ` +
+      `Acknowledge naturally: "Ah, I see your message..." Then incorporate into your response.` +
       `\n\nCHAT NOTE TOOL (send_chat_note): ` +
-      `You have a tool to send short text notes to the user's chat panel during the voice session. ` +
-      `ONLY use it for structured info better READ than heard: numbered lists, key facts, names, URLs, dates, or brief summaries. ` +
-      `NEVER send your full spoken response as a note — only the condensed essence. ` +
-      `Example: You explain 5 points verbally in detail → send_chat_note with just "1. Point A\\n2. Point B\\n3. Point C". ` +
-      `Keep notes very short (max 2-3 lines, max 280 chars). Do NOT use this for every response — only when visual text genuinely helps.`;
+      `Send short text notes to the chat panel for structured info better READ than heard. ` +
+      `Keep notes very short (max 2-3 lines, max 280 chars). Only when visual text genuinely helps.`;
+
+    const researchInstruction = toolInstructions + chatInstruction;
 
     // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
     // This block just tells the model not to self-generate a greeting from the system prompt alone.
