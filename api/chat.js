@@ -398,47 +398,75 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
 
   // Grounded Search: separate path — Gemini provides structured facts,
   // injected as context into Sophie's prompt (Architecture Rule #1)
+  // FALLBACK: if grounded_search fails → fall back to webSearch (Google → Bing → DuckDuckGo)
   if (toolType === "grounded_search") {
+    let searchResult = null;
     try {
-      const searchResult = await groundedSearch(toolParam.trim());
-      if (!searchResult.facts.length) return { reply: rawReply, toolUsed: false };
-
-      const searchContext = buildSearchContext(searchResult);
-      routerMessages.push({
-        role: "system",
-        content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
-      });
-
-      const adapter = getAdapter(providerConfig.provider);
-      const retryResponse = await Promise.race([
-        adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
-      ]);
-      const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
-      if (!retryReply) {
-        console.warn("[chat] grounded_search: retry AI returned empty reply, using fallback");
-      }
-      const fallbackReply = "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal.";
-      return {
-        reply: retryReply || fallbackReply,
-        toolUsed: true,
-        toolType: "grounded_search",
-        retryResponse,
-        searchSources: searchResult.sources,
-      };
+      searchResult = await groundedSearch(toolParam.trim());
     } catch (e) {
-      console.error("[chat] grounded_search error:", e?.message);
-      // Search data was fetched but retry AI failed — return fallback with sources
-      const gsFallback = searchResult?.sources?.length
-        ? "Die Recherche hat Ergebnisse gefunden, aber ich konnte sie gerade nicht zusammenfassen. Versuch es bitte gleich nochmal."
-        : rawReply;
-      return {
-        reply: gsFallback,
-        toolUsed: !!searchResult?.sources?.length,
-        toolType: "grounded_search",
-        searchSources: searchResult?.sources,
-      };
+      console.error("[chat] grounded_search call failed:", e?.message);
     }
+
+    // If grounded_search returned facts → use them
+    if (searchResult?.facts?.length) {
+      try {
+        const searchContext = buildSearchContext(searchResult);
+        routerMessages.push({
+          role: "system",
+          content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
+        });
+
+        const adapter = getAdapter(providerConfig.provider);
+        const retryResponse = await Promise.race([
+          adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+        ]);
+        const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+        if (retryReply) {
+          return {
+            reply: retryReply, toolUsed: true, toolType: "grounded_search",
+            retryResponse, searchSources: searchResult.sources,
+          };
+        }
+        console.warn("[chat] grounded_search: retry AI returned empty reply, falling back to webSearch");
+      } catch (e) {
+        console.error("[chat] grounded_search retry error:", e?.message, "— falling back to webSearch");
+      }
+    } else {
+      console.warn("[chat] grounded_search returned no facts, falling back to webSearch");
+    }
+
+    // FALLBACK: use webSearch (has Google → Bing → DuckDuckGo chain)
+    onStatus("search");
+    try {
+      const webData = await webSearch(toolParam.trim());
+      if (webData && !webData.includes("Keine Ergebnisse")) {
+        routerMessages.push({
+          role: "system",
+          content: `[ECHTZEIT-DATEN]\n${webData}\n\nAntworte jetzt basierend auf diesen aktuellen Daten. Kein Tool-Tag mehr.`,
+        });
+        const adapter = getAdapter(providerConfig.provider);
+        const retryResponse = await Promise.race([
+          adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+        ]);
+        const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+        if (retryReply) {
+          console.log("[chat] grounded_search fallback to webSearch succeeded");
+          return { reply: retryReply, toolUsed: true, toolType: "search", retryResponse };
+        }
+      }
+    } catch (e) {
+      console.error("[chat] webSearch fallback also failed:", e?.message);
+    }
+
+    // Both grounded_search AND webSearch failed — return honest error
+    const cleanReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
+    return {
+      reply: cleanReply || "Die Recherche hat gerade leider nicht geklappt. Versuch es bitte gleich nochmal.",
+      toolUsed: false,
+      searchSources: searchResult?.sources,
+    };
   }
 
   // Standard tools: weather, search, news, wiki, flight, arrivals, departures

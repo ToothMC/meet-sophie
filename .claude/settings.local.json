@@ -170,7 +170,8 @@
       "Bash(npx --version)",
       "Bash(grep -r \"fetch.*chat\\\\|POST.*chat\\\\|sendMessage\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.ts --include=*.tsx --include=*.js -l)",
       "Bash(grep -r \"fetch.*api/chat\\\\|/api/chat\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts --include=*.tsx --include=*.html ! -path */.claude/* -l)",
-      "Bash(grep -n -B 5 -A 15 'msg?.type === \"\"response.function_call_arguments.done\"\" && msg?.name === \"\"send_chat_note\"\"' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/talk/index.html)"
+      "Bash(grep -n -B 5 -A 15 'msg?.type === \"\"response.function_call_arguments.done\"\" && msg?.name === \"\"send_chat_note\"\"' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/talk/index.html)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name .env* -type f)"
     ]
   },
   "hooks": {
