@@ -160,7 +160,14 @@
       "Bash(grep -r \"Vergleiche\\\\|Challenge\" . --include=*.tsx --include=*.jsx --include=*.ts --include=*.js)",
       "Bash(find . -path */components/* -name *.tsx -o -path */components/* -name *.jsx)",
       "Bash(curl -s 'https://www.meet-sophie.com/talk/index.html')",
-      "Bash(curl -s 'https://www.meet-sophie.com/sw.js')"
+      "Bash(curl -s 'https://www.meet-sophie.com/sw.js')",
+      "Bash(find public:*)",
+      "Bash(ls -la *.js *.mjs)",
+      "Bash(grep -r \"hero\\\\.jpg\\\\|sophie\\\\.jpg\\\\|favicon\\\\|android-chrome\\\\|apple-touch\" . --include=*.ts --include=*.tsx --include=*.js --include=*.jsx --include=*.css --include=*.html)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -maxdepth 1 -type f -name *.md -o -name *.txt)",
+      "Bash(grep -r \"cdn\\\\|cloudinary\\\\|imgix\\\\|jsdelivr.*image\" . --include=*.html --include=*.js --include=*.ts)",
+      "Bash(ls -lh /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.jpg /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.png)",
+      "Bash(npx --version)"
     ]
   },
   "hooks": {

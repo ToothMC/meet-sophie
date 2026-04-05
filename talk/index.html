@@ -82,7 +82,8 @@ body{
 .bg{
   position:fixed;
   inset:0;
-  background:url("/sophie.jpg") center/cover no-repeat;
+  background:url("/sophie-opt.jpg") center/cover no-repeat;
+  background:image-set(url("/sophie.webp") type("image/webp"), url("/sophie-opt.jpg") type("image/jpeg")) center/cover no-repeat;
   opacity:1;
   transition:opacity .5s ease;
   z-index:0;
