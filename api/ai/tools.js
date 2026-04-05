@@ -677,7 +677,7 @@ export async function groundedSearch(query) {
   } catch (err) {
     clearTimeout(timeout);
     if (err.name === 'AbortError') {
-      console.error('[tools] grounded_search timeout 8s');
+      console.error('[tools] grounded_search timeout 12s');
     } else {
       console.error('[tools] grounded_search error:', err?.message);
     }
