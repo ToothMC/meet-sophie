@@ -283,9 +283,9 @@ async function handleRender(user, body, supabase, res) {
           text: optimizedText,
           model_id: "eleven_multilingual_v2",
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.8,
-            style: 0.3,
+            stability: 0.35,
+            similarity_boost: 0.75,
+            style: 0.7,
             use_speaker_boost: true,
           },
           output_format: "mp3_44100_128",
@@ -531,13 +531,17 @@ async function generateOptimizedPitch(supabase, userId, sessionId) {
   const resp = await adapter.complete({
     messages: [{ role: "user", content: `Du bist ein Pitch-Coach. Unten ist das Transcript eines Sales Pitches.
 
-DEINE AUFGABE: Schreibe eine VERBESSERTE VERSION dieses Pitches.
+DEINE AUFGABE: Schreibe eine VERBESSERTE VERSION dieses Pitches, optimiert für SPRACHSYNTHESE (Text-to-Speech).
 - Verwende NUR Fakten und Informationen aus dem Transcript
 - ERFINDE NICHTS NEUES — keine Features, keine Eigenschaften, keine Partnerschaften
 - Verbessere: Struktur (Hook → Problem → Lösung → Beweis → CTA), Rhetorik, Klarheit, roter Faden
 - Wenn der Produktname im Transcript steht, verwende EXAKT diesen Namen
 - Halte den Pitch auf 2-3 Minuten Sprechdauer (ca. 400-500 Wörter)
-- Schreibe ihn so dass er laut vorgelesen werden kann (natürliche Sprache, keine Stichpunkte)
+- ENTFERNE ALLE Füllwörter: kein "ähm", "also", "sozusagen", "quasi", "ja", "halt", "irgendwie"
+- KEINE Wiederholungen, kein Gestotter, keine abgebrochenen Sätze
+- Schreibe FLIESSEND und VORTRAGS-REIF — so wie ein Profi-Redner es vortragen würde
+- Nutze rhetorische Mittel: kurze Sätze, bewusste Pausen (markiert mit "..."), kraftvolle Verben
+- Der Text muss EMOTIONAL und ÜBERZEUGEND klingen wenn er laut vorgelesen wird
 - KEINE Erklärungen am Ende was du geändert hast
 
 ${reportText ? `BEWERTUNG DES ORIGINAL-PITCHES:\n${reportText.slice(0, 2000)}\n` : ""}
