@@ -230,21 +230,7 @@ async function handleRender(user, body, supabase, res) {
     });
   }
 
-  // 2. Load pitch data from existing tables
-  const { data: pitchMemory } = await supabase
-    .from("sophie_pitch_memory")
-    .select("topic, target_audience, goal_type, score, strengths, weaknesses, scores_content, scores_delivery")
-    .eq("conversation_id", sessionId)
-    .eq("user_id", user.id)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!pitchMemory) {
-    return res.status(404).json({ error: "pitch_data_not_found" });
-  }
-
-  // 3. Load transcript from conversation_messages
+  // 2. Load transcript from conversation_messages
   const { data: messages } = await supabase
     .from("conversation_messages")
     .select("role, text")
@@ -259,6 +245,16 @@ async function handleRender(user, body, supabase, res) {
   if (!transcript || transcript.length < 20) {
     return res.status(422).json({ error: "transcript_too_short" });
   }
+
+  // 3. Load pitch data (optional — extraction can fail silently in report generation)
+  const { data: pitchMemory } = await supabase
+    .from("sophie_pitch_memory")
+    .select("topic, target_audience, goal_type, score, strengths, weaknesses, scores_content, scores_delivery")
+    .eq("conversation_id", sessionId)
+    .eq("user_id", user.id)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // 4. Voice Profile check
   const { data: voiceProfile } = await supabase
@@ -307,22 +303,18 @@ async function handleRender(user, body, supabase, res) {
 
   try {
     // 7. Generate optimized pitch text server-side
-    const overallScore = pitchMemory.score
+    const overallScore = pitchMemory?.score
       ? (pitchMemory.score / 20).toFixed(1) // convert 0-100 to 0-5 scale
       : "N/A";
 
-    const weaknesses = Array.isArray(pitchMemory.weaknesses)
+    const weaknesses = Array.isArray(pitchMemory?.weaknesses)
       ? pitchMemory.weaknesses.join(", ")
-      : "keine";
-
-    const strengths = Array.isArray(pitchMemory.strengths)
-      ? pitchMemory.strengths.join(", ")
-      : "";
+      : "nicht verfügbar";
 
     const prompt = OPTIMIZE_PITCH_PROMPT
       .replace("{transcript}", transcript)
-      .replace("{audience_type}", pitchMemory.target_audience || "allgemein")
-      .replace("{goal_type}", pitchMemory.goal_type || "überzeugen")
+      .replace("{audience_type}", pitchMemory?.target_audience || "allgemein")
+      .replace("{goal_type}", pitchMemory?.goal_type || "überzeugen")
       .replace("{overall_score}", overallScore)
       .replace("{weaknesses}", weaknesses)
       .replace("{improvement_priorities}", weaknesses); // same as weaknesses for MVP
