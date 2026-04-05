@@ -363,7 +363,7 @@ async function handleRender(user, body, supabase, res) {
           provider: "elevenlabs",
           model: "eleven_multilingual_v2",
           cost_usd: elCostUsd,
-          ai_cost_usd: aiResponse?.usage?.costUsd || 0,
+          ai_cost_usd: 0, // tracked separately in generateOptimizedPitch
           bucket_breakdown: deductRow
             ? { free: deductRow.free_charged || 0, paid: deductRow.paid_charged || 0, topup: deductRow.topup_charged || 0 }
             : null,
