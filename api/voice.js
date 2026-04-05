@@ -294,9 +294,14 @@ async function handleRender(user, body, supabase, res) {
 
     if (!ttsRes.ok) {
       const errBody = await ttsRes.text().catch(() => "");
-      console.error(`[voice] ElevenLabs TTS error ${ttsRes.status}: ${errBody.slice(0, 300)}`);
-      await updateRenderStatus(supabase, render.id, "failed", `TTS error: ${ttsRes.status}`);
-      return res.status(502).json({ error: "tts_failed", render_id: render.id });
+      console.error(`[voice] ElevenLabs TTS error ${ttsRes.status}: ${errBody.slice(0, 500)}`);
+      await supabase.from("pitch_renders").update({
+        render_status: "failed",
+        error_message: `TTS ${ttsRes.status}: ${errBody.slice(0, 500)}`,
+        optimized_text: optimizedText, // save for debugging
+        actual_chars: optimizedText?.length || 0,
+      }).eq("id", render.id);
+      return res.status(502).json({ error: "tts_failed", render_id: render.id, details: errBody.slice(0, 300) });
     }
 
     // Track ElevenLabs cost
