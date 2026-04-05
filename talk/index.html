@@ -5647,6 +5647,7 @@ async function startVoice(){
 
     talkStartedAt = Date.now();
     remainingAtSessionStart = remainingSeconds;
+    realtimeUsage = { audio_tokens_in: 0, audio_tokens_out: 0, text_tokens_in: 0, text_tokens_out: 0, cached_tokens_in: 0, response_count: 0 };
     track("talk_started", {
       is_premium: isPremium,
       plan: plan || null,
