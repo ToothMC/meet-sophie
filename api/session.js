@@ -622,7 +622,9 @@ export default async function handler(req, res) {
 
     // Tool instructions — only for modes that have tools active
     // Brainstorm/Meeting only get send_chat_note, no research/weather/news tools
-    const hasFullTools = !sessionMode; // Only normal conversation has full tool set
+    // Normal conversation + Meeting: full tool set (Sophie answers questions live)
+    // Brainstorm + Salespitch: only chat_note (focused facilitation, no web lookups)
+    const hasFullTools = !sessionMode || sessionMode === "meeting";
     const toolInstructions = hasFullTools ? `\n\nDEEP RESEARCH: Du hast Zugriff auf ein Tool namens "deep_research". ` +
       `Nutze es wenn der User eine Frage stellt die tiefere Analyse, Faktenprüfung, oder eine zweite Meinung braucht. ` +
       `Sage dabei "Lass mich das kurz prüfen..." und nutze dann das Tool. ` +
