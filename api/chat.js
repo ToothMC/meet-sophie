@@ -475,7 +475,9 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
       new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
     ]);
     const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
-    return { reply: retryReply || cleanRawReply, toolUsed: true, toolType, retryResponse };
+    if (!retryReply) console.warn(`[chat] tool ${toolType}: retry AI returned empty reply`);
+    const toolFallback = cleanRawReply || "Die Echtzeitdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal.";
+    return { reply: retryReply || toolFallback, toolUsed: true, toolType, retryResponse };
   } catch (e) {
     console.error(`[chat] tool retry error:`, e?.message);
     // Tool data was fetched but AI couldn't format it — return graceful fallback
