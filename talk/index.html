@@ -1464,7 +1464,8 @@ async function sendMemoryUpdate(secondsUsed) {
         session_started_at: startedAtIso,
         session_ended_at: endedAtIso,
         session_id: sessionId,
-        session_mode: selectedVoiceMode || null
+        session_mode: selectedVoiceMode || null,
+        realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
       }),
       keepalive: true,
     });
