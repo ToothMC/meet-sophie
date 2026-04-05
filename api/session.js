@@ -279,29 +279,36 @@ export default async function handler(req, res) {
 
     // ---------------------------
     // Structured memory (long-term + short-term + reports)
+    // Skip for first-session users — they have no memory/reports/conversations yet
     // ---------------------------
+    const isLikelyFirstSession =
+      (!profile.first_name || profile.first_name.trim() === "") &&
+      (!rel.last_interaction_summary || rel.last_interaction_summary.trim() === "");
+
     let structuredMemory = null;
     let recentMemories = [];
     let recentReports = [];
     let recentConversations = [];
-    try {
-      const [ltmRes, stmRes, reportsRes, recentMsgsRes] = await Promise.all([
-        supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
-        supabase.from("sophie_short_term_memory").select("summary,open_topics,pending_decisions,next_steps,importance_score,mode,created_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("importance_score", { ascending: false }).limit(5),
-        supabase.from("conversation_outputs").select("title,short_summary,report_html,report_style,created_at,session_id,user_sessions!inner(user_id)").eq("user_sessions.user_id", user.id).not("report_html", "is", null).order("created_at", { ascending: false }).limit(3),
-        supabase.from("conversation_messages").select("text,role,created_at,session_id,user_sessions!inner(user_id,session_date)").eq("user_sessions.user_id", user.id).eq("role", "user").order("created_at", { ascending: false }).limit(30),
-      ]);
-      structuredMemory = ltmRes?.data || null;
-      recentMemories = stmRes?.data || [];
-      recentReports = (reportsRes?.data || []).map(r => ({
-        title: r.title || "Report",
-        summary: r.short_summary || (r.report_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
-        mode: r.report_style || null,
-        date: r.created_at,
-      }));
-      recentConversations = recentMsgsRes?.data || [];
-    } catch (e) {
-      console.warn("Structured memory lookup crashed:", e?.message || e);
+    if (!isLikelyFirstSession) {
+      try {
+        const [ltmRes, stmRes, reportsRes, recentMsgsRes] = await Promise.all([
+          supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("sophie_short_term_memory").select("summary,open_topics,pending_decisions,next_steps,importance_score,mode,created_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("importance_score", { ascending: false }).limit(5),
+          supabase.from("conversation_outputs").select("title,short_summary,report_html,report_style,created_at,session_id,user_sessions!inner(user_id)").eq("user_sessions.user_id", user.id).not("report_html", "is", null).order("created_at", { ascending: false }).limit(3),
+          supabase.from("conversation_messages").select("text,role,created_at,session_id,user_sessions!inner(user_id,session_date)").eq("user_sessions.user_id", user.id).eq("role", "user").order("created_at", { ascending: false }).limit(30),
+        ]);
+        structuredMemory = ltmRes?.data || null;
+        recentMemories = stmRes?.data || [];
+        recentReports = (reportsRes?.data || []).map(r => ({
+          title: r.title || "Report",
+          summary: r.short_summary || (r.report_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
+          mode: r.report_style || null,
+          date: r.created_at,
+        }));
+        recentConversations = recentMsgsRes?.data || [];
+      } catch (e) {
+        console.warn("Structured memory lookup crashed:", e?.message || e);
+      }
     }
 
     // ---------------------------
