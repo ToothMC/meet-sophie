@@ -790,7 +790,11 @@
         background:
           linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
           linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
-          url("hero.jpg") 63% center / cover no-repeat;
+          url("hero-opt.jpg") 63% center / cover no-repeat;
+        background:
+          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
+          linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
+          image-set(url("hero-768w.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 63% center / cover no-repeat;
       }
       .hero-grid{
         display:block;
