@@ -2043,7 +2043,8 @@ let sessionId = null;
 let realtimeUsage = {
   audio_tokens_in: 0, audio_tokens_out: 0,
   text_tokens_in: 0, text_tokens_out: 0,
-  cached_tokens_in: 0, response_count: 0,
+  cached_tokens_in: 0, cached_audio_in: 0, cached_text_in: 0,
+  response_count: 0,
 };
 
 let dynamicResetInterval = null;
@@ -5128,9 +5129,12 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
         if (_usage) {
           const _id = _usage.input_token_details || {};
           const _od = _usage.output_token_details || {};
+          const _cd = _id.cached_tokens_details || {};
           realtimeUsage.audio_tokens_in  += (_id.audio_tokens || 0);
           realtimeUsage.text_tokens_in   += (_id.text_tokens || 0);
           realtimeUsage.cached_tokens_in += (_id.cached_tokens || 0);
+          realtimeUsage.cached_audio_in  += (_cd.audio_tokens || 0);
+          realtimeUsage.cached_text_in   += (_cd.text_tokens || 0);
           realtimeUsage.audio_tokens_out += (_od.audio_tokens || 0);
           realtimeUsage.text_tokens_out  += (_od.text_tokens || 0);
           realtimeUsage.response_count   += 1;
@@ -5662,7 +5666,7 @@ async function startVoice(){
 
     talkStartedAt = Date.now();
     remainingAtSessionStart = remainingSeconds;
-    realtimeUsage = { audio_tokens_in: 0, audio_tokens_out: 0, text_tokens_in: 0, text_tokens_out: 0, cached_tokens_in: 0, response_count: 0 };
+    realtimeUsage = { audio_tokens_in: 0, audio_tokens_out: 0, text_tokens_in: 0, text_tokens_out: 0, cached_tokens_in: 0, cached_audio_in: 0, cached_text_in: 0, response_count: 0 };
     track("talk_started", {
       is_premium: isPremium,
       plan: plan || null,

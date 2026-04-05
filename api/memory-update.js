@@ -103,6 +103,8 @@ function validateRealtimeUsage(raw, secondsUsed) {
     text_tokens_in:   clamp(raw.text_tokens_in),
     text_tokens_out:  clamp(raw.text_tokens_out),
     cached_tokens_in: clamp(raw.cached_tokens_in),
+    cached_audio_in:  clamp(raw.cached_audio_in),
+    cached_text_in:   clamp(raw.cached_text_in),
     response_count:   Math.max(0, Math.min(500, Math.round(Number(raw.response_count) || 0))),
   };
 
@@ -116,12 +118,20 @@ function validateRealtimeUsage(raw, secondsUsed) {
 function calculateRealtimeProviderCost(usage) {
   if (!usage) return 0;
   const m = 1_000_000;
+  // cached_tokens are a SUBSET of text/audio_tokens_in — subtract to avoid double-counting
+  const cachedText  = usage.cached_text_in  || 0;
+  const cachedAudio = usage.cached_audio_in || 0;
+  const cachedTotal = usage.cached_tokens_in || 0;
+  // Fallback: if no detail split available, assume all cached are text (system prompt)
+  const effectiveCachedText  = cachedText  || (cachedAudio ? 0 : cachedTotal);
+  const effectiveCachedAudio = cachedAudio || 0;
+
   return (
-    (usage.audio_tokens_in / m)  * REALTIME_PRICING_PER_M.audio_input +
-    (usage.audio_tokens_out / m) * REALTIME_PRICING_PER_M.audio_output +
-    (usage.text_tokens_in / m)   * REALTIME_PRICING_PER_M.text_input +
-    (usage.text_tokens_out / m)  * REALTIME_PRICING_PER_M.text_output +
-    (usage.cached_tokens_in / m) * REALTIME_PRICING_PER_M.cached_input
+    (Math.max(0, usage.text_tokens_in - effectiveCachedText) / m)   * REALTIME_PRICING_PER_M.text_input +
+    (Math.max(0, usage.audio_tokens_in - effectiveCachedAudio) / m) * REALTIME_PRICING_PER_M.audio_input +
+    ((effectiveCachedText + effectiveCachedAudio) / m)              * REALTIME_PRICING_PER_M.cached_input +
+    (usage.text_tokens_out / m)                                     * REALTIME_PRICING_PER_M.text_output +
+    (usage.audio_tokens_out / m)                                    * REALTIME_PRICING_PER_M.audio_output
   );
 }
 
