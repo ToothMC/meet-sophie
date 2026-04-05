@@ -1161,6 +1161,9 @@ body{
   </label>
   <div class="session-spacer" id="sessionSpacer"></div>
   <button id="start" class="btn">Start conversation</button>
+  <!-- TEMP TEST: Voice Render with existing session -->
+  <button id="testVoiceRender" type="button" style="position:fixed;bottom:20px;right:20px;z-index:9999;padding:12px 20px;background:#4f46e5;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2);"
+    onclick="testVoiceRenderDirect()">TEST Voice Render</button>
   <button id="pauseBtn" class="btn btn-pause" style="display:none"><span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">Pause</span></button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 
@@ -3259,6 +3262,94 @@ async function startVoiceRenderFlow(btn) {
     alert("Voice-Render fehlgeschlagen: " + (e?.message || "Unbekannter Fehler"));
   }
 }
+
+// TEMP TEST: Direct voice render with hardcoded session
+async function testVoiceRenderDirect() {
+  const TEST_SESSION_ID = "3cac9777-5dcf-479a-819f-b9e64a8b4017"; // "Meet Sophie — v2"
+  const btn = document.getElementById("testVoiceRender");
+  btn.disabled = true;
+  btn.textContent = "Testing...";
+
+  // Unlock audio (iOS)
+  const _a = new Audio();
+  _a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  _a.play().catch(() => {});
+
+  try {
+    const { data: { session: authSess } } = await supabase.auth.getSession();
+    const token = authSess?.access_token;
+    if (!token) throw new Error("Not logged in");
+
+    const voiceApi = async (body) => {
+      const r = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, data: await r.json() };
+    };
+
+    // 1. Status
+    btn.textContent = "Checking status...";
+    const statusRes = await voiceApi({ action: "status" });
+    console.log("[test] status:", statusRes.data);
+
+    // 2. Consent if needed
+    if (!statusRes.data.has_consent) {
+      btn.textContent = "Consent...";
+      const consentOk = await showVoiceConsentDialog();
+      if (!consentOk) { btn.disabled = false; btn.textContent = "TEST Voice Render"; return; }
+      await voiceApi({ action: "consent", consentGiven: true });
+    }
+
+    // 3. Clone if needed
+    if (statusRes.data.clone_status !== "ready") {
+      btn.textContent = "Recording voice...";
+      const audioBlob = await recordVoiceSample();
+      if (!audioBlob) { btn.disabled = false; btn.textContent = "TEST Voice Render"; return; }
+
+      btn.textContent = "Uploading...";
+      const storagePath = `${authSess.user.id}/${TEST_SESSION_ID}.webm`;
+      const { error: upErr } = await supabase.storage
+        .from("pitch-audio")
+        .upload(storagePath, audioBlob, { contentType: "audio/webm", upsert: true });
+      if (upErr) throw new Error("Upload failed: " + upErr.message);
+
+      btn.textContent = "Cloning voice...";
+      const cloneRes = await voiceApi({ action: "clone", storagePath });
+      console.log("[test] clone:", cloneRes.data);
+      if (cloneRes.status !== 200) throw new Error(cloneRes.data?.error || "Clone failed");
+    }
+
+    // 4. Render
+    btn.textContent = "Rendering pitch...";
+    const renderRes = await voiceApi({ action: "render", sessionId: TEST_SESSION_ID });
+    console.log("[test] render:", renderRes.data);
+
+    if (renderRes.status !== 200) throw new Error(JSON.stringify(renderRes.data));
+
+    // 5. Play
+    btn.textContent = "Playing!";
+    _a.src = renderRes.data.audio_url;
+    _a.play().catch(() => {});
+    _a.onended = () => { btn.disabled = false; btn.textContent = "TEST Voice Render"; };
+
+    // Show download link
+    const dl = document.createElement("a");
+    dl.href = renderRes.data.audio_url;
+    dl.download = "test-pitch.mp3";
+    dl.textContent = "Download";
+    dl.style.cssText = "position:fixed;bottom:60px;right:20px;z-index:9999;padding:8px 16px;background:#059669;color:#fff;border-radius:8px;font-size:12px;text-decoration:none;";
+    document.body.appendChild(dl);
+
+  } catch (e) {
+    console.error("[test] error:", e);
+    btn.disabled = false;
+    btn.textContent = "TEST Voice Render";
+    alert("Test failed: " + (e?.message || e));
+  }
+}
+window.testVoiceRenderDirect = testVoiceRenderDirect;
 
 function showVoiceConsentDialog() {
   return new Promise((resolve) => {
