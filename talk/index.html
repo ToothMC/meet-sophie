@@ -5056,6 +5056,7 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
                     session_ended_at: new Date().toISOString(),
                     session_id: sessionId,
                     session_mode: "salespitch",
+                    realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
                   }),
                 });
                 const memText = await memResp.text().catch(() => "");
