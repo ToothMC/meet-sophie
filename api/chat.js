@@ -500,7 +500,7 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
     const adapter = getAdapter(providerConfig.provider);
     const retryResponse = await Promise.race([
       adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
     ]);
     const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
     if (!retryReply) console.warn(`[chat] tool ${toolType}: retry AI returned empty reply`);
