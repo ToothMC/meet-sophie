@@ -282,23 +282,35 @@ async function handleRender(user, body, supabase, res) {
     return res.status(402).json({ error: "insufficient_tokens", needed: tokenCost, available: remaining });
   }
 
-  // 6. Create render record (pending)
+  // 6. Create or reuse render record (pending)
   const estimatedChars = Math.ceil(transcript.length * 1.2);
-  const { data: render, error: renderInsertErr } = await supabase
-    .from("pitch_renders")
-    .insert({
-      user_id: user.id,
-      session_id: sessionId,
-      voice_profile_id: voiceProfile.id,
-      render_status: "pending",
-      estimated_chars: estimatedChars,
-    })
-    .select("id")
-    .single();
+  let render;
 
-  if (renderInsertErr) {
-    console.error("[voice] render insert error:", renderInsertErr.message);
-    return res.status(500).json({ error: "render_init_failed" });
+  if (existingRender && existingRender.render_status !== "completed") {
+    // Reuse failed/pending render record
+    await supabase
+      .from("pitch_renders")
+      .update({ render_status: "pending", error_message: null, voice_profile_id: voiceProfile.id, estimated_chars: estimatedChars })
+      .eq("id", existingRender.id);
+    render = { id: existingRender.id };
+  } else {
+    const { data: newRender, error: renderInsertErr } = await supabase
+      .from("pitch_renders")
+      .insert({
+        user_id: user.id,
+        session_id: sessionId,
+        voice_profile_id: voiceProfile.id,
+        render_status: "pending",
+        estimated_chars: estimatedChars,
+      })
+      .select("id")
+      .single();
+
+    if (renderInsertErr) {
+      console.error("[voice] render insert error:", renderInsertErr.message);
+      return res.status(500).json({ error: "render_init_failed" });
+    }
+    render = newRender;
   }
 
   try {
@@ -327,7 +339,7 @@ async function handleRender(user, body, supabase, res) {
       temperature: 0.3,
     });
 
-    const optimizedText = aiResponse?.text?.trim();
+    const optimizedText = aiResponse?.content?.trim();
     if (!optimizedText || optimizedText.length < 50) {
       await updateRenderStatus(supabase, render.id, "failed", "Pitch optimization returned empty text");
       return res.status(502).json({ error: "optimization_failed", render_id: render.id });
