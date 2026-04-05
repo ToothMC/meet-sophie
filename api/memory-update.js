@@ -80,6 +80,51 @@ function buildFallbackOpenQuestions() {
   return [];
 }
 
+// ---- Realtime voice cost: validation + real provider cost ----
+
+const REALTIME_PRICING_PER_M = {
+  audio_input:  32.00,
+  audio_output: 64.00,
+  text_input:    4.00,
+  text_output:  16.00,
+  cached_input:  0.40,
+};
+
+function validateRealtimeUsage(raw, secondsUsed) {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const MAX_TOKENS_PER_SECOND = 500;
+  const maxTokens = Math.max(secondsUsed, 60) * MAX_TOKENS_PER_SECOND;
+  const clamp = (v) => Math.max(0, Math.min(maxTokens, Math.round(Number(v) || 0)));
+
+  const validated = {
+    audio_tokens_in:  clamp(raw.audio_tokens_in),
+    audio_tokens_out: clamp(raw.audio_tokens_out),
+    text_tokens_in:   clamp(raw.text_tokens_in),
+    text_tokens_out:  clamp(raw.text_tokens_out),
+    cached_tokens_in: clamp(raw.cached_tokens_in),
+    response_count:   Math.max(0, Math.min(500, Math.round(Number(raw.response_count) || 0))),
+  };
+
+  const totalTokens = validated.audio_tokens_in + validated.audio_tokens_out +
+                      validated.text_tokens_in + validated.text_tokens_out;
+  if (validated.response_count > 0 && totalTokens === 0) return null;
+
+  return validated;
+}
+
+function calculateRealtimeProviderCost(usage) {
+  if (!usage) return 0;
+  const m = 1_000_000;
+  return (
+    (usage.audio_tokens_in / m)  * REALTIME_PRICING_PER_M.audio_input +
+    (usage.audio_tokens_out / m) * REALTIME_PRICING_PER_M.audio_output +
+    (usage.text_tokens_in / m)   * REALTIME_PRICING_PER_M.text_input +
+    (usage.text_tokens_out / m)  * REALTIME_PRICING_PER_M.text_output +
+    (usage.cached_tokens_in / m) * REALTIME_PRICING_PER_M.cached_input
+  );
+}
+
 function sanitizeInsightItems(items) {
   if (!Array.isArray(items)) return [];
   return items
