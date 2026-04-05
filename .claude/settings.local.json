@@ -171,7 +171,18 @@
       "Bash(grep -r \"fetch.*chat\\\\|POST.*chat\\\\|sendMessage\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.ts --include=*.tsx --include=*.js -l)",
       "Bash(grep -r \"fetch.*api/chat\\\\|/api/chat\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts --include=*.tsx --include=*.html ! -path */.claude/* -l)",
       "Bash(grep -n -B 5 -A 15 'msg?.type === \"\"response.function_call_arguments.done\"\" && msg?.name === \"\"send_chat_note\"\"' /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/talk/index.html)",
-      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name .env* -type f)"
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name .env* -type f)",
+      "Bash(grep -r subscription /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/meeting --include=*.js --include=*.html)",
+      "Bash(grep -r \"OPENAI_API_KEY\\\\|sk-\\\\|STRIPE_KEY\\\\|test_\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html)",
+      "Bash(ls -la /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)",
+      "Bash(grep -r \"rate\\\\|limit\\\\|throttle\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api -name \"*.js\" -exec grep -l \"error\\\\|catch\\\\|try\" {})",
+      "Bash(grep -r \"process.env\\\\|STRIPE\\\\|OPENAI\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib --include=*.js)",
+      "Bash(grep -r \"test_\\\\|sk_test\\\\|pk_test\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.html)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:openai.com)",
+      "WebFetch(domain:developers.openai.com)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name .env* -o -name *.env)"
     ]
   },
   "hooks": {
