@@ -101,52 +101,46 @@ export default async function handler(req, res) {
         : 15;
 
     // ---------------------------
-    // Subscription status (nur UI/Status)
+    // PARALLEL BATCH 1: Subscription, Usage, Lock (independent queries)
     // ---------------------------
+    const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
+
+    const [subResult, usageResult, lockResult] = await Promise.all([
+      supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance").eq("user_id", user.id).maybeSingle(),
+      supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
+    ]);
+
+    // --- Process lock result (fail-fast) ---
+    const lockAllowed = Array.isArray(lockResult.data) && lockResult.data[0]?.allowed === true;
+    if (lockResult.error || !lockAllowed) {
+      return res.status(429).json({
+        error: "busy",
+        message: "Sophie is already in a call. Please close other tabs and try again.",
+      });
+    }
+
+    // --- Process subscription ---
     let isPremium = false;
     let plan = null;
-
-    try {
-      const { data: sub, error: subErr } = await supabase
-        .from("user_subscriptions")
-        .select("is_active, status, plan")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (subErr) {
-        console.warn("Subscription lookup error:", subErr.message);
-      }
-
-      const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
-      isPremium = active;
-      plan = sub?.plan || null;
-    } catch (e) {
-      console.warn("Subscription lookup crashed:", e?.message || e);
+    if (subResult.error) {
+      console.warn("Subscription lookup error:", subResult.error.message);
+    } else if (subResult.data) {
+      const sub = subResult.data;
+      isPremium = !!(sub.is_active || sub.status === "active" || sub.status === "trialing");
+      plan = sub.plan || null;
     }
 
-    // ---------------------------
-    // Mode (Companion vs Best Friend)
-    // Companion = plan "start" (or no active plan)
-    // Best Friend = plan "plus"
-    // ---------------------------
     const tier = mapPlanToTier(plan, isPremium);
     const sessionLimit = tier === "partner" ? 5 : tier === "friend" ? 3 : tier === "assistant" ? 1 : 0;
-    const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion"; // returned to frontend
+    const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion";
 
-    // ---------------------------
-    // Usage / Remaining tokens (für ALLE)
-    // ---------------------------
-    let { data: usage, error: usageErr } = await supabase
-      .from("user_usage")
-      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (usageErr) {
-      return res.status(500).json({ error: usageErr.message });
+    // --- Process usage ---
+    let usage = usageResult.data;
+    if (usageResult.error) {
+      return res.status(500).json({ error: usageResult.error.message });
     }
 
-    // Ensure user_usage row exists (new users won't have one yet)
     if (!usage) {
       const { data: created, error: createErr } = await supabase
         .from("user_usage")
@@ -174,39 +168,20 @@ export default async function handler(req, res) {
 
     if (remaining <= 0) {
       const reason = isPremium
-      ? "subscription_quota_exhausted"
-      : "no_active_subscription";
+        ? "subscription_quota_exhausted"
+        : "no_active_subscription";
 
-    return res.status(402).json({
-      error: "No remaining time",
-      reason,
-      remaining_tokens: 0,
-      remaining_seconds: 0,
-      is_premium: isPremium,
-      plan: plan,
-      subscription_active: isPremium,
-      soft_end_enabled: true,
-      soft_end_warning_seconds: softEndWarningSeconds,
-      soft_end_summary_seconds: softEndSummarySeconds,
-  });
-}
-
-    // ---------------------------
-    // 1 ACTIVE SESSION PER USER (anti tab/refresh spam)
-    // ---------------------------
-    const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
-
-    const { data: lockRow, error: lockErr } = await supabase.rpc("acquire_realtime_lock", {
-      p_user_id: user.id,
-      p_ttl_seconds: SESSION_LOCK_TTL_SECONDS,
-    });
-
-    const lockAllowed = Array.isArray(lockRow) && lockRow[0]?.allowed === true;
-
-    if (lockErr || !lockAllowed) {
-      return res.status(429).json({
-        error: "busy",
-        message: "Sophie is already in a call. Please close other tabs and try again.",
+      return res.status(402).json({
+        error: "No remaining time",
+        reason,
+        remaining_tokens: 0,
+        remaining_seconds: 0,
+        is_premium: isPremium,
+        plan: plan,
+        subscription_active: isPremium,
+        soft_end_enabled: true,
+        soft_end_warning_seconds: softEndWarningSeconds,
+        soft_end_summary_seconds: softEndSummarySeconds,
       });
     }
 
@@ -214,11 +189,7 @@ export default async function handler(req, res) {
     // DAILY BUDGET LIMIT (global) - only for truly free users
     // ---------------------------
     const DAILY_FREE_SECONDS_CAP = parseInt(process.env.DAILY_FREE_SECONDS_CAP || "3000", 10);
-
-    // Reserve exactly the free seconds you grant per free user (2 minutes)
     const FREE_SECONDS_PER_TRIAL = 120;
-
-    // Only throttle users who are truly free (no subscription AND no paid/topup time)
     const isPayingUser = !!(isPremium || paidRemaining > 0 || topupRemaining > 0);
 
     if (!isPayingUser) {
@@ -238,47 +209,34 @@ export default async function handler(req, res) {
     }
 
     // ---------------------------
-    // Profile + Relationship laden
+    // PARALLEL BATCH 2: Profile, Relationship, Sessions (independent reads)
     // ---------------------------
     let profile = {
-      first_name: "",
-      preferred_name: "",
-      preferred_addressing: "",
-      preferred_pronoun: "",
-      preferred_language: "en",
-      notes: "",
-      age: null,
-      relationship_status: "",
-      occupation: "",
-      conversation_style: "",
-      topics_like: [],
-      topics_avoid: [],
-      memory_confidence: "",
+      first_name: "", preferred_name: "", preferred_addressing: "", preferred_pronoun: "",
+      preferred_language: "en", notes: "", age: null, relationship_status: "", occupation: "",
+      conversation_style: "", topics_like: [], topics_avoid: [], memory_confidence: "",
       last_confirmed_at: null,
     };
 
     let rel = {
-      tone_baseline: "",
-      openness_level: "",
-      emotional_patterns: "",
-      last_interaction_summary: "",
+      tone_baseline: "", openness_level: "", emotional_patterns: "", last_interaction_summary: "",
     };
 
+    let recentSessions = [];
+
     try {
-      const { data: prof, error: profErr } = await supabase
-        .from("user_profile")
-        .select(
+      const [profResult, relResult, sessResult] = await Promise.all([
+        supabase.from("user_profile").select(
           "first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, relationship_status, " +
-            "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at, custom_rules, eco_mode, memory_file"
-        )
-        .eq("user_id", user.id)
-        .maybeSingle();
+          "occupation, conversation_style, topics_like, topics_avoid, memory_confidence, last_confirmed_at, custom_rules, eco_mode, memory_file"
+        ).eq("user_id", user.id).maybeSingle(),
+        supabase.from("user_relationship").select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary").eq("user_id", user.id).maybeSingle(),
+        supabase.from("user_sessions").select("session_date, emotional_tone, stress_level, closeness_level, short_summary").eq("user_id", user.id).order("session_date", { ascending: false }).limit(sessionLimit),
+      ]);
 
-      if (profErr) {
-        console.warn("Profile lookup error:", profErr.message);
-      }
-
-      if (prof) {
+      if (profResult.error) console.warn("Profile lookup error:", profResult.error.message);
+      if (profResult.data) {
+        const prof = profResult.data;
         profile = {
           first_name: (prof.first_name || "").trim(),
           preferred_name: (prof.preferred_name || "").trim(),
@@ -303,49 +261,20 @@ export default async function handler(req, res) {
         };
       }
 
-      const { data: relData, error: relErr } = await supabase
-        .from("user_relationship")
-        .select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (relErr) {
-        console.warn("Relationship lookup error:", relErr.message);
-      }
-
-      if (relData) {
+      if (relResult.error) console.warn("Relationship lookup error:", relResult.error.message);
+      if (relResult.data) {
         rel = {
-          tone_baseline: (relData.tone_baseline || "").trim(),
-          openness_level: (relData.openness_level || "").trim(),
-          emotional_patterns: (relData.emotional_patterns || "").trim(),
-          last_interaction_summary: (relData.last_interaction_summary || "").trim(),
+          tone_baseline: (relResult.data.tone_baseline || "").trim(),
+          openness_level: (relResult.data.openness_level || "").trim(),
+          emotional_patterns: (relResult.data.emotional_patterns || "").trim(),
+          last_interaction_summary: (relResult.data.last_interaction_summary || "").trim(),
         };
       }
+
+      if (sessResult.error) console.warn("Sessions lookup error:", sessResult.error.message);
+      if (Array.isArray(sessResult.data)) recentSessions = sessResult.data;
     } catch (e) {
       console.warn("Memory lookup crashed:", e?.message || e);
-    }
-
-    // ---------------------------
-    // Last sessions (1 for Companion, 3 for Best Friend)
-    // ---------------------------
-    let recentSessions = [];
-    try {
-      const { data: sess, error: sessErr } = await supabase
-        .from("user_sessions")
-        .select("session_date, emotional_tone, stress_level, closeness_level, short_summary")
-        .eq("user_id", user.id)
-        .order("session_date", { ascending: false })
-        .limit(sessionLimit);
-
-      if (sessErr) {
-        console.warn("Sessions lookup error:", sessErr.message);
-      }
-
-      if (Array.isArray(sess)) {
-        recentSessions = sess;
-      }
-    } catch (e) {
-      console.warn("Sessions lookup crashed:", e?.message || e);
     }
 
     // ---------------------------
