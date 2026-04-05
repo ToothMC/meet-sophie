@@ -415,8 +415,12 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
         new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
       ]);
       const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+      if (!retryReply) {
+        console.warn("[chat] grounded_search: retry AI returned empty reply, using fallback");
+      }
+      const fallbackReply = "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal.";
       return {
-        reply: retryReply || rawReply,
+        reply: retryReply || fallbackReply,
         toolUsed: true,
         toolType: "grounded_search",
         retryResponse,
@@ -424,7 +428,16 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
       };
     } catch (e) {
       console.error("[chat] grounded_search error:", e?.message);
-      return { reply: rawReply, toolUsed: false };
+      // Search data was fetched but retry AI failed — return fallback with sources
+      const gsFallback = searchResult?.sources?.length
+        ? "Die Recherche hat Ergebnisse gefunden, aber ich konnte sie gerade nicht zusammenfassen. Versuch es bitte gleich nochmal."
+        : rawReply;
+      return {
+        reply: gsFallback,
+        toolUsed: !!searchResult?.sources?.length,
+        toolType: "grounded_search",
+        searchSources: searchResult?.sources,
+      };
     }
   }
 
