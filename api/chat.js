@@ -405,7 +405,9 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
     // ── PRIMARY: webSearch (fast, direct API, always has DuckDuckGo fallback) ──
     onStatus("search");
     try {
-      const webData = await webSearch(query);
+      const webResult = await webSearch(query, { withSources: true });
+      const webData = webResult.text;
+      const webSources = webResult.sources || [];
       if (webData && !webData.includes("Keine Ergebnisse")) {
         routerMessages.push({
           role: "system",
@@ -419,7 +421,7 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
         const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
         if (retryReply) {
           console.log(`[chat] grounded_search → webSearch succeeded for "${query}"`);
-          return { reply: retryReply, toolUsed: true, toolType: "search", retryResponse };
+          return { reply: retryReply, toolUsed: true, toolType: "search", retryResponse, searchSources: webSources };
         }
       }
     } catch (e) {
