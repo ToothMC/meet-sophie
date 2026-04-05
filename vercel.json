@@ -30,7 +30,7 @@
   "crons": [
     {
       "path": "/api/ai/health",
-      "schedule": "* * * * *"
+      "schedule": "*/5 * * * *"
     }
   ],
   "ignoreCommand": "git log -1 --pretty=%B | grep -qE '^auto: save'"
