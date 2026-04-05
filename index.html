@@ -207,7 +207,11 @@
       background:
         linear-gradient(90deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.58) 28%, rgba(8,10,16,.22) 48%, rgba(8,10,16,.06) 62%, rgba(8,10,16,.18) 100%),
         linear-gradient(180deg, rgba(7,9,14,.18) 0%, rgba(7,9,14,.06) 20%, rgba(7,9,14,.14) 60%, rgba(7,9,14,.44) 100%),
-        url("hero.jpg") 72% center / cover no-repeat;
+        url("hero-opt.jpg") 72% center / cover no-repeat;
+      background:
+        linear-gradient(90deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.58) 28%, rgba(8,10,16,.22) 48%, rgba(8,10,16,.06) 62%, rgba(8,10,16,.18) 100%),
+        linear-gradient(180deg, rgba(7,9,14,.18) 0%, rgba(7,9,14,.06) 20%, rgba(7,9,14,.14) 60%, rgba(7,9,14,.44) 100%),
+        image-set(url("hero.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 72% center / cover no-repeat;
       pointer-events:none;
       z-index:0;
     }
