@@ -5121,6 +5121,19 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
       if (msg?.type === "response.done") {
+        // ── Accumulate real token usage from OpenAI ──
+        const _usage = msg?.response?.usage;
+        if (_usage) {
+          const _id = _usage.input_token_details || {};
+          const _od = _usage.output_token_details || {};
+          realtimeUsage.audio_tokens_in  += (_id.audio_tokens || 0);
+          realtimeUsage.text_tokens_in   += (_id.text_tokens || 0);
+          realtimeUsage.cached_tokens_in += (_id.cached_tokens || 0);
+          realtimeUsage.audio_tokens_out += (_od.audio_tokens || 0);
+          realtimeUsage.text_tokens_out  += (_od.text_tokens || 0);
+          realtimeUsage.response_count   += 1;
+        }
+
         sophieIsResponding = false;
         // Sophie finished speaking — reset inactivity timestamp (but not during grace period)
         if (!inactivityWarningFired) touchActivity();
