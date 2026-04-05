@@ -281,11 +281,11 @@ async function handleRender(user, body, supabase, res) {
         },
         body: JSON.stringify({
           text: optimizedText,
-          model_id: "eleven_multilingual_v2",
+          model_id: "eleven_flash_v2_5",
           voice_settings: {
-            stability: 0.35,
-            similarity_boost: 0.75,
-            style: 0.7,
+            stability: 0.7,
+            similarity_boost: 0.6,
+            style: 0.5,
             use_speaker_boost: true,
           },
           output_format: "mp3_44100_128",
