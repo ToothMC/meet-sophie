@@ -396,50 +396,16 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
   const [, toolType, toolParam] = toolMatch;
   onStatus(toolType);
 
-  // Grounded Search: separate path — Gemini provides structured facts,
-  // injected as context into Sophie's prompt (Architecture Rule #1)
-  // FALLBACK: if grounded_search fails → fall back to webSearch (Google → Bing → DuckDuckGo)
+  // Grounded Search: fast path first (webSearch), Gemini as enrichment fallback
+  // webSearch = Google Custom Search → Bing → DuckDuckGo (fast, reliable, ~1-3s)
+  // groundedSearch = Gemini + google_search tool (slow, 3-15s, prone to timeouts)
   if (toolType === "grounded_search") {
-    let searchResult = null;
-    try {
-      searchResult = await groundedSearch(toolParam.trim());
-    } catch (e) {
-      console.error("[chat] grounded_search call failed:", e?.message);
-    }
+    const query = toolParam.trim();
 
-    // If grounded_search returned facts → use them
-    if (searchResult?.facts?.length) {
-      try {
-        const searchContext = buildSearchContext(searchResult);
-        routerMessages.push({
-          role: "system",
-          content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
-        });
-
-        const adapter = getAdapter(providerConfig.provider);
-        const retryResponse = await Promise.race([
-          adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
-        ]);
-        const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
-        if (retryReply) {
-          return {
-            reply: retryReply, toolUsed: true, toolType: "grounded_search",
-            retryResponse, searchSources: searchResult.sources,
-          };
-        }
-        console.warn("[chat] grounded_search: retry AI returned empty reply, falling back to webSearch");
-      } catch (e) {
-        console.error("[chat] grounded_search retry error:", e?.message, "— falling back to webSearch");
-      }
-    } else {
-      console.warn("[chat] grounded_search returned no facts, falling back to webSearch");
-    }
-
-    // FALLBACK: use webSearch (has Google → Bing → DuckDuckGo chain)
+    // ── PRIMARY: webSearch (fast, direct API, always has DuckDuckGo fallback) ──
     onStatus("search");
     try {
-      const webData = await webSearch(toolParam.trim());
+      const webData = await webSearch(query);
       if (webData && !webData.includes("Keine Ergebnisse")) {
         routerMessages.push({
           role: "system",
@@ -452,20 +418,46 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
         ]);
         const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
         if (retryReply) {
-          console.log("[chat] grounded_search fallback to webSearch succeeded");
+          console.log(`[chat] grounded_search → webSearch succeeded for "${query}"`);
           return { reply: retryReply, toolUsed: true, toolType: "search", retryResponse };
         }
       }
     } catch (e) {
-      console.error("[chat] webSearch fallback also failed:", e?.message);
+      console.warn("[chat] webSearch primary failed:", e?.message, "— trying Gemini grounded_search");
     }
 
-    // Both grounded_search AND webSearch failed — return honest error
+    // ── FALLBACK: Gemini grounded_search (slower but has structured facts + sources) ──
+    try {
+      const searchResult = await groundedSearch(query);
+      if (searchResult?.facts?.length) {
+        const searchContext = buildSearchContext(searchResult);
+        routerMessages.push({
+          role: "system",
+          content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
+        });
+        const adapter = getAdapter(providerConfig.provider);
+        const retryResponse = await Promise.race([
+          adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+        ]);
+        const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+        if (retryReply) {
+          console.log(`[chat] Gemini grounded_search fallback succeeded for "${query}"`);
+          return {
+            reply: retryReply, toolUsed: true, toolType: "grounded_search",
+            retryResponse, searchSources: searchResult.sources,
+          };
+        }
+      }
+    } catch (e) {
+      console.error("[chat] Gemini grounded_search fallback also failed:", e?.message);
+    }
+
+    // Both failed — honest error
     const cleanReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
     return {
       reply: cleanReply || "Die Recherche hat gerade leider nicht geklappt. Versuch es bitte gleich nochmal.",
       toolUsed: false,
-      searchSources: searchResult?.sources,
     };
   }
 
