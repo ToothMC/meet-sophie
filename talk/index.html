@@ -5955,6 +5955,14 @@ async function startVoice(){
         };
         window._pitchRecorder.start(1000);
         console.log("[voice-clone] parallel recording started for salespitch");
+
+        // Show brief hint about voice rendering option
+        const hint = document.createElement("div");
+        hint.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(79,70,229,.9);color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:500;text-align:center;max-width:340px;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.15);opacity:0;transition:opacity .3s;";
+        hint.textContent = "\uD83C\uDFA4 Dein Audio kann optional f\u00fcr Voice-Rendering genutzt werden.";
+        document.body.appendChild(hint);
+        requestAnimationFrame(() => { hint.style.opacity = "1"; });
+        setTimeout(() => { hint.style.opacity = "0"; setTimeout(() => hint.remove(), 400); }, 4000);
       } catch (recErr) {
         console.warn("[voice-clone] parallel recording failed (non-critical):", recErr?.message);
       }
