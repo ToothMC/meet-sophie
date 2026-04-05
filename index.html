@@ -737,7 +737,10 @@
       .hero::before{
         background:
           linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.54) 30%, rgba(8,10,16,.28) 58%, rgba(8,10,16,.48) 100%),
-          url("hero.jpg") 68% center / cover no-repeat;
+          url("hero-opt.jpg") 68% center / cover no-repeat;
+        background:
+          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.54) 30%, rgba(8,10,16,.28) 58%, rgba(8,10,16,.48) 100%),
+          image-set(url("hero-480w.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 68% center / cover no-repeat;
       }
       .hero-grid{
         grid-template-columns:minmax(0,1fr);
