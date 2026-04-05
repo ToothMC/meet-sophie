@@ -396,36 +396,71 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
   const [, toolType, toolParam] = toolMatch;
   onStatus(toolType);
 
-  // Grounded Search: separate path — Gemini provides structured facts,
-  // injected as context into Sophie's prompt (Architecture Rule #1)
+  // Grounded Search: fast path first (webSearch), Gemini as enrichment fallback
+  // webSearch = Google Custom Search → Bing → DuckDuckGo (fast, reliable, ~1-3s)
+  // groundedSearch = Gemini + google_search tool (slow, 3-15s, prone to timeouts)
   if (toolType === "grounded_search") {
+    const query = toolParam.trim();
+
+    // ── PRIMARY: webSearch (fast, direct API, always has DuckDuckGo fallback) ──
+    onStatus("search");
     try {
-      const searchResult = await groundedSearch(toolParam.trim());
-      if (!searchResult.facts.length) return { reply: rawReply, toolUsed: false };
-
-      const searchContext = buildSearchContext(searchResult);
-      routerMessages.push({
-        role: "system",
-        content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
-      });
-
-      const adapter = getAdapter(providerConfig.provider);
-      const retryResponse = await Promise.race([
-        adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
-      ]);
-      const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
-      return {
-        reply: retryReply || rawReply,
-        toolUsed: true,
-        toolType: "grounded_search",
-        retryResponse,
-        searchSources: searchResult.sources,
-      };
+      const webResult = await webSearch(query, { withSources: true });
+      const webData = webResult.text;
+      const webSources = webResult.sources || [];
+      if (webData && !webData.includes("Keine Ergebnisse")) {
+        routerMessages.push({
+          role: "system",
+          content: `[ECHTZEIT-DATEN]\n${webData}\n\nAntworte jetzt basierend auf diesen aktuellen Daten. Kein Tool-Tag mehr.`,
+        });
+        const adapter = getAdapter(providerConfig.provider);
+        const retryResponse = await Promise.race([
+          adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+        ]);
+        const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+        if (retryReply) {
+          console.log(`[chat] grounded_search → webSearch succeeded for "${query}"`);
+          return { reply: retryReply, toolUsed: true, toolType: "search", retryResponse, searchSources: webSources };
+        }
+      }
     } catch (e) {
-      console.error("[chat] grounded_search error:", e?.message);
-      return { reply: rawReply, toolUsed: false };
+      console.warn("[chat] webSearch primary failed:", e?.message, "— trying Gemini grounded_search");
     }
+
+    // ── FALLBACK: Gemini grounded_search (slower but has structured facts + sources) ──
+    try {
+      const searchResult = await groundedSearch(query);
+      if (searchResult?.facts?.length) {
+        const searchContext = buildSearchContext(searchResult);
+        routerMessages.push({
+          role: "system",
+          content: searchContext + "\n\nAntworte jetzt basierend auf den obigen Fakten. Kein Tool-Tag mehr.",
+        });
+        const adapter = getAdapter(providerConfig.provider);
+        const retryResponse = await Promise.race([
+          adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+        ]);
+        const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+        if (retryReply) {
+          console.log(`[chat] Gemini grounded_search fallback succeeded for "${query}"`);
+          return {
+            reply: retryReply, toolUsed: true, toolType: "grounded_search",
+            retryResponse, searchSources: searchResult.sources,
+          };
+        }
+      }
+    } catch (e) {
+      console.error("[chat] Gemini grounded_search fallback also failed:", e?.message);
+    }
+
+    // Both failed — honest error
+    const cleanReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
+    return {
+      reply: cleanReply || "Die Recherche hat gerade leider nicht geklappt. Versuch es bitte gleich nochmal.",
+      toolUsed: false,
+    };
   }
 
   // Standard tools: weather, search, news, wiki, flight, arrivals, departures
@@ -445,7 +480,10 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
   // Strip tool tag from raw reply so it never leaks to the user
   const cleanRawReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
 
-  if (!toolData) return { reply: cleanRawReply || rawReply, toolUsed: false };
+  if (!toolData) {
+    const fallback = cleanRawReply || "Die Echtzeitdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal.";
+    return { reply: fallback, toolUsed: false };
+  }
 
   routerMessages.push({
     role: "system",
@@ -456,10 +494,12 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
     const adapter = getAdapter(providerConfig.provider);
     const retryResponse = await Promise.race([
       adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.85 }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
     ]);
     const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
-    return { reply: retryReply || cleanRawReply, toolUsed: true, toolType, retryResponse };
+    if (!retryReply) console.warn(`[chat] tool ${toolType}: retry AI returned empty reply`);
+    const toolFallback = cleanRawReply || "Die Echtzeitdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal.";
+    return { reply: retryReply || toolFallback, toolUsed: true, toolType, retryResponse };
   } catch (e) {
     console.error(`[chat] tool retry error:`, e?.message);
     // Tool data was fetched but AI couldn't format it — return graceful fallback
@@ -1323,7 +1363,7 @@ async function handleMessage(req, res) {
     }
   }
 
-  const reply = rawReply
+  let reply = rawReply
     .replace(/\s*\[MODE_DETECTED:\w+\]\s*/g, "")
     .replace(/\s*signal_mode\([^)]*\)\s*/g, "")
     .replace(/\s*\[VOICE_OFFER\]\s*/g, "")
@@ -1333,6 +1373,14 @@ async function handleMessage(req, res) {
     .replace(/\s*\[TOOL:[^\]]*\]\s*/g, "")
     .replace(/\s*\[ECHTZEIT-DATEN\][\s\S]*$/g, "")
     .trim();
+
+  // Safety net: never return empty reply to client
+  if (!reply) {
+    console.warn("[chat] reply empty after tag-stripping, rawReply was:", rawReply.slice(0, 200));
+    reply = searchSources?.length
+      ? "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal."
+      : "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+  }
 
   // Increment turn count + link user if just authenticated
   const updatePatch = {

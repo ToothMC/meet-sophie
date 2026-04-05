@@ -1264,7 +1264,26 @@
       .chat-card.foreground .chat-settings-btn{
         color:#1a1a1a;
       }
+      /* --- Citations / Quellen: nur Mobile (weißer Hintergrund) --- */
+      .chat-card.foreground .chat-citation-bar{
+        background:rgba(0,0,0,.04);
+        border-color:rgba(0,0,0,.10);
+      }
+      .chat-card.foreground .chat-citation-label{
+        color:rgba(0,0,0,.45);
+      }
+      .chat-card.foreground .chat-citation-link{
+        color:#1a1a1a;
+        background:rgba(0,0,0,.06);
+      }
+      .chat-card.foreground .chat-citation-link:hover{
+        color:#4a5ebd;
+        background:rgba(74,94,189,.10);
+      }
     }
+    /* Citations/Quellen foreground overrides are inside @media(max-width:640px) below,
+       because only mobile foreground has a white background.
+       Desktop foreground keeps the dark theme → uses base citation styles. */
     @media (max-width:1200px){
       .chat-card{
         width:250px;
@@ -1401,21 +1420,21 @@
     }
     .chat-citation-bar{
       display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;
-      border-radius:8px;background:rgba(142,178,255,.06);border:1px solid rgba(142,178,255,.12);
+      border-radius:8px;background:rgba(142,178,255,.10);border:1px solid rgba(142,178,255,.18);
       flex-wrap:wrap;
     }
     .chat-citation-label{
-      font-size:9px;color:rgba(180,210,255,.45);letter-spacing:.4px;text-transform:uppercase;
+      font-size:9px;color:rgba(200,220,255,.7);letter-spacing:.4px;text-transform:uppercase;
       font-weight:600;flex-shrink:0;
     }
     .chat-citation-link{
-      font-size:10px;color:rgba(180,210,255,.55);text-decoration:none;
-      padding:2px 6px;border-radius:4px;background:rgba(142,178,255,.08);
+      font-size:10px;color:rgba(210,225,255,.85);text-decoration:none;
+      padding:2px 6px;border-radius:4px;background:rgba(142,178,255,.14);
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;
       transition:color .15s,background .15s;
     }
     .chat-citation-link:hover{
-      color:rgba(200,220,255,.85);background:rgba(142,178,255,.15);
+      color:#ffffff;background:rgba(142,178,255,.25);
     }
     .chat-typing{
       display:flex;align-items:center;gap:2px;padding:6px 16px;min-height:24px;
@@ -3456,7 +3475,8 @@
 
       const bubble = document.createElement("div");
       bubble.className = "chat-msg-bubble";
-      bubble.textContent = text;
+      bubble.textContent = text || "";
+      if (role === "sophie" && !text) bubble.style.display = "none";
       wrap.appendChild(bubble);
 
       // Show provider icon(s) for Sophie's responses
