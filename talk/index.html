@@ -1411,7 +1411,7 @@ const session = await new Promise(resolve => {
   setTimeout(async () => {
     const { data } = await supabase.auth.getSession();
     finish(data.session ?? null);
-  }, 3000);
+  }, 1500);
 });
 
 if (!session?.user) {
