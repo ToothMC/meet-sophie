@@ -7,31 +7,7 @@ import { TOKEN_COSTS } from "../lib/billing-constants.js";
 import { getAdapter } from "../lib/ai/adapters/index.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 
-// ---------------------------------------------------------------------------
-// Pitch optimization prompt
-// ---------------------------------------------------------------------------
-const OPTIMIZE_PITCH_PROMPT = `Du bist ein professioneller Pitch-Coach. Du hast gerade einen Pitch analysiert und bewertet. Schreibe jetzt eine optimierte Version.
-
-REGELN:
-- Schreibe den Pitch so, wie er GESPROCHEN werden soll
-- Kurze Sätze. Natürliche Pausen mit "..."
-- Behalte Kern und Persönlichkeit des Originals bei
-- Behebe die identifizierten Schwächen
-- Stärke: Klarheit, Nutzenversprechen, Handlungsimpuls
-- Sprache: gleiche Sprache wie das Original
-- Länge: ähnlich wie Original (±20%)
-- NUR der Pitch-Text. Kein Meta-Text, keine Erklärungen
-- Keine Betonungsmarkierungen oder Regieanweisungen
-
-CONTEXT:
-Original-Transkript:
-{transcript}
-
-Publikum: {audience_type}
-Ziel: {goal_type}
-Overall Score: {overall_score}/5
-Hauptschwächen: {weaknesses}
-Verbesserungsprioritäten: {improvement_priorities}`;
+// No separate prompt needed — reuses generate-demo-pitch logic from settings.js
 
 // ---------------------------------------------------------------------------
 // Main handler
@@ -230,33 +206,7 @@ async function handleRender(user, body, supabase, res) {
     });
   }
 
-  // 2. Load transcript from conversation_messages
-  const { data: messages } = await supabase
-    .from("conversation_messages")
-    .select("role, text")
-    .eq("session_id", sessionId)
-    .order("seq", { ascending: true });
-
-  const transcript = (messages || [])
-    .filter(m => m.role === "user" && m.text)
-    .map(m => m.text)
-    .join("\n\n");
-
-  if (!transcript || transcript.length < 20) {
-    return res.status(422).json({ error: "transcript_too_short" });
-  }
-
-  // 3. Load pitch data (optional — extraction can fail silently in report generation)
-  const { data: pitchMemory } = await supabase
-    .from("sophie_pitch_memory")
-    .select("topic, target_audience, goal_type, score, strengths, weaknesses, scores_content, scores_delivery")
-    .eq("conversation_id", sessionId)
-    .eq("user_id", user.id)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // 4. Voice Profile check
+  // 2. Voice Profile check
   const { data: voiceProfile } = await supabase
     .from("voice_profiles")
     .select("id, elevenlabs_voice_id, clone_status, is_active")
@@ -282,8 +232,8 @@ async function handleRender(user, body, supabase, res) {
     return res.status(402).json({ error: "insufficient_tokens", needed: tokenCost, available: remaining });
   }
 
-  // 6. Create or reuse render record (pending)
-  const estimatedChars = Math.ceil(transcript.length * 1.2);
+  // 4. Create or reuse render record (pending)
+  const estimatedChars = 800; // typical optimized pitch length
   let render;
 
   if (existingRender && existingRender.render_status !== "completed") {
@@ -314,48 +264,12 @@ async function handleRender(user, body, supabase, res) {
   }
 
   try {
-    // 7. Generate optimized pitch text server-side
-    const overallScore = pitchMemory?.score
-      ? (pitchMemory.score / 20).toFixed(1) // convert 0-100 to 0-5 scale
-      : "N/A";
-
-    const weaknesses = Array.isArray(pitchMemory?.weaknesses)
-      ? pitchMemory.weaknesses.join(", ")
-      : "nicht verfügbar";
-
-    const prompt = OPTIMIZE_PITCH_PROMPT
-      .replace("{transcript}", transcript)
-      .replace("{audience_type}", pitchMemory?.target_audience || "allgemein")
-      .replace("{goal_type}", pitchMemory?.goal_type || "überzeugen")
-      .replace("{overall_score}", overallScore)
-      .replace("{weaknesses}", weaknesses)
-      .replace("{improvement_priorities}", weaknesses); // same as weaknesses for MVP
-
-    const adapter = getAdapter("openai");
-    const aiResponse = await adapter.complete({
-      messages: [{ role: "user", content: prompt }],
-      model: "gpt-4o-mini",
-      maxTokens: 3000,
-      temperature: 0.3,
-    });
-
-    const optimizedText = aiResponse?.content?.trim();
-    if (!optimizedText || optimizedText.length < 50) {
+    // 5. Generate optimized pitch text — reuse existing generate-demo-pitch logic
+    const optimizedText = await generateOptimizedPitch(supabase, user.id, sessionId);
+    if (!optimizedText) {
       await updateRenderStatus(supabase, render.id, "failed", "Pitch optimization returned empty text");
       return res.status(502).json({ error: "optimization_failed", render_id: render.id });
     }
-
-    // Track AI cost
-    trackCost({
-      userId: user.id,
-      provider: "openai",
-      model: "gpt-4o-mini",
-      inputTokens: aiResponse?.usage?.inputTokens || 0,
-      outputTokens: aiResponse?.usage?.outputTokens || 0,
-      costUsd: aiResponse?.usage?.costUsd || 0,
-      latencyMs: aiResponse?.latencyMs || 0,
-      routingReason: "pitch-optimize",
-    }).catch(() => {});
 
     // 8. ElevenLabs TTS
     const ttsRes = await fetch(
@@ -563,4 +477,89 @@ async function updateRenderStatus(supabase, renderId, status, errorMessage) {
       ...(status === "completed" ? { completed_at: new Date().toISOString() } : {}),
     })
     .eq("id", renderId);
+}
+
+// Reuses the same pitch optimization logic as settings.js generate-demo-pitch
+async function generateOptimizedPitch(supabase, userId, sessionId) {
+  // Load transcript
+  const { data: msgs } = await supabase
+    .from("conversation_messages")
+    .select("role, text")
+    .eq("session_id", sessionId)
+    .order("seq", { ascending: true })
+    .limit(100);
+
+  const transcript = (msgs || [])
+    .filter(m => m.text?.trim())
+    .map(m => `[${m.role}]: ${m.text}`)
+    .join("\n")
+    .slice(0, 6000);
+
+  if (!transcript) return null;
+
+  // Load report
+  let reportText = "";
+  const { data: output } = await supabase
+    .from("conversation_outputs")
+    .select("report_html")
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
+  if (output?.report_html) {
+    reportText = output.report_html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 4000);
+  }
+
+  // Check eco mode
+  const { data: ecoProf } = await supabase
+    .from("user_profile")
+    .select("eco_mode")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const isEco = !!ecoProf?.eco_mode;
+
+  const adapter = getAdapter(isEco ? "google" : "openai");
+  const resp = await adapter.complete({
+    messages: [{ role: "user", content: `Du bist ein Pitch-Coach. Unten ist das Transcript eines Sales Pitches.
+
+DEINE AUFGABE: Schreibe eine VERBESSERTE VERSION dieses Pitches.
+- Verwende NUR Fakten und Informationen aus dem Transcript
+- ERFINDE NICHTS NEUES — keine Features, keine Eigenschaften, keine Partnerschaften
+- Verbessere: Struktur (Hook → Problem → Lösung → Beweis → CTA), Rhetorik, Klarheit, roter Faden
+- Wenn der Produktname im Transcript steht, verwende EXAKT diesen Namen
+- Halte den Pitch auf 2-3 Minuten Sprechdauer (ca. 400-500 Wörter)
+- Schreibe ihn so dass er laut vorgelesen werden kann (natürliche Sprache, keine Stichpunkte)
+- KEINE Erklärungen am Ende was du geändert hast
+
+${reportText ? `BEWERTUNG DES ORIGINAL-PITCHES:\n${reportText.slice(0, 2000)}\n` : ""}
+
+ORIGINAL PITCH-TRANSCRIPT:
+${transcript}
+
+Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der verbesserte Pitch". Direkt der Pitch.` }],
+    model: isEco ? "gemini-2.5-flash" : "gpt-4o",
+    maxTokens: 2000,
+    temperature: 0.4,
+  });
+
+  // Track cost
+  if (resp?.usage) {
+    trackCost({
+      userId,
+      provider: resp.provider || "openai",
+      model: resp.model || "gpt-4o",
+      inputTokens: resp.usage.inputTokens || 0,
+      outputTokens: resp.usage.outputTokens || 0,
+      costUsd: resp.usage.costUsd || 0,
+      latencyMs: resp.latencyMs || 0,
+      routingReason: "voice-render-pitch-optimize",
+    }).catch(() => {});
+  }
+
+  const text = (resp?.content || "").trim();
+  return text.length >= 100 ? text : null;
 }

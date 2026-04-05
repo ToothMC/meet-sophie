@@ -3214,19 +3214,14 @@ async function startVoiceRenderFlow(btn) {
       await voiceApi({ action: "consent", consentGiven: true });
     }
 
-    // Step 3: Clone if needed
+    // Step 3: Clone if needed (uses pitch audio captured during session)
     if (vs.clone_status !== "ready") {
-      btn.textContent = "Stimmprofil wird erstellt...";
-
-      // Record voice sample
-      const audioBlob = await recordVoiceSample();
-      if (!audioBlob) {
-        btn.disabled = false;
-        btn.textContent = originalText;
-        return;
+      const audioBlob = window._pitchAudioBlob;
+      if (!audioBlob || audioBlob.size < 5000) {
+        throw new Error("Dein Pitch-Audio ist nicht verf\u00fcgbar. Bitte starte einen neuen Pitch.");
       }
 
-      // Upload to Supabase Storage
+      // Upload pitch audio to Supabase Storage
       btn.textContent = "Audio wird hochgeladen...";
       const storagePath = `${authSess.user.id}/${sid}.webm`;
       const { error: upErr } = await supabase.storage
@@ -3234,7 +3229,7 @@ async function startVoiceRenderFlow(btn) {
         .upload(storagePath, audioBlob, { contentType: "audio/webm", upsert: true });
       if (upErr) throw new Error("Upload fehlgeschlagen: " + upErr.message);
 
-      // Create clone
+      // Create clone from pitch audio
       btn.textContent = "Stimmprofil wird erstellt...";
       const cloneRes = await voiceApi({ action: "clone", storagePath });
       if (cloneRes.status !== 200) throw new Error(cloneRes.data?.error || "Clone fehlgeschlagen");
@@ -5948,6 +5943,23 @@ async function startVoice(){
     });
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
+    // Parallel recording for voice clone (salespitch mode only)
+    if (selectedVoiceMode === "salespitch") {
+      try {
+        window._pitchRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+        window._pitchRecorderChunks = [];
+        window._pitchRecorder.ondataavailable = (e) => { if (e.data.size > 0) window._pitchRecorderChunks.push(e.data); };
+        window._pitchRecorder.onstop = () => {
+          window._pitchAudioBlob = new Blob(window._pitchRecorderChunks, { type: "audio/webm" });
+          console.log(`[voice-clone] pitch audio captured: ${window._pitchAudioBlob.size} bytes`);
+        };
+        window._pitchRecorder.start(1000);
+        console.log("[voice-clone] parallel recording started for salespitch");
+      } catch (recErr) {
+        console.warn("[voice-clone] parallel recording failed (non-critical):", recErr?.message);
+      }
+    }
+
     // Single audio path: <audio> element only — provides playback + browser AEC.
     // No Web Audio GainNode to speakers (caused double playback).
     // Volume fades use audioEl.volume directly.
@@ -6058,6 +6070,13 @@ async function stopVoicePitchClean() {
   limitTriggered = true; // prevent DC close handler from re-triggering
 
   console.log(`[${runId}] [salespitch] stopVoicePitchClean — clean teardown`);
+
+  // Stop parallel pitch audio recorder
+  if (window._pitchRecorder?.state === "recording") {
+    try { window._pitchRecorder.stop(); } catch (_) {}
+    console.log("[voice-clone] parallel recording stopped");
+  }
+
   clearModeIndicator();
   endBtn.disabled = true;
   startBtn.disabled = true;
