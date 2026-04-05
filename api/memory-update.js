@@ -1043,7 +1043,10 @@ export default async function handler(req, res) {
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
     const sessionMode = typeof body.session_mode === "string" ? body.session_mode.trim().toLowerCase() : null;
-    const secondsUsed = Number(body.seconds_used ?? 0) || 0;
+    const secondsUsed = Math.min(7200, Math.max(0, Number(body.seconds_used ?? 0) || 0));
+    const rawRealtimeUsage = (typeof body.realtime_usage === 'object' && body.realtime_usage !== null)
+      ? body.realtime_usage
+      : null;
     const nowIso = new Date().toISOString();
     const sessionStartedAt =
       typeof body.session_started_at === "string" && body.session_started_at.trim()
