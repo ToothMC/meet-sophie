@@ -418,6 +418,20 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
+  <!-- Section: Stimmprofil (Voice Profile) -->
+  <div class="section collapsed" id="sectionVoice">
+    <div class="section-toggle" onclick="toggleSection('sectionVoice')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Stimmprofil</span>
+      <span class="s-sub" id="voiceStatusSub">Lade...</span>
+    </div>
+    <div class="section-body">
+      <div id="voiceProfileContent" style="font-size:13px;color:#555;line-height:1.6;">
+        <p class="msg">Laden...</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Section 3: Kosten -->
   <div class="section collapsed" id="sectionCosts">
     <div class="section-toggle" onclick="toggleSection('sectionCosts')">
@@ -492,6 +506,7 @@ if (!session?.user) {
   loadCosts();
   loadAccount();
   loadUsage();
+  loadVoiceProfile();
 }
 
 // ── Account Section ──
@@ -1241,6 +1256,78 @@ async function deleteReport() {
   } catch (e) { alert("Fehler: " + e?.message); }
 }
 window.deleteReport = deleteReport;
+
+// ── Section: Stimmprofil (Voice Profile) ──
+async function loadVoiceProfile() {
+  const el = document.getElementById("voiceProfileContent");
+  const sub = document.getElementById("voiceStatusSub");
+  try {
+    const r = await fetch("/api/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ action: "status" }),
+    });
+    const data = await r.json();
+
+    if (!data.has_voice_profile || !data.has_consent) {
+      sub.textContent = "Nicht erstellt";
+      el.innerHTML = `
+        <p style="margin:0 0 12px;">Du hast noch kein Stimmprofil. Es wird automatisch erstellt, wenn du nach einem Sales Pitch auf "H\u00f6r deinen Pitch in deiner Stimme" klickst.</p>
+        <div style="padding:10px 14px;background:#f5f3ef;border-radius:8px;font-size:12px;color:#888;">
+          Status: <strong>Nicht vorhanden</strong>
+        </div>
+      `;
+      return;
+    }
+
+    const statusLabels = {
+      ready: { text: "Aktiv", color: "#059669", bg: "#d1fae5" },
+      pending: { text: "Wird erstellt...", color: "#d97706", bg: "#fef3c7" },
+      failed: { text: "Fehlgeschlagen", color: "#dc2626", bg: "#fee2e2" },
+      deleted: { text: "Gel\u00f6scht", color: "#6b7280", bg: "#f3f4f6" },
+    };
+    const st = statusLabels[data.clone_status] || statusLabels.pending;
+    sub.textContent = st.text;
+
+    el.innerHTML = `
+      <div style="padding:12px 14px;background:${st.bg};border-radius:8px;margin:0 0 12px;">
+        <div style="font-size:13px;font-weight:600;color:${st.color};margin-bottom:4px;">Status: ${st.text}</div>
+        ${data.total_generations ? `<div style="font-size:12px;color:#888;">Bisher ${data.total_generations} Render${data.total_generations > 1 ? "s" : ""} generiert</div>` : ""}
+        ${data.last_used_at ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">Zuletzt genutzt: ${new Date(data.last_used_at).toLocaleDateString("de-DE")}</div>` : ""}
+      </div>
+      ${data.clone_status === "ready" || data.clone_status === "failed" ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${data.clone_status === "ready" ? `<button onclick="deleteVoiceProfile()" style="padding:8px 16px;border:1px solid #fca5a5;border-radius:8px;background:#fff;color:#dc2626;font-size:13px;cursor:pointer;">Stimmprofil l\u00f6schen</button>` : ""}
+          ${data.clone_status === "failed" ? `<button onclick="window.location.href='/talk'" style="padding:8px 16px;border:1px solid #c4b5fd;border-radius:8px;background:#fff;color:#4f46e5;font-size:13px;cursor:pointer;">Erneut versuchen</button>` : ""}
+        </div>
+      ` : ""}
+    `;
+  } catch (e) {
+    console.error("[settings] voice profile load error:", e);
+    sub.textContent = "Fehler";
+    el.innerHTML = '<p class="msg msg-error">Konnte Stimmprofil nicht laden</p>';
+  }
+}
+
+async function deleteVoiceProfile() {
+  if (!confirm("Stimmprofil wirklich l\u00f6schen? Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden.")) return;
+  try {
+    const r = await fetch("/api/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ action: "delete" }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      loadVoiceProfile();
+    } else {
+      alert("Fehler: " + (data.error || "Unbekannt"));
+    }
+  } catch (e) {
+    alert("Fehler beim L\u00f6schen: " + (e?.message || ""));
+  }
+}
+window.deleteVoiceProfile = deleteVoiceProfile;
 
 // ── Section 4: Provider-Status ──
 async function loadHealth() {

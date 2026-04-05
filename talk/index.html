@@ -2968,9 +2968,13 @@ function configurePostCallCta(triggeredByLimit = false) {
 
   function goHome() { window.location.href = "/"; }
 
-  // Remove any previously added demo button
+  // Remove any previously added dynamic buttons
   const oldDemo = document.getElementById("postCallDemoBtn");
   if (oldDemo) oldDemo.remove();
+  const oldVR = document.getElementById("postCallVoiceRenderBtn");
+  if (oldVR) oldVR.remove();
+  const oldVRAudio = document.getElementById("voiceRenderAudioWrap");
+  if (oldVRAudio) oldVRAudio.remove();
 
   // Sales Pitch: show "Pitch again" + "Sophie pitcht für dich"
   if (selectedVoiceMode === "salespitch") {
@@ -3115,6 +3119,16 @@ function configurePostCallCta(triggeredByLimit = false) {
     demoBtn.onclick = _demoHandler;
     postCallPrimaryBtn.parentNode.insertBefore(demoBtn, postCallSecondaryBtn);
 
+    // --- Voice Render: "Hör deinen Pitch in deiner Stimme" (ElevenLabs Clone) ---
+    const voiceRenderBtn = document.createElement("button");
+    voiceRenderBtn.id = "postCallVoiceRenderBtn";
+    voiceRenderBtn.type = "button";
+    voiceRenderBtn.className = "smallBtn secondary";
+    voiceRenderBtn.style.cssText = "background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;margin-top:4px;";
+    voiceRenderBtn.textContent = "\uD83C\uDFA4 H\u00f6r deinen Pitch in deiner Stimme";
+    voiceRenderBtn.onclick = () => startVoiceRenderFlow(voiceRenderBtn);
+    postCallPrimaryBtn.parentNode.insertBefore(voiceRenderBtn, postCallSecondaryBtn);
+
     return;
   }
 
@@ -3150,6 +3164,254 @@ function configurePostCallCta(triggeredByLimit = false) {
     postCallSecondaryBtn.textContent = t("back_home");
     postCallSecondaryBtn.onclick = goHome;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Voice Render Flow — ElevenLabs Pitch in User's Own Voice
+// ---------------------------------------------------------------------------
+async function startVoiceRenderFlow(btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Wird gepr\u00fcft...";
+
+  // Unlock audio (iOS Safari gesture requirement)
+  const _vrAudio = new Audio();
+  _vrAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  _vrAudio.play().catch(() => {});
+
+  try {
+    const { data: { session: authSess } } = await supabase.auth.getSession();
+    const token = authSess?.access_token;
+    if (!token) throw new Error("Nicht eingeloggt");
+
+    const sid = window._lastReportContext?.sessionId || sessionId;
+    if (!sid) throw new Error("Keine Session-ID");
+
+    const voiceApi = async (body) => {
+      const r = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, data: await r.json() };
+    };
+
+    // Step 1: Check voice profile status
+    const statusRes = await voiceApi({ action: "status" });
+    const vs = statusRes.data;
+
+    // Step 2: Consent if needed
+    if (!vs.has_consent) {
+      const consentOk = await showVoiceConsentDialog();
+      if (!consentOk) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+      await voiceApi({ action: "consent", consentGiven: true });
+    }
+
+    // Step 3: Clone if needed
+    if (vs.clone_status !== "ready") {
+      btn.textContent = "Stimmprofil wird erstellt...";
+
+      // Record voice sample
+      const audioBlob = await recordVoiceSample();
+      if (!audioBlob) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      // Upload to Supabase Storage
+      btn.textContent = "Audio wird hochgeladen...";
+      const storagePath = `${authSess.user.id}/${sid}.webm`;
+      const { error: upErr } = await supabase.storage
+        .from("pitch-audio")
+        .upload(storagePath, audioBlob, { contentType: "audio/webm", upsert: true });
+      if (upErr) throw new Error("Upload fehlgeschlagen: " + upErr.message);
+
+      // Create clone
+      btn.textContent = "Stimmprofil wird erstellt...";
+      const cloneRes = await voiceApi({ action: "clone", storagePath });
+      if (cloneRes.status !== 200) throw new Error(cloneRes.data?.error || "Clone fehlgeschlagen");
+    }
+
+    // Step 4: Render
+    btn.textContent = "Pitch wird generiert...";
+    const renderRes = await voiceApi({ action: "render", sessionId: sid });
+
+    if (renderRes.status !== 200) {
+      if (renderRes.data?.error === "insufficient_tokens") {
+        throw new Error("Nicht gen\u00fcgend Tokens. Bitte Abo upgraden oder Tokens aufladen.");
+      }
+      throw new Error(renderRes.data?.error || "Render fehlgeschlagen");
+    }
+
+    // Step 5: Show audio player
+    btn.style.display = "none";
+    showVoiceRenderPlayer(renderRes.data.audio_url, renderRes.data.optimized_text, btn, originalText, _vrAudio);
+
+  } catch (e) {
+    console.error("[voice-render] error:", e);
+    btn.disabled = false;
+    btn.textContent = originalText;
+    alert("Voice-Render fehlgeschlagen: " + (e?.message || "Unbekannter Fehler"));
+  }
+}
+
+function showVoiceConsentDialog() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;";
+    const dialog = document.createElement("div");
+    dialog.style.cssText = "background:#fff;border-radius:16px;padding:28px 24px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);";
+    dialog.innerHTML = `
+      <h3 style="font-size:17px;font-weight:700;margin:0 0 14px;color:#1a1a1a;">Stimmprofil erstellen</h3>
+      <p style="font-size:14px;color:#555;line-height:1.6;margin:0 0 16px;">
+        Sophie kann deinen optimierten Pitch mit <strong>deiner eigenen Stimme</strong> generieren. Daf\u00fcr wird ein Stimmprofil erstellt.
+      </p>
+      <ul style="font-size:13px;color:#666;line-height:1.7;margin:0 0 20px;padding-left:18px;">
+        <li>Dein Audio wird an unseren Voice-Partner ElevenLabs \u00fcbermittelt</li>
+        <li>Ein Stimmprofil wird mit deinem Account verkn\u00fcpft</li>
+        <li>Du kannst es jederzeit in den Einstellungen l\u00f6schen</li>
+      </ul>
+      <div style="display:flex;gap:10px;">
+        <button id="_vrConsentYes" style="flex:1;padding:12px;border:none;border-radius:10px;background:#4f46e5;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Ja, Stimmprofil erstellen</button>
+        <button id="_vrConsentNo" style="flex:1;padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-size:14px;cursor:pointer;">Nein</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    dialog.querySelector("#_vrConsentYes").onclick = () => { overlay.remove(); resolve(true); };
+    dialog.querySelector("#_vrConsentNo").onclick = () => { overlay.remove(); resolve(false); };
+    overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+  });
+}
+
+function recordVoiceSample() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;";
+    const dialog = document.createElement("div");
+    dialog.style.cssText = "background:#fff;border-radius:16px;padding:28px 24px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);text-align:center;";
+    dialog.innerHTML = `
+      <h3 style="font-size:17px;font-weight:700;margin:0 0 10px;">Stimmprobe aufnehmen</h3>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;line-height:1.5;">
+        Sprich 30\u201360 Sekunden frei. Ruhig, deutlich, wenig Hintergrundger\u00e4usche.<br>
+        Tipp: Lies einfach deinen Pitch nochmal vor.
+      </p>
+      <div id="_vrTimer" style="font-size:28px;font-weight:700;color:#4f46e5;margin:0 0 16px;">0:00</div>
+      <div id="_vrRecBtns" style="display:flex;gap:10px;justify-content:center;">
+        <button id="_vrStartRec" style="padding:12px 24px;border:none;border-radius:10px;background:#dc2626;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">\uD83C\uDF99 Aufnahme starten</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    let recorder, chunks = [], timerIv, seconds = 0;
+
+    const timerEl = dialog.querySelector("#_vrTimer");
+    const btnsEl = dialog.querySelector("#_vrRecBtns");
+
+    dialog.querySelector("#_vrStartRec").onclick = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+        chunks = [];
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          clearInterval(timerIv);
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          overlay.remove();
+          resolve(blob);
+        };
+        recorder.start(1000);
+        timerIv = setInterval(() => {
+          seconds++;
+          const m = Math.floor(seconds / 60);
+          const s = seconds % 60;
+          timerEl.textContent = `${m}:${String(s).padStart(2, "0")}`;
+          timerEl.style.color = seconds >= 30 ? "#059669" : "#4f46e5";
+        }, 1000);
+
+        btnsEl.innerHTML = `
+          <button id="_vrStopRec" style="padding:12px 24px;border:none;border-radius:10px;background:#059669;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">\u2713 Fertig</button>
+          <button id="_vrCancelRec" style="padding:12px 24px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#555;font-size:14px;cursor:pointer;">Abbrechen</button>
+        `;
+        btnsEl.querySelector("#_vrStopRec").onclick = () => {
+          if (seconds < 10) { alert("Bitte mindestens 10 Sekunden aufnehmen."); return; }
+          recorder.stop();
+        };
+        btnsEl.querySelector("#_vrCancelRec").onclick = () => {
+          recorder.stop();
+          clearInterval(timerIv);
+          overlay.remove();
+          resolve(null);
+        };
+      } catch (e) {
+        console.error("[voice-sample] mic error:", e);
+        overlay.remove();
+        alert("Mikrofon-Zugriff nicht m\u00f6glich: " + (e?.message || ""));
+        resolve(null);
+      }
+    };
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        if (recorder?.state === "recording") recorder.stop();
+        clearInterval(timerIv);
+        overlay.remove();
+        resolve(null);
+      }
+    };
+  });
+}
+
+function showVoiceRenderPlayer(audioUrl, optimizedText, btn, originalText, preAudio) {
+  const wrap = document.createElement("div");
+  wrap.id = "voiceRenderAudioWrap";
+  wrap.style.cssText = "background:linear-gradient(135deg,#ede9fe,#dbeafe);border-radius:12px;padding:16px;margin:8px 0;text-align:center;";
+  wrap.innerHTML = `
+    <div style="font-size:13px;font-weight:600;color:#4f46e5;margin-bottom:10px;">\uD83C\uDFA4 Dein optimierter Pitch</div>
+    <audio id="_vrPlayer" controls style="width:100%;max-width:360px;margin-bottom:10px;"></audio>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <a id="_vrDownload" download="mein-pitch.mp3" style="padding:8px 16px;border-radius:8px;background:#4f46e5;color:#fff;font-size:13px;font-weight:500;text-decoration:none;cursor:pointer;">Download</a>
+      <button id="_vrShowText" type="button" style="padding:8px 16px;border-radius:8px;border:1px solid #c4b5fd;background:#fff;color:#4f46e5;font-size:13px;cursor:pointer;">Text anzeigen</button>
+      <button id="_vrAgain" type="button" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#555;font-size:13px;cursor:pointer;">Nochmal</button>
+    </div>
+    <div id="_vrTextView" style="display:none;margin-top:12px;padding:12px;background:#fff;border-radius:8px;font-size:13px;color:#333;line-height:1.6;text-align:left;max-height:200px;overflow-y:auto;"></div>
+  `;
+
+  btn.parentNode.insertBefore(wrap, btn.nextSibling);
+
+  const player = wrap.querySelector("#_vrPlayer");
+  player.src = audioUrl;
+  // Try to play via pre-unlocked element on iOS
+  if (preAudio) {
+    preAudio.src = audioUrl;
+    preAudio.play().catch(() => player.play().catch(() => {}));
+  }
+
+  wrap.querySelector("#_vrDownload").href = audioUrl;
+
+  const textView = wrap.querySelector("#_vrTextView");
+  wrap.querySelector("#_vrShowText").onclick = () => {
+    if (textView.style.display === "none") {
+      textView.style.display = "block";
+      textView.textContent = optimizedText || "";
+    } else {
+      textView.style.display = "none";
+    }
+  };
+
+  wrap.querySelector("#_vrAgain").onclick = () => {
+    wrap.remove();
+    btn.style.display = "";
+    btn.disabled = false;
+    btn.textContent = originalText;
+  };
 }
 
 function showSummaryView() {
