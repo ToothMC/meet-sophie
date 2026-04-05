@@ -2038,6 +2038,13 @@ let talkStartedAt = null;
 let remainingAtSessionStart = 0;
 let sessionId = null;
 
+// Accumulate real token usage from OpenAI response.done events
+let realtimeUsage = {
+  audio_tokens_in: 0, audio_tokens_out: 0,
+  text_tokens_in: 0, text_tokens_out: 0,
+  cached_tokens_in: 0, response_count: 0,
+};
+
 let dynamicResetInterval = null;
 
 let limitTriggered = false;
