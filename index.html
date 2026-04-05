@@ -3456,7 +3456,8 @@
 
       const bubble = document.createElement("div");
       bubble.className = "chat-msg-bubble";
-      bubble.textContent = text;
+      bubble.textContent = text || "";
+      if (role === "sophie" && !text) bubble.style.display = "none";
       wrap.appendChild(bubble);
 
       // Show provider icon(s) for Sophie's responses
