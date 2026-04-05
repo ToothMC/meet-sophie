@@ -101,8 +101,10 @@ export async function getWeather(location) {
 
 // ── Web Search: Bing Search API (primary) → DuckDuckGo (fallback) ──
 
-export async function webSearch(query) {
-  if (!query) return 'Keine Suchanfrage angegeben.';
+export async function webSearch(query, { withSources = false } = {}) {
+  if (!query) return withSources ? { text: 'Keine Suchanfrage angegeben.', sources: [] } : 'Keine Suchanfrage angegeben.';
+
+  const wrap = (text, sources) => withSources ? { text, sources } : text;
 
   // Primary: Google Custom Search API (if keys are set)
   const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
@@ -117,9 +119,9 @@ export async function webSearch(query) {
         const data = await gRes.json();
         const results = (data.items || []).slice(0, 8);
         if (results.length > 0) {
-          // Fetch page content for top 3 results in parallel
           const enriched = await enrichTopResults(results, 3);
-          return `Web-Suchergebnisse für "${query}":\n\n${enriched}`;
+          const sources = results.slice(0, 5).map(r => ({ title: r.title || 'Quelle', url: r.link })).filter(s => s.url);
+          return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
       }
     } catch (e) { console.error('[tools] Google search error:', e?.message); }
@@ -140,7 +142,8 @@ export async function webSearch(query) {
         }));
         if (results.length > 0) {
           const enriched = await enrichTopResults(results, 3);
-          return `Web-Suchergebnisse für "${query}":\n\n${enriched}`;
+          const sources = results.slice(0, 5).map(r => ({ title: r.title || 'Quelle', url: r.link })).filter(s => s.url);
+          return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
       }
     } catch (e) { console.error('[tools] Bing search error:', e?.message); }
@@ -157,17 +160,22 @@ export async function webSearch(query) {
       let ddg;
       try { ddg = JSON.parse(text); } catch { ddg = {}; }
       const parts = [];
+      const sources = [];
+      if (ddg.AbstractURL) sources.push({ title: ddg.AbstractSource || 'Quelle', url: ddg.AbstractURL });
       if (ddg.Abstract) parts.push(`${ddg.AbstractSource}: ${ddg.Abstract}`);
       if (ddg.Answer) parts.push(`Antwort: ${ddg.Answer}`);
       if (ddg.RelatedTopics?.length > 0) {
         const topics = ddg.RelatedTopics.filter(t => t.Text).slice(0, 5).map(t => `- ${t.Text}`);
         if (topics.length > 0) parts.push(`Verwandte Ergebnisse:\n${topics.join('\n')}`);
+        for (const t of ddg.RelatedTopics.filter(t => t.FirstURL).slice(0, 3)) {
+          sources.push({ title: t.Text?.slice(0, 60) || 'Quelle', url: t.FirstURL });
+        }
       }
-      if (parts.length > 0) return parts.join('\n\n');
+      if (parts.length > 0) return wrap(parts.join('\n\n'), sources);
     }
   } catch (_) {}
 
-  return `Keine Ergebnisse für "${query}" gefunden.`;
+  return wrap(`Keine Ergebnisse für "${query}" gefunden.`, []);
 }
 
 // Fetch actual page content for top N results to give Sophie more context
