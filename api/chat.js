@@ -458,7 +458,10 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
   // Strip tool tag from raw reply so it never leaks to the user
   const cleanRawReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
 
-  if (!toolData) return { reply: cleanRawReply || rawReply, toolUsed: false };
+  if (!toolData) {
+    const fallback = cleanRawReply || "Die Echtzeitdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal.";
+    return { reply: fallback, toolUsed: false };
+  }
 
   routerMessages.push({
     role: "system",
