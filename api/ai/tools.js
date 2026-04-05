@@ -605,7 +605,7 @@ export async function groundedSearch(query) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 12000);
 
   try {
     const geminiRes = await fetch(
