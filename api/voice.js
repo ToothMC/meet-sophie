@@ -454,10 +454,14 @@ async function handleRender(user, body, supabase, res) {
       .eq("id", render.id);
 
     // 12. Increment voice usage stats
-    await supabase.rpc("increment_voice_usage", {
-      p_user_id: user.id,
-      p_chars: actualChars,
-    }).catch(err => console.error("[voice] usage increment error:", err?.message));
+    try {
+      await supabase.rpc("increment_voice_usage", {
+        p_user_id: user.id,
+        p_chars: actualChars,
+      });
+    } catch (usageErr) {
+      console.error("[voice] usage increment error:", usageErr?.message);
+    }
 
     // 13. Signed URL
     const { data: urlData } = await supabase.storage
