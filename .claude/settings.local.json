@@ -187,7 +187,9 @@
       "Bash(grep -r \"realtime\\\\|WebSocket\\\\|openai.*realtime\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.html --include=*.js --include=*.ts --include=*.tsx)",
       "Bash(grep -r \"elevenlabs\\\\|eleven\\\\|tts\\\\|speech\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
       "Bash(grep \"\\\\.js$\")",
-      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase -name *.sql)"
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase -name *.sql)",
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:help.elevenlabs.io)"
     ]
   },
   "hooks": {

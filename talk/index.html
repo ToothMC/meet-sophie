@@ -1421,8 +1421,10 @@ if (!session?.user) {
   window.location.href = "/login";
 }
 
-// Auth fertig — keep authLoading visible until startVoice sets up the UI.
-// The wrap is shown inside startVoice after the API call succeeds.
+// Auth fertig — show main UI immediately so start button / error states are visible.
+// startVoice() is auto-called below and will show "connecting" status.
+document.getElementById("authLoading").style.display = "none";
+document.querySelector(".wrap").style.display = "";
 
 // Session Watch (Logout / Session verloren)
 supabase.auth.onAuthStateChange((event, session) => {
