@@ -133,17 +133,29 @@
       doneEl.style.display = "block";
     }
 
-    // Listen for SIGNED_IN event (magic link token exchange)
+    // Listen for auth events (magic link token exchange)
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) finish(session.user.id);
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+        finish(session.user.id);
+      }
     });
 
-    // Fallback: check session after 3s
+    // Eager check: Supabase may have already exchanged the token before listener registered
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) finish(data.session.user.id);
+    });
+
+    // Fallback: retry after 3s (covers slow token exchange / Edge timing)
     setTimeout(async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        finish(data.session.user.id);
-      } else {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user) {
+          finish(data.session.user.id);
+        } else {
+          fail();
+        }
+      } catch (e) {
+        console.error("[callback] session check failed:", e);
         fail();
       }
     }, 3000);
