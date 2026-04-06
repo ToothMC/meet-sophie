@@ -2615,6 +2615,18 @@ async function connectSophieVoice() {
 
 // Handle voice transcript events from DataChannel (same logic as Talk)
 function handleVoiceTranscriptEvent(msg) {
+  // ── FIRST: Burst timer management (before ANY early returns) ──────────
+  // Clear auto-disconnect timer on ANY activity (Sophie or User)
+  if (isMeetingBurstActive && window._burstSilenceTimer) {
+    const t = msg?.type || "";
+    // Sophie active: any response.* except response.done (which STARTS the timer)
+    // User active: any conversation.* event
+    if ((t.startsWith("response.") && t !== "response.done") || t.startsWith("conversation.")) {
+      clearTimeout(window._burstSilenceTimer);
+      window._burstSilenceTimer = null;
+    }
+  }
+
   // User speech transcript (incremental)
   if (msg?.type === "conversation.item.input_audio_transcription.delta") {
     const itemId = msg?.item_id;
@@ -2647,9 +2659,8 @@ function handleVoiceTranscriptEvent(msg) {
     return;
   }
 
-  // Response complete — save Sophie's text + auto-disconnect timer for burst
+  // Response complete — save Sophie's text + start auto-disconnect timer
   if (msg?.type === "response.done") {
-    // Strip Sophie's internal JSON tags (structured meeting data) from transcript
     let final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
     final = final.replace(/\s*\{["']?(?:decisions|actions|risks|open_points)["']?\s*:[\s\S]*$/i, "").trim();
     const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
@@ -2658,29 +2669,23 @@ function handleVoiceTranscriptEvent(msg) {
       lastAssistantFinal = final;
       console.log("[meeting-voice] Sophie:", final.slice(0, 80));
 
-      // Queue burst message for server persistence
       if (isMeetingBurstActive) {
         pendingBurstMessages.push({ role: "sophie", text: final });
       }
     }
     partialAssistant = "";
 
-    // Auto-disconnect after 20s silence (burst mode only)
+    // Start 45s silence timer ONLY after Sophie finished speaking
     if (isMeetingBurstActive) {
       clearTimeout(window._burstSilenceTimer);
       window._burstSilenceTimer = setTimeout(() => {
         if (isMeetingBurstActive && !sophieMuted) {
-          console.log("[meeting-burst] Auto-disconnect after 20s silence");
-          toggleSophieMute(); // disconnect
+          console.log("[meeting-burst] Auto-disconnect after 45s post-response silence");
+          toggleSophieMute();
         }
-      }, 20000);
+      }, 45000);
     }
     return;
-  }
-
-  // Clear silence timer on new user speech (burst mode)
-  if (isMeetingBurstActive && msg?.type === "conversation.item.input_audio_transcription.delta") {
-    clearTimeout(window._burstSilenceTimer);
   }
 }
 
