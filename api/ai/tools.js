@@ -106,31 +106,7 @@ export async function webSearch(query, { withSources = false } = {}) {
 
   const wrap = (text, sources) => withSources ? { text, sources } : text;
 
-  // Primary: Google Custom Search API (if keys are set)
-  const googleKey = (process.env.GOOGLE_SEARCH_API_KEY || "").trim();
-  const googleCx = (process.env.GOOGLE_SEARCH_CX || "").trim();
-  if (googleKey && googleCx) {
-    try {
-      const gRes = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query)}&num=8`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (gRes.ok) {
-        const data = await gRes.json();
-        const results = (data.items || []).slice(0, 8);
-        if (results.length > 0) {
-          const enriched = await enrichTopResults(results, 3);
-          const sources = results.slice(0, 5).map(r => ({ title: r.title || 'Quelle', url: r.link })).filter(s => s.url);
-          return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
-        }
-      } else {
-        const errBody = await gRes.text().catch(() => "");
-        console.error(`[tools] Google HTTP ${gRes.status}: ${errBody.slice(0, 200)}`);
-      }
-    } catch (e) { console.error('[tools] Google search error:', e?.message); }
-  }
-
-  // Secondary: Bing Search API (if key is set)
+  // Primary: Bing Search API (full web search, no domain restrictions)
   const bingKey = (process.env.BING_API_KEY || "").trim();
   if (bingKey) {
     try {
@@ -149,12 +125,13 @@ export async function webSearch(query, { withSources = false } = {}) {
           return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
       } else {
-        console.error(`[tools] Bing search HTTP ${bingRes.status} for "${query.slice(0, 30)}"`);
+        const errBody = await bingRes.text().catch(() => "");
+        console.error(`[tools] Bing HTTP ${bingRes.status}: ${errBody.slice(0, 200)}`);
       }
     } catch (e) { console.error('[tools] Bing search error:', e?.message); }
   }
 
-  // Fallback: DuckDuckGo Instant Answer API (kein Key)
+  // Fallback: DuckDuckGo Instant Answer API (kein Key, nur strukturierte Daten)
   try {
     const ddgRes = await fetch(
       `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
@@ -252,28 +229,8 @@ function extractTextContent(html) {
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // Primary: Google Custom Search for News (if keys are set)
-  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
-  const googleCx = process.env.GOOGLE_SEARCH_CX;
-  if (googleKey && googleCx) {
-    try {
-      const gRes = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(topic + ' news')}&num=8&lr=lang_de&sort=date`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (gRes.ok) {
-        const data = await gRes.json();
-        const results = (data.items || []).slice(0, 8);
-        if (results.length > 0) {
-          const items = results.map(r => `- ${r.title}${r.displayLink ? ` (${r.displayLink})` : ''}`);
-          return `Aktuelle Nachrichten zu "${topic}":\n${items.join('\n')}`;
-        }
-      }
-    } catch (e) { console.error('[tools] Google news error:', e?.message); }
-  }
-
-  // Secondary: Bing News API (if key is set)
-  const bingKey = process.env.BING_API_KEY;
+  // Primary: Bing News API (full web, no domain restrictions)
+  const bingKey = (process.env.BING_API_KEY || "").trim();
   if (bingKey) {
     try {
       const bingRes = await fetch(
