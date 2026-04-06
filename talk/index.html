@@ -4335,12 +4335,13 @@ function startInactivityTimer() {
       inactivityTimer = setTimeout(checkInactivity, INACTIVITY_END_MS);
       return;
     }
-    // Warning was sent, still no activity → end session
+    // Warning was sent, still no activity → end session (but NOT as time-limit!)
     const totalIdleMs = Date.now() - lastActivityAt;
     if (totalIdleMs >= INACTIVITY_WARNING_MS + INACTIVITY_END_MS) {
       if (limitTriggered || softEndFinalizing) return;
-      console.log(`[${runId}] [inactivity] 60s total silence — ending session`);
-      void handleTimeLimitReached();
+      console.log(`[${runId}] [inactivity] 60s total silence — ending session (wallclock only)`);
+      limitTriggered = true; // prevent double-trigger
+      void stopVoice(false); // false = charge wallclock only, NOT full remaining balance
     }
   }, INACTIVITY_WARNING_MS);
 }
