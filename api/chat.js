@@ -1452,7 +1452,7 @@ async function handleMessage(req, res) {
         if (text && !text.includes("Keine Ergebnisse")) {
           // Format through AI in Sophie's voice
           try {
-            const rescueMessages = [...routerMessages, { role: "system", content: `[ECHTZEIT-DATEN]\n${text}\n\nAntworte basierend auf diesen Daten in deinem Sophie-Stil. Natürlich, warm, zusammenfassend. Kein Tool-Tag.` }];
+            const rescueMessages = [...routerMessages, { role: "system", content: `[ECHTZEIT-DATEN]\n${text}\n\nNenne ALLE Ergebnisse — jede Headline zählt. Kurze Beschreibung pro Eintrag (1 Satz). Sophie-Stil: knapp, direkt, informativ. Keine Einleitung, kein Smalltalk. Kein Tool-Tag.` }];
             const adapter = getAdapter(decision.primary.provider);
             const rescueResp = await Promise.race([
               adapter.complete({ messages: rescueMessages, model: decision.primary.model, maxTokens: 1024, temperature: 0.85 }),
