@@ -1,5 +1,6 @@
 // api/ai/transcribe.js — Whisper transcription for meeting audio recordings
 // Accepts JSON { audio_base64, filename, language } instead of multipart
+// Meeting mode: meeting_id + segment_index → stores in meeting_segments, skips token deduction
 import { createClient } from '@supabase/supabase-js';
 import { SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from '../../lib/billing-constants.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
   try {
     const contentType = req.headers['content-type'] || '';
     const rawBody = await getRawBody(req);
-    let audioBuffer, filename, language;
+    let audioBuffer, filename, language, meetingId, segmentIndex;
 
     if (contentType.includes('multipart/form-data')) {
       // FormData upload (from mobile — no base64 overhead)
@@ -79,6 +80,8 @@ export default async function handler(req, res) {
       audioBuffer = parts.file.buffer;
       filename = parts.file.filename || 'audio.webm';
       language = parts.language || '';
+      meetingId = parts.meeting_id || '';
+      segmentIndex = parts.segment_index != null ? parseInt(parts.segment_index, 10) : null;
     } else {
       // JSON with base64 (legacy)
       let body;
@@ -91,15 +94,38 @@ export default async function handler(req, res) {
 
     if (audioBuffer.length < 1000) return res.status(400).json({ error: 'Audio too short' });
 
-    console.log(`[transcribe] ${user.id}: ${(audioBuffer.length / 1024).toFixed(0)}KB, file=${filename || 'audio.webm'}`);
+    const isMeetingMode = !!(meetingId && segmentIndex != null && !isNaN(segmentIndex));
 
-    // Pre-check token balance before expensive Whisper API call
+    console.log(`[transcribe] ${user.id}: ${(audioBuffer.length / 1024).toFixed(0)}KB, file=${filename || 'audio.webm'}${isMeetingMode ? ` meeting=${meetingId} seg=${segmentIndex}` : ''}`);
+
+    // ── Meeting mode: validate meeting ownership + phase ────────────────────
+    if (isMeetingMode) {
+      const { data: meeting, error: meetErr } = await supabase
+        .from('meetings')
+        .select('id, user_id, phase, billing_status')
+        .eq('id', meetingId)
+        .maybeSingle();
+
+      if (meetErr || !meeting) {
+        return res.status(404).json({ error: 'Meeting not found' });
+      }
+      if (meeting.user_id !== user.id) {
+        return res.status(403).json({ error: 'Not your meeting' });
+      }
+      if (meeting.phase !== 'live') {
+        return res.status(409).json({ error: 'Meeting not in live phase' });
+      }
+      if (meeting.billing_status === 'finalized') {
+        return res.status(409).json({ error: 'Meeting billing already finalized' });
+      }
+    }
+
+    // ── Pre-check token balance (both modes) ────────────────────────────────
     let usagePre = (await supabase
       .from('user_usage')
       .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
       .eq('user_id', user.id)
       .maybeSingle()).data;
-    // Ensure user_usage row exists (new users won't have one yet)
     if (!usagePre) {
       const { data: created } = await supabase
         .from('user_usage')
@@ -121,27 +147,23 @@ export default async function handler(req, res) {
       }
     }
 
-    // Build multipart form for OpenAI Whisper
+    // ── Whisper API call ────────────────────────────────────────────────────
     const boundary = '----WhisperBoundary' + Date.now();
     const fname = filename || 'audio.webm';
     const mimeType = fname.endsWith('.mp4') ? 'audio/mp4' : 'audio/webm';
 
-    const parts = [];
-    // File part
-    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fname}"\r\nContent-Type: ${mimeType}\r\n\r\n`);
-    parts.push(audioBuffer);
-    parts.push('\r\n');
-    // Model part
-    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n`);
-    // Response format: verbose_json to get duration
-    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\nverbose_json\r\n`);
-    // Language part
+    const formParts = [];
+    formParts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fname}"\r\nContent-Type: ${mimeType}\r\n\r\n`);
+    formParts.push(audioBuffer);
+    formParts.push('\r\n');
+    formParts.push(`--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n`);
+    formParts.push(`--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\nverbose_json\r\n`);
     if (language) {
-      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`);
+      formParts.push(`--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${language}\r\n`);
     }
-    parts.push(`--${boundary}--\r\n`);
+    formParts.push(`--${boundary}--\r\n`);
 
-    const multipartBody = Buffer.concat(parts.map(p => typeof p === 'string' ? Buffer.from(p) : p));
+    const multipartBody = Buffer.concat(formParts.map(p => typeof p === 'string' ? Buffer.from(p) : p));
 
     const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -161,10 +183,92 @@ export default async function handler(req, res) {
     const result = await whisperRes.json();
     console.log(`[transcribe] OK: ${(result.text || '').slice(0, 100)}...`);
 
-    // Deduct usage in tokens — use Whisper's reported duration, fallback to file size estimate
     const actualDuration = result.duration || null;
     const estimatedSeconds = actualDuration ? Math.ceil(actualDuration) : Math.max(1, Math.ceil(audioBuffer.length / 16000));
-    // Check eco mode for token rate
+    const whisperCostUsd = (estimatedSeconds / 60) * 0.006;
+
+    // ── Meeting mode: store segment, skip token deduction ───────────────────
+    if (isMeetingMode) {
+      // UPSERT with cost protection: only count cost on real insert (xmax=0)
+      const { data: upsertResult, error: upsertErr } = await supabase.rpc('meeting_segment_upsert', {
+        p_meeting_id: meetingId,
+        p_user_id: user.id,
+        p_segment_index: segmentIndex,
+        p_duration_seconds: estimatedSeconds,
+        p_transcript: result.text || '',
+        p_whisper_cost_usd: whisperCostUsd,
+      });
+
+      if (upsertErr) {
+        console.error('[transcribe] Segment upsert RPC error:', upsertErr.message);
+        // Fallback: direct insert (without cost-safe upsert)
+        await supabase.from('meeting_segments').upsert({
+          meeting_id: meetingId,
+          user_id: user.id,
+          segment_index: segmentIndex,
+          duration_seconds: estimatedSeconds,
+          transcript: result.text || '',
+          whisper_cost_usd: whisperCostUsd,
+        }, { onConflict: 'meeting_id,segment_index' });
+
+        // Increment cost via RPC (fallback path — may double-count on retry, acceptable for MVP)
+        try {
+          await supabase.rpc('increment_meeting_cost', {
+            p_meeting_id: meetingId,
+            p_cost_field: 'listen_cost_usd',
+            p_amount: whisperCostUsd,
+          });
+        } catch (costErr) {
+          console.error('[transcribe] Fallback cost increment failed:', costErr.message);
+        }
+      }
+
+      // Track USD cost (internal tracking, not user-facing billing)
+      trackCost({
+        userId: user.id,
+        provider: 'openai',
+        model: 'whisper-1',
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: whisperCostUsd,
+        latencyMs: 0,
+        routingReason: 'meeting_transcription',
+      }).catch(err => console.error("Transcribe cost tracking error:", err?.message));
+
+      // Incremental billing checkpoint every 5 segments
+      let billingResult = null;
+      if (segmentIndex > 0 && segmentIndex % 5 === 0) {
+        try {
+          const { data: checkpointData } = await supabase.rpc('meeting_billing_checkpoint', {
+            p_meeting_id: meetingId,
+            p_user_id: user.id,
+          });
+          billingResult = Array.isArray(checkpointData) ? checkpointData[0] : checkpointData;
+          console.log(`[transcribe] Billing checkpoint seg=${segmentIndex}:`, billingResult);
+
+          if (billingResult?.action === 'insufficient_tokens') {
+            return res.status(402).json({
+              error: 'No tokens remaining',
+              text: result.text || '',
+              seconds_used: estimatedSeconds,
+              billing: billingResult,
+            });
+          }
+        } catch (billingErr) {
+          console.error('[transcribe] Billing checkpoint error:', billingErr.message);
+        }
+      }
+
+      return res.status(200).json({
+        text: result.text || '',
+        seconds_used: estimatedSeconds,
+        meeting_mode: true,
+        segment_index: segmentIndex,
+        billing: billingResult,
+      });
+    }
+
+    // ── Standard mode: deduct tokens directly ──────────────────────────────
     let secPerToken = SECONDS_PER_TOKEN;
     try {
       const { data: prof } = await supabase.from('user_profile').select('eco_mode').eq('user_id', user.id).maybeSingle();
@@ -205,8 +309,6 @@ export default async function handler(req, res) {
         await supabase.from('user_usage').update(updates).eq('user_id', user.id);
         console.log(`[transcribe] Usage: ~${estimatedSeconds}s = ${tokensToDeduct} tokens deducted`);
 
-        // Track USD cost — Whisper-1 costs $0.006/min
-        const whisperCostUsd = (estimatedSeconds / 60) * 0.006;
         trackCost({
           userId: user.id,
           provider: 'openai',
