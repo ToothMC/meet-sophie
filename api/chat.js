@@ -1265,8 +1265,11 @@ async function handleMessage(req, res) {
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
   let searchSources = null;
-  if (toolResult.toolUsed) {
+  // Always use tool result reply if present (covers both success and graceful fallback)
+  if (toolResult.reply && toolResult.reply !== rawReply) {
     rawReply = toolResult.reply;
+  }
+  if (toolResult.toolUsed) {
     if (toolResult.searchSources?.length > 0) searchSources = toolResult.searchSources;
     if (user && toolResult.retryResponse?.usage) {
       trackCost({
