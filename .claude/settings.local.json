@@ -190,7 +190,10 @@
       "Bash(grep -rn \"user_profile\\\\|legal_acceptances\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)",
       "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__list_payment_intents",
       "Bash(grep -r \"realtime\\\\|Realtime\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts)",
-      "Bash(grep -n \"gpt-4o-realtime\\\\|gpt-realtime\\\\|estimateRealtimeCost\\\\|voice_minute\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/**/*.js)"
+      "Bash(grep -n \"gpt-4o-realtime\\\\|gpt-realtime\\\\|estimateRealtimeCost\\\\|voice_minute\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/**/*.js)",
+      "Bash(grep -r CREATE.*FUNCTION.*deduct_tokens /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/)",
+      "Bash(grep -l \"deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*)",
+      "Bash(grep -n \"rpc.*deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
     ]
   },
   "hooks": {

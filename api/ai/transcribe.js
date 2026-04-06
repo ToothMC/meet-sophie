@@ -200,7 +200,7 @@ export default async function handler(req, res) {
       });
 
       if (upsertErr) {
-        console.error('[transcribe] Segment upsert error:', upsertErr.message);
+        console.error('[transcribe] Segment upsert RPC error:', upsertErr.message);
         // Fallback: direct insert (without cost-safe upsert)
         await supabase.from('meeting_segments').upsert({
           meeting_id: meetingId,
@@ -211,10 +211,16 @@ export default async function handler(req, res) {
           whisper_cost_usd: whisperCostUsd,
         }, { onConflict: 'meeting_id,segment_index' });
 
-        // Always increment cost on fallback (acceptable for MVP — rare path)
-        await supabase.from('meetings')
-          .update({ listen_cost_usd: supabase.rpc ? undefined : 0 })
-          .eq('id', meetingId);
+        // Increment cost via RPC (fallback path — may double-count on retry, acceptable for MVP)
+        try {
+          await supabase.rpc('increment_meeting_cost', {
+            p_meeting_id: meetingId,
+            p_cost_field: 'listen_cost_usd',
+            p_amount: whisperCostUsd,
+          });
+        } catch (costErr) {
+          console.error('[transcribe] Fallback cost increment failed:', costErr.message);
+        }
       }
 
       // Track USD cost (internal tracking, not user-facing billing)

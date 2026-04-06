@@ -1025,9 +1025,7 @@ async function handleAnalyze(req, res) {
   // Phase 1: Short lock — check for new segments, reserve range
   let meeting, deltaSegments, runningState, newAnalyzedIndex;
   try {
-    // Try to acquire lock (SKIP LOCKED → 409 if already locked by another analyze)
-    const { data: locked, error: lockErr } = await supabase.rpc('pg_advisory_xact_lock_try', { key: meeting_id });
-    // Fallback: just use normal select if advisory lock not available
+    // Load meeting (no advisory lock — use last_analyzed_segment_index as idempotency check)
     const { data: meetingData } = await supabase
       .from("meetings")
       .select("*")
