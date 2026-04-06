@@ -1374,15 +1374,17 @@ async function handleMessage(req, res) {
     .replace(/\s*\[IMPORT_HINT\]\s*/g, "")
     .replace(/\s*\[LEARN_RULE:[^\]]*\]\s*/g, "")
     .replace(/\s*\[TOOL:[^\]]*\]\s*/g, "")
-    .replace(/\s*\[ECHTZEIT-DATEN\][\s\S]*$/g, "")
+    .replace(/\[ECHTZEIT-DATEN\][^\[]*/g, "")
     .trim();
 
   // Safety net: never return empty reply to client
-  if (!reply) {
+  if (!reply && searchSources?.length) {
+    // Search succeeded but AI couldn't format — show sources directly
+    console.warn("[chat] reply empty but sources found, showing sources directly");
+    reply = "Hier ist was ich gefunden habe:\n\n" + searchSources.map(s => `- [${s.title}](${s.url})`).join("\n");
+  } else if (!reply) {
     console.error("[chat] EMPTY_REPLY rawReply:", rawReply.slice(0, 300));
-    reply = searchSources?.length
-      ? "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal."
-      : `[DEBUG] AI raw: ${rawReply.slice(0, 100)} — Bitte Screenshot an Michael schicken.`;
+    reply = "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
   }
 
   // Increment turn count + link user if just authenticated
