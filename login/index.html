@@ -242,8 +242,10 @@
       }
     }
 
+    let authInFlight = false;
     async function handleSuccessfulAuth() {
-      if (authHandled) return;
+      if (authHandled || authInFlight) return;
+      authInFlight = true;
 
       // Wait for Supabase session to sync from callback tab (localStorage propagation)
       let user = null;
@@ -252,7 +254,7 @@
         if (session?.user) { user = session.user; break; }
         await new Promise(r => setTimeout(r, 200));
       }
-      if (!user) return;
+      if (!user) { authInFlight = false; return; }
 
       authHandled = true;
 

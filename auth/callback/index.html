@@ -42,7 +42,6 @@
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-    import { SophieTabManager } from "/lib/sophie-tab-manager.js";
 
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
@@ -76,7 +75,7 @@
       return base;
     }
 
-    async function finish(userId) {
+    function finish(userId) {
       if (done) return;
       done = true;
 
@@ -84,10 +83,18 @@
       const target = buildTarget(defaultTarget);
 
       // Broadcast AUTH_COMPLETED to all same-partition tabs
-      // Must call init() first so BroadcastChannel is opened (not just localStorage fallback)
-      const tabs = new SophieTabManager();
-      await tabs.init();
-      tabs.broadcastAuthCompleted(userId);
+      // Use BroadcastChannel directly — no need for full TabManager lifecycle on this ephemeral page
+      try {
+        const bc = new BroadcastChannel("sophie-tabs");
+        bc.postMessage({ type: "AUTH_COMPLETED", userId });
+        bc.close();
+      } catch {}
+      // localStorage fallback for browsers without BroadcastChannel
+      try {
+        localStorage.setItem("sophie-auth-event", JSON.stringify({
+          type: "AUTH_COMPLETED", userId, ts: Date.now()
+        }));
+      } catch {}
 
       // Hide spinner, show completion message
       document.getElementById("spinner").style.display = "none";
