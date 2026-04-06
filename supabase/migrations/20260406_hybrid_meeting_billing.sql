@@ -66,7 +66,8 @@ DECLARE
   total_cost_so_far numeric;
   target_total_tokens int;
   tokens_to_bill int;
-  deduct_result record;
+  dt_charged int;
+  dt_remaining int;
 BEGIN
   SELECT * INTO m FROM meetings
     WHERE id = p_meeting_id AND user_id = p_user_id
@@ -92,30 +93,32 @@ BEGIN
     RETURN jsonb_build_object('action', 'already_covered');
   END IF;
 
-  SELECT * INTO deduct_result FROM deduct_tokens(p_user_id, tokens_to_bill);
+  -- deduct_tokens returns TABLE — select specific columns
+  SELECT charged, remaining INTO dt_charged, dt_remaining
+    FROM deduct_tokens(p_user_id, tokens_to_bill);
 
   -- deduct_tokens is partial: charged can be < requested
-  IF deduct_result IS NULL OR (deduct_result).charged = 0 THEN
+  IF dt_charged IS NULL OR dt_charged = 0 THEN
     RETURN jsonb_build_object(
       'action', 'insufficient_tokens',
       'tokens_requested', tokens_to_bill,
-      'remaining', 0
+      'remaining', COALESCE(dt_remaining, 0)
     );
   END IF;
 
   -- Only update checkpoint with actually charged amount
   UPDATE meetings SET
-    incrementally_billed_tokens = m.incrementally_billed_tokens + (deduct_result).charged,
+    incrementally_billed_tokens = m.incrementally_billed_tokens + dt_charged,
     incrementally_billed_cost_usd = m.incrementally_billed_cost_usd
       + (total_cost_so_far - m.incrementally_billed_cost_usd)
-        * ((deduct_result).charged::numeric / tokens_to_bill::numeric)
+        * (dt_charged::numeric / tokens_to_bill::numeric)
   WHERE id = p_meeting_id;
 
   RETURN jsonb_build_object(
     'action', 'billed',
     'cost_usd', total_cost_so_far - m.incrementally_billed_cost_usd,
-    'tokens_charged', (deduct_result).charged,
-    'tokens_remaining', (deduct_result).remaining
+    'tokens_charged', dt_charged,
+    'tokens_remaining', dt_remaining
   );
 END;
 $$ LANGUAGE plpgsql;
@@ -132,7 +135,7 @@ DECLARE
   total_cost numeric;
   target_total_tokens int;
   tokens_to_bill int;
-  deduct_result record;
+  dt_charged int;
 BEGIN
   SELECT * INTO m FROM meetings
     WHERE id = p_meeting_id AND user_id = p_user_id
@@ -153,14 +156,16 @@ BEGIN
   target_total_tokens := GREATEST(0, CEIL(total_cost * 1.6 / 0.0088));
   tokens_to_bill := GREATEST(0, target_total_tokens - m.incrementally_billed_tokens);
 
+  dt_charged := 0;
   IF tokens_to_bill > 0 THEN
-    SELECT * INTO deduct_result FROM deduct_tokens(p_user_id, tokens_to_bill);
-    tokens_to_bill := COALESCE((deduct_result).charged, 0);
+    -- deduct_tokens returns TABLE — select specific column
+    SELECT charged INTO dt_charged FROM deduct_tokens(p_user_id, tokens_to_bill);
+    dt_charged := COALESCE(dt_charged, 0);
   END IF;
 
   UPDATE meetings SET
     total_cost_usd = total_cost,
-    total_billed_tokens = m.incrementally_billed_tokens + tokens_to_bill,
+    total_billed_tokens = m.incrementally_billed_tokens + dt_charged,
     billing_status = 'finalized',
     billing_finalized_at = now()
   WHERE id = p_meeting_id;
@@ -168,8 +173,8 @@ BEGIN
   RETURN jsonb_build_object(
     'status', 'finalized',
     'total_cost_usd', total_cost,
-    'total_billed_tokens', m.incrementally_billed_tokens + tokens_to_bill,
-    'final_deduct', tokens_to_bill
+    'total_billed_tokens', m.incrementally_billed_tokens + dt_charged,
+    'final_deduct', dt_charged
   );
 END;
 $$ LANGUAGE plpgsql;
