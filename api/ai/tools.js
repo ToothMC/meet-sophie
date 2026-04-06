@@ -123,6 +123,8 @@ export async function webSearch(query, { withSources = false } = {}) {
           const sources = results.slice(0, 5).map(r => ({ title: r.title || 'Quelle', url: r.link })).filter(s => s.url);
           return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
+      } else {
+        console.error(`[tools] Google search HTTP ${gRes.status} for "${query.slice(0, 30)}"`);
       }
     } catch (e) { console.error('[tools] Google search error:', e?.message); }
   }
@@ -145,6 +147,8 @@ export async function webSearch(query, { withSources = false } = {}) {
           const sources = results.slice(0, 5).map(r => ({ title: r.title || 'Quelle', url: r.link })).filter(s => s.url);
           return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
+      } else {
+        console.error(`[tools] Bing search HTTP ${bingRes.status} for "${query.slice(0, 30)}"`);
       }
     } catch (e) { console.error('[tools] Bing search error:', e?.message); }
   }
