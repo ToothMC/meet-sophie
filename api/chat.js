@@ -1437,24 +1437,42 @@ async function handleMessage(req, res) {
   if (!reply && searchSources?.length) {
     reply = "Hier ist was ich gefunden habe:\n\n" + searchSources.map(s => `- [${s.title}](${s.url})`).join("\n");
   } else if (!reply) {
-    // Last resort: if user asked for a search, do it NOW and return results directly
-    const lastMsg = messages.filter(m => m.role === "user").pop()?.content || "";
-    const rescueQuery = detectSearchIntent(lastMsg);
-    if (rescueQuery) {
+    // Last resort: check if rawReply had a tool tag that was stripped — execute it directly
+    const rescueToolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
+    if (rescueToolMatch) {
+      const [, rToolType, rToolParam] = rescueToolMatch;
       try {
-        const rescueResult = await webSearch(rescueQuery, { withSources: true });
-        const rescueData = rescueResult.text || rescueResult;
-        const rescueSrcs = rescueResult.sources || [];
-        if (rescueData && !rescueData.includes("Keine Ergebnisse")) {
-          reply = rescueData;
-          if (rescueSrcs.length > 0) searchSources = rescueSrcs;
+        let rescueData;
+        if (rToolType === "news") rescueData = await getNews(rToolParam.trim());
+        else if (rToolType === "weather") rescueData = await getWeather(rToolParam.trim());
+        else if (rToolType === "wiki") rescueData = await getWikipedia(rToolParam.trim());
+        else rescueData = await webSearch(rToolParam.trim(), { withSources: true });
+        const text = rescueData?.text || rescueData;
+        const srcs = rescueData?.sources || [];
+        if (text && !text.includes("Keine Ergebnisse")) {
+          reply = text;
+          if (srcs.length > 0) searchSources = srcs;
         }
       } catch (_) {}
     }
+    // Also try search intent detection from user message
     if (!reply) {
-      reply = rescueQuery
-        ? "Ich konnte leider nichts dazu finden. Versuch es mit einem anderen Suchbegriff oder prüfe die Adresse."
-        : "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+      const lastMsg = messages.filter(m => m.role === "user").pop()?.content || "";
+      const rescueQuery = detectSearchIntent(lastMsg);
+      if (rescueQuery) {
+        try {
+          const rescueResult = await webSearch(rescueQuery, { withSources: true });
+          const rescueData = rescueResult.text || rescueResult;
+          const rescueSrcs = rescueResult.sources || [];
+          if (rescueData && !rescueData.includes("Keine Ergebnisse")) {
+            reply = rescueData;
+            if (rescueSrcs.length > 0) searchSources = rescueSrcs;
+          }
+        } catch (_) {}
+      }
+    }
+    if (!reply) {
+      reply = "Ich konnte leider nichts dazu finden. Versuch es mit einem anderen Suchbegriff.";
     }
   }
 
