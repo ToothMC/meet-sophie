@@ -182,7 +182,12 @@
       "WebFetch(domain:platform.openai.com)",
       "WebFetch(domain:openai.com)",
       "WebFetch(domain:developers.openai.com)",
-      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name .env* -o -name *.env)"
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name .env* -o -name *.env)",
+      "Bash(web\" for engines created after Jan 20, 2026. Our engine was created:*)",
+      "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__list_customers",
+      "Bash(grep -l \"create table.*user_profile\\\\|create table.*legal_acceptances\\\\|create table.*user_subscriptions\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -l \"auth.users\\\\|on insert\\\\|trigger\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -rn \"user_profile\\\\|legal_acceptances\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)"
     ]
   },
   "hooks": {
