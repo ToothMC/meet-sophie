@@ -187,7 +187,10 @@
       "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__list_customers",
       "Bash(grep -l \"create table.*user_profile\\\\|create table.*legal_acceptances\\\\|create table.*user_subscriptions\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -l \"auth.users\\\\|on insert\\\\|trigger\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "Bash(grep -rn \"user_profile\\\\|legal_acceptances\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)"
+      "Bash(grep -rn \"user_profile\\\\|legal_acceptances\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)",
+      "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__list_payment_intents",
+      "Bash(grep -r \"realtime\\\\|Realtime\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.ts)",
+      "Bash(grep -n \"gpt-4o-realtime\\\\|gpt-realtime\\\\|estimateRealtimeCost\\\\|voice_minute\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/**/*.js)"
     ]
   },
   "hooks": {

@@ -569,6 +569,18 @@ let sharedMicStream = null;
 // Audio recording transcript (Whisper result or test data)
 let speechTranscript = [];  // Array of strings — transcribed audio from meeting
 
+// ── Hybrid Meeting Mode: Whisper-Listening + On-Demand Burst ──
+let liveSegmentIndex = 0;              // Monotonic segment counter
+let liveTranscriptChunks = {};         // segmentIndex → transcript text
+let consecutiveTranscribeErrors = 0;   // Track failures for UI warning
+let analysisInterval = null;           // 10-min analysis timer
+let lastAnalyzedSegmentIndex = 0;      // Checkpoint for delta analysis
+let analysisInProgress = false;        // Client-side guard against double-analyze
+let pendingBurstMessages = [];         // Queue for burst message persistence
+let isMeetingBurstActive = false;      // True while Sophie voice burst is live
+const LIVE_SEGMENT_MS = 60_000;        // 60s segments for live transcription
+const ANALYSIS_INTERVAL_MS = 10 * 60 * 1000; // 10 min hint analysis
+
 // Wake Lock (prevent screen lock during live meeting on mobile)
 let wakeLockSentinel = null;
 
@@ -1164,7 +1176,7 @@ async function transitionPhase(newPhase) {
       releaseWakeLock();
     }
 
-    // When going LIVE: show agenda points or parent summary as Sophie message
+    // When going LIVE: show agenda, start analysis timer, check balance
     if (newPhase === "live") {
       const agenda = $("ctxAgenda")?.value?.trim();
       const goal = $("ctxGoal")?.value?.trim();
@@ -1176,6 +1188,17 @@ async function transitionPhase(newPhase) {
         liveOpener = (lang === "de" ? "Ziel: " : "Goal: ") + goal;
       }
       if (liveOpener) appendMsg("assistant", liveOpener);
+
+      // ── Hybrid: Start periodic hint analysis (every 10 min) ──
+      liveSegmentIndex = 0;
+      liveTranscriptChunks = {};
+      consecutiveTranscribeErrors = 0;
+      lastAnalyzedSegmentIndex = 0;
+      if (analysisInterval) clearInterval(analysisInterval);
+      analysisInterval = setInterval(() => runHintAnalysis(), ANALYSIS_INTERVAL_MS);
+
+      // ── Guthabencheck: warn if low balance ──
+      checkMeetingBalance();
     }
 
     // Disconnect Sophie voice + stop audio recording when leaving live phase
@@ -1190,17 +1213,33 @@ async function transitionPhase(newPhase) {
 
     // Auto-summarize when entering post phase
     if (newPhase === "post") {
+      // ── Hybrid: Stop analysis timer ──
+      if (analysisInterval) { clearInterval(analysisInterval); analysisInterval = null; }
+
+      // ── Hybrid: Flush pending burst messages ──
+      await flushPendingBurstMessages();
+
+      // ── Hybrid: Run final analysis (guaranteed, waits instead of skip) ──
+      await runHintAnalysis(true);
+
       // 1. Stop recording and get audio segments
-      setSophieStatus(lang === "de" ? "Sophie hört sich das Gespräch an …" : "Sophie is reviewing the conversation …");
+      setSophieStatus(lang === "de" ? "Sophie erstellt den Report …" : "Sophie is creating the report …");
       const segments = await stopAudioRecording();
       cleanupMicStream();
 
-      // 2. Transcribe each segment via Whisper
-      if (segments && segments.length > 0) {
+      // 2. Use live transcript from meeting_segments if available
+      //    Only batch-transcribe if live transcription produced nothing
+      const liveText = Object.values(liveTranscriptChunks).filter(Boolean).join(" ");
+      if (liveText) {
+        speechTranscript.push(liveText);
+        console.log(`[meeting-post] Using live transcript: ${liveText.length} chars`);
+      } else if (segments && segments.length > 0) {
+        // Fallback: batch transcribe (old path)
+        appendSystemMsg(lang === "de"
+          ? "🔄 Live-Transkript nicht verfügbar — transkribiere Audio..."
+          : "🔄 Live transcript unavailable — transcribing audio...");
         const whisperText = await transcribeAudioSegments(segments);
-        if (whisperText) {
-          speechTranscript.push(whisperText);
-        }
+        if (whisperText) speechTranscript.push(whisperText);
       }
 
       // TEST MODE: inject fake data
@@ -1222,8 +1261,22 @@ async function transitionPhase(newPhase) {
       }
 
       // 3. Generate summary + report
-      setSophieStatus(lang === "de" ? "Sophie erstellt den Report …" : "Sophie is creating the report …");
       await generateSummary();
+
+      // 4. Finalize billing (server sums real costs → deduct tokens)
+      try {
+        const billingRes = await api("finalize_billing", { meeting_id: meetingId });
+        const b = billingRes?.billing;
+        if (b?.total_billed_tokens != null) {
+          const msg = lang === "de"
+            ? `💰 Meeting-Kosten: ${b.total_billed_tokens} Tokens ($${Number(b.total_cost_usd || 0).toFixed(3)})`
+            : `💰 Meeting cost: ${b.total_billed_tokens} tokens ($${Number(b.total_cost_usd || 0).toFixed(3)})`;
+          appendSystemMsg(msg);
+        }
+      } catch (e) {
+        console.error("[meeting-post] finalize_billing error:", e.message);
+      }
+
       setSophieStatus("");
     }
   } catch (e) {
@@ -1834,7 +1887,7 @@ let audioChunks = [];
 let audioSegments = []; // Array of complete Blobs, each with its own header
 let segmentRotationTimer = null;
 let currentMimeType = "audio/webm";
-const AUDIO_SEGMENT_MS = 120_000; // 2 minutes per segment
+const AUDIO_SEGMENT_MS = LIVE_SEGMENT_MS; // 60s for live hybrid mode (was 120s)
 
 async function startAudioRecording() {
   try {
@@ -1877,20 +1930,89 @@ function _startNewRecorder() {
 
 function _rotateSegment() {
   if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-  // Stop fires onstop → we collect the blob, then start a fresh recorder
   const recorder = mediaRecorder;
+  const segIdx = liveSegmentIndex++;
   recorder.onstop = () => {
     if (audioChunks.length > 0) {
       const blob = new Blob(audioChunks, { type: recorder.mimeType || currentMimeType });
       if (blob.size > 500) {
         audioSegments.push(blob);
-        console.log(`[meeting-audio] Segment ${audioSegments.length} saved: ${(blob.size / 1024).toFixed(0)}KB`);
+        console.log(`[meeting-audio] Segment ${segIdx} saved: ${(blob.size / 1024).toFixed(0)}KB`);
+        // Live transcription: send to Whisper with meeting_id
+        if (meetingId && meetingData?.phase === "live") {
+          transcribeLiveSegment(blob, segIdx);
+        }
       }
       audioChunks = [];
     }
     _startNewRecorder();
   };
   recorder.stop();
+}
+
+// ── Live Whisper Transcription (Hybrid Mode) ────────────────────────────
+async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
+  try {
+    let authToken = accessToken;
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.access_token) authToken = s.access_token;
+    } catch (_) {}
+
+    const ext = blob.type?.includes("mp4") ? "audio.mp4" : "audio.webm";
+    const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
+
+    const formData = new FormData();
+    formData.append("file", blob, ext);
+    formData.append("language", langCode);
+    formData.append("meeting_id", meetingId);
+    formData.append("segment_index", String(segIdx));
+
+    const resp = await fetch("/api/ai/transcribe", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${authToken}` },
+      body: formData,
+    });
+
+    if (resp.status === 402) {
+      // No tokens remaining — stop meeting
+      appendSystemMsg(lang === "de"
+        ? "⚠️ Guthaben aufgebraucht — Meeting wird beendet."
+        : "⚠️ No tokens remaining — ending meeting.");
+      transitionPhase("post");
+      return;
+    }
+
+    if (resp.status === 409) {
+      // Meeting not in live phase or billing finalized — stop transcription
+      console.log(`[meeting-live] Transcribe 409: meeting not live or finalized`);
+      return;
+    }
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const text = (data.text || "").trim();
+    if (text) {
+      liveTranscriptChunks[segIdx] = text;
+      console.log(`[meeting-live] Seg ${segIdx}: "${text.slice(0, 80)}..."`);
+    }
+    consecutiveTranscribeErrors = 0;
+  } catch (e) {
+    console.error(`[meeting-live] Transcribe seg ${segIdx} failed:`, e.message);
+    consecutiveTranscribeErrors++;
+
+    if (!isRetry) {
+      // Retry once after 2s
+      setTimeout(() => transcribeLiveSegment(blob, segIdx, true), 2000);
+    } else if (consecutiveTranscribeErrors >= 2) {
+      appendSystemMsg(lang === "de"
+        ? "⚠️ Live-Transkription unterbrochen — Meeting läuft weiter"
+        : "⚠️ Live transcription interrupted — meeting continues");
+    }
+  }
 }
 
 function pauseAudioRecording() {
@@ -2073,6 +2195,153 @@ async function transcribeAudioSegments(segments) {
   return combined;
 }
 
+// ── Periodic Hint Analysis (Delta + Running State) ──────────────────────
+async function runHintAnalysis(isFinal = false) {
+  if (analysisInProgress) return;
+  if (!meetingId) return;
+  analysisInProgress = true;
+
+  try {
+    let authToken = accessToken;
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.access_token) authToken = s.access_token;
+    } catch (_) {}
+
+    const resp = await fetch(`/api/meeting?action=analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        meeting_id: meetingId,
+        last_segment_index: lastAnalyzedSegmentIndex,
+      }),
+    });
+
+    if (resp.status === 409 && !isFinal) {
+      // Analysis in progress on server — retry after 30s (max 2x)
+      console.log("[meeting-analyze] 409 — retrying in 30s");
+      analysisInProgress = false;
+      setTimeout(() => runHintAnalysis(), 30000);
+      return;
+    }
+
+    if (!resp.ok) {
+      console.error("[meeting-analyze] Error:", resp.status);
+      return;
+    }
+
+    const data = await resp.json();
+    if (data.skipped) {
+      console.log("[meeting-analyze] Skipped:", data.reason);
+      return;
+    }
+
+    // Update checkpoint
+    if (data.next_segment_index != null) {
+      lastAnalyzedSegmentIndex = data.next_segment_index;
+    }
+
+    // Show hints in chat
+    if (data.hints?.length > 0) {
+      for (const hint of data.hints) {
+        const hintText = hint.text || hint.type || "";
+        if (hintText) appendMsg("assistant", `💡 ${hintText}`);
+      }
+    }
+
+    // Show extracted items count
+    const items = data.items;
+    if (items) {
+      const counts = [
+        items.decisions?.length && `${items.decisions.length} Decisions`,
+        items.actions?.length && `${items.actions.length} Actions`,
+        items.risks?.length && `${items.risks.length} Risks`,
+      ].filter(Boolean);
+      if (counts.length > 0) {
+        console.log(`[meeting-analyze] Extracted: ${counts.join(", ")}`);
+      }
+    }
+  } catch (e) {
+    console.error("[meeting-analyze] Error:", e.message);
+  } finally {
+    analysisInProgress = false;
+  }
+}
+
+// ── Balance Check before meeting start ──────────────────────────────────
+async function checkMeetingBalance() {
+  try {
+    let authToken = accessToken;
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.access_token) authToken = s.access_token;
+    } catch (_) {}
+
+    const resp = await fetch("/api/user?action=balance", {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const remaining = data.remaining_tokens ?? data.totalRemaining ?? 0;
+
+    if (remaining <= 0) {
+      appendSystemMsg(lang === "de"
+        ? "⚠️ Kein Guthaben — Meeting kann nicht gestartet werden."
+        : "⚠️ No balance — meeting cannot start.");
+      transitionPhase("post");
+      return;
+    }
+
+    if (remaining < 5) {
+      const estMinutes = Math.floor(remaining * 5); // 1 token ≈ 5 min listening
+      appendSystemMsg(lang === "de"
+        ? `⚠️ Guthaben gering (${remaining} Tokens) — reicht für ca. ${estMinutes} Minuten.`
+        : `⚠️ Low balance (${remaining} tokens) — enough for ~${estMinutes} minutes.`);
+    }
+  } catch (e) {
+    console.warn("[meeting-balance] Check failed:", e.message);
+  }
+}
+
+// ── Flush pending burst messages to server ───────────────────────────────
+async function flushPendingBurstMessages() {
+  if (pendingBurstMessages.length === 0) return;
+
+  const msgs = [...pendingBurstMessages];
+  pendingBurstMessages = [];
+
+  try {
+    let authToken = accessToken;
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s?.access_token) authToken = s.access_token;
+    } catch (_) {}
+
+    const resp = await fetch("/api/meeting?action=burst_message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ meeting_id: meetingId, messages: msgs }),
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    console.log(`[meeting-burst] Flushed ${msgs.length} messages`);
+  } catch (e) {
+    console.error("[meeting-burst] Flush failed:", e.message);
+    // Retry: put messages back
+    pendingBurstMessages = [...msgs, ...pendingBurstMessages];
+    // Warn user if this is phase-end flush
+    appendSystemMsg(lang === "de"
+      ? "⚠️ Sophie-Beiträge evtl. unvollständig im Report"
+      : "⚠️ Sophie contributions may be incomplete in report");
+  }
+}
+
 function cleanupMicStream() {
   if (sharedMicStream) {
     sharedMicStream.getTracks().forEach(t => t.stop());
@@ -2151,13 +2420,17 @@ async function connectSophieVoice() {
 
     // 2. Get session token from /api/session (same as Talk)
     console.log("[meeting-voice] Calling /api/session...");
-    const tokenRes = await fetch("/api/session", {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "X-Sophie-Session-Mode": "meeting",
-        "X-Sophie-Meeting-Id": meetingId || "",
-      },
-    });
+    const sessionHeaders = {
+      Authorization: `Bearer ${authToken}`,
+      "X-Sophie-Session-Mode": "meeting",
+      "X-Sophie-Meeting-Id": meetingId || "",
+    };
+    // Burst mode: tell server to load transcript context from DB
+    if (isMeetingBurstActive) {
+      sessionHeaders["X-Sophie-Meeting-Burst"] = "true";
+    }
+
+    const tokenRes = await fetch("/api/session", { headers: sessionHeaders });
     const data = await tokenRes.json();
     console.log("[meeting-voice] Session response:", tokenRes.status, data?.error || "OK");
 
@@ -2165,9 +2438,7 @@ async function connectSophieVoice() {
       // Session lock — wait and retry once
       appendSystemMsg(lang === "de" ? "Sophie ist noch beschäftigt, versuche erneut..." : "Sophie is busy, retrying...");
       await new Promise(r => setTimeout(r, 3000));
-      const retry = await fetch("/api/session", {
-        headers: { Authorization: `Bearer ${authToken}`, "X-Sophie-Session-Mode": "meeting", "X-Sophie-Meeting-Id": meetingId || "" },
-      });
+      const retry = await fetch("/api/session", { headers: sessionHeaders });
       const retryData = await retry.json();
       if (!retry.ok) throw new Error(retryData?.error || retryData?.message || `HTTP ${retry.status}`);
       Object.assign(data, retryData);
@@ -2304,7 +2575,7 @@ function handleVoiceTranscriptEvent(msg) {
     return;
   }
 
-  // Response complete — save Sophie's text
+  // Response complete — save Sophie's text + auto-disconnect timer for burst
   if (msg?.type === "response.done") {
     // Strip Sophie's internal JSON tags (structured meeting data) from transcript
     let final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
@@ -2314,9 +2585,30 @@ function handleVoiceTranscriptEvent(msg) {
       voiceTranscript.push({ role: "assistant", text: final });
       lastAssistantFinal = final;
       console.log("[meeting-voice] Sophie:", final.slice(0, 80));
+
+      // Queue burst message for server persistence
+      if (isMeetingBurstActive) {
+        pendingBurstMessages.push({ role: "sophie", text: final });
+      }
     }
     partialAssistant = "";
+
+    // Auto-disconnect after 10s silence (burst mode only)
+    if (isMeetingBurstActive) {
+      clearTimeout(window._burstSilenceTimer);
+      window._burstSilenceTimer = setTimeout(() => {
+        if (isMeetingBurstActive && !sophieMuted) {
+          console.log("[meeting-burst] Auto-disconnect after 10s silence");
+          toggleSophieMute(); // disconnect
+        }
+      }, 10000);
+    }
     return;
+  }
+
+  // Clear silence timer on new user speech (burst mode)
+  if (isMeetingBurstActive && msg?.type === "conversation.item.input_audio_transcription.delta") {
+    clearTimeout(window._burstSilenceTimer);
   }
 }
 
@@ -2441,8 +2733,8 @@ async function toggleSophieMute() {
       silentCtx.close();
     } catch (_) {}
 
-    // UNMUTE → Pause audio recording, connect Sophie voice
-    pauseAudioRecording();
+    // BURST MODE: Recording keeps running! No pauseAudioRecording()
+    isMeetingBurstActive = true;
     setSophieStatus(lang === "de" ? "Sophie kommt dazu …" : "Sophie is joining …");
     await connectSophieVoice();
     // Explicitly play audio element — autoplay alone fails on mobile Safari
@@ -2451,10 +2743,17 @@ async function toggleSophieMute() {
     }
     setSophieStatus(lang === "de" ? "Sophie hört zu" : "Sophie is listening");
   } else {
-    // MUTE → Disconnect Sophie voice, resume audio recording
+    // DISCONNECT BURST → flush messages, report usage
+    clearTimeout(window._burstSilenceTimer);
+    isMeetingBurstActive = false;
     disconnectSophieVoice();
-    resumeAudioRecording();
+    // No resumeAudioRecording() needed — recording never paused
     setSophieStatus("");
+
+    // Persist burst messages to server (async, with retry)
+    if (pendingBurstMessages.length > 0) {
+      flushPendingBurstMessages();
+    }
   }
 }
 
