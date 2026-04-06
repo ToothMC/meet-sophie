@@ -229,24 +229,27 @@ function extractTextContent(html) {
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // Primary: Google Custom Search for News (if keys are set)
-  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
-  const googleCx = process.env.GOOGLE_SEARCH_CX;
-  if (googleKey && googleCx) {
+  // Primary: Brave News Search
+  const braveKey = (process.env.BING_API_KEY || process.env.BRAVE_API_KEY || "").trim();
+  if (braveKey) {
     try {
-      const gRes = await fetch(
-        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(topic + ' news')}&num=8&lr=lang_de&sort=date`,
-        { signal: AbortSignal.timeout(5000) }
+      const braveRes = await fetch(
+        `https://api.search.brave.com/res/v1/news/search?q=${encodeURIComponent(topic)}&count=8`,
+        { headers: { 'Accept': 'application/json', 'X-Subscription-Token': braveKey }, signal: AbortSignal.timeout(5000) }
       );
-      if (gRes.ok) {
-        const data = await gRes.json();
-        const results = (data.items || []).slice(0, 8);
-        if (results.length > 0) {
-          const items = results.map(r => `- ${r.title}${r.displayLink ? ` (${r.displayLink})` : ''}`);
-          return `Aktuelle Nachrichten zu "${topic}":\n${items.join('\n')}`;
+      if (braveRes.ok) {
+        const data = await braveRes.json();
+        const articles = (data.results || []).slice(0, 8);
+        if (articles.length > 0) {
+          const items = articles.map(a => {
+            const source = a.meta_url?.hostname || "";
+            const date = a.age || "";
+            return `- ${a.title}${source ? ` (${source})` : ''}${date ? ` — ${date}` : ''}`;
+          });
+          return `Aktuelle Nachrichten${topic !== 'world' ? ` zu "${topic}"` : ''}:\n${items.join('\n')}`;
         }
       }
-    } catch (e) { console.error('[tools] Google news error:', e?.message); }
+    } catch (e) { console.error('[tools] Brave news error:', e?.message); }
   }
 
   // Fallback: Google News RSS (may be blocked on some serverless platforms)
