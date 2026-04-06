@@ -1237,6 +1237,7 @@ async function handleMessage(req, res) {
   // call the search tool directly and inject results so the AI just formats them.
   const lastUserMsg = messages.filter(m => m.role === "user").pop()?.content || "";
   const searchIntent = detectSearchIntent(lastUserMsg);
+  console.log(`[chat] searchIntent: "${searchIntent}" from: "${lastUserMsg.slice(0, 60)}"`);
   if (searchIntent) {
     try {
       emitStatus?.("search");
