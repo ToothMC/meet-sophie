@@ -425,7 +425,7 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
         }
       }
     } catch (e) {
-      console.warn("[chat] webSearch primary failed:", e?.message, "— trying Gemini grounded_search");
+      console.warn(`[chat] webSearch primary failed [${providerConfig.provider}/${providerConfig.model}]:`, e?.message?.slice(0, 200), "— trying Gemini grounded_search");
     }
 
     // ── FALLBACK: Gemini grounded_search (slower but has structured facts + sources) ──
@@ -501,7 +501,7 @@ async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onS
     const toolFallback = cleanRawReply || "Die Echtzeitdaten sind gerade nicht verfügbar. Versuch es bitte gleich nochmal.";
     return { reply: retryReply || toolFallback, toolUsed: true, toolType, retryResponse };
   } catch (e) {
-    console.error(`[chat] tool retry error:`, e?.message);
+    console.error(`[chat] tool retry error [${providerConfig.provider}/${providerConfig.model}]:`, e?.message?.slice(0, 300), e?.status || "");
     // Tool data was fetched but AI couldn't format it — return graceful fallback
     const fallbackMsg = toolType === "news"
       ? "Ich konnte die Nachrichten gerade nicht laden. Versuch es bitte gleich nochmal."
