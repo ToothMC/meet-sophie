@@ -389,6 +389,35 @@ async function handleStart(req, res) {
 // ---------------------------------------------------------------------------
 // Tool execution helper — shared by anonymous and authenticated paths
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Pre-AI Search Intent Detection
+// Detects obvious search requests so we call the API BEFORE asking the AI.
+// Returns the search query string, or null if no search intent detected.
+// ---------------------------------------------------------------------------
+function detectSearchIntent(userMessage) {
+  const text = (userMessage || "").trim();
+  if (text.length < 3 || text.length > 500) return null;
+
+  // URL pattern: user mentions a website directly
+  const urlMatch = text.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9][-a-z0-9]*\.[a-z]{2,}(?:\.[a-z]{2,})?)\b/i);
+  if (urlMatch) return urlMatch[0];
+
+  // Explicit search phrases (DE + EN)
+  const searchPatterns = [
+    /(?:such|find|recherchier|google|schau nach|schau mal nach|look up|search for|look for)\w*\s+(?:nach\s+|for\s+|up\s+)?["']?(.{3,80})["']?/i,
+    /(?:was ist|what is|wer ist|who is)\s+(.{3,60})\??$/i,
+    /(?:infos?\s+(?:zu|über|about)|informationen?\s+(?:zu|über))\s+(.{3,60})/i,
+    /(?:kennst du|know)\s+(.{3,60})\??$/i,
+  ];
+
+  for (const pattern of searchPatterns) {
+    const match = text.match(pattern);
+    if (match) return match[1].replace(/[?.!]+$/, "").trim();
+  }
+
+  return null;
+}
+
 async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}) {
   const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
   if (!toolMatch) return { reply: rawReply, toolUsed: false };
@@ -1203,6 +1232,32 @@ async function handleMessage(req, res) {
   // Check if any message has file attachments (multimodal)
   const hasFiles = messages.some(m => m.files?.length > 0);
 
+  // ── Pre-AI search detection: call search API BEFORE AI when intent is obvious ──
+  // If user clearly wants web search (URLs, "suche nach", "recherchiere", "finde ... website"),
+  // call the search tool directly and inject results so the AI just formats them.
+  const lastUserMsg = messages.filter(m => m.role === "user").pop()?.content || "";
+  const searchIntent = detectSearchIntent(lastUserMsg);
+  if (searchIntent) {
+    try {
+      emitStatus?.("search");
+      const searchResult = await webSearch(searchIntent, { withSources: true });
+      const searchData = searchResult.text || searchResult;
+      const searchSrcs = searchResult.sources || [];
+      if (searchData && !searchData.includes("Keine Ergebnisse")) {
+        routerMessages.push({
+          role: "system",
+          content: `[ECHTZEIT-DATEN]\nDer User hat nach "${searchIntent}" gesucht. Hier sind die Ergebnisse:\n\n${searchData}\n\nAntworte basierend auf diesen Daten. Fasse die wichtigsten Infos zusammen. Kein Tool-Tag.`,
+        });
+        // Store sources for later attachment to response
+        if (searchSrcs.length > 0) {
+          routerMessages._preSearchSources = searchSrcs;
+        }
+      }
+    } catch (e) {
+      console.warn("[chat] pre-AI search failed:", e?.message);
+    }
+  }
+
   // Classify and route (authenticated users only)
   const ctx = classify({ messages: routerMessages }, { userTier, channel: "text", ecoMode: !!profile.eco_mode });
   const decision = route(ctx);
@@ -1264,7 +1319,7 @@ async function handleMessage(req, res) {
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
-  let searchSources = null;
+  let searchSources = routerMessages._preSearchSources || null;
   // Always use tool result reply — covers success, fallback, and error paths
   if (toolResult.reply && toolResult.reply !== rawReply) {
     rawReply = toolResult.reply;
