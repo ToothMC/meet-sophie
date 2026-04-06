@@ -1263,8 +1263,10 @@ async function handleMessage(req, res) {
   }
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
+  console.log(`[chat] TRACE pre-tool rawReply(${rawReply.length}): ${rawReply.slice(0, 120)}`);
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
   let searchSources = null;
+  console.log(`[chat] TRACE tool: used=${toolResult.toolUsed} reply(${toolResult.reply?.length}): ${(toolResult.reply || "").slice(0, 120)}`);
   // Always use tool result reply if present (covers both success and graceful fallback)
   if (toolResult.reply && toolResult.reply !== rawReply) {
     rawReply = toolResult.reply;
