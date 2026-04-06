@@ -1209,6 +1209,25 @@ async function transitionPhase(newPhase) {
         muteToggle.classList.remove("active");
         disconnectSophieVoice(true);
       }
+
+      // Stop analysis timer
+      if (analysisInterval) { clearInterval(analysisInterval); analysisInterval = null; }
+    }
+
+    // Finalize billing when going to closed (if post was skipped or finalize didn't run)
+    if (newPhase === "closed") {
+      try {
+        const billingRes = await api("finalize_billing", { meeting_id: meetingId });
+        const b = billingRes?.billing;
+        if (b?.status === "finalized" && b?.total_billed_tokens > 0) {
+          const msg = lang === "de"
+            ? `💰 Meeting-Kosten: ${b.total_billed_tokens} Tokens`
+            : `💰 Meeting cost: ${b.total_billed_tokens} tokens`;
+          appendSystemMsg(msg);
+        }
+      } catch (e) {
+        console.error("[meeting-closed] finalize_billing error:", e.message);
+      }
     }
 
     // Auto-summarize when entering post phase
@@ -2619,7 +2638,13 @@ function disconnectSophieVoice(silent = false) {
     sophieVoiceStartTime = null;
     if (secondsUsed > 0) {
       console.log(`[meeting-voice] Session ended: ${secondsUsed}s used`);
-      reportMeetingVoiceUsage(secondsUsed);
+      if (isMeetingBurstActive) {
+        // BURST MODE: track cost server-side via burst_cost_usd, NOT old voice path
+        reportBurstCost(secondsUsed);
+      } else {
+        // NON-BURST (legacy): old token deduction path
+        reportMeetingVoiceUsage(secondsUsed);
+      }
     }
   }
 
@@ -2649,6 +2674,31 @@ function disconnectSophieVoice(silent = false) {
   if (!silent) {
     const leftMsg = lang === "de" ? "Sophie hat das Meeting verlassen." : lang === "fr" ? "Sophie a quitté le meeting." : "Sophie left the meeting.";
     appendSystemMsg(leftMsg);
+  }
+}
+
+// Report burst cost server-side (increments meetings.burst_cost_usd)
+async function reportBurstCost(seconds) {
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token || !meetingId) return;
+
+    // Realtime API cost: ~$0.17/min normal, ~$0.07/min eco
+    const costPerMin = window._ecoMode ? 0.07 : 0.17;
+    const costUsd = (seconds / 60) * costPerMin;
+
+    const resp = await fetch("/api/meeting?action=burst_cost", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authSession.access_token}`,
+      },
+      body: JSON.stringify({ meeting_id: meetingId, cost_usd: costUsd, seconds }),
+      keepalive: true,
+    });
+    console.log(`[meeting-burst] Cost reported: ${seconds}s = $${costUsd.toFixed(4)}`, resp.status);
+  } catch (e) {
+    console.error("[meeting-burst] Cost report failed:", e.message);
   }
 }
 

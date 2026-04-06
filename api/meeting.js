@@ -1316,6 +1316,65 @@ async function handleBurstMessage(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Action: burst_cost — Track voice burst cost on meeting (server-authoritative)
+// ---------------------------------------------------------------------------
+
+async function handleBurstCost(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const body = parseBody(req);
+  const { meeting_id, cost_usd, seconds } = body;
+  if (!meeting_id || cost_usd == null) return res.status(400).json({ error: "Missing meeting_id or cost_usd" });
+
+  const supabase = getSupabase();
+
+  // Verify ownership + active billing
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id, user_id, billing_status")
+    .eq("id", meeting_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+  if (meeting.billing_status === "finalized") return res.status(409).json({ error: "Billing finalized" });
+
+  const costVal = Math.max(0, Number(cost_usd) || 0);
+
+  // Atomic increment via RPC
+  const { error: rpcErr } = await supabase.rpc("increment_meeting_cost", {
+    p_meeting_id: meeting_id,
+    p_cost_field: "burst_cost_usd",
+    p_amount: costVal,
+  });
+
+  if (rpcErr) {
+    console.error("[meeting-burst-cost] RPC error:", rpcErr.message);
+    // Fallback: direct increment
+    await supabase.from("meetings")
+      .update({ burst_cost_usd: supabase.raw ? undefined : costVal })
+      .eq("id", meeting_id);
+  }
+
+  // Track internal cost
+  trackCost({
+    userId: user.id,
+    provider: "openai",
+    model: "gpt-realtime",
+    inputTokens: 0,
+    outputTokens: 0,
+    costUsd: costVal,
+    latencyMs: 0,
+    routingReason: "meeting_burst_voice",
+  }).catch(() => {});
+
+  console.log(`[meeting-burst-cost] ${meeting_id}: ${seconds || 0}s = $${costVal.toFixed(4)}`);
+  return res.status(200).json({ ok: true, cost_usd: costVal });
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
@@ -1332,6 +1391,7 @@ export default async function handler(req, res) {
     case "analyze":          return handleAnalyze(req, res);
     case "finalize_billing": return handleFinalizeBilling(req, res);
     case "burst_message":    return handleBurstMessage(req, res);
+    case "burst_cost":       return handleBurstCost(req, res);
     case "summarize":        return handleSummarize(req, res);
     case "summary":          return handleSummary(req, res);
     case "delete":           return handleDelete(req, res);
