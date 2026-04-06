@@ -107,8 +107,8 @@ export async function webSearch(query, { withSources = false } = {}) {
   const wrap = (text, sources) => withSources ? { text, sources } : text;
 
   // Primary: Google Custom Search API (if keys are set)
-  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
-  const googleCx = process.env.GOOGLE_SEARCH_CX;
+  const googleKey = (process.env.GOOGLE_SEARCH_API_KEY || "").trim();
+  const googleCx = (process.env.GOOGLE_SEARCH_CX || "").trim();
   if (googleKey && googleCx) {
     try {
       const gRes = await fetch(
@@ -124,13 +124,14 @@ export async function webSearch(query, { withSources = false } = {}) {
           return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
       } else {
-        console.error(`[tools] Google search HTTP ${gRes.status} for "${query.slice(0, 30)}"`);
+        const errBody = await gRes.text().catch(() => "");
+        console.error(`[tools] Google HTTP ${gRes.status}: ${errBody.slice(0, 200)}`);
       }
     } catch (e) { console.error('[tools] Google search error:', e?.message); }
   }
 
   // Secondary: Bing Search API (if key is set)
-  const bingKey = process.env.BING_API_KEY;
+  const bingKey = (process.env.BING_API_KEY || "").trim();
   if (bingKey) {
     try {
       const bingRes = await fetch(
