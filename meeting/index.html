@@ -2612,15 +2612,15 @@ function handleVoiceTranscriptEvent(msg) {
     }
     partialAssistant = "";
 
-    // Auto-disconnect after 10s silence (burst mode only)
+    // Auto-disconnect after 20s silence (burst mode only)
     if (isMeetingBurstActive) {
       clearTimeout(window._burstSilenceTimer);
       window._burstSilenceTimer = setTimeout(() => {
         if (isMeetingBurstActive && !sophieMuted) {
-          console.log("[meeting-burst] Auto-disconnect after 10s silence");
+          console.log("[meeting-burst] Auto-disconnect after 20s silence");
           toggleSophieMute(); // disconnect
         }
-      }, 10000);
+      }, 20000);
     }
     return;
   }
