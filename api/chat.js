@@ -1450,7 +1450,20 @@ async function handleMessage(req, res) {
         const text = rescueData?.text || rescueData;
         const srcs = rescueData?.sources || [];
         if (text && !text.includes("Keine Ergebnisse")) {
-          reply = text;
+          // Format through AI in Sophie's voice
+          try {
+            const rescueMessages = [...routerMessages, { role: "system", content: `[ECHTZEIT-DATEN]\n${text}\n\nAntworte basierend auf diesen Daten in deinem Sophie-Stil. Natürlich, warm, zusammenfassend. Kein Tool-Tag.` }];
+            const adapter = getAdapter(decision.primary.provider);
+            const rescueResp = await Promise.race([
+              adapter.complete({ messages: rescueMessages, model: decision.primary.model, maxTokens: 1024, temperature: 0.85 }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000)),
+            ]);
+            const formatted = normalizeResponse(rescueResp.content || "", rescueResp.provider)
+              ?.replace(/\[ECHTZEIT-DATEN\]\s*/g, "").replace(/\[TOOL:[^\]]*\]/g, "").trim();
+            if (formatted) reply = formatted;
+          } catch (_) {}
+          // Fallback: raw data if AI formatting failed
+          if (!reply) reply = text;
           if (srcs.length > 0) searchSources = srcs;
         }
       } catch (_) {}
