@@ -1263,11 +1263,9 @@ async function handleMessage(req, res) {
   }
 
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
-  console.log(`[chat] TRACE pre-tool rawReply(${rawReply.length}): ${rawReply.slice(0, 120)}`);
   const toolResult = await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
   let searchSources = null;
-  console.log(`[chat] TRACE tool: used=${toolResult.toolUsed} reply(${toolResult.reply?.length}): ${(toolResult.reply || "").slice(0, 120)}`);
-  // Always use tool result reply if present (covers both success and graceful fallback)
+  // Always use tool result reply — covers success, fallback, and error paths
   if (toolResult.reply && toolResult.reply !== rawReply) {
     rawReply = toolResult.reply;
   }
@@ -1376,16 +1374,13 @@ async function handleMessage(req, res) {
     .replace(/\s*\[IMPORT_HINT\]\s*/g, "")
     .replace(/\s*\[LEARN_RULE:[^\]]*\]\s*/g, "")
     .replace(/\s*\[TOOL:[^\]]*\]\s*/g, "")
-    .replace(/\[ECHTZEIT-DATEN\][^\[]*/g, "")
+    .replace(/\[ECHTZEIT-DATEN\]\s*/g, "")
     .trim();
 
   // Safety net: never return empty reply to client
   if (!reply && searchSources?.length) {
-    // Search succeeded but AI couldn't format — show sources directly
-    console.warn("[chat] reply empty but sources found, showing sources directly");
     reply = "Hier ist was ich gefunden habe:\n\n" + searchSources.map(s => `- [${s.title}](${s.url})`).join("\n");
   } else if (!reply) {
-    console.error("[chat] EMPTY_REPLY rawReply:", rawReply.slice(0, 300));
     reply = "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
   }
 

@@ -109,7 +109,6 @@ export async function webSearch(query, { withSources = false } = {}) {
   // Primary: Google Custom Search API (if keys are set)
   const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
   const googleCx = process.env.GOOGLE_SEARCH_CX;
-  console.log(`[tools] KEYS: g=${!!googleKey} cx=${!!googleCx} b=${!!process.env.BING_API_KEY} q="${query.slice(0, 30)}"`);
   if (googleKey && googleCx) {
     try {
       const gRes = await fetch(
