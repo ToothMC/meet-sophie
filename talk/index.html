@@ -5470,46 +5470,32 @@ async function startVoice(){
         plan: data?.plan || null
       });
 
+      // Free user with no subscription → go straight to pricing
+      if (!premiumActive && reason !== "subscription_quota_exhausted") {
+        window.location.href = "/pricing";
+        return;
+      }
+
+      // Premium user with exhausted quota → show top-up panel
       showBackground(false);
       startBtn.disabled = false;
       startBtn.textContent = t("start"); resetStartBtnStyle();
       startBtn.onclick = startVoice;
       logoutBtn.disabled = false;
-      headline.textContent = premiumActive
-        ? (_uiLang === "de" ? "Deine inkludierte Zeit ist aufgebraucht." : _uiLang === "fr" ? "Ton temps inclus est épuisé." : "Your included time is used up.")
-        : t("continue_sophie");
-      setStatus(
-        premiumActive
-          ? (_uiLang === "de" ? "Lade Zeit auf oder verwalte dein Abo." : _uiLang === "fr" ? "Recharge du temps ou gère ton abonnement." : "Top up time or manage your subscription.")
-          : (_uiLang === "de" ? "Wähle einen Plan oder lade Zeit auf." : _uiLang === "fr" ? "Choisis un plan ou recharge du temps." : "Choose a plan or top up time.")
-      );
+      headline.textContent = _uiLang === "de" ? "Deine inkludierte Zeit ist aufgebraucht." : _uiLang === "fr" ? "Ton temps inclus est épuisé." : "Your included time is used up.";
+      setStatus(_uiLang === "de" ? "Lade Zeit auf oder verwalte dein Abo." : _uiLang === "fr" ? "Recharge du temps ou gère ton abonnement." : "Top up time or manage your subscription.");
       setSoftHint("");
 
       postCallCta.style.display = "block";
-
-      if (premiumActive || reason === "subscription_quota_exhausted") {
-        postCallCtaTitle.textContent = t("continue_sophie");
-        postCallPrimaryBtn.textContent = t("top_up");
-        postCallPrimaryBtn.onclick = () => {
-          window.location.href = "/pricing?mode=topup";
-        };
-
-        postCallSecondaryBtn.textContent = t("manage_sub");
-        postCallSecondaryBtn.onclick = () => {
-          window.location.href = "/settings/";
-        };
-      } else {
-        postCallCtaTitle.textContent = t("continue_sophie");
-        postCallPrimaryBtn.textContent = t("view_plans");
-        postCallPrimaryBtn.onclick = () => {
-          window.location.href = "/pricing";
-        };
-
-        postCallSecondaryBtn.textContent = t("top_up");
-        postCallSecondaryBtn.onclick = () => {
-          window.location.href = "/pricing?mode=topup";
-        };
-      }
+      postCallCtaTitle.textContent = t("continue_sophie");
+      postCallPrimaryBtn.textContent = t("top_up");
+      postCallPrimaryBtn.onclick = () => {
+        window.location.href = "/pricing?mode=topup";
+      };
+      postCallSecondaryBtn.textContent = t("manage_sub");
+      postCallSecondaryBtn.onclick = () => {
+        window.location.href = "/settings/";
+      };
 
       postCallPanel.style.display = "block";
       postCallPanel.style.transform = "translateY(60%)";
