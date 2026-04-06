@@ -1379,7 +1379,7 @@ async function handleMessage(req, res) {
 
   // Safety net: never return empty reply to client
   if (!reply) {
-    console.warn("[chat] reply empty after tag-stripping, rawReply was:", rawReply.slice(0, 200));
+    console.warn("[chat] EMPTY rawReply:", rawReply.slice(0, 300));
     reply = searchSources?.length
       ? "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal."
       : "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
