@@ -229,26 +229,24 @@ function extractTextContent(html) {
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // Primary: Bing News API
-  const bingKey = (process.env.BING_API_KEY || "").trim();
-  if (bingKey) {
+  // Primary: Google Custom Search for News (if keys are set)
+  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const googleCx = process.env.GOOGLE_SEARCH_CX;
+  if (googleKey && googleCx) {
     try {
-      const bingRes = await fetch(
-        `https://api.bing.microsoft.com/v7.0/news/search?q=${encodeURIComponent(topic)}&count=8&mkt=de-DE`,
-        { headers: { 'Ocp-Apim-Subscription-Key': bingKey }, signal: AbortSignal.timeout(5000) }
+      const gRes = await fetch(
+        `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(topic + ' news')}&num=8&lr=lang_de&sort=date`,
+        { signal: AbortSignal.timeout(5000) }
       );
-      if (bingRes.ok) {
-        const data = await bingRes.json();
-        const articles = (data.value || []).slice(0, 8);
-        if (articles.length > 0) {
-          const items = articles.map(a => {
-            const date = a.datePublished ? new Date(a.datePublished).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-            return `- ${a.name}${a.provider?.[0]?.name ? ` (${a.provider[0].name})` : ''}${date ? ` — ${date}` : ''}`;
-          });
-          return `Aktuelle Nachrichten${topic !== 'world' ? ` zu "${topic}"` : ''}:\n${items.join('\n')}`;
+      if (gRes.ok) {
+        const data = await gRes.json();
+        const results = (data.items || []).slice(0, 8);
+        if (results.length > 0) {
+          const items = results.map(r => `- ${r.title}${r.displayLink ? ` (${r.displayLink})` : ''}`);
+          return `Aktuelle Nachrichten zu "${topic}":\n${items.join('\n')}`;
         }
       }
-    } catch (e) { console.error('[tools] Bing news error:', e?.message); }
+    } catch (e) { console.error('[tools] Google news error:', e?.message); }
   }
 
   // Fallback: Google News RSS (may be blocked on some serverless platforms)
