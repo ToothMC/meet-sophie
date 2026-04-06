@@ -1452,7 +1452,9 @@ async function handleMessage(req, res) {
       } catch (_) {}
     }
     if (!reply) {
-      reply = "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+      reply = rescueQuery
+        ? "Ich konnte leider nichts dazu finden. Versuch es mit einem anderen Suchbegriff oder prüfe die Adresse."
+        : "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
     }
   }
 
