@@ -1437,7 +1437,23 @@ async function handleMessage(req, res) {
   if (!reply && searchSources?.length) {
     reply = "Hier ist was ich gefunden habe:\n\n" + searchSources.map(s => `- [${s.title}](${s.url})`).join("\n");
   } else if (!reply) {
-    reply = "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+    // Last resort: if user asked for a search, do it NOW and return results directly
+    const lastMsg = messages.filter(m => m.role === "user").pop()?.content || "";
+    const rescueQuery = detectSearchIntent(lastMsg);
+    if (rescueQuery) {
+      try {
+        const rescueResult = await webSearch(rescueQuery, { withSources: true });
+        const rescueData = rescueResult.text || rescueResult;
+        const rescueSrcs = rescueResult.sources || [];
+        if (rescueData && !rescueData.includes("Keine Ergebnisse")) {
+          reply = rescueData;
+          if (rescueSrcs.length > 0) searchSources = rescueSrcs;
+        }
+      } catch (_) {}
+    }
+    if (!reply) {
+      reply = "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+    }
   }
 
   // Increment turn count + link user if just authenticated
