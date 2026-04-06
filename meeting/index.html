@@ -1205,9 +1205,12 @@ async function transitionPhase(newPhase) {
     if (newPhase === "post" || newPhase === "closed") {
       stopRecStatusUpdates();
       if (!sophieMuted) {
+        const wasBurstAtEnd = isMeetingBurstActive;
         sophieMuted = true;
+        isMeetingBurstActive = false;
+        clearTimeout(window._burstSilenceTimer);
         muteToggle.classList.remove("active");
-        disconnectSophieVoice(true);
+        disconnectSophieVoice(true, { wasBurst: wasBurstAtEnd });
       }
 
       // Stop analysis timer
@@ -1280,9 +1283,18 @@ async function transitionPhase(newPhase) {
       }
 
       // 3. Generate summary + report
-      await generateSummary();
+      try {
+        await generateSummary();
+      } catch (e) {
+        console.error("[meeting-post] generateSummary error:", e.message);
+        appendMsg("assistant", lang === "de"
+          ? `⚠️ Report-Fehler: ${e.message}`
+          : `⚠️ Report error: ${e.message}`);
+      }
 
-      // 4. Finalize billing (server sums real costs → deduct tokens)
+      setSophieStatus("");
+
+      // 4. Finalize billing — ALWAYS runs, even if summary/report failed
       try {
         const billingRes = await api("finalize_billing", { meeting_id: meetingId });
         const b = billingRes?.billing;
@@ -1295,8 +1307,6 @@ async function transitionPhase(newPhase) {
       } catch (e) {
         console.error("[meeting-post] finalize_billing error:", e.message);
       }
-
-      setSophieStatus("");
     }
   } catch (e) {
     setSophieStatus("");
@@ -2631,18 +2641,24 @@ function handleVoiceTranscriptEvent(msg) {
   }
 }
 
-function disconnectSophieVoice(silent = false) {
+function disconnectSophieVoice(silent = false, { wasBurst = false } = {}) {
+  // Capture burst state at call time — caller passes it explicitly
+  // This avoids race conditions with flag resets
+  const isBurst = wasBurst || isMeetingBurstActive;
+
   // Report usage for Sophie voice session
   if (sophieVoiceStartTime) {
     const secondsUsed = Math.ceil((Date.now() - sophieVoiceStartTime) / 1000);
     sophieVoiceStartTime = null;
     if (secondsUsed > 0) {
-      console.log(`[meeting-voice] Session ended: ${secondsUsed}s used`);
-      if (isMeetingBurstActive) {
-        // BURST MODE: track cost server-side via burst_cost_usd, NOT old voice path
+      if (isBurst) {
+        // BURST MODE: track cost server-side via burst_cost_usd
+        // Legacy reportMeetingVoiceUsage() is HARD DISABLED in burst context
+        console.log(`[meeting-burst] Burst ended: ${secondsUsed}s → reportBurstCost (new path)`);
         reportBurstCost(secondsUsed);
       } else {
-        // NON-BURST (legacy): old token deduction path
+        // NON-BURST (Talk-Sophie unmute/legacy): old token deduction path
+        console.log(`[meeting-voice] Legacy session ended: ${secondsUsed}s → reportMeetingVoiceUsage (old path)`);
         reportMeetingVoiceUsage(secondsUsed);
       }
     }
@@ -2795,8 +2811,9 @@ async function toggleSophieMute() {
   } else {
     // DISCONNECT BURST → flush messages, report usage
     clearTimeout(window._burstSilenceTimer);
+    // Pass wasBurst explicitly — flag gets cleared AFTER disconnect
+    disconnectSophieVoice(false, { wasBurst: true });
     isMeetingBurstActive = false;
-    disconnectSophieVoice();
     // No resumeAudioRecording() needed — recording never paused
     setSophieStatus("");
 
