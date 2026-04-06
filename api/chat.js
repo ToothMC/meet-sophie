@@ -1379,10 +1379,10 @@ async function handleMessage(req, res) {
 
   // Safety net: never return empty reply to client
   if (!reply) {
-    console.warn("[chat] EMPTY rawReply:", rawReply.slice(0, 300));
+    console.error("[chat] EMPTY_REPLY rawReply:", rawReply.slice(0, 300));
     reply = searchSources?.length
       ? "Ich habe aktuelle Informationen gefunden, konnte sie aber gerade nicht aufbereiten. Versuch es bitte gleich nochmal."
-      : "Hmm, da ist etwas schiefgegangen. Kannst du das nochmal anders formulieren?";
+      : `[DEBUG] AI raw: ${rawReply.slice(0, 100)} — Bitte Screenshot an Michael schicken.`;
   }
 
   // Increment turn count + link user if just authenticated
