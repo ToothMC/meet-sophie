@@ -1256,11 +1256,11 @@ async function transitionPhase(newPhase) {
         speechTranscript.push(liveText);
         console.log(`[meeting-post] Using live transcript: ${liveText.length} chars`);
       } else if (segments && segments.length > 0) {
-        // Fallback: batch transcribe (old path)
+        // Fallback: batch transcribe via MEETING path (not old voice-rate path)
         appendSystemMsg(lang === "de"
           ? "🔄 Live-Transkript nicht verfügbar — transkribiere Audio..."
           : "🔄 Live transcript unavailable — transcribing audio...");
-        const whisperText = await transcribeAudioSegments(segments);
+        const whisperText = await transcribeMeetingBatch(segments);
         if (whisperText) speechTranscript.push(whisperText);
       }
 
@@ -2371,6 +2371,48 @@ async function flushPendingBurstMessages() {
   }
 }
 
+// Batch-transcribe audio segments via MEETING billing path (not old voice-rate)
+async function transcribeMeetingBatch(segments) {
+  if (!segments || segments.length === 0) return "";
+  const valid = segments.filter(b => b && b.size >= 1000);
+  if (valid.length === 0) return "";
+
+  let authToken = accessToken;
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.access_token) authToken = s.access_token;
+  } catch (_) {}
+
+  const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
+  const results = [];
+
+  for (let i = 0; i < valid.length; i++) {
+    const blob = valid[i];
+    const ext = blob.type?.includes("mp4") ? "audio.mp4" : "audio.webm";
+    // Use segment indices starting after live segments
+    const segIdx = liveSegmentIndex + i;
+    try {
+      const formData = new FormData();
+      formData.append("file", blob, ext);
+      formData.append("language", langCode);
+      formData.append("meeting_id", meetingId);
+      formData.append("segment_index", String(segIdx));
+
+      const resp = await fetch("/api/ai/transcribe", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+        body: formData,
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      if (data.text) results.push(data.text);
+    } catch (e) {
+      console.error(`[meeting-batch] Segment ${i} failed:`, e.message);
+    }
+  }
+  return results.join(" ");
+}
+
 function cleanupMicStream() {
   if (sharedMicStream) {
     sharedMicStream.getTracks().forEach(t => t.stop());
@@ -2543,11 +2585,12 @@ async function connectSophieVoice() {
     const answerSdp = await fetchRealtimeAnswerSdp(offer.sdp, data.client_secret.value);
     await sophieVoicePc.setRemoteDescription({ type: "answer", sdp: answerSdp });
 
-    // Connection state monitoring
+    // Connection state monitoring — pass burst context to avoid old billing path
+    const wasBurstAtConnect = isMeetingBurstActive;
     sophieVoicePc.onconnectionstatechange = () => {
       const state = sophieVoicePc?.connectionState;
       if (state === "disconnected" || state === "failed" || state === "closed") {
-        disconnectSophieVoice(true);
+        disconnectSophieVoice(true, { wasBurst: wasBurstAtConnect });
       }
     };
 
