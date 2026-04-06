@@ -254,8 +254,16 @@
 
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
-      const safePaths = ["/pricing", "/talk", "/settings", "/meeting", "/"];
-      const target = redirect && safePaths.some(p => redirect.startsWith(p)) ? redirect : "/";
+      let target = "/";
+      if (redirect) {
+        try {
+          const url = new URL(redirect, window.location.origin);
+          const safePaths = ["/pricing", "/talk", "/settings", "/meeting", "/"];
+          if (url.origin === window.location.origin && safePaths.some(p => url.pathname.startsWith(p))) {
+            target = url.pathname + url.search;
+          }
+        } catch (_) {}
+      }
       window.location.href = target;
     }
 
@@ -270,10 +278,25 @@
       if (event === "SIGNED_IN" && session?.user) handleSuccessfulAuth();
     });
 
+    // Listen for AUTH_COMPLETED from callback tab (magic link opened in new tab)
+    const tabManager = new SophieTabManager({
+      onAuthCompleted: () => handleSuccessfulAuth(),
+    });
+    tabManager.init().catch(() => {});
+
+    // Also detect auth via localStorage event (fallback for cross-tab communication)
+    window.addEventListener("storage", (e) => {
+      if (e.key === "sophie-auth-event" && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data.type === "AUTH_COMPLETED") handleSuccessfulAuth();
+        } catch (_) {}
+      }
+    });
+
     // Pre-fill email from last successful login
     const emailInput = document.getElementById("email");
-    const savedEmail = localStorage.getItem("sophie_login_email");
-    if (savedEmail && emailInput) emailInput.value = savedEmail;
+    try { const savedEmail = localStorage.getItem("sophie_login_email"); if (savedEmail && emailInput) emailInput.value = savedEmail; } catch (_) {}
 
     // Enter key submits email
     if (emailInput) emailInput.addEventListener("keydown", (e) => {
@@ -298,7 +321,7 @@
       if (error) return setStatus(error.message, true);
 
       // Remember email for next visit
-      localStorage.setItem("sophie_login_email", email);
+      try { localStorage.setItem("sophie_login_email", email); } catch (_) {}
 
       if (method === "otp") {
         // iOS PWA: show OTP code input below the email field
