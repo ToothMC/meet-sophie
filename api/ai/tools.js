@@ -106,18 +106,18 @@ export async function webSearch(query, { withSources = false } = {}) {
 
   const wrap = (text, sources) => withSources ? { text, sources } : text;
 
-  // Primary: Bing Search API (full web search, no domain restrictions)
-  const bingKey = (process.env.BING_API_KEY || "").trim();
-  if (bingKey) {
+  // Primary: Brave Search API (full web search, no domain restrictions)
+  const braveKey = (process.env.BING_API_KEY || process.env.BRAVE_API_KEY || "").trim();
+  if (braveKey) {
     try {
-      const bingRes = await fetch(
-        `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=8`,
-        { headers: { 'Ocp-Apim-Subscription-Key': bingKey }, signal: AbortSignal.timeout(5000) }
+      const braveRes = await fetch(
+        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=8`,
+        { headers: { 'Accept': 'application/json', 'X-Subscription-Token': braveKey }, signal: AbortSignal.timeout(5000) }
       );
-      if (bingRes.ok) {
-        const data = await bingRes.json();
-        const results = (data.webPages?.value || []).slice(0, 8).map(r => ({
-          title: r.name, snippet: r.snippet, link: r.url,
+      if (braveRes.ok) {
+        const data = await braveRes.json();
+        const results = (data.web?.results || []).slice(0, 8).map(r => ({
+          title: r.title, snippet: r.description, link: r.url,
         }));
         if (results.length > 0) {
           const enriched = await enrichTopResults(results, 3);
@@ -125,10 +125,10 @@ export async function webSearch(query, { withSources = false } = {}) {
           return wrap(`Web-Suchergebnisse für "${query}":\n\n${enriched}`, sources);
         }
       } else {
-        const errBody = await bingRes.text().catch(() => "");
-        console.error(`[tools] Bing HTTP ${bingRes.status}: ${errBody.slice(0, 200)}`);
+        const errBody = await braveRes.text().catch(() => "");
+        console.error(`[tools] Brave HTTP ${braveRes.status}: ${errBody.slice(0, 200)}`);
       }
-    } catch (e) { console.error('[tools] Bing search error:', e?.message); }
+    } catch (e) { console.error('[tools] Brave search error:', e?.message); }
   }
 
   // Fallback: DuckDuckGo Instant Answer API (kein Key, nur strukturierte Daten)
@@ -229,7 +229,7 @@ function extractTextContent(html) {
 export async function getNews(topic) {
   if (!topic) topic = 'world';
 
-  // Primary: Bing News API (full web, no domain restrictions)
+  // Primary: Bing News API
   const bingKey = (process.env.BING_API_KEY || "").trim();
   if (bingKey) {
     try {
