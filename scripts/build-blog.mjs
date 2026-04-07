@@ -139,6 +139,7 @@ ${jsonLd.map(j => `  <script type="application/ld+json">\n  ${JSON.stringify(j, 
       .listing-grid{grid-template-columns:1fr}
     }
   </style>
+  <script defer data-domain="meet-sophie.com" src="https://plausible.io/js/script.js"></script>
 </head>
 <body>
   <header class="site-header">
