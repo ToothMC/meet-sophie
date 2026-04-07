@@ -112,8 +112,8 @@ export default async function handler(req, res) {
       if (meeting.user_id !== user.id) {
         return res.status(403).json({ error: 'Not your meeting' });
       }
-      if (meeting.phase !== 'live') {
-        return res.status(409).json({ error: 'Meeting not in live phase' });
+      if (meeting.phase !== 'live' && meeting.phase !== 'post') {
+        return res.status(409).json({ error: 'Meeting not in live/post phase' });
       }
       if (meeting.billing_status === 'finalized') {
         return res.status(409).json({ error: 'Meeting billing already finalized' });
