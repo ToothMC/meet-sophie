@@ -2953,7 +2953,7 @@ async function checkMeetingBalance() {
       appendSystemMsg(lang === "de"
         ? "⚠️ Kein Guthaben — Meeting kann nicht gestartet werden."
         : "⚠️ No balance — meeting cannot start.");
-      transitionPhase("post");
+      transitionPhase("post", "balance_check_zero");
       return;
     }
 
