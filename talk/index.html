@@ -5642,6 +5642,8 @@ async function startVoice(){
         !softEndFinalizing &&
         (state === "disconnected" || state === "failed")
       ) {
+        const durAtDisconnect = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : null;
+        track("disconnect", { duration_at_disconnect_s: durAtDisconnect });
         setSoftHint("Die Voice-Verbindung wurde unterbrochen. Wenn Sophie im Hintergrund war, starte das Gespräch neu.");
       }
     };
