@@ -1486,12 +1486,16 @@ async function createMeeting() {
   const btn = $("createBtn");
   btn.disabled = true;
 
+  // Idempotency key: unique per user action, stable on retry
+  const idempotencyKey = `meeting_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
   try {
     const data = await api("create", {
       meeting_type: selectedMeetingType,
       sophie_role: "co-think",
       title: $("meetingTitle").value.trim() || null,
       parent_meeting_id: selectedParentId,
+      idempotency_key: idempotencyKey,
     });
 
     meetingId = data.meeting.id;
@@ -1499,7 +1503,18 @@ async function createMeeting() {
     await loadMeeting(meetingId);
   } catch (e) {
     if (e.status === 402) {
-      window.location.href = e.redirect || "/pricing";
+      const msg = lang === "de"
+        ? "Nicht genug Guthaben für ein Meeting. Lade Tokens auf oder wähle ein Abo."
+        : lang === "fr"
+        ? "Pas assez de crédits pour un meeting. Rechargez ou abonnez-vous."
+        : "Not enough tokens for a meeting. Top up or choose a subscription.";
+      appendSystemMsg(`⚠️ ${msg}`);
+      // Show pricing link
+      const link = document.createElement("a");
+      link.href = e.pricing_url || "/pricing";
+      link.textContent = lang === "de" ? "→ Guthaben aufladen" : lang === "fr" ? "→ Recharger" : "→ Get tokens";
+      link.style.cssText = "display:inline-block;margin:8px 0;padding:10px 20px;background:#4a7c59;color:#fff;border-radius:8px;text-decoration:none;font-size:14px;";
+      chatArea.appendChild(link);
       return;
     }
     alert("Error: " + e.message);
