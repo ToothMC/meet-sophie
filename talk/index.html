@@ -5648,10 +5648,12 @@ async function startVoice(){
       }
     };
 
+    track("mic_permission_requested");
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    track("mic_permission_granted");
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     // Single audio path: <audio> element only — provides playback + browser AEC.
     // No Web Audio GainNode to speakers (caused double playback).
