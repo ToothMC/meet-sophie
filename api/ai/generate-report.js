@@ -55,10 +55,12 @@ export default async function handler(req, res) {
       }
     } catch (_) {}
   }
-  if (!['en', 'de', 'fr'].includes(reportLang)) reportLang = 'de';
+  // Supported prompt languages: de, en, fr — anything else → use English prompt + explicit language instruction
+  const unsupportedLang = reportLang && !['en', 'de', 'fr'].includes(reportLang) ? reportLang : null;
+  if (!reportLang || (!['en', 'de', 'fr'].includes(reportLang))) reportLang = 'en';
   const isEN = reportLang === 'en';
   const isFR = reportLang === 'fr';
-  console.log(`[report] ${session_id} — language: ${reportLang}`);
+  console.log(`[report] ${session_id} — language: ${reportLang}${unsupportedLang ? ` (requested: ${unsupportedLang}, using EN prompt + lang override)` : ''}`);
 
   // Resolve user_id for cost tracking + eco mode
   let reportUserId = null;
@@ -114,7 +116,11 @@ export default async function handler(req, res) {
       }
 
       // ── Language-aware meeting report prompt ──────────────────────────────
-      const langInstruction = isEN ? 'Write the ENTIRE report in English.' : isFR ? 'Rédige le rapport ENTIER en français.' : 'Schreibe das gesamte Protokoll auf Deutsch.';
+      const langInstruction = unsupportedLang
+        ? `Write the ENTIRE report in the SAME language as the transcript (detected: ${unsupportedLang}). All headings, labels, and content must be in that language.`
+        : isEN ? 'Write the ENTIRE report in English.'
+        : isFR ? 'Rédige le rapport ENTIER en français.'
+        : 'Schreibe das gesamte Protokoll auf Deutsch.';
       const meetingPrompt = isEN ? `You are creating a meeting protocol from a voice transcript.
 ${langInstruction}
 ${dateInstruction}
