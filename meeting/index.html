@@ -2287,12 +2287,13 @@ function showMeetingReport(html) {
   const reportActions = $("reportActions");
   const reportFrame = $("reportFrame");
   const reportDirect = $("reportDirect");
-  const isMobile = window.innerWidth <= 600;
+  const isMobile = window.innerWidth <= 600 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(max-width:600px)").matches;
 
   reportPreview.classList.remove("hidden");
   reportActions.classList.remove("hidden");
   reportActions.style.display = "block";
 
+  console.log("[meeting-report] isMobile:", isMobile, "innerWidth:", window.innerWidth, "UA:", navigator.userAgent.slice(0,60));
   if (isMobile) {
     // Mobile: render directly in DOM with mobile-optimised CSS overlay
     // The original HTML stays untouched for PDF/export (getExportHtml)
