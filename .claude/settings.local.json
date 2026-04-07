@@ -197,7 +197,22 @@
       "Bash(grep -E \"\\\\.\\(webmanifest|json|js\\)$\")",
       "Bash(grep -r \"generate-report\\\\|/api/ai/generate-report\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.jsx --include=*.ts --include=*.tsx --exclude-dir=node_modules --exclude-dir=.claude)",
       "Bash(grep -r \"generate.report\\\\|generateReport\\\\|report_session_id\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.jsx --include=*.ts --include=*.tsx --exclude-dir=node_modules --exclude-dir=.claude)",
-      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.vue -o -name *.svelte)"
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.vue -o -name *.svelte)",
+      "Bash(for file:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/**)",
+      "Bash(grep -l \"analytics\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"analytics\\\\|behavior\\\\|tracking\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/ --include=*.sql)",
+      "Bash(grep -r \"CREATE TABLE.*analytics\\\\|CREATE TABLE.*event\\\\|CREATE TABLE.*track\\\\|analytics_events\\\\|behavior\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"visitor_context\\\\|referrer_host\\\\|utm_source\\\\|page_views\\\\|local_hour\\\\|is_mobile\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=\"*.js\" ! -path \"*/node_modules/*\" ! -path \"*/worktrees/*\")",
+      "Bash(grep -r \"error\\\\|Error\\\\|catch\\\\|throw\\\\|console\\\\|log\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(grep -r \"analytics_events\\\\|analytics\\\\|visitor\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -i \"CREATE TABLE\\\\|analytics\\\\|events\\\\|tracking\\\\|visitor\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"CREATE TABLE.*analytics\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"analytics_events\\\\|visitor\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase --include=*.sql)",
+      "Bash(grep -r \"TABLE.*analytics\\\\|analytics_events\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.sql --include=*.ts)",
+      "Bash(grep -r from.*analytics_events /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
+      "Bash(xargs cat:*)"
     ]
   },
   "hooks": {
