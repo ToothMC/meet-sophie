@@ -1278,6 +1278,9 @@ async function api(action, body = null, method = "POST") {
     const err = new Error(data.error || `HTTP ${res.status}`);
     err.status = res.status;
     err.redirect = data.redirect;
+    err.pricing_url = data.pricing_url;
+    err.reason = data.reason;
+    err.remaining_tokens = data.remaining_tokens;
     throw err;
   }
   return data;
