@@ -2301,61 +2301,66 @@ function showMeetingReport(html) {
     reportDirect.style.display = "block";
 
     // Inject mobile-override stylesheet BEFORE the report HTML
+    // Strip ALL inline styles from the HTML — render as clean semantic content
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    // Remove <style> blocks (A4 print styles etc.)
+    tmp.querySelectorAll("style").forEach(s => s.remove());
+    // Remove all inline style attributes
+    tmp.querySelectorAll("[style]").forEach(el => el.removeAttribute("style"));
+    // Ensure transcript stays hidden (toggled by user)
+    const transcript = tmp.querySelector('[data-section="full-transcript"]');
+    if (transcript) transcript.style.display = "none";
+
+    const cleanHtml = tmp.innerHTML;
     const mobileCSS = `<style id="sophie-mobile-report">
-      /* ── Mobile Report Override ── */
-      /* Nuclear: ALL divs fluid, no fixed widths */
-      #reportDirect div {
-        max-width: 100% !important;
-        width: auto !important;
-        box-sizing: border-box !important;
+      #reportDirect {
+        font-family: -apple-system, system-ui, sans-serif;
+        color: #2a2420; font-size: 15px; line-height: 1.7;
+        padding: 4px 0; overflow-x: hidden;
       }
-      /* Top-level container: kill A4 padding/margin */
-      #reportDirect > div:first-of-type {
-        padding: 8px 12px !important;
-        margin: 0 !important;
+      #reportDirect h1 {
+        font-size: 22px; font-weight: 700; margin: 0 0 4px; line-height: 1.25;
       }
-      /* Flex rows that create 2-column layouts → stack vertically */
-      #reportDirect div[style*="display: flex"],
-      #reportDirect div[style*="display:flex"] {
-        flex-direction: column !important;
-        gap: 8px !important;
+      #reportDirect h2 {
+        font-size: 12px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.08em; color: #a09080;
+        margin: 24px 0 8px; padding-bottom: 6px;
+        border-bottom: 1px solid #ede8e2;
       }
-      /* Grid layouts → single column */
-      #reportDirect div[style*="display: grid"],
-      #reportDirect div[style*="display:grid"] {
-        grid-template-columns: 1fr !important;
+      #reportDirect h3 {
+        font-size: 15px; font-weight: 600; margin: 16px 0 6px; color: #2a2420;
       }
-      /* Kill all fixed paddings on section containers */
-      #reportDirect div[style*="padding: 40px"],
-      #reportDirect div[style*="padding:40px"],
-      #reportDirect div[style*="padding: 30px"],
-      #reportDirect div[style*="padding:30px"] {
-        padding: 8px 12px !important;
+      #reportDirect p { margin: 0 0 12px; }
+      #reportDirect ul, #reportDirect ol { margin: 0 0 12px; padding-left: 20px; }
+      #reportDirect li { margin-bottom: 6px; }
+      #reportDirect strong, #reportDirect b { font-weight: 600; color: #1a1410; }
+      /* Tables */
+      #reportDirect table {
+        width: 100%; border-collapse: collapse;
+        font-size: 13px; margin: 8px 0 16px;
       }
-      /* Readable font sizes */
-      #reportDirect { font-size: 15px !important; line-height: 1.65 !important; overflow-x: hidden !important; word-wrap: break-word !important; }
-      #reportDirect h1 { font-size: 22px !important; line-height: 1.3 !important; }
-      #reportDirect h2 { font-size: 18px !important; line-height: 1.35 !important; }
-      #reportDirect h3 { font-size: 16px !important; line-height: 1.4 !important; }
-      #reportDirect p, #reportDirect li, #reportDirect td, #reportDirect th, #reportDirect span {
-        font-size: 14px !important; line-height: 1.6 !important;
+      #reportDirect th {
+        text-align: left; font-weight: 600; font-size: 11px;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        color: #a09080; padding: 6px 8px;
+        border-bottom: 2px solid #ede8e2;
       }
-      /* Tables responsive */
-      #reportDirect table { width: 100% !important; font-size: 13px !important; border-collapse: collapse !important; }
-      #reportDirect td, #reportDirect th { padding: 6px 8px !important; word-break: break-word !important; }
-      /* Score bars (salespitch) */
-      #reportDirect div[style*="background"][style*="height"] { min-width: 0 !important; }
-      /* Images responsive */
-      #reportDirect img { max-width: 100% !important; height: auto !important; }
-      /* Code blocks */
-      #reportDirect pre, #reportDirect code { white-space: pre-wrap !important; word-break: break-all !important; font-size: 12px !important; }
-      /* Decorative header images compact */
-      #reportDirect div[style*="text-align: center"] img,
-      #reportDirect div[style*="text-align:center"] img { max-height: 40px !important; }
+      #reportDirect td {
+        padding: 8px; border-bottom: 1px solid #f0ece6;
+        vertical-align: top; word-break: break-word;
+      }
+      /* Divs as sections — add spacing */
+      #reportDirect > div { margin-bottom: 8px; }
+      /* Decorative elements — hide fixed-size boxes, lines etc. */
+      #reportDirect hr { border: none; border-top: 1px solid #ede8e2; margin: 16px 0; }
+      #reportDirect img { max-width: 100%; height: auto; border-radius: 8px; }
+      /* Score bars (salespitch) — make visible as simple blocks */
+      #reportDirect div > div { margin-bottom: 4px; }
     </style>`;
 
-    reportDirect.innerHTML = mobileCSS + html;
-    console.log("[meeting-report] Mobile DOM render:", html.length, "chars (mobile CSS injected)");
+    reportDirect.innerHTML = mobileCSS + cleanHtml;
+    console.log("[meeting-report] Mobile render: stripped styles, clean layout", cleanHtml.length, "chars");
   } else {
     // Desktop: iframe for A4 isolation
     reportDirect.style.display = "none";
