@@ -2827,6 +2827,7 @@
     if (heroCta) {
       heroCta.addEventListener("click", async (e) => {
         e.preventDefault();
+        track("hero_cta_clicked", { cta_type: "talk" });
         // Logged-in users go directly to voice — skip chat funnel
         const token = await getToken();
         if (token) {
