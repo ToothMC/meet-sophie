@@ -369,6 +369,22 @@ async function handleStart(req, res) {
     return res.status(500).json({ error: "Failed to create chat session" });
   }
 
+  // Experience Intelligence: session_started
+  try {
+    await supabase.from("analytics_events").insert({
+      event_name: "session_started",
+      user_id: user?.id || null,
+      session_id: session.id,
+      device: rawSignals?.is_mobile ? "mobile" : "desktop",
+      source: rawSignals?.utm_source || rawSignals?.referrer_host || null,
+      meta: {
+        mode: "text",
+        session_mode: sessionMode || null,
+        plan: user ? (isPremium ? "paid" : "free") : "anonymous",
+      },
+    });
+  } catch { /* non-fatal */ }
+
   const opener = getOpener(preferredLanguage, isPremium, sessionMode, brainstormConfig);
 
   // SECURITY: system_prompt is NEVER returned to the client
