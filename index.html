@@ -2845,6 +2845,7 @@
     if (heroWriteBtn) {
       heroWriteBtn.addEventListener("click", (e) => {
         e.preventDefault();
+        track("hero_cta_clicked", { cta_type: "write" });
         openChatForeground();
       });
     }
