@@ -5677,6 +5677,8 @@ async function startVoice(){
 
     setStatus(_uiLang === "de" ? "Sophie wird verbunden …" : _uiLang === "fr" ? "Connexion à Sophie …" : "Connecting to Sophie …");
 
+    track("voice_connect_started");
+    const _connectT0 = Date.now();
     const answerSdp = await fetchRealtimeAnswerSdp({
       offerSdp: offer.sdp,
       clientSecret: data.client_secret.value,
@@ -5685,6 +5687,7 @@ async function startVoice(){
 
     const answer = { type: "answer", sdp: answerSdp };
     await pc.setRemoteDescription(answer);
+    track("voice_connect_success", { latency_ms: Date.now() - _connectT0 });
 
     voiceWakeLockWanted = true;
     void acquireVoiceWakeLock();
