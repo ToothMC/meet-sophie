@@ -212,7 +212,8 @@
       "Bash(grep -r \"analytics_events\\\\|visitor\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase --include=*.sql)",
       "Bash(grep -r \"TABLE.*analytics\\\\|analytics_events\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.sql --include=*.ts)",
       "Bash(grep -r from.*analytics_events /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "WebFetch(domain:plausible.io)"
     ]
   },
   "hooks": {
