@@ -342,6 +342,8 @@ function dis(v){allBtns.forEach(b=>b.disabled=v);}
 async function checkout(plan){
   msg.textContent="";
   if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
+  const PRICES={free:0,start:9.90,plus:19.90,premium:39.90};
+  track("pricing_plan_clicked", { plan, price: PRICES[plan] || 0 });
   dis(true);
   try{
     const t=await tok();if(!t)return;
