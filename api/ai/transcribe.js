@@ -92,7 +92,10 @@ export default async function handler(req, res) {
       language = body.language;
     }
 
-    if (audioBuffer.length < 1000) return res.status(400).json({ error: 'Audio too short' });
+    if (audioBuffer.length < 1000) {
+      console.warn(`[transcribe] Audio too short: ${audioBuffer.length} bytes, file=${filename || 'audio.webm'}, user=${user.id}${meetingId ? ` meeting=${meetingId} seg=${segmentIndex}` : ''}`);
+      return res.status(400).json({ error: 'Audio too short', bytes: audioBuffer.length });
+    }
 
     const isMeetingMode = !!(meetingId && segmentIndex != null && !isNaN(segmentIndex));
 
@@ -176,8 +179,10 @@ export default async function handler(req, res) {
 
     if (!whisperRes.ok) {
       const errText = await whisperRes.text();
-      console.error('[transcribe] Whisper error:', whisperRes.status, errText);
-      return res.status(whisperRes.status).json({ error: 'Transcription failed', detail: errText });
+      console.error(`[transcribe] Whisper error: ${whisperRes.status} | ${audioBuffer.length} bytes | file=${fname} | user=${user.id}${isMeetingMode ? ` meeting=${meetingId} seg=${segmentIndex}` : ''} | detail: ${errText}`);
+      // Return 502 for upstream Whisper failures (not our 400) so frontend can distinguish
+      const mappedStatus = whisperRes.status >= 400 && whisperRes.status < 500 ? 502 : whisperRes.status;
+      return res.status(mappedStatus).json({ error: 'Transcription failed', whisper_status: whisperRes.status, detail: errText });
     }
 
     const result = await whisperRes.json();

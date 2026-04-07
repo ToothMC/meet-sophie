@@ -2655,6 +2655,21 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
         appendSystemMsg(lang === "de"
           ? "⚠️ Live-Transkription unterbrochen — Meeting läuft weiter"
           : "⚠️ Live transcription interrupted — meeting continues");
+        // Proactive mic recovery: if 3+ consecutive errors, the mic stream may be dead
+        if (consecutiveTranscribeErrors >= 3 && meetingData?.phase === "live") {
+          console.warn("[meeting-live] 3+ transcribe errors — attempting mic stream recovery");
+          try {
+            if (!sharedMicStream || !sharedMicStream.active || sharedMicStream.getTracks().every(t => t.readyState === "ended")) {
+              appendSystemMsg(lang === "de"
+                ? "🔄 Mikrofon-Stream unterbrochen — starte Aufnahme neu..."
+                : "🔄 Mic stream interrupted — restarting recording...");
+              await startAudioRecording();
+              consecutiveTranscribeErrors = 0;
+            }
+          } catch (recErr) {
+            console.error("[meeting-live] Mic recovery failed:", recErr.message);
+          }
+        }
       }
     }
   }
