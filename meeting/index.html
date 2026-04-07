@@ -2300,67 +2300,100 @@ function showMeetingReport(html) {
     reportFrame.style.display = "none";
     reportDirect.style.display = "block";
 
-    // Inject mobile-override stylesheet BEFORE the report HTML
-    // Strip ALL inline styles from the HTML — render as clean semantic content
+    // Transform A4 HTML into mobile-native layout
+    // AI generates all-div HTML with inline styles. We rewrite styles for mobile
+    // while preserving the visual hierarchy (labels small/grey, values large, sections separated).
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
-    // Remove <style> blocks (A4 print styles etc.)
+    // Remove <style> blocks (A4 print styles)
     tmp.querySelectorAll("style").forEach(s => s.remove());
-    // Remove all inline style attributes
-    tmp.querySelectorAll("[style]").forEach(el => el.removeAttribute("style"));
-    // Ensure transcript stays hidden (toggled by user)
+    // Ensure transcript stays hidden
     const transcript = tmp.querySelector('[data-section="full-transcript"]');
-    if (transcript) transcript.style.display = "none";
+    if (transcript) transcript.setAttribute("style", "display:none");
+    // Remove pure spacer divs (1px height lines used as A4 separators)
+    tmp.querySelectorAll('div').forEach(el => {
+      const s = el.getAttribute("style") || "";
+      if (/height:\s*1px/.test(s) && el.children.length === 0 && !el.textContent.trim()) el.remove();
+    });
+    // Rewrite inline styles for mobile: detect element role by original style hints
+    tmp.querySelectorAll("[style]").forEach(el => {
+      const s = el.getAttribute("style") || "";
+      const text = el.textContent.trim();
+      if (el.hasAttribute("data-section")) return; // keep transcript hidden
+      // Uppercase label (font-size 8-10px, letter-spacing, uppercase) → mobile label
+      if (/font-size:\s*[89]px/.test(s) && /text-transform:\s*uppercase/.test(s)) {
+        el.setAttribute("style", "font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#a09080;margin:20px 0 4px;");
+        return;
+      }
+      // Title (font-size 20-28px) → mobile title
+      if (/font-size:\s*2[0-8]px/.test(s)) {
+        el.setAttribute("style", "font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 2px;line-height:1.25;");
+        return;
+      }
+      // Agenda item number (min-width, 9px, color #bbb)
+      if (/min-width/.test(s) && /font-size:\s*9px/.test(s)) {
+        el.setAttribute("style", "font-size:12px;font-weight:700;color:#c4a882;min-width:24px;");
+        return;
+      }
+      // Agenda item title (13-16px, font-weight 400-600)
+      if (/font-size:\s*1[3-6]px/.test(s) && /font-weight:\s*[4-6]00/.test(s) && text.length < 120) {
+        el.setAttribute("style", "font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:4px;");
+        return;
+      }
+      // Body text (12-14px, color #333-#555, light weight)
+      if (/font-size:\s*1[2-4]px/.test(s) && /color:#[345]/.test(s)) {
+        el.setAttribute("style", "font-size:14px;color:#4a4040;line-height:1.7;margin-bottom:8px;");
+        return;
+      }
+      // Flex containers → stack on mobile
+      if (/display:\s*flex/.test(s)) {
+        const isRow = /align-items:\s*baseline/.test(s) || /align-items:\s*flex-start/.test(s);
+        el.setAttribute("style", isRow
+          ? "display:flex;gap:10px;align-items:baseline;margin-bottom:6px;"
+          : "display:flex;flex-direction:column;gap:2px;margin-bottom:16px;");
+        return;
+      }
+      // Main container
+      if (/max-width:\s*\d+px/.test(s) && /margin:\s*0\s*auto/.test(s)) {
+        el.setAttribute("style", "padding:4px 0;color:#1a1a1a;line-height:1.6;");
+        return;
+      }
+      // Section container with large padding
+      if (/padding.*[3-7]0px/.test(s) || /margin-bottom:\s*[3-5]\dpx/.test(s)) {
+        el.setAttribute("style", "margin-bottom:16px;");
+        return;
+      }
+      // Indented content (padding-left: 56px etc.)
+      if (/padding-left:\s*\d{2,}px/.test(s)) {
+        el.setAttribute("style", "font-size:14px;color:#4a4040;line-height:1.7;margin-bottom:8px;padding-left:34px;");
+        return;
+      }
+      // Border-bottom dividers in header
+      if (/border-bottom/.test(s)) {
+        el.setAttribute("style", "border-bottom:1px solid #ede8e2;padding-bottom:12px;margin-bottom:16px;");
+        return;
+      }
+      // Default: remove style, let it flow
+      el.removeAttribute("style");
+    });
 
-    const cleanHtml = tmp.innerHTML;
     const mobileCSS = `<style id="sophie-mobile-report">
       #reportDirect {
         font-family: -apple-system, system-ui, sans-serif;
-        color: #2a2420; font-size: 15px; line-height: 1.7;
-        padding: 4px 0; overflow-x: hidden;
+        color: #2a2420; font-size: 14px; line-height: 1.65;
+        overflow-x: hidden; word-wrap: break-word;
       }
-      #reportDirect h1 {
-        font-size: 22px; font-weight: 700; margin: 0 0 4px; line-height: 1.25;
-      }
-      #reportDirect h2 {
-        font-size: 12px; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.08em; color: #a09080;
-        margin: 24px 0 8px; padding-bottom: 6px;
-        border-bottom: 1px solid #ede8e2;
-      }
-      #reportDirect h3 {
-        font-size: 15px; font-weight: 600; margin: 16px 0 6px; color: #2a2420;
-      }
-      #reportDirect p { margin: 0 0 12px; }
-      #reportDirect ul, #reportDirect ol { margin: 0 0 12px; padding-left: 20px; }
-      #reportDirect li { margin-bottom: 6px; }
-      #reportDirect strong, #reportDirect b { font-weight: 600; color: #1a1410; }
-      /* Tables */
-      #reportDirect table {
-        width: 100%; border-collapse: collapse;
-        font-size: 13px; margin: 8px 0 16px;
-      }
-      #reportDirect th {
-        text-align: left; font-weight: 600; font-size: 11px;
-        text-transform: uppercase; letter-spacing: 0.05em;
-        color: #a09080; padding: 6px 8px;
-        border-bottom: 2px solid #ede8e2;
-      }
-      #reportDirect td {
-        padding: 8px; border-bottom: 1px solid #f0ece6;
-        vertical-align: top; word-break: break-word;
-      }
-      /* Divs as sections — add spacing */
-      #reportDirect > div { margin-bottom: 8px; }
-      /* Decorative elements — hide fixed-size boxes, lines etc. */
-      #reportDirect hr { border: none; border-top: 1px solid #ede8e2; margin: 16px 0; }
-      #reportDirect img { max-width: 100%; height: auto; border-radius: 8px; }
-      /* Score bars (salespitch) — make visible as simple blocks */
-      #reportDirect div > div { margin-bottom: 4px; }
+      #reportDirect table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 16px; }
+      #reportDirect th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#a09080; padding:6px 8px; border-bottom:2px solid #ede8e2; }
+      #reportDirect td { padding:8px; border-bottom:1px solid #f0ece6; vertical-align:top; word-break:break-word; }
+      #reportDirect ul, #reportDirect ol { margin:0 0 12px; padding-left:20px; }
+      #reportDirect li { margin-bottom:6px; font-size:14px; color:#4a4040; }
+      #reportDirect img { max-width:100%; height:auto; }
+      #reportDirect .meeting-protocol { padding:0 !important; margin:0 !important; max-width:100% !important; }
     </style>`;
 
-    reportDirect.innerHTML = mobileCSS + cleanHtml;
-    console.log("[meeting-report] Mobile render: stripped styles, clean layout", cleanHtml.length, "chars");
+    reportDirect.innerHTML = mobileCSS + tmp.innerHTML;
+    console.log("[meeting-report] Mobile render: styles rewritten for mobile");
   } else {
     // Desktop: iframe for A4 isolation
     reportDirect.style.display = "none";
