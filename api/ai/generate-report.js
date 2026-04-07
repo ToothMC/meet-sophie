@@ -249,6 +249,20 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
         { provider: 'openai', model: 'gpt-4o' },
       ];
 
+      // Validate that report HTML is structurally complete (not truncated)
+      function isValidReportHtml(html) {
+        if (!html || html.length < 300) return false;
+        // Must contain at least one closing </div> tag
+        if (!html.includes('</div>')) return false;
+        // Count opening vs closing div tags — truncated HTML will have more opens than closes
+        const opens = (html.match(/<div[\s>]/gi) || []).length;
+        const closes = (html.match(/<\/div>/gi) || []).length;
+        // Allow small mismatch (some inline divs) but not massive truncation
+        if (opens > 0 && closes === 0) return false;
+        if (opens - closes > 3) return false;
+        return true;
+      }
+
       let reportHtml = null;
       for (const synth of meetingSynthProviders) {
         try {
@@ -260,10 +274,11 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
           trackAdapterCost(response, reportUserId, 'report-meeting');
           const text = (response.content || '').trim();
           reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
-          if (reportHtml.length > 100) {
+          if (isValidReportHtml(reportHtml)) {
             console.log(`[report] ${session_id} — meeting report via ${synth.provider} (${reportHtml.length} chars)`);
             break;
           }
+          console.warn(`[report] ${session_id} — ${synth.provider} returned invalid/truncated HTML (${reportHtml.length} chars, opens=${(reportHtml.match(/<div[\s>]/gi)||[]).length}, closes=${(reportHtml.match(/<\/div>/gi)||[]).length}), trying next provider`);
           reportHtml = null;
         } catch (e) {
           console.error(`[report] meeting ${synth.provider} failed:`, e?.message);
@@ -573,10 +588,11 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
           trackAdapterCost(response, reportUserId, 'report-salespitch');
           const text = (response.content || '').trim();
           reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
-          if (reportHtml.length > 100) {
+          if (isValidReportHtml(reportHtml)) {
             console.log(`[report] ${session_id} — salespitch report via ${synth.provider} (${reportHtml.length} chars)`);
             break;
           }
+          console.warn(`[report] ${session_id} — salespitch ${synth.provider} returned invalid/truncated HTML (${reportHtml.length} chars), trying next`);
           reportHtml = null;
         } catch (e) {
           console.error(`[report] salespitch ${synth.provider} failed:`, e?.message);
@@ -969,7 +985,8 @@ ${analysesBlock}`;
         const text = (response.content || '').trim();
         // Strip markdown code fences if present
         reportHtml = text.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
-        if (reportHtml.length > 50) break; // looks like real HTML
+        if (isValidReportHtml(reportHtml)) break;
+        console.warn(`[report] ${session_id} — ${synth.provider} returned invalid/truncated HTML (${(reportHtml||'').length} chars), trying next`);
         reportHtml = null;
       } catch (e) {
         console.error(`[report] HTML generation with ${synth.provider} failed:`, e?.message);
