@@ -357,6 +357,8 @@ async function checkout(plan){
 async function topup(pack){
   msg.textContent="";
   if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
+  const TU_PRICES={5:5,10:10,20:20};
+  track("pricing_plan_clicked", { plan: `topup_${pack}`, price: TU_PRICES[pack] || pack });
   dis(true);
   try{
     const t=await tok();if(!t)return;
