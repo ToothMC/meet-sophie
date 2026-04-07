@@ -44,17 +44,18 @@ export default async function handler(req, res) {
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
 
-  // Determine report language: explicit param > user profile > fallback "de"
-  let reportLang = body.language || null;
-  if (!reportLang) {
-    try {
-      const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
-      if (sess?.user_id) {
-        const { data: prof } = await supabase.from('user_profile').select('preferred_language').eq('user_id', sess.user_id).maybeSingle();
-        reportLang = prof?.preferred_language || null;
-      }
-    } catch (_) {}
-  }
+  // Determine report language: user profile (truth) > explicit param (UI lang) > fallback "en"
+  // body.language comes from localStorage (UI language) and can differ from the user's
+  // actual content-language preference stored in user_profile.preferred_language.
+  let reportLang = null;
+  try {
+    const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+    if (sess?.user_id) {
+      const { data: prof } = await supabase.from('user_profile').select('preferred_language').eq('user_id', sess.user_id).maybeSingle();
+      reportLang = prof?.preferred_language || null;
+    }
+  } catch (_) {}
+  if (!reportLang) reportLang = body.language || null;
   // Supported prompt languages: de, en, fr — anything else → use English prompt + explicit language instruction
   const unsupportedLang = reportLang && !['en', 'de', 'fr'].includes(reportLang) ? reportLang : null;
   if (!reportLang || (!['en', 'de', 'fr'].includes(reportLang))) reportLang = 'en';
