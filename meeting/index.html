@@ -1930,14 +1930,30 @@ async function startAudioRecording() {
     sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     appendSystemMsg("✅ Mikrofon aktiv — Aufnahme läuft");
 
-    currentMimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
-              : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
-              : "audio/mp4";
+    // iOS Safari: prefer mp4, desktop: prefer webm/opus
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIOS) {
+      // iOS Safari: mp4 is most reliable, webm may silently fail
+      currentMimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4"
+                : MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+                : "audio/webm";
+    } else {
+      currentMimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+                : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
+                : "audio/mp4";
+    }
+    console.log(`[meeting-audio] Selected MIME: ${currentMimeType}, iOS: ${isIOS}`);
     audioChunks = [];
     audioSegments = [];
     _startNewRecorder();
 
-    // Rotate segment every 2 minutes to keep each blob small
+    if (!mediaRecorder || mediaRecorder.state !== "recording") {
+      appendSystemMsg("⚠️ Aufnahme konnte nicht gestartet werden — bitte Mikrofon-Berechtigung prüfen");
+      console.error("[meeting-audio] MediaRecorder failed to start, state:", mediaRecorder?.state);
+      return;
+    }
+
+    // Rotate segment every 60s to keep each blob small
     segmentRotationTimer = setInterval(() => _rotateSegment(), AUDIO_SEGMENT_MS);
     console.log("[meeting-audio] Recording started, mimeType:", currentMimeType);
   } catch (e) {
@@ -1947,17 +1963,37 @@ async function startAudioRecording() {
 }
 
 function _startNewRecorder() {
-  if (!sharedMicStream || !sharedMicStream.active) return;
-  mediaRecorder = new MediaRecorder(sharedMicStream, {
-    mimeType: currentMimeType,
-    audioBitsPerSecond: 32000,
-  });
+  if (!sharedMicStream || !sharedMicStream.active) {
+    console.error("[meeting-audio] Stream not active, cannot start recorder");
+    appendSystemMsg("⚠️ Mikrofon-Stream unterbrochen — Aufnahme gestoppt");
+    return;
+  }
+  try {
+    mediaRecorder = new MediaRecorder(sharedMicStream, {
+      mimeType: currentMimeType,
+      audioBitsPerSecond: 32000,
+    });
+  } catch (e) {
+    console.error("[meeting-audio] MediaRecorder constructor failed:", e.message);
+    appendSystemMsg(`⚠️ Aufnahme-Fehler (${currentMimeType}): ${e.message}`);
+    // Fallback: try without specifying mimeType (let browser choose)
+    try {
+      mediaRecorder = new MediaRecorder(sharedMicStream);
+      currentMimeType = mediaRecorder.mimeType || "audio/webm";
+      console.log("[meeting-audio] Fallback recorder started, mimeType:", currentMimeType);
+    } catch (e2) {
+      console.error("[meeting-audio] Fallback MediaRecorder also failed:", e2.message);
+      appendSystemMsg(`❌ Aufnahme nicht möglich: ${e2.message}`);
+      return;
+    }
+  }
   audioChunks = [];
 
   mediaRecorder.ondataavailable = (e) => {
     if (e.data.size > 0) audioChunks.push(e.data);
   };
   mediaRecorder.onerror = (e) => {
+    console.error("[meeting-audio] MediaRecorder error:", e.error?.message);
     appendSystemMsg(`⚠️ Aufnahme-Fehler: ${e.error?.message || "unbekannt"}`);
   };
   // 10-second timeslice for crash safety
