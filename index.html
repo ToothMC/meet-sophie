@@ -4673,6 +4673,13 @@
       saveChatState();
       endSession();
     });
+
+    // ?mode=chat — direct chat entry (e.g. after mic-denied fallback)
+    if (new URLSearchParams(location.search).get("mode") === "chat") {
+      openChatForeground();
+      // Clean URL without reload
+      history.replaceState(null, "", location.pathname);
+    }
     // Make translations available to module scope
     /* translations already attached to window in the inline script above */
 
