@@ -2307,9 +2307,12 @@ function showMeetingReport(html) {
     tmp.innerHTML = html;
     // Remove <style> blocks (A4 print styles)
     tmp.querySelectorAll("style").forEach(s => s.remove());
-    // Ensure transcript stays hidden
+    // Transcript: respect toggle state (default hidden, shown if user checked "Gesprächsverlauf")
     const transcript = tmp.querySelector('[data-section="full-transcript"]');
-    if (transcript) transcript.setAttribute("style", "display:none");
+    const transcriptOn = $("optTranscript")?.checked;
+    if (transcript) {
+      transcript.setAttribute("style", transcriptOn ? "" : "display:none");
+    }
     // Remove pure spacer divs (1px height lines used as A4 separators)
     tmp.querySelectorAll('div').forEach(el => {
       const s = el.getAttribute("style") || "";
