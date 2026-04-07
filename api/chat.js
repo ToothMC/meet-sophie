@@ -27,6 +27,10 @@ async function logSecurityEvent(supabase, eventName, meta) {
   try { await supabase.from("analytics_events").insert({ event_name: eventName, meta }); } catch { /* non-fatal */ }
 }
 
+async function trackEvent(supabase, eventName, { user_id, session_id, meta } = {}) {
+  try { await supabase.from("analytics_events").insert({ event_name: eventName, user_id: user_id || null, session_id: session_id || null, meta: meta || {} }); } catch { /* non-fatal */ }
+}
+
 export const config = { maxDuration: 30 };
 
 const FREE_TURNS_LIMIT = 10;
