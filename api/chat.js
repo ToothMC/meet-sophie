@@ -1597,6 +1597,16 @@ async function handleEnd(req, res) {
     .update({ status: "closed", updated_at: new Date().toISOString() })
     .eq("id", session_id);
 
+  // Experience Intelligence: session_ended
+  {
+    const durationS = session.created_at ? Math.round((Date.now() - new Date(session.created_at).getTime()) / 1000) : null;
+    trackEvent(supabase, "session_ended", {
+      user_id: user?.id,
+      session_id,
+      meta: { duration_s: durationS, turn_count: session.turn_count, mode: "text", ended_reason: "normal" },
+    });
+  }
+
   // Run memory-update if authenticated + transcript available
   const baseUrl = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
 
