@@ -1096,7 +1096,21 @@ body{
 .bs-seg-btn:hover{color:rgba(246,247,251,.7)}
 .bs-seg-btn.active{background:rgba(245,200,66,.18);color:rgba(245,200,66,.95)}
 /* ─────────────────────────────────────────────────────────── */
+
+/* Mic-denied overlay */
+.mic-denied-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,7,11,.92);backdrop-filter:blur(8px)}
+.mic-denied-card{background:#141720;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center}
+.mic-denied-card h3{margin:0 0 12px;font-size:18px;color:#f6f7fb}
+.mic-denied-card p{margin:0 0 24px;font-size:14px;color:rgba(246,247,251,.6);line-height:1.5}
+.mic-denied-actions{display:flex;flex-direction:column;gap:10px}
+.mic-denied-actions button{padding:12px 20px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
+.mic-denied-chat{background:rgba(100,120,220,.2);color:rgba(100,120,220,.95)}
+.mic-denied-chat:hover{background:rgba(100,120,220,.35)}
+.mic-denied-retry{background:rgba(255,255,255,.08);color:rgba(246,247,251,.7)}
+.mic-denied-retry:hover{background:rgba(255,255,255,.15)}
 </style>
+<script async src="https://plausible.io/js/pa-1OMRAStrHWUobLDx17XLI.js"></script>
+<script>window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()</script>
 </head>
 
 <body>
@@ -5260,8 +5274,60 @@ function setupDataChannelLogging() {
   };
 }
 
-function track(name, payload = {}) {
-  console.log("[track]", name, payload);
+// ── Experience Intelligence: Event Tracking ─────────────────
+const _anonId = (() => {
+  let id = localStorage.getItem("sophie_anon_id");
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem("sophie_anon_id", id); }
+  return id;
+})();
+
+function track(name, meta = {}) {
+  const payload = {
+    event_id: crypto.randomUUID(),
+    event_name: name,
+    meta,
+    anonymous_id: _anonId,
+    page: location.pathname,
+    device: window.innerWidth < 768 ? "mobile" : "desktop",
+  };
+  supabase.auth.getSession().then(({ data }) => {
+    const headers = { "Content-Type": "application/json" };
+    if (data?.session?.access_token) headers["Authorization"] = `Bearer ${data.session.access_token}`;
+    fetch("/api/track", { method: "POST", headers, body: JSON.stringify(payload) }).catch(() => {});
+  }).catch(() => {
+    fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+  });
+}
+
+function trackBeacon(name, meta = {}) {
+  const payload = {
+    event_id: crypto.randomUUID(),
+    event_name: name,
+    meta,
+    anonymous_id: _anonId,
+    page: location.pathname,
+    device: window.innerWidth < 768 ? "mobile" : "desktop",
+  };
+  navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+}
+
+// Talk page viewed
+track("talk_page_viewed", { referrer_page: document.referrer || null });
+
+function showMicDeniedOverlay() {
+  const existing = document.querySelector(".mic-denied-overlay");
+  if (existing) return;
+  const overlay = document.createElement("div");
+  overlay.className = "mic-denied-overlay";
+  overlay.innerHTML = `<div class="mic-denied-card">
+    <h3>Mikrofon-Zugriff abgelehnt</h3>
+    <p>Sophie braucht dein Mikrofon fuer Voice-Gespraeche. Du kannst stattdessen per Chat starten.</p>
+    <div class="mic-denied-actions">
+      <button class="mic-denied-chat" onclick="window.location.href='/?mode=chat'">Per Chat starten</button>
+      <button class="mic-denied-retry" onclick="document.querySelector('.mic-denied-overlay')?.remove();startVoice()">Erneut versuchen</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
 }
 
 async function reportUsage(seconds) {
@@ -5577,14 +5643,18 @@ async function startVoice(){
         !softEndFinalizing &&
         (state === "disconnected" || state === "failed")
       ) {
+        const durAtDisconnect = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : null;
+        track("disconnect", { duration_at_disconnect_s: durAtDisconnect });
         setSoftHint("Die Voice-Verbindung wurde unterbrochen. Wenn Sophie im Hintergrund war, starte das Gespräch neu.");
       }
     };
 
+    track("mic_permission_requested");
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    track("mic_permission_granted");
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     // Single audio path: <audio> element only — provides playback + browser AEC.
     // No Web Audio GainNode to speakers (caused double playback).
@@ -5608,6 +5678,8 @@ async function startVoice(){
 
     setStatus(_uiLang === "de" ? "Sophie wird verbunden …" : _uiLang === "fr" ? "Connexion à Sophie …" : "Connecting to Sophie …");
 
+    track("voice_connect_started");
+    const _connectT0 = Date.now();
     const answerSdp = await fetchRealtimeAnswerSdp({
       offerSdp: offer.sdp,
       clientSecret: data.client_secret.value,
@@ -5616,6 +5688,7 @@ async function startVoice(){
 
     const answer = { type: "answer", sdp: answerSdp };
     await pc.setRemoteDescription(answer);
+    track("voice_connect_success", { latency_ms: Date.now() - _connectT0 });
 
     voiceWakeLockWanted = true;
     void acquireVoiceWakeLock();
@@ -5673,14 +5746,21 @@ async function startVoice(){
     _startVoiceLock = false;
     console.error(err);
     cleanupLiveSession();
-    track("talk_start_failed", { error: err?.name || "unknown", message: err?.message?.slice(0, 100) || "" });
-    window.location.href = "/";
 
-    track("talk_start_exception", {
-      message: String(err?.message || err),
+    // Mic permission denied — show overlay instead of silent redirect
+    if (err?.name === "NotAllowedError" || err?.name === "NotFoundError") {
+      track("mic_permission_denied");
+      showMicDeniedOverlay();
+      return;
+    }
+
+    track("talk_start_failed", { error: err?.name || "unknown", message: err?.message?.slice(0, 100) || "" });
+    track("voice_connect_failed", {
+      error: err?.name || "unknown",
+      message: String(err?.message || err).slice(0, 180),
       http_status: status || null,
-      preview: String(err?.bodyPreview || "").slice(0, 180)
     });
+    window.location.href = "/";
   }
 }
 

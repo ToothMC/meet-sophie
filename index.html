@@ -1759,6 +1759,8 @@
     .bs-seg-btn.active{background:rgba(245,200,66,.18);color:rgba(245,200,66,.95)}
     /* ─────────────────────────────────────────────────────────── */
   </style>
+  <script async src="https://plausible.io/js/pa-1OMRAStrHWUobLDx17XLI.js"></script>
+  <script>window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()</script>
 </head>
 <body>
 
@@ -2826,6 +2828,7 @@
     if (heroCta) {
       heroCta.addEventListener("click", async (e) => {
         e.preventDefault();
+        track("hero_cta_clicked", { cta_type: "talk" });
         // Logged-in users go directly to voice — skip chat funnel
         const token = await getToken();
         if (token) {
@@ -2843,6 +2846,7 @@
     if (heroWriteBtn) {
       heroWriteBtn.addEventListener("click", (e) => {
         e.preventDefault();
+        track("hero_cta_clicked", { cta_type: "write" });
         openChatForeground();
       });
     }
@@ -3841,6 +3845,52 @@
     const authReadyPromise = new Promise(r => { _authReady = r; });
     let _cachedToken = null;
 
+    // ── Experience Intelligence: Event Tracking ─────────────────
+    const _anonId = (() => {
+      let id = localStorage.getItem("sophie_anon_id");
+      if (!id) { id = crypto.randomUUID(); localStorage.setItem("sophie_anon_id", id); }
+      return id;
+    })();
+
+    function track(name, meta = {}) {
+      const payload = {
+        event_id: crypto.randomUUID(),
+        event_name: name,
+        meta,
+        anonymous_id: _anonId,
+        page: location.pathname,
+        device: window.innerWidth < 768 ? "mobile" : "desktop",
+      };
+      const headers = { "Content-Type": "application/json" };
+      if (_cachedToken) headers["Authorization"] = `Bearer ${_cachedToken}`;
+      fetch("/api/track", { method: "POST", headers, body: JSON.stringify(payload) }).catch(() => {});
+    }
+
+    function trackBeacon(name, meta = {}) {
+      const payload = {
+        event_id: crypto.randomUUID(),
+        event_name: name,
+        meta,
+        anonymous_id: _anonId,
+        page: location.pathname,
+        device: window.innerWidth < 768 ? "mobile" : "desktop",
+      };
+      navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+    }
+
+    // Landing viewed
+    {
+      const params = new URLSearchParams(location.search);
+      track("landing_viewed", {
+        referrer: document.referrer || null,
+        referrer_host: (() => { try { return document.referrer ? new URL(document.referrer).hostname : null; } catch { return null; } })(),
+        utm_source: params.get("utm_source") || null,
+        utm_medium: params.get("utm_medium") || null,
+        utm_campaign: params.get("utm_campaign") || null,
+        is_mobile: navigator.userAgentData?.mobile ?? (window.innerWidth < 768),
+      });
+    }
+
     // Listen for auth state changes — resolves immediately when session is restored from localStorage
     const { data: { subscription: _authSub } } = supabase.auth.onAuthStateChange((event, session) => {
       _cachedToken = session?.access_token || null;
@@ -4624,6 +4674,13 @@
       saveChatState();
       endSession();
     });
+
+    // ?mode=chat — direct chat entry (e.g. after mic-denied fallback)
+    if (new URLSearchParams(location.search).get("mode") === "chat") {
+      openChatForeground();
+      // Clean URL without reload
+      history.replaceState(null, "", location.pathname);
+    }
     // Make translations available to module scope
     /* translations already attached to window in the inline script above */
 

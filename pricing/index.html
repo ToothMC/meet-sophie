@@ -123,6 +123,8 @@ body{
   .tu{min-width:calc(33% - 6px);}
 }
 </style>
+<script async src="https://plausible.io/js/pa-1OMRAStrHWUobLDx17XLI.js"></script>
+<script>window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()</script>
 </head>
 <body>
 <div class="wrap">
@@ -252,6 +254,33 @@ const L={
   }
 };
 
+// ── Experience Intelligence: Event Tracking ─────────────────
+const _anonId = (() => {
+  let id = localStorage.getItem("sophie_anon_id");
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem("sophie_anon_id", id); }
+  return id;
+})();
+
+function track(name, meta = {}) {
+  const payload = {
+    event_id: crypto.randomUUID(),
+    event_name: name,
+    meta,
+    anonymous_id: _anonId,
+    page: location.pathname,
+    device: window.innerWidth < 768 ? "mobile" : "desktop",
+  };
+  supabase.auth.getSession().then(({ data }) => {
+    const headers = { "Content-Type": "application/json" };
+    if (data?.session?.access_token) headers["Authorization"] = `Bearer ${data.session.access_token}`;
+    fetch("/api/track", { method: "POST", headers, body: JSON.stringify(payload) }).catch(() => {});
+  }).catch(() => {
+    fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+  });
+}
+
+track("pricing_viewed", { referrer_page: document.referrer || null });
+
 const $ = id => document.getElementById(id);
 const c1=$("c1"),c2=$("c2"),msg=$("msg");
 const btnFree=$("btnFree"),btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
@@ -314,6 +343,8 @@ function dis(v){allBtns.forEach(b=>b.disabled=v);}
 async function checkout(plan){
   msg.textContent="";
   if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
+  const PRICES={free:0,start:9.90,plus:19.90,premium:39.90};
+  track("pricing_plan_clicked", { plan, price: PRICES[plan] || 0 });
   dis(true);
   try{
     const t=await tok();if(!t)return;
@@ -327,6 +358,8 @@ async function checkout(plan){
 async function topup(pack){
   msg.textContent="";
   if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
+  const TU_PRICES={5:5,10:10,20:20};
+  track("pricing_plan_clicked", { plan: `topup_${pack}`, price: TU_PRICES[pack] || pack });
   dis(true);
   try{
     const t=await tok();if(!t)return;

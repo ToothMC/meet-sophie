@@ -312,5 +312,95 @@ export default async function handler(req, res) {
     return res.status(200).json({ providers: status, unacknowledgedAlerts: count || 0 });
   }
 
+  // ── Errors & Friction ──
+  if (action === 'errors' && req.method === 'GET') {
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+
+    const ERROR_EVENTS = ['mic_permission_denied', 'voice_connect_failed', 'disconnect', 'session_error', 'talk_start_failed'];
+
+    // Counts per event for today and 7d
+    const [todayRes, weekRes, samplesRes, talkViewsRes] = await Promise.all([
+      supabase.from('analytics_events')
+        .select('event_name')
+        .in('event_name', ERROR_EVENTS)
+        .gte('created_at', today + 'T00:00:00Z'),
+      supabase.from('analytics_events')
+        .select('event_name')
+        .in('event_name', ERROR_EVENTS)
+        .gte('created_at', weekAgo + 'T00:00:00Z'),
+      supabase.from('analytics_events')
+        .select('event_name, device, meta, created_at')
+        .in('event_name', ERROR_EVENTS)
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase.from('analytics_events')
+        .select('event_name')
+        .in('event_name', ['talk_page_viewed', 'session_started'])
+        .gte('created_at', weekAgo + 'T00:00:00Z'),
+    ]);
+
+    const countBy = (rows, field) => {
+      const m = {};
+      (rows || []).forEach(r => { m[r[field]] = (m[r[field]] || 0) + 1; });
+      return m;
+    };
+
+    const todayCounts = countBy(todayRes.data, 'event_name');
+    const weekCounts = countBy(weekRes.data, 'event_name');
+    const baseCounts = countBy(talkViewsRes.data, 'event_name');
+
+    const groups = ERROR_EVENTS.map(name => ({
+      event: name,
+      count_today: todayCounts[name] || 0,
+      count_7d: weekCounts[name] || 0,
+      rate_7d: baseCounts['talk_page_viewed']
+        ? ((weekCounts[name] || 0) / baseCounts['talk_page_viewed'] * 100).toFixed(1) + '%'
+        : 'n/a',
+      samples: (samplesRes.data || []).filter(s => s.event_name === name).slice(0, 5),
+    }));
+
+    return res.status(200).json({ groups });
+  }
+
+  // ── Funnel ──
+  if (action === 'funnel' && req.method === 'GET') {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+
+    const FUNNEL_EVENTS = [
+      'landing_viewed', 'hero_cta_clicked', 'talk_page_viewed',
+      'mic_permission_granted', 'mic_permission_denied',
+      'session_started', 'first_user_input', 'second_user_input',
+      'pricing_viewed', 'pricing_plan_clicked', 'checkout_started', 'checkout_completed',
+    ];
+
+    const { data: events } = await supabase
+      .from('analytics_events')
+      .select('event_name, anonymous_id, session_id')
+      .in('event_name', FUNNEL_EVENTS)
+      .gte('created_at', weekAgo + 'T00:00:00Z');
+
+    // Distinct counts: top-of-funnel by anonymous_id, session-level by session_id
+    const TOP_FUNNEL = ['landing_viewed', 'hero_cta_clicked', 'talk_page_viewed', 'mic_permission_granted', 'mic_permission_denied', 'pricing_viewed', 'pricing_plan_clicked'];
+
+    const steps = FUNNEL_EVENTS.map((name, i) => {
+      const matching = (events || []).filter(e => e.event_name === name);
+      const isTopFunnel = TOP_FUNNEL.includes(name);
+      const distinctSet = new Set(matching.map(e => isTopFunnel ? e.anonymous_id : e.session_id).filter(Boolean));
+      const count = distinctSet.size;
+      return { event: name, count };
+    });
+
+    // Add conversion rates
+    for (let i = 1; i < steps.length; i++) {
+      steps[i].conversion = steps[i - 1].count > 0
+        ? ((steps[i].count / steps[i - 1].count) * 100).toFixed(1) + '%'
+        : 'n/a';
+    }
+    steps[0].conversion = '100%';
+
+    return res.status(200).json({ steps, period: '7d' });
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }

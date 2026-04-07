@@ -27,6 +27,10 @@ async function logSecurityEvent(supabase, eventName, meta) {
   try { await supabase.from("analytics_events").insert({ event_name: eventName, meta }); } catch { /* non-fatal */ }
 }
 
+async function trackEvent(supabase, eventName, { user_id, session_id, meta } = {}) {
+  try { await supabase.from("analytics_events").insert({ event_name: eventName, user_id: user_id || null, session_id: session_id || null, meta: meta || {} }); } catch { /* non-fatal */ }
+}
+
 export const config = { maxDuration: 30 };
 
 const FREE_TURNS_LIMIT = 10;
@@ -368,6 +372,22 @@ async function handleStart(req, res) {
     console.error("chat_sessions insert failed:", sessErr);
     return res.status(500).json({ error: "Failed to create chat session" });
   }
+
+  // Experience Intelligence: session_started
+  try {
+    await supabase.from("analytics_events").insert({
+      event_name: "session_started",
+      user_id: user?.id || null,
+      session_id: session.id,
+      device: rawSignals?.is_mobile ? "mobile" : "desktop",
+      source: rawSignals?.utm_source || rawSignals?.referrer_host || null,
+      meta: {
+        mode: "text",
+        session_mode: sessionMode || null,
+        plan: user ? (isPremium ? "paid" : "free") : "anonymous",
+      },
+    });
+  } catch { /* non-fatal */ }
 
   const opener = getOpener(preferredLanguage, isPremium, sessionMode, brainstormConfig);
 
@@ -944,6 +964,24 @@ async function handleMessage(req, res) {
 
   // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
+  const _msgStartTime = Date.now();
+
+  // Experience Intelligence: first/second user input
+  if (turnNumber === 1) {
+    const delayMs = session.created_at ? Date.now() - new Date(session.created_at).getTime() : null;
+    supabase.from("analytics_events").insert({
+      event_name: "first_user_input",
+      user_id: user?.id || null,
+      session_id: session_id,
+      meta: { delay_from_session_start_ms: delayMs },
+    }).then(() => {}).catch(() => {});
+  } else if (turnNumber === 2) {
+    supabase.from("analytics_events").insert({
+      event_name: "second_user_input",
+      user_id: user?.id || null,
+      session_id: session_id,
+    }).then(() => {}).catch(() => {});
+  }
 
   // Brainstorm phase injection — injected as system message on every turn
   let brainstormPhaseInjection = null;
@@ -1087,6 +1125,14 @@ async function handleMessage(req, res) {
 
   function emitDone(payload) {
     clearInterval(heartbeatTimer);
+    // Experience Intelligence: first_sophie_response
+    if (turnNumber === 1 && payload?.reply) {
+      trackEvent(supabase, "first_sophie_response", {
+        user_id: user?.id,
+        session_id,
+        meta: { latency_ms: Date.now() - _msgStartTime },
+      });
+    }
     if (wantsStream) {
       if (!sseStarted) startSSE();
       if (!clientDisconnected) { sseWrite(res, "done", payload); res.end(); }
@@ -1559,6 +1605,16 @@ async function handleEnd(req, res) {
     .from("chat_sessions")
     .update({ status: "closed", updated_at: new Date().toISOString() })
     .eq("id", session_id);
+
+  // Experience Intelligence: session_ended
+  {
+    const durationS = session.created_at ? Math.round((Date.now() - new Date(session.created_at).getTime()) / 1000) : null;
+    trackEvent(supabase, "session_ended", {
+      user_id: user?.id,
+      session_id,
+      meta: { duration_s: durationS, turn_count: session.turn_count, mode: "text", ended_reason: "normal" },
+    });
+  }
 
   // Run memory-update if authenticated + transcript available
   const baseUrl = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
