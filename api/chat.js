@@ -1125,6 +1125,14 @@ async function handleMessage(req, res) {
 
   function emitDone(payload) {
     clearInterval(heartbeatTimer);
+    // Experience Intelligence: first_sophie_response
+    if (turnNumber === 1 && payload?.reply) {
+      trackEvent(supabase, "first_sophie_response", {
+        user_id: user?.id,
+        session_id,
+        meta: { latency_ms: Date.now() - _msgStartTime },
+      });
+    }
     if (wantsStream) {
       if (!sseStarted) startSSE();
       if (!clientDisconnected) { sseWrite(res, "done", payload); res.end(); }
