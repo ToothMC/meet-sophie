@@ -2145,6 +2145,7 @@ async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
       session_id: sessionId,
       transcript_text: fullTranscript,
       session_mode: "meeting",
+      language: lang || "de",
     }),
   }).catch(e => console.error("[meeting-report] generate fetch failed:", e?.message));
 

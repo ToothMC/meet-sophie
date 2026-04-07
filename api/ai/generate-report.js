@@ -44,6 +44,22 @@ export default async function handler(req, res) {
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
 
+  // Determine report language: explicit param > user profile > fallback "de"
+  let reportLang = body.language || null;
+  if (!reportLang) {
+    try {
+      const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+      if (sess?.user_id) {
+        const { data: prof } = await supabase.from('user_profile').select('preferred_language').eq('user_id', sess.user_id).maybeSingle();
+        reportLang = prof?.preferred_language || null;
+      }
+    } catch (_) {}
+  }
+  if (!['en', 'de', 'fr'].includes(reportLang)) reportLang = 'de';
+  const isEN = reportLang === 'en';
+  const isFR = reportLang === 'fr';
+  console.log(`[report] ${session_id} — language: ${reportLang}`);
+
   // Resolve user_id for cost tracking + eco mode
   let reportUserId = null;
   let isEco = false;
@@ -62,8 +78,13 @@ export default async function handler(req, res) {
 
   try {
     const modeHint = session_mode ? `Session-Modus: "${session_mode}".` : '';
-    const todayDate = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const dateInstruction = `Das heutige Datum ist ${todayDate}. Wandle ALLE relativen Zeitangaben (z.B. "nächste Woche", "morgen", "in 2 Tagen", "nächsten Dienstag") in konkrete Daten im Format TT.MM.JJJJ um.`;
+    const dateLocale = isEN ? 'en-US' : isFR ? 'fr-FR' : 'de-DE';
+    const todayDate = new Date().toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dateInstruction = isEN
+      ? `Today's date is ${todayDate}. Convert ALL relative time references (e.g. "next week", "tomorrow", "in 2 days") to concrete dates.`
+      : isFR
+      ? `La date d'aujourd'hui est le ${todayDate}. Convertir TOUTES les références temporelles relatives en dates concrètes.`
+      : `Das heutige Datum ist ${todayDate}. Wandle ALLE relativen Zeitangaben (z.B. "nächste Woche", "morgen", "in 2 Tagen", "nächsten Dienstag") in konkrete Daten im Format TT.MM.JJJJ um.`;
 
     // ══════════════════════════════════════════════════════════════════
     // MEETING DIRECT PATH — Skip 4-AI pipeline, single AI + transcript
@@ -72,8 +93,9 @@ export default async function handler(req, res) {
     if (session_mode === 'meeting') {
       console.log(`[report] ${session_id} — MEETING DIRECT PATH (single AI)`);
 
+      const statusMeetingReport = isEN ? 'Creating meeting protocol...' : isFR ? 'Création du protocole...' : 'Erstelle Meeting-Protokoll...';
       await supabase.from('conversation_outputs')
-        .update({ report_progress: 30, report_status_detail: 'Erstelle Meeting-Protokoll...' })
+        .update({ report_progress: 30, report_status_detail: statusMeetingReport })
         .eq('session_id', session_id);
 
       // Load template
@@ -91,7 +113,69 @@ export default async function handler(req, res) {
         meetingTemplate = DT?.meeting || DT?.default || null;
       }
 
-      const meetingPrompt = `Du erstellst ein Meeting-Protokoll aus einem Voice-Transcript.
+      // ── Language-aware meeting report prompt ──────────────────────────────
+      const langInstruction = isEN ? 'Write the ENTIRE report in English.' : isFR ? 'Rédige le rapport ENTIER en français.' : 'Schreibe das gesamte Protokoll auf Deutsch.';
+      const meetingPrompt = isEN ? `You are creating a meeting protocol from a voice transcript.
+${langInstruction}
+${dateInstruction}
+
+TRANSCRIPT FORMAT NOTES:
+- "[user]: [chat] ..." = Text messages typed by the user DURING the meeting. Often contain important facts, links or corrections — treat equally.
+- "[assistant]: [chat note] ..." = Notes Sophie displayed in the chat panel.
+
+${meetingTemplate ? `TEMPLATE (keep design, replace text content only):
+${meetingTemplate.slice(0, 8000)}
+
+` : ''}TRANSCRIPT:
+${transcript_text}
+
+RULES:
+1. Protocol/Created by: ALWAYS "Sophie"
+2. ONLY use information that is LITERALLY in the transcript
+   EXCEPTION — Correct common speech recognition errors: "Lead Check" → "Lean Check", "Meet Sofie" → "MeetSophie"
+3. CLEARLY DISTINGUISH:
+   - Metadata of THIS meeting (date, location, time) — only if explicitly stated about THIS meeting
+   - Info about FUTURE appointments → belongs in Action Items or "Next Meeting", NOT in header
+4. If info is not in the transcript → REMOVE section entirely (not "[Name]" or "—")
+5. Participants: ONLY those named. Unknown → remove section
+6. Time: ONLY if stated for THIS meeting. Otherwise remove.
+7. Location: ONLY if stated for THIS meeting. Otherwise remove.
+8. NEVER invent: no names, times, locations, roles, deadlines
+9. Empty sections (no decisions, no action items) → REMOVE COMPLETELY
+10. LEAN CHECK — ALWAYS generate as last content section, wrapped in <div data-section="lean-check">:
+    Analyze the conversation and create a Lean analysis with these categories:
+    - FACTS: What was stated as proven/validated fact?
+    - ASSUMPTIONS: What was treated as fact but is actually an untested assumption?
+    - HYPOTHESES: What "if-then" hypotheses were proposed?
+    - TESTS: What tests/experiments were decided to verify hypotheses?
+    - SIGNAL: What criteria were defined to continue / stop / pivot?
+    - Only include categories that have actual content. Omit empty ones.
+    - If the meeting has no relevant Lean aspects (e.g. pure status update): omit Lean Check entirely.
+    - Design: subtle box with border-left 3px solid #c4a882, background #faf9f6, professional.
+    - No emojis in the Lean analysis.
+11. FULL TRANSCRIPT — ALWAYS as the very last section, wrapped in <div data-section="full-transcript">:
+    - Verbatim transcript from input, formatted as flowing text.
+    - CSS: display:none as default (frontend shows on demand).
+12. The HTML MUST contain a <style> block with @media print CSS for A4 PDF export:
+    - @page { size: A4; margin: 20mm 18mm; }
+    - Sections: page-break-inside: avoid
+    - -webkit-print-color-adjust: exact; print-color-adjust: exact
+
+DESIGN RULES (IMPORTANT):
+- Font: system-ui, -apple-system, sans-serif
+- Main color: #2a2420 (text), #c4a882 (accent, lines, heading decoration)
+- Background: #fff, sections with fine border (#ede8e2) or subtle background (#faf9f6)
+- Header: title large (24px), metadata (date, protocol) small below, no heavy border
+- Sections: clear headings (uppercase, 11px, letter-spacing, color #a09080), content 14px
+- Agenda items: numbered, clear separation, ample whitespace
+- Action Items: with responsible person and deadline if mentioned
+- Overall impression: elegant, professional, generous whitespace. Like a document from a premium consultancy — not an auto-generated form.
+- No emojis in the final report.
+
+${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
+
+      : `Du erstellst ein Meeting-Protokoll aus einem Voice-Transcript.
+${langInstruction}
 ${dateInstruction}
 
 HINWEIS ZUM TRANSCRIPT-FORMAT:
@@ -182,7 +266,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
 
       if (reportHtml) {
         await supabase.from('conversation_outputs')
-          .update({ report_progress: 80, report_status_detail: 'Extrahiere Beschlüsse & Action Items...' })
+          .update({ report_progress: 80, report_status_detail: isEN ? 'Extracting decisions & action items...' : isFR ? 'Extraction des décisions...' : 'Extrahiere Beschlüsse & Action Items...' })
           .eq('session_id', session_id);
 
         reportHtml = reportHtml.replace(/\[Datum\]/g, todayDate);
@@ -271,7 +355,7 @@ REGELN:
       } else {
         const { error: failErr } = await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
-          report_status_detail: 'Meeting-Report Generation fehlgeschlagen',
+          report_status_detail: isEN ? 'Meeting report generation failed' : isFR ? 'Génération du rapport échouée' : 'Meeting-Report Generation fehlgeschlagen',
         }).eq('session_id', session_id);
         if (failErr) console.error(`[report] meeting DB fail-update failed:`, failErr.message);
       }
@@ -287,7 +371,7 @@ REGELN:
       console.log(`[report] ${session_id} — SALESPITCH DIRECT PATH (single AI)`);
 
       await supabase.from('conversation_outputs')
-        .update({ report_progress: 30, report_status_detail: 'Bewerte Pitch...' })
+        .update({ report_progress: 30, report_status_detail: isEN ? 'Evaluating pitch...' : isFR ? 'Évaluation du pitch...' : 'Bewerte Pitch...' })
         .eq('session_id', session_id);
 
       // Load previous pitch data for version comparison (if exists)
@@ -495,7 +579,7 @@ HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
 
       if (reportHtml) {
         await supabase.from('conversation_outputs')
-          .update({ report_progress: 80, report_status_detail: 'Speichere Report...' })
+          .update({ report_progress: 80, report_status_detail: isEN ? 'Saving report...' : isFR ? 'Sauvegarde du rapport...' : 'Speichere Report...' })
           .eq('session_id', session_id);
 
         reportHtml = reportHtml.replace(/\[Datum\]/g, todayDate);
@@ -580,7 +664,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
       } else {
         await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
-          report_status_detail: 'Sales Pitch Report Generation fehlgeschlagen',
+          report_status_detail: isEN ? 'Sales pitch report generation failed' : isFR ? 'Génération du rapport pitch échouée' : 'Sales Pitch Report Generation fehlgeschlagen',
         }).eq('session_id', session_id);
       }
       return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
@@ -659,7 +743,9 @@ Danach folgt deine strukturierte Analyse.`;
 
     // Run all 4 analyses in parallel for speed
     await supabase.from('conversation_outputs')
-      .update({ report_progress: 10, report_status_detail: hasTemplate ? 'Analysiere Inhalt...' : 'Analysiere mit 4 KIs parallel...' })
+      .update({ report_progress: 10, report_status_detail: hasTemplate
+        ? (isEN ? 'Analyzing content...' : isFR ? 'Analyse du contenu...' : 'Analysiere Inhalt...')
+        : (isEN ? 'Analyzing with 4 AIs in parallel...' : isFR ? 'Analyse avec 4 IAs en parallèle...' : 'Analysiere mit 4 KIs parallel...') })
       .eq('session_id', session_id);
 
     const providers = isEco ? ECO_REPORT_PROVIDERS : REPORT_PROVIDERS;
@@ -688,7 +774,7 @@ Danach folgt deine strukturierte Analyse.`;
 
     if (analyses.length === 0) {
       await supabase.from('conversation_outputs')
-        .update({ report_status: 'failed', report_progress: 100, report_status_detail: 'Keine AI-Provider verfügbar' })
+        .update({ report_status: 'failed', report_progress: 100, report_status_detail: isEN ? 'No AI providers available' : isFR ? 'Aucun fournisseur AI disponible' : 'Keine AI-Provider verfügbar' })
         .eq('session_id', session_id);
       return res.status(500).json({ error: 'No providers available' });
     }
@@ -699,7 +785,7 @@ Danach folgt deine strukturierte Analyse.`;
         report_progress: 70,
         report_status_detail: hasTemplate
           ? `Fülle Template mit ${analyses.length} Analysen...`
-          : `Erstelle Report aus ${analyses.length} Analysen...`,
+          : isEN ? `Creating report from ${analyses.length} analyses...` : isFR ? `Création du rapport à partir de ${analyses.length} analyses...` : `Erstelle Report aus ${analyses.length} Analysen...`,
       })
       .eq('session_id', session_id);
 

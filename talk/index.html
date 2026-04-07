@@ -2809,6 +2809,7 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
         session_id: sessionId,
         transcript_text: transcriptText,
         session_mode: selectedVoiceMode || null,
+        language: _uiLang || "en",
       }),
     }).catch(e => console.error("[report] generate fetch failed:", e?.message));
   } else {
@@ -5097,7 +5098,7 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
                 fetch("/api/ai/generate-report", {
                   method: "POST",
                   headers: { "Content-Type": "application/json", "Authorization": authHeader },
-                  body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch" }),
+                  body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch", language: _uiLang || "en" }),
                 }).catch(e => console.error("[report] bg generate fetch failed:", e?.message));
 
                 console.log(`[${runId}] [salespitch] bg report fired for ${sid} — Sophie keeps speaking`);
