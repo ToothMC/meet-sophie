@@ -3831,7 +3831,7 @@ ctaLive.addEventListener("click", async () => {
   startRecStatusUpdates();
   // No captureLocation() — avoid second permission dialog.
   // Meeting location only appears in report if explicitly said in transcript.
-  await transitionPhase("live");
+  await transitionPhase("live", "user_click");
 });
 ctaPost.addEventListener("click", async () => {
   // Guard: prevent accidental end within 15 seconds of going live
@@ -3847,10 +3847,10 @@ ctaPost.addEventListener("click", async () => {
       return;
     }
   }
-  await transitionPhase("post");
+  await transitionPhase("post", "user_click");
 });
 ctaClose.addEventListener("click", async () => {
-  await transitionPhase("closed");
+  await transitionPhase("closed", "user_click");
   // Navigate back to home after closing
   window.location.href = "/";
 });
