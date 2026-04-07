@@ -213,7 +213,10 @@
       "Bash(grep -r \"TABLE.*analytics\\\\|analytics_events\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.sql --include=*.ts)",
       "Bash(grep -r from.*analytics_events /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
       "Bash(xargs cat:*)",
-      "WebFetch(domain:plausible.io)"
+      "WebFetch(domain:plausible.io)",
+      "Bash(grep -A 30 \"meeting_segments\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -n \"finalize_billing\\\\|finalize-session\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(grep -A 50 \"meeting_segment_upsert\\\\|meeting_segment\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {

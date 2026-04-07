@@ -3810,7 +3810,22 @@ ctaLive.addEventListener("click", async () => {
   // Meeting location only appears in report if explicitly said in transcript.
   await transitionPhase("live");
 });
-ctaPost.addEventListener("click", async () => { await transitionPhase("post"); });
+ctaPost.addEventListener("click", async () => {
+  // Guard: prevent accidental end within 15 seconds of going live
+  const MIN_LIVE_SECONDS = 15;
+  if (liveStartTime) {
+    const elapsed = (Date.now() - liveStartTime) / 1000;
+    if (elapsed < MIN_LIVE_SECONDS) {
+      const remaining = Math.ceil(MIN_LIVE_SECONDS - elapsed);
+      const msg = lang === "de"
+        ? `Meeting läuft erst seit ${Math.floor(elapsed)}s — bitte warte noch ${remaining}s.`
+        : `Meeting has only been live for ${Math.floor(elapsed)}s — please wait ${remaining}s.`;
+      appendSystemMsg(msg);
+      return;
+    }
+  }
+  await transitionPhase("post");
+});
 ctaClose.addEventListener("click", async () => {
   await transitionPhase("closed");
   // Navigate back to home after closing
