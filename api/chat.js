@@ -961,6 +961,23 @@ async function handleMessage(req, res) {
   // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
 
+  // Experience Intelligence: first/second user input
+  if (turnNumber === 1) {
+    const delayMs = session.created_at ? Date.now() - new Date(session.created_at).getTime() : null;
+    supabase.from("analytics_events").insert({
+      event_name: "first_user_input",
+      user_id: user?.id || null,
+      session_id: session_id,
+      meta: { delay_from_session_start_ms: delayMs },
+    }).then(() => {}).catch(() => {});
+  } else if (turnNumber === 2) {
+    supabase.from("analytics_events").insert({
+      event_name: "second_user_input",
+      user_id: user?.id || null,
+      session_id: session_id,
+    }).then(() => {}).catch(() => {});
+  }
+
   // Brainstorm phase injection — injected as system message on every turn
   let brainstormPhaseInjection = null;
   if (session.brainstorm_config && session.created_at) {
