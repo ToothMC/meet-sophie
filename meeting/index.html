@@ -2614,7 +2614,7 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
       appendSystemMsg(lang === "de"
         ? "⚠️ Guthaben aufgebraucht — Meeting wird beendet."
         : "⚠️ No tokens remaining — ending meeting.");
-      transitionPhase("post");
+      transitionPhase("post", "transcribe_402_no_tokens");
       return;
     }
 
