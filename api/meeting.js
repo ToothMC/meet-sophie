@@ -344,6 +344,22 @@ async function handlePhase(req, res) {
     return res.status(400).json({ error: `Invalid transition: ${meeting.phase} → ${phase}`, allowed });
   }
 
+  // Guard: prevent ending a meeting within 15 seconds of going live
+  if (phase === "post" && meeting.phase === "live") {
+    const { data: fullMeeting } = await supabase
+      .from("meetings")
+      .select("started_at")
+      .eq("id", meeting_id)
+      .single();
+    if (fullMeeting?.started_at) {
+      const elapsedMs = Date.now() - new Date(fullMeeting.started_at).getTime();
+      if (elapsedMs < 15000) {
+        console.warn(`[meeting] Blocked premature post transition for ${meeting_id}: only ${elapsedMs}ms elapsed`);
+        return res.status(400).json({ error: "Meeting too short to end", elapsed_ms: elapsedMs });
+      }
+    }
+  }
+
   // Build update
   const update = { phase };
   if (phase === "live") update.started_at = new Date().toISOString();
