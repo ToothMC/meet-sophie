@@ -2463,16 +2463,49 @@ function showMeetingReport(html) {
   // Wire up report action buttons
   // PDF Export — opens print dialog (official protocol without transcript)
   $("reportPrintBtn").onclick = () => {
-    // Open clean HTML (no transcript) in new window for printing
-    // Cannot use iframe.print() due to sandbox restrictions
     const cleanHtml = getExportHtml();
-    const printWin = window.open("", "_blank");
-    if (!printWin) { alert(lang === "de" ? "Popup-Blocker aktiv — bitte erlauben." : "Popup blocked — please allow popups."); return; }
-    printWin.document.write(cleanHtml);
-    printWin.document.close();
-    printWin.onload = () => { printWin.focus(); printWin.print(); };
-    // Fallback if onload doesn't fire (already loaded)
-    setTimeout(() => { try { printWin.focus(); printWin.print(); } catch(_) {} }, 500);
+    const isMobilePrint = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobilePrint) {
+      // Mobile: window.open is blocked by iOS. Use hidden iframe for print.
+      let printFrame = document.getElementById("_printFrame");
+      if (!printFrame) {
+        printFrame = document.createElement("iframe");
+        printFrame.id = "_printFrame";
+        printFrame.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;";
+        document.body.appendChild(printFrame);
+      }
+      const doc = printFrame.contentDocument || printFrame.contentWindow.document;
+      doc.open();
+      doc.write(cleanHtml);
+      doc.close();
+      // Give browser time to render, then trigger print
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (_) {
+          // If iframe print also fails, fall back to HTML download
+          const blob = new Blob([cleanHtml], { type: "text/html;charset=utf-8" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `protokoll-${new Date().toISOString().slice(0,10)}.html`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          alert(lang === "de"
+            ? "PDF: Datei heruntergeladen — öffne sie und nutze Teilen → Drucken → Als PDF sichern."
+            : "PDF: File downloaded — open it and use Share → Print → Save as PDF.");
+        }
+      }, 600);
+    } else {
+      // Desktop: open in new window for print dialog
+      const printWin = window.open("", "_blank");
+      if (!printWin) { alert(lang === "de" ? "Popup-Blocker aktiv — bitte erlauben." : "Popup blocked — please allow popups."); return; }
+      printWin.document.write(cleanHtml);
+      printWin.document.close();
+      printWin.onload = () => { printWin.focus(); printWin.print(); };
+      setTimeout(() => { try { printWin.focus(); printWin.print(); } catch(_) {} }, 500);
+    }
   };
 
   // Download — respects toggle options
