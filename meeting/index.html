@@ -344,8 +344,9 @@ body{
   /* Upload area compact on mobile */
   .upload-area { padding:8px; margin-top:4px; }
   /* Report card full-bleed on mobile */
-  .report-card { margin:8px 0; padding:12px; border-radius:10px; }
-  #reportPreview { border:none !important; border-radius:0 !important; }
+  .report-card { margin:4px 0; padding:8px; border-radius:10px; }
+  #reportPreview { border:none !important; border-radius:0 !important; overflow-x:hidden !important; }
+  #reportDirect { padding:4px !important; overflow-x:hidden !important; }
   #reportFrame { min-height:300px; }
 }
 
@@ -2293,18 +2294,68 @@ function showMeetingReport(html) {
   reportActions.style.display = "block";
 
   if (isMobile) {
-    // Mobile: render directly in DOM — just set innerHTML, browser handles the rest
+    // Mobile: render directly in DOM with mobile-optimised CSS overlay
+    // The original HTML stays untouched for PDF/export (getExportHtml)
     reportFrame.style.display = "none";
     reportDirect.style.display = "block";
-    reportDirect.innerHTML = html;
-    // Override the outer container for mobile (meeting-protocol or first div with max-width)
-    const outerDiv = reportDirect.querySelector('.meeting-protocol') || reportDirect.querySelector('div[style*="max-width"]') || reportDirect.querySelector('div[style]');
-    if (outerDiv) {
-      outerDiv.style.maxWidth = "100%";
-      outerDiv.style.padding = "12px 0";
-      outerDiv.style.margin = "0";
-    }
-    console.log("[meeting-report] Mobile DOM render:", reportDirect.innerHTML.length, "chars, outerDiv found:", !!outerDiv);
+
+    // Inject mobile-override stylesheet BEFORE the report HTML
+    const mobileCSS = `<style id="sophie-mobile-report">
+      /* ── Mobile Report Override ── */
+      #reportDirect > div,
+      #reportDirect .meeting-protocol,
+      #reportDirect div[style*="max-width"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+      }
+      /* All nested containers fluid */
+      #reportDirect div[style] {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      /* Readable font sizes */
+      #reportDirect { font-size: 15px !important; line-height: 1.65 !important; }
+      #reportDirect h1 { font-size: 20px !important; line-height: 1.3 !important; }
+      #reportDirect h2 { font-size: 17px !important; line-height: 1.35 !important; }
+      #reportDirect h3 { font-size: 15px !important; line-height: 1.4 !important; }
+      #reportDirect p, #reportDirect li, #reportDirect td, #reportDirect th {
+        font-size: 14px !important; line-height: 1.6 !important;
+      }
+      /* Section spacing tighter */
+      #reportDirect div[style*="margin-bottom"] { margin-bottom: 16px !important; }
+      #reportDirect div[style*="padding"][style*="border"] {
+        padding: 12px !important; border-radius: 10px !important;
+      }
+      /* Tables responsive */
+      #reportDirect table {
+        width: 100% !important; font-size: 13px !important;
+        border-collapse: collapse !important;
+      }
+      #reportDirect td, #reportDirect th {
+        padding: 6px 8px !important; word-break: break-word !important;
+      }
+      /* Score bars (salespitch) — ensure they stay visible */
+      #reportDirect div[style*="background"][style*="height"] {
+        min-width: 0 !important;
+      }
+      /* Images responsive */
+      #reportDirect img { max-width: 100% !important; height: auto !important; }
+      /* Prevent horizontal overflow */
+      #reportDirect { overflow-x: hidden !important; word-wrap: break-word !important; }
+      #reportDirect pre, #reportDirect code {
+        white-space: pre-wrap !important; word-break: break-all !important;
+        font-size: 12px !important;
+      }
+      /* Header decorations — compact */
+      #reportDirect div[style*="text-align: center"] img,
+      #reportDirect div[style*="text-align:center"] img { max-height: 40px !important; }
+    </style>`;
+
+    reportDirect.innerHTML = mobileCSS + html;
+    console.log("[meeting-report] Mobile DOM render:", html.length, "chars (mobile CSS injected)");
   } else {
     // Desktop: iframe for A4 isolation
     reportDirect.style.display = "none";
