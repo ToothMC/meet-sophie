@@ -194,7 +194,10 @@
       "Bash(grep -r CREATE.*FUNCTION.*deduct_tokens /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/)",
       "Bash(grep -l \"deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*)",
       "Bash(grep -n \"rpc.*deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
-      "Bash(grep -E \"\\\\.\\(webmanifest|json|js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(webmanifest|json|js\\)$\")",
+      "Bash(grep -r \"generate-report\\\\|/api/ai/generate-report\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.jsx --include=*.ts --include=*.tsx --exclude-dir=node_modules --exclude-dir=.claude)",
+      "Bash(grep -r \"generate.report\\\\|generateReport\\\\|report_session_id\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=*.js --include=*.jsx --include=*.ts --include=*.tsx --exclude-dir=node_modules --exclude-dir=.claude)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f -name *.vue -o -name *.svelte)"
     ]
   },
   "hooks": {

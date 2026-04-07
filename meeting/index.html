@@ -542,6 +542,23 @@ sophieTabManager.init();
 // ---------------------------------------------------------------------------
 let currentUser = null;
 let accessToken = null;
+let _lastTokenRefresh = 0;
+
+// Refresh Supabase access token — safe to call frequently (throttled to 30s)
+async function refreshAccessToken() {
+  const now = Date.now();
+  if (now - _lastTokenRefresh < 30000) return; // max once per 30s
+  _lastTokenRefresh = now;
+  try {
+    let { data: { session: s } } = await supabase.auth.getSession();
+    // If token is expired or about to expire, force refresh
+    if (s?.expires_at && s.expires_at * 1000 - now < 120000) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed?.session) s = refreshed.session;
+    }
+    if (s?.access_token) accessToken = s.access_token;
+  } catch (_) {}
+}
 let meetingId = null;
 let meetingData = null;
 let chatMessages = []; // { role, content }
@@ -573,6 +590,7 @@ let speechTranscript = [];  // Array of strings — transcribed audio from meeti
 let liveSegmentIndex = 0;              // Monotonic segment counter
 let liveTranscriptChunks = {};         // segmentIndex → transcript text
 let consecutiveTranscribeErrors = 0;   // Track failures for UI warning
+let transcribeWarningShown = false;    // Show "interrupted" warning only once
 let analysisInterval = null;           // 10-min analysis timer
 let lastAnalyzedSegmentIndex = 0;      // Checkpoint for delta analysis
 let analysisInProgress = false;        // Client-side guard against double-analyze
@@ -755,6 +773,9 @@ function applyI18n() {
 // API helpers
 // ---------------------------------------------------------------------------
 async function api(action, body = null, method = "POST") {
+  // Always try fresh token — long meetings can outlive the initial accessToken
+  await refreshAccessToken();
+
   const opts = {
     method,
     headers: { "Content-Type": "application/json" },
@@ -1558,11 +1579,9 @@ async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
   const fullTranscript = backendTranscript || "";
 
   // Fire generate-report (don't await — poll instead)
+  await refreshAccessToken();
   const headers = { "Content-Type": "application/json" };
-  try {
-    const { data: { session: authSession } } = await supabase.auth.getSession();
-    if (authSession?.access_token) headers["Authorization"] = "Bearer " + authSession.access_token;
-  } catch (_) {}
+  if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
 
   fetch("/api/ai/generate-report", {
     method: "POST",
@@ -2025,11 +2044,8 @@ function _rotateSegment() {
 // ── Live Whisper Transcription (Hybrid Mode) ────────────────────────────
 async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
   try {
-    let authToken = accessToken;
-    try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (s?.access_token) authToken = s.access_token;
-    } catch (_) {}
+    await refreshAccessToken();
+    const authToken = accessToken;
 
     const ext = blob.type?.includes("mp4") ? "audio.mp4" : "audio.webm";
     const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
@@ -2072,6 +2088,7 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
       console.log(`[meeting-live] Seg ${segIdx}: "${text.slice(0, 80)}..."`);
     }
     consecutiveTranscribeErrors = 0;
+    transcribeWarningShown = false;
   } catch (e) {
     console.error(`[meeting-live] Transcribe seg ${segIdx} failed:`, e.message);
     consecutiveTranscribeErrors++;
@@ -2079,7 +2096,8 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
     if (!isRetry) {
       // Retry once after 2s
       setTimeout(() => transcribeLiveSegment(blob, segIdx, true), 2000);
-    } else if (consecutiveTranscribeErrors >= 2) {
+    } else if (consecutiveTranscribeErrors >= 2 && !transcribeWarningShown) {
+      transcribeWarningShown = true;
       appendSystemMsg(lang === "de"
         ? "⚠️ Live-Transkription unterbrochen — Meeting läuft weiter"
         : "⚠️ Live transcription interrupted — meeting continues");
@@ -2209,11 +2227,8 @@ async function transcribeAudioSegments(segments) {
   const totalKB = valid.reduce((s, b) => s + b.size, 0) / 1024;
   appendSystemMsg(`🔄 Transkribiere ${valid.length} Segment${valid.length > 1 ? "e" : ""} (${totalKB.toFixed(0)}KB) via Whisper...`);
 
-  let authToken = accessToken;
-  try {
-    const { data: { session: s } } = await supabase.auth.getSession();
-    if (s?.access_token) authToken = s.access_token;
-  } catch (_) {}
+  await refreshAccessToken();
+  const authToken = accessToken;
 
   const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
   const results = [];
@@ -2274,11 +2289,8 @@ async function runHintAnalysis(isFinal = false) {
   analysisInProgress = true;
 
   try {
-    let authToken = accessToken;
-    try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (s?.access_token) authToken = s.access_token;
-    } catch (_) {}
+    await refreshAccessToken();
+    const authToken = accessToken;
 
     const resp = await fetch(`/api/meeting?action=analyze`, {
       method: "POST",
@@ -2346,11 +2358,8 @@ async function runHintAnalysis(isFinal = false) {
 // ── Balance Check before meeting start ──────────────────────────────────
 async function checkMeetingBalance() {
   try {
-    let authToken = accessToken;
-    try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (s?.access_token) authToken = s.access_token;
-    } catch (_) {}
+    await refreshAccessToken();
+    const authToken = accessToken;
 
     const resp = await fetch("/api/user?action=balance", {
       headers: { Authorization: `Bearer ${authToken}` },
@@ -2386,11 +2395,8 @@ async function flushPendingBurstMessages() {
   pendingBurstMessages = [];
 
   try {
-    let authToken = accessToken;
-    try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (s?.access_token) authToken = s.access_token;
-    } catch (_) {}
+    await refreshAccessToken();
+    const authToken = accessToken;
 
     const resp = await fetch("/api/meeting?action=burst_message", {
       method: "POST",
@@ -2420,11 +2426,8 @@ async function transcribeMeetingBatch(segments) {
   const valid = segments.filter(b => b && b.size >= 1000);
   if (valid.length === 0) return "";
 
-  let authToken = accessToken;
-  try {
-    const { data: { session: s } } = await supabase.auth.getSession();
-    if (s?.access_token) authToken = s.access_token;
-  } catch (_) {}
+  await refreshAccessToken();
+  const authToken = accessToken;
 
   const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
   const results = [];
@@ -2524,12 +2527,8 @@ async function connectSophieVoice() {
 
   try {
     // 1. Get fresh auth token
-    let authToken = accessToken;
-    try {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (authSession?.access_token) authToken = authSession.access_token;
-    } catch (_) {}
-
+    await refreshAccessToken();
+    const authToken = accessToken;
     if (!authToken) throw new Error("Not authenticated — please reload and login");
 
     // 2. Get session token from /api/session (same as Talk)
