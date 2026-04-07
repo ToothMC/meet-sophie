@@ -244,12 +244,14 @@ async function api(action, opts = {}) {
 
 async function loadAll() {
   try {
-    const [overview, costs, users, budgetStatus, alertsData] = await Promise.all([
+    const [overview, costs, users, budgetStatus, alertsData, errorsData, funnelData] = await Promise.all([
       api("overview"),
       api("costs"),
       api("users"),
       api("budget-status").catch(() => ({ providers: [], unacknowledgedAlerts: 0 })),
       api("alerts").catch(() => ({ alerts: [] })),
+      api("errors").catch(() => ({ groups: [] })),
+      api("funnel").catch(() => ({ steps: [] })),
     ]);
     loadingEl.classList.add("hidden");
     mainContent.classList.remove("hidden");
@@ -258,6 +260,8 @@ async function loadAll() {
     renderChart(costs.daily);
     renderProviders(overview.providers, costs.providers);
     renderBudgetMonitor(budgetStatus.providers, alertsData.alerts, budgetStatus.unacknowledgedAlerts);
+    renderFunnel(funnelData.steps);
+    renderErrors(errorsData.groups);
     usersData = users.users;
     renderUsers(usersData);
   } catch (e) {
