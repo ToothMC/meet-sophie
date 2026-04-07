@@ -2550,7 +2550,10 @@ function _startNewRecorder() {
 }
 
 function _rotateSegment() {
-  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+  if (!mediaRecorder || mediaRecorder.state !== "recording") {
+    console.warn(`[meeting-audio] _rotateSegment skipped: recorder state=${mediaRecorder?.state || "null"}`);
+    return;
+  }
   // If emergency flush already saved this segment, skip and reset
   if (_emergencyFlushed) {
     _emergencyFlushed = false;
