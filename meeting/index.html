@@ -552,7 +552,7 @@ async function refreshAccessToken() {
   try {
     let { data: { session: s } } = await supabase.auth.getSession();
     // If token is expired or about to expire, force refresh
-    if (s?.expires_at && s.expires_at * 1000 - now < 3600000) { // TEST: always refresh (normal: 120000)
+    if (s?.expires_at && s.expires_at * 1000 - now < 120000) {
       const { data: refreshed } = await supabase.auth.refreshSession();
       if (refreshed?.session) s = refreshed.session;
     }
