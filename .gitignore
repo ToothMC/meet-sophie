@@ -1,1 +1,6 @@
 .claude/worktrees/
+node_modules/
+
+# Generated blog output (rebuilt by build script)
+blog/index.html
+blog/*/index.html
