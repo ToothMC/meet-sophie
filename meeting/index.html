@@ -2303,54 +2303,53 @@ function showMeetingReport(html) {
     // Inject mobile-override stylesheet BEFORE the report HTML
     const mobileCSS = `<style id="sophie-mobile-report">
       /* ── Mobile Report Override ── */
-      #reportDirect > div,
-      #reportDirect .meeting-protocol,
-      #reportDirect div[style*="max-width"] {
+      /* Nuclear: ALL divs fluid, no fixed widths */
+      #reportDirect div {
         max-width: 100% !important;
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
+        width: auto !important;
         box-sizing: border-box !important;
       }
-      /* All nested containers fluid */
-      #reportDirect div[style] {
-        max-width: 100% !important;
-        box-sizing: border-box !important;
+      /* Top-level container: kill A4 padding/margin */
+      #reportDirect > div:first-of-type {
+        padding: 8px 12px !important;
+        margin: 0 !important;
+      }
+      /* Flex rows that create 2-column layouts → stack vertically */
+      #reportDirect div[style*="display: flex"],
+      #reportDirect div[style*="display:flex"] {
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      /* Grid layouts → single column */
+      #reportDirect div[style*="display: grid"],
+      #reportDirect div[style*="display:grid"] {
+        grid-template-columns: 1fr !important;
+      }
+      /* Kill all fixed paddings on section containers */
+      #reportDirect div[style*="padding: 40px"],
+      #reportDirect div[style*="padding:40px"],
+      #reportDirect div[style*="padding: 30px"],
+      #reportDirect div[style*="padding:30px"] {
+        padding: 8px 12px !important;
       }
       /* Readable font sizes */
-      #reportDirect { font-size: 15px !important; line-height: 1.65 !important; }
-      #reportDirect h1 { font-size: 20px !important; line-height: 1.3 !important; }
-      #reportDirect h2 { font-size: 17px !important; line-height: 1.35 !important; }
-      #reportDirect h3 { font-size: 15px !important; line-height: 1.4 !important; }
-      #reportDirect p, #reportDirect li, #reportDirect td, #reportDirect th {
+      #reportDirect { font-size: 15px !important; line-height: 1.65 !important; overflow-x: hidden !important; word-wrap: break-word !important; }
+      #reportDirect h1 { font-size: 22px !important; line-height: 1.3 !important; }
+      #reportDirect h2 { font-size: 18px !important; line-height: 1.35 !important; }
+      #reportDirect h3 { font-size: 16px !important; line-height: 1.4 !important; }
+      #reportDirect p, #reportDirect li, #reportDirect td, #reportDirect th, #reportDirect span {
         font-size: 14px !important; line-height: 1.6 !important;
       }
-      /* Section spacing tighter */
-      #reportDirect div[style*="margin-bottom"] { margin-bottom: 16px !important; }
-      #reportDirect div[style*="padding"][style*="border"] {
-        padding: 12px !important; border-radius: 10px !important;
-      }
       /* Tables responsive */
-      #reportDirect table {
-        width: 100% !important; font-size: 13px !important;
-        border-collapse: collapse !important;
-      }
-      #reportDirect td, #reportDirect th {
-        padding: 6px 8px !important; word-break: break-word !important;
-      }
-      /* Score bars (salespitch) — ensure they stay visible */
-      #reportDirect div[style*="background"][style*="height"] {
-        min-width: 0 !important;
-      }
+      #reportDirect table { width: 100% !important; font-size: 13px !important; border-collapse: collapse !important; }
+      #reportDirect td, #reportDirect th { padding: 6px 8px !important; word-break: break-word !important; }
+      /* Score bars (salespitch) */
+      #reportDirect div[style*="background"][style*="height"] { min-width: 0 !important; }
       /* Images responsive */
       #reportDirect img { max-width: 100% !important; height: auto !important; }
-      /* Prevent horizontal overflow */
-      #reportDirect { overflow-x: hidden !important; word-wrap: break-word !important; }
-      #reportDirect pre, #reportDirect code {
-        white-space: pre-wrap !important; word-break: break-all !important;
-        font-size: 12px !important;
-      }
-      /* Header decorations — compact */
+      /* Code blocks */
+      #reportDirect pre, #reportDirect code { white-space: pre-wrap !important; word-break: break-all !important; font-size: 12px !important; }
+      /* Decorative header images compact */
       #reportDirect div[style*="text-align: center"] img,
       #reportDirect div[style*="text-align:center"] img { max-height: 40px !important; }
     </style>`;
