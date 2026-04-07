@@ -193,7 +193,8 @@
       "Bash(grep -n \"gpt-4o-realtime\\\\|gpt-realtime\\\\|estimateRealtimeCost\\\\|voice_minute\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/**/*.js)",
       "Bash(grep -r CREATE.*FUNCTION.*deduct_tokens /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/)",
       "Bash(grep -l \"deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*)",
-      "Bash(grep -n \"rpc.*deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)"
+      "Bash(grep -n \"rpc.*deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
+      "Bash(grep -E \"\\\\.\\(webmanifest|json|js\\)$\")"
     ]
   },
   "hooks": {

@@ -1,3 +1,24 @@
+# ChatGPT Search (wichtigster KI-Crawler)
+User-agent: OAI-SearchBot
+Allow: /
+
+# OpenAI Training Bot (separat von Search)
+User-agent: GPTBot
+Allow: /
+
+# Google Search + AI Overviews
+User-agent: Googlebot
+Allow: /
+
+# Perplexity AI Search
+User-agent: PerplexityBot
+Allow: /
+
+# Anthropic Claude
+User-agent: ClaudeBot
+Allow: /
+
+# Standard
 User-agent: *
 Allow: /
 Disallow: /api/
