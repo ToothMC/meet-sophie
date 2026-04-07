@@ -174,44 +174,9 @@ async function handleCreate(req, res) {
   const sophieRole = ["prepare", "co-think", "document"].includes(body.sophie_role) ? body.sophie_role : "co-think";
   const title = (body.title || "").trim() || null;
   const parentMeetingId = (body.parent_meeting_id || "").trim() || null;
+  const idempotencyKey = (body.idempotency_key || "").trim() || null;
 
   const supabase = getSupabase();
-
-  // ── Paywall: Check subscription + remaining tokens ──
-  const [subRes, usageRes] = await Promise.all([
-    supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance").eq("user_id", user.id).maybeSingle(),
-  ]);
-  const sub = subRes.data;
-  const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
-  let usage = usageRes.data;
-
-  // Ensure user_usage row exists (new users won't have one yet)
-  if (!usage) {
-    const { data: created } = await supabase
-      .from("user_usage")
-      .upsert({
-        user_id: user.id,
-        free_tokens_total: 50, free_tokens_used: 0,
-        paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
-      }, { onConflict: "user_id" })
-      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
-      .single();
-    if (created) usage = created;
-  }
-
-  const freeRem = Math.max(0, (usage?.free_tokens_total ?? 50) - (usage?.free_tokens_used ?? 0));
-  const paidRem = Math.max(0, (usage?.paid_tokens_total ?? 0) - (usage?.paid_tokens_used ?? 0));
-  const topupRem = Math.max(0, usage?.topup_tokens_balance ?? 0);
-  const remaining = freeRem + paidRem + topupRem;
-
-  if (!active && remaining <= 0) {
-    return res.status(402).json({
-      error: "No active subscription",
-      reason: "no_active_subscription",
-      redirect: "/pricing",
-    });
-  }
 
   // Validate parent_meeting_id if provided
   if (parentMeetingId) {
@@ -224,25 +189,64 @@ async function handleCreate(req, res) {
     if (!parent) return res.status(400).json({ error: "Parent meeting not found" });
   }
 
-  const { data, error } = await supabase
-    .from("meetings")
-    .insert({
-      user_id: user.id,
-      title,
-      meeting_type: meetingType,
-      phase: "prep",
-      sophie_role: sophieRole,
-      parent_meeting_id: parentMeetingId,
-    })
-    .select("id, phase, meeting_type, sophie_role, parent_meeting_id, created_at")
-    .single();
+  // ── Token-gated meeting creation (atomic: check + deduct + create) ──
+  const { TOKEN_COSTS } = await import("../lib/billing-constants.js");
+  const tokenCost = TOKEN_COSTS.meeting_start || 1;
 
-  if (error) {
-    console.error("Meeting create error:", error);
+  const { data: result, error: rpcErr } = await supabase.rpc("meeting_create_with_token_gate", {
+    p_user_id: user.id,
+    p_meeting_type: meetingType,
+    p_sophie_role: sophieRole,
+    p_title: title,
+    p_parent_meeting_id: parentMeetingId,
+    p_token_cost: tokenCost,
+    p_idempotency_key: idempotencyKey,
+  });
+
+  if (rpcErr) {
+    // Parse insufficient tokens error from RPC
+    if (rpcErr.message?.includes("INSUFFICIENT_TOKENS")) {
+      const match = rpcErr.message.match(/remaining=(\d+),required=(\d+)/);
+      console.log(`[meeting-create] Token gate: insufficient (remaining=${match?.[1]}, required=${match?.[2]}) user=${user.id}`);
+      return res.status(402).json({
+        error: "Insufficient tokens",
+        reason: "insufficient_tokens",
+        remaining_tokens: match ? parseInt(match[1]) : 0,
+        required_tokens: tokenCost,
+        pricing_url: "/pricing",
+      });
+    }
+    console.error("Meeting create RPC error:", rpcErr);
     return res.status(500).json({ error: "Failed to create meeting" });
   }
 
-  return res.status(200).json({ ok: true, meeting: data });
+  const row = Array.isArray(result) ? result[0] : result;
+  if (!row?.meeting_id) {
+    console.error("Meeting create RPC returned no meeting_id:", result);
+    return res.status(500).json({ error: "Meeting creation failed" });
+  }
+
+  if (row.was_idempotent) {
+    console.log(`[meeting-create] Idempotent hit — returning existing meeting ${row.meeting_id} for user=${user.id}`);
+  } else {
+    console.log(`[meeting-create] Created ${row.meeting_id} — charged ${row.tokens_charged} token(s), remaining=${row.remaining_tokens}, user=${user.id}`);
+  }
+
+  return res.status(200).json({
+    ok: true,
+    meeting: {
+      id: row.meeting_id,
+      phase: row.phase,
+      meeting_type: row.meeting_type,
+      sophie_role: row.sophie_role,
+      created_at: row.created_at,
+    },
+    billing: {
+      tokens_charged: row.tokens_charged,
+      remaining_tokens: row.remaining_tokens,
+      was_idempotent: row.was_idempotent,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
