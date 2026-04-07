@@ -1529,9 +1529,16 @@ async function generateSummary() {
     const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
     // No renderSummary — report card IS the primary output now
 
-    if (data.report_session_id) {
+    if (data.no_content) {
+      // No content at all — hide progress bar, show clear message
+      $("summaryCard").classList.add("hidden");
+      appendMsg("assistant", lang === "de"
+        ? "Es wurden keine Inhalte erfasst — kein Report möglich. Starte ein neues Meeting mit Mikrofon oder Notizen."
+        : "No content was captured — report not possible. Start a new meeting with microphone or notes.");
+    } else if (data.report_session_id) {
       triggerAndPollMeetingReport(data.report_session_id, data.report_transcript || "");
     } else {
+      $("summaryCard").classList.add("hidden");
       appendSystemMsg("⚠️ Report-Session konnte nicht erstellt werden.");
     }
   } catch (e) {

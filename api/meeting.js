@@ -816,7 +816,7 @@ async function handleSummarize(req, res) {
   console.log(`[meeting-summarize] ${meeting_id}: notes=${notesStr.length}, context=${contextStr.length}, segments=${(segments||[]).length}, bursts=${(burstMsgs||[]).length}, voiceFallback=${voiceTranscript.length}, chatFallback=${chatStr.length}`);
 
   // If there's no content at all, return empty summary — do NOT hallucinate
-  if (!notesStr.trim() && !contextStr.trim() && !voiceTranscript.trim() && !chatStr.trim()) {
+  if (!notesStr.trim() && !contextStr.trim() && !voiceTranscript.trim() && !chatStr.trim() && !segmentTranscript.trim() && !burstTranscript.trim()) {
     const emptySummary = {
       meeting_id,
       short_summary: language === "de" ? "Keine Inhalte erfasst." : language === "fr" ? "Aucun contenu enregistré." : "No content captured.",
@@ -830,7 +830,7 @@ async function handleSummarize(req, res) {
       .upsert(emptySummary, { onConflict: "meeting_id" })
       .select()
       .single();
-    return res.status(200).json({ ok: true, summary: saved || emptySummary });
+    return res.status(200).json({ ok: true, summary: saved || emptySummary, no_content: true });
   }
 
   // -----------------------------------------------------------------------
