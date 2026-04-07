@@ -1414,6 +1414,37 @@ async function showSetup() {
   meetingArea.classList.remove("active");
   setupScreen.classList.remove("hidden");
 
+  // ── Token balance pre-check (UX only — backend is the truth) ──
+  try {
+    await refreshAccessToken();
+    const balanceRes = await fetch("/api/user?action=balance", {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    });
+    if (balanceRes.ok) {
+      const balanceData = await balanceRes.json();
+      const remaining = balanceData.remaining_tokens ?? balanceData.totalRemaining ?? 0;
+      const createBtn = $("createBtn");
+      if (remaining < 1) {
+        createBtn.disabled = true;
+        createBtn.style.opacity = "0.5";
+        const hint = document.createElement("div");
+        hint.style.cssText = "text-align:center;margin:8px 0;font-size:13px;color:#a09080;";
+        hint.innerHTML = lang === "de"
+          ? `⚠️ Kein Guthaben — <a href="/pricing" style="color:#4a7c59;text-decoration:underline;">Tokens aufladen</a>`
+          : lang === "fr"
+          ? `⚠️ Pas de crédits — <a href="/pricing" style="color:#4a7c59;text-decoration:underline;">Recharger</a>`
+          : `⚠️ No tokens — <a href="/pricing" style="color:#4a7c59;text-decoration:underline;">Get tokens</a>`;
+        createBtn.parentNode.insertBefore(hint, createBtn.nextSibling);
+      } else {
+        createBtn.disabled = false;
+        createBtn.style.opacity = "";
+      }
+    }
+  } catch (e) {
+    console.warn("[meeting-setup] Balance pre-check failed:", e.message);
+    // Non-critical — backend will gate if needed
+  }
+
   // Type pills click handler
   $("meetingTypePills").onclick = (e) => {
     const pill = e.target.closest(".type-pill");
