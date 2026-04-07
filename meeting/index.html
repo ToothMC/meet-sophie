@@ -1057,6 +1057,25 @@ document.addEventListener("visibilitychange", async () => {
       appendMsg("assistant", lang === "de"
         ? "⚠️ Die Aufnahme wurde unterbrochen (Bildschirm gesperrt). Ich starte sie neu."
         : "⚠️ Recording was interrupted (screen locked). Restarting.");
+
+      // Recover: transcribe any IDB segments that weren't sent during background
+      if (MeetingStore.isAvailable() && meetingId) {
+        try {
+          const idbSegments = await MeetingStore.getAllSegments(meetingId);
+          for (const seg of idbSegments) {
+            const idx = seg.segmentIndex;
+            // Skip if already transcribed (present in liveTranscriptChunks)
+            if (liveTranscriptChunks[idx]) continue;
+            if (seg.blob && seg.blob.size > 500) {
+              console.log(`[meeting-recovery] Retrying IDB segment ${idx} (${(seg.blob.size / 1024).toFixed(0)}KB)`);
+              transcribeLiveSegment(seg.blob, idx);
+            }
+          }
+        } catch (e) {
+          console.warn("[meeting-recovery] IDB segment recovery failed:", e.message);
+        }
+      }
+
       await startAudioRecording();
     }
   }
