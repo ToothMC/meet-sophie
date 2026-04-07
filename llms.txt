@@ -1,0 +1,41 @@
+# Meet Sophie
+
+> Sophie is a premium AI voice thinking partner for professionals. She helps users think through decisions, prepare for meetings, practice sales pitches, and brainstorm ideas — through natural voice conversation with memory and continuity.
+
+Meet Sophie is operated by M+M Hammer Ltd. (Cyprus). Sophie is not a chatbot — she is a voice-first AI companion designed for reflection, coaching, and structured thinking.
+
+## Core Product Pages
+- [Homepage](https://www.meet-sophie.com/): Overview of Sophie as an AI thinking partner — voice-first, with memory, continuity, and structured thinking modes
+- [Login / Start](https://www.meet-sophie.com/login): Start a free first conversation with Sophie or access your account
+
+## Thinking Modes
+- Sophie offers multiple thinking modes: Brainstorming (solo and team idea exploration), Meeting Mode (preparation, live support, post-meeting summary), and Sales Pitch coaching (practice, feedback, scoring)
+- All modes are voice-first with optional text messaging
+- Sophie generates a Thinking Report after each session summarizing key insights
+
+## Key Differentiators
+- Voice-first design: talking is faster and more natural than typing
+- Session memory: Sophie retains relevant context across conversations
+- Not therapy: Sophie is explicitly designed for thinking and decision-making, not emotional support or crisis intervention
+- Always clearly AI: Sophie never pretends to be human
+- Multi-AI backend: Sophie uses multiple AI providers for reliability, quality, and cost optimization
+
+## Use Cases
+- Exploring and developing new ideas before committing
+- Thinking through complex decisions with structured reflection
+- Preparing for important meetings or difficult conversations
+- Practicing and improving sales pitches with scored feedback
+- Founder and leadership sparring — pressure-testing ideas privately
+- Returning to ongoing thoughts with continuity across sessions
+
+## Pricing
+- Free: A first conversation to experience Sophie
+- Sophie Plus: Ongoing access with longer conversations and continuity
+
+## Trust & Safety
+- [Privacy Policy](https://www.meet-sophie.com/privacy.html)
+- [Terms of Service](https://www.meet-sophie.com/terms.html)
+- [Impressum](https://www.meet-sophie.com/impressum.html)
+- Sophie is always presented as AI, never as human
+- Built for thinking, not dependency or emotional attachment
+- Not a substitute for therapy or crisis support
