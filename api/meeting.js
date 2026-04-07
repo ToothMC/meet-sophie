@@ -323,7 +323,7 @@ async function handlePhase(req, res) {
   if (!user) return;
 
   const body = parseBody(req);
-  const { meeting_id, phase } = body;
+  const { meeting_id, phase, source } = body;
   if (!meeting_id || !phase) return res.status(400).json({ error: "Missing meeting_id or phase" });
 
   const supabase = getSupabase();
