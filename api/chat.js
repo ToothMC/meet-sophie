@@ -964,6 +964,7 @@ async function handleMessage(req, res) {
 
   // Call AI via Multi-AI Router
   const turnNumber = session.turn_count + 1;
+  const _msgStartTime = Date.now();
 
   // Experience Intelligence: first/second user input
   if (turnNumber === 1) {
