@@ -515,6 +515,218 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── MeetingStore: IndexedDB persistence for audio safety net ─────
+const MeetingStore = {
+  _db: null,
+  _available: false,
+
+  async open() {
+    try {
+      this._db = await new Promise((resolve, reject) => {
+        const req = indexedDB.open("sophie-meeting-store", 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("audio_segments")) {
+            db.createObjectStore("audio_segments", { keyPath: ["meetingId", "segmentIndex"] });
+          }
+          if (!db.objectStoreNames.contains("meeting_state")) {
+            db.createObjectStore("meeting_state", { keyPath: "meetingId" });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      this._available = true;
+    } catch (e) {
+      console.error("[MeetingStore] Failed to open IndexedDB:", e);
+      this._available = false;
+    }
+  },
+
+  isAvailable() { return this._available && this._db; },
+
+  async _tx(store, mode, fn) {
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction(store, mode);
+      const os = tx.objectStore(store);
+      const result = fn(os);
+      tx.oncomplete = () => resolve(result._result);
+      tx.onerror = () => reject(tx.error);
+      // Capture result from IDB request
+      if (result instanceof IDBRequest) {
+        result.onsuccess = () => { result._result = result.result; };
+      }
+    });
+  },
+
+  // ── Segments ──
+  async saveSegment(meetingId, segIdx, blob, mimeType) {
+    if (!this.isAvailable()) return;
+    const now = Date.now();
+    await this._tx("audio_segments", "readwrite", (os) =>
+      os.put({
+        meetingId, segmentIndex: segIdx, blob, mimeType,
+        transcriptStatus: "pending", transcriptText: null,
+        transcriptSource: null, errorInfo: null,
+        createdAt: now, updatedAt: now
+      })
+    );
+  },
+
+  async updateSegmentTranscript(meetingId, segIdx, status, source, text, errorInfo) {
+    if (!this.isAvailable()) return;
+    const existing = await this._tx("audio_segments", "readonly", (os) =>
+      os.get([meetingId, segIdx])
+    );
+    if (!existing) throw new Error(`Segment [${meetingId}, ${segIdx}] not found in IDB`);
+    await this._tx("audio_segments", "readwrite", (os) =>
+      os.put({
+        ...existing,
+        transcriptStatus: status,
+        transcriptSource: source,
+        transcriptText: text,
+        errorInfo: errorInfo || null,
+        updatedAt: Date.now()
+      })
+    );
+  },
+
+  async getAllSegments(meetingId) {
+    if (!this.isAvailable()) return [];
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction("audio_segments", "readonly");
+      const os = tx.objectStore("audio_segments");
+      const results = [];
+      const req = os.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          if (cursor.value.meetingId === meetingId) results.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(results.sort((a, b) => a.segmentIndex - b.segmentIndex));
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getUntranscribed(meetingId) {
+    const all = await this.getAllSegments(meetingId);
+    return all.filter(s => s.transcriptStatus !== "live_ok" && s.transcriptStatus !== "batch_ok");
+  },
+
+  async getPersistedCount(meetingId) {
+    return (await this.getAllSegments(meetingId)).length;
+  },
+
+  // ── State ──
+  async saveState(meetingId, partial) {
+    if (!this.isAvailable()) return;
+    const existing = await this._tx("meeting_state", "readonly", (os) => os.get(meetingId));
+    const now = Date.now();
+    await this._tx("meeting_state", "readwrite", (os) =>
+      os.put({
+        meetingId,
+        meetingTitle: null, meetingStatus: "recording",
+        reportStatus: "idle", reportSessionId: null,
+        lastErrorCode: null, lastErrorMessage: null,
+        totalSegmentCount: 0, localPersistenceAvailable: true,
+        schemaVersion: 1, createdAt: now, updatedAt: now,
+        ...(existing || {}),
+        ...partial,
+        meetingId, // force key
+        updatedAt: now
+      })
+    );
+  },
+
+  async getState(meetingId) {
+    if (!this.isAvailable()) return null;
+    return this._tx("meeting_state", "readonly", (os) => os.get(meetingId));
+  },
+
+  async getIncompleteMeetings() {
+    if (!this.isAvailable()) return [];
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction("meeting_state", "readonly");
+      const os = tx.objectStore("meeting_state");
+      const results = [];
+      const req = os.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          if (cursor.value.meetingStatus !== "report_completed") results.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(results.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  // ── Cleanup ──
+  async cleanup(meetingId) {
+    if (!this.isAvailable()) return;
+    // Delete all segments
+    const segs = await this.getAllSegments(meetingId);
+    await Promise.all(segs.map(s =>
+      this._tx("audio_segments", "readwrite", (os) => os.delete([meetingId, s.segmentIndex]))
+    ));
+    // Delete state
+    await this._tx("meeting_state", "readwrite", (os) => os.delete(meetingId));
+  },
+
+  async cleanupCompleted(maxAgeDays = 1) {
+    if (!this.isAvailable()) return;
+    const cutoff = Date.now() - maxAgeDays * 86400000;
+    const incomplete = await this.getIncompleteMeetings();
+    // Get ALL states, filter completed + old
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction("meeting_state", "readonly");
+      const os = tx.objectStore("meeting_state");
+      const toClean = [];
+      const req = os.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          const v = cursor.value;
+          if (v.meetingStatus === "report_completed" && (v.updatedAt || v.createdAt || 0) < cutoff) {
+            toClean.push(v.meetingId);
+          }
+          cursor.continue();
+        } else {
+          Promise.all(toClean.map(id => this.cleanup(id))).then(resolve).catch(reject);
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async cleanupAll(maxAgeDays = 7) {
+    if (!this.isAvailable()) return;
+    const cutoff = Date.now() - maxAgeDays * 86400000;
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction("meeting_state", "readonly");
+      const os = tx.objectStore("meeting_state");
+      const toClean = [];
+      const req = os.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          const v = cursor.value;
+          if ((v.createdAt || 0) < cutoff) toClean.push(v.meetingId);
+          cursor.continue();
+        } else {
+          Promise.all(toClean.map(id => this.cleanup(id))).then(resolve).catch(reject);
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }
+};
+
 // ── Tab Manager: single-primary + realtime lock ──────────────────
 const sophieTabManager = new SophieTabManager({
   onBecamePrimary: () => {},
@@ -598,6 +810,217 @@ let pendingBurstMessages = [];         // Queue for burst message persistence
 let isMeetingBurstActive = false;      // True while Sophie voice burst is live
 const LIVE_SEGMENT_MS = 60_000;        // 60s segments for live transcription
 const ANALYSIS_INTERVAL_MS = 10 * 60 * 1000; // 10 min hint analysis
+
+// ── Audio Safety Net State ──
+let _emergencyFlushed = false;         // Guard against double-persist on pagehide
+let _reportRetryLock = false;          // Lock against concurrent retry
+let localPersistenceAvailable = false; // Whether IDB is usable
+let currentMeetingStatus = null;       // Tracks meetingStatus for retry logic
+let meetingPhase = null;               // "setup"|"live"|"post"|"closed"
+
+// ── Audio Safety Net: Core Functions ─────────────────────────────
+
+// Canonical transcript merge — the SINGLE source of truth for report input
+async function buildCanonicalTranscript(mid) {
+  // 1. Server: meeting_segments (RLS-protected, read-only)
+  const serverMap = new Map();
+  try {
+    await refreshAccessToken();
+    const { data: serverSegs } = await supabase
+      .from("meeting_segments")
+      .select("segment_index, transcript")
+      .eq("meeting_id", mid)
+      .order("segment_index");
+    for (const s of (serverSegs || [])) {
+      if (s.transcript?.trim()) serverMap.set(s.segment_index, { text: s.transcript, source: "server" });
+    }
+  } catch (e) {
+    console.warn("[canonical] Server segments unavailable:", e.message);
+  }
+
+  // 2. Local IDB: segments with successful transcript
+  const localMap = new Map();
+  try {
+    const localSegs = await MeetingStore.getAllSegments(mid);
+    for (const s of localSegs) {
+      if (s.transcriptText?.trim() && (s.transcriptStatus === "live_ok" || s.transcriptStatus === "batch_ok")) {
+        localMap.set(s.segmentIndex, { text: s.transcriptText, source: "local" });
+      }
+    }
+  } catch (_) {}
+
+  // 3. In-memory: liveTranscriptChunks (volatile, last resort)
+  const memoryMap = new Map();
+  for (const [idx, text] of Object.entries(liveTranscriptChunks || {})) {
+    if (text?.trim()) memoryMap.set(Number(idx), { text, source: "memory" });
+  }
+
+  // 4. Merge: Server > IDB > Memory, sorted by index
+  const allIndices = new Set([...serverMap.keys(), ...localMap.keys(), ...memoryMap.keys()]);
+  const merged = [...allIndices].sort((a, b) => a - b).map(idx => {
+    const entry = serverMap.get(idx) || localMap.get(idx) || memoryMap.get(idx);
+    return { index: idx, text: entry.text, source: entry.source };
+  });
+
+  // 5. Sophie voice as separate block
+  const voiceText = (voiceTranscript || [])
+    .filter(m => m.text?.trim())
+    .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.text}`)
+    .join("\n");
+
+  return { segments: merged, voiceText };
+}
+
+// Format canonical transcript for API consumption
+async function prepareSummaryInput(mid) {
+  const { segments, voiceText } = await buildCanonicalTranscript(mid);
+  const parts = [];
+  const segText = segments.map(s => s.text).join(" ");
+  if (segText.trim()) parts.push(`[Aufnahme — Gesprächsinhalt]\n${segText}`);
+  if (voiceText.trim()) parts.push(`[Sophie Voice Session]\n${voiceText}`);
+  return { transcriptText: parts.join("\n\n---\n\n"), hasContent: parts.length > 0 };
+}
+
+// Emergency flush: persist current recording segment on pagehide
+async function emergencyFlush() {
+  if (_emergencyFlushed || !MeetingStore.isAvailable()) return;
+  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+  _emergencyFlushed = true;
+
+  try {
+    const flushBlob = await new Promise((resolve) => {
+      let resolved = false;
+      const handler = (e) => {
+        if (resolved) return;
+        resolved = true;
+        mediaRecorder.removeEventListener("dataavailable", handler);
+        const allChunks = [...audioChunks];
+        if (e.data?.size > 0) allChunks.push(e.data);
+        resolve(allChunks.length > 0 ? new Blob(allChunks, { type: currentMimeType }) : null);
+      };
+      mediaRecorder.addEventListener("dataavailable", handler);
+      try { mediaRecorder.requestData(); } catch (_) {}
+      // Timeout fallback — pagehide has limited time
+      setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        mediaRecorder.removeEventListener("dataavailable", handler);
+        resolve(audioChunks.length > 0 ? new Blob(audioChunks, { type: currentMimeType }) : null);
+      }, 500);
+    });
+
+    if (flushBlob && flushBlob.size > 500) {
+      await MeetingStore.saveSegment(meetingId, liveSegmentIndex, flushBlob, currentMimeType);
+      console.log(`[meeting-store] Emergency flush: seg ${liveSegmentIndex}, ${(flushBlob.size/1024).toFixed(0)}KB`);
+    }
+  } catch (e) {
+    console.error("[meeting-store] Emergency flush failed:", e);
+  }
+}
+
+// pagehide = primary, visibilitychange = fallback
+window.addEventListener("pagehide", () => { if (meetingPhase === "live") emergencyFlush(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && meetingPhase === "live") emergencyFlush();
+});
+
+// ── Online/Offline Events ──
+window.addEventListener("offline", () => {
+  if (meetingPhase === "live" || meetingPhase === "post") {
+    if (typeof appendSystemMsg === "function") {
+      const lang = localStorage.getItem("preferredLanguage") || "en";
+      appendSystemMsg(lang === "de"
+        ? "⚠️ Keine Internetverbindung — Aufnahme läuft lokal weiter"
+        : "⚠️ No internet — recording continues locally");
+    }
+  }
+});
+
+window.addEventListener("online", () => {
+  if (canAutoRetry()) {
+    const lang = localStorage.getItem("preferredLanguage") || "en";
+    if (typeof appendSystemMsg === "function") {
+      appendSystemMsg(lang === "de"
+        ? "🔄 Verbindung wiederhergestellt — versuche Report erneut..."
+        : "🔄 Connection restored — retrying report...");
+    }
+    retryReportGeneration();
+  }
+});
+
+function canAutoRetry() {
+  return !_reportRetryLock
+    && navigator.onLine
+    && currentMeetingStatus === "report_failed_recoverable"
+    && meetingPhase !== "live";
+}
+
+// Retry report generation — fills gaps, builds canonical transcript, generates report
+async function retryReportGeneration() {
+  if (_reportRetryLock) return;
+  _reportRetryLock = true;
+  const retryBtn = document.getElementById("retryReportBtn");
+  if (retryBtn) retryBtn.disabled = true;
+
+  try {
+    await MeetingStore.saveState(meetingId, { meetingStatus: "generating_report", reportStatus: "running" });
+    currentMeetingStatus = "generating_report";
+
+    // 1. Fill transcript gaps with batch transcription
+    const gaps = await MeetingStore.getUntranscribed(meetingId);
+    if (gaps.length > 0) {
+      const batchResults = await transcribeMeetingBatchPerSegment(
+        gaps.map(g => ({ blob: g.blob, segmentIndex: g.segmentIndex, mimeType: g.mimeType }))
+      );
+      for (const r of batchResults) {
+        try {
+          await MeetingStore.updateSegmentTranscript(
+            meetingId, r.segmentIndex,
+            r.text ? "batch_ok" : "batch_failed", "batch", r.text || null,
+            r.error ? { code: "BATCH_FAIL", message: r.error, attempts: 1, lastAttemptAt: Date.now() } : null
+          );
+        } catch (_) {}
+      }
+    }
+
+    // 2. Build canonical transcript
+    const input = await prepareSummaryInput(meetingId);
+    if (!input.hasContent) {
+      const lang = localStorage.getItem("preferredLanguage") || "en";
+      appendSystemMsg(lang === "de" ? "⚠️ Kein Inhalt verfügbar — Report nicht möglich" : "⚠️ No content available");
+      await MeetingStore.saveState(meetingId, { meetingStatus: "report_failed_recoverable", reportStatus: "failed" });
+      currentMeetingStatus = "report_failed_recoverable";
+      return;
+    }
+
+    // 3. Generate report (reuse session if available)
+    const state = await MeetingStore.getState(meetingId);
+    let sessionId = state?.reportSessionId;
+    if (!sessionId) {
+      sessionId = await requestSummaryGeneration(meetingId, input.transcriptText);
+      await MeetingStore.saveState(meetingId, { reportSessionId: sessionId });
+    }
+
+    // Show progress card
+    const card = document.getElementById("summaryCard");
+    if (card) card.classList.remove("hidden");
+
+    await triggerAndPollMeetingReport(sessionId, input.transcriptText);
+
+  } catch (e) {
+    console.error("[meeting-retry] Failed:", e);
+    await MeetingStore.saveState(meetingId, {
+      meetingStatus: "report_failed_recoverable", reportStatus: "failed",
+      lastErrorMessage: e.message
+    });
+    currentMeetingStatus = "report_failed_recoverable";
+    const lang = localStorage.getItem("preferredLanguage") || "en";
+    appendSystemMsg(lang === "de" ? `⚠️ Retry fehlgeschlagen: ${e.message}` : `⚠️ Retry failed: ${e.message}`);
+    if (retryBtn) retryBtn.disabled = false;
+  } finally {
+    _reportRetryLock = false;
+  }
+}
 
 // Wake Lock (prevent screen lock during live meeting on mobile)
 let wakeLockSentinel = null;
@@ -817,6 +1240,29 @@ async function initAuth() {
   currentUser = session.user;
   accessToken = session.access_token;
 
+  // Initialize MeetingStore (IndexedDB for audio safety net)
+  await MeetingStore.open();
+  localPersistenceAvailable = MeetingStore.isAvailable();
+  if (!localPersistenceAvailable) {
+    console.warn("[meeting] IndexedDB unavailable — no local audio backup");
+  }
+  // Cleanup old IDB data
+  try {
+    await MeetingStore.cleanupCompleted(1);
+    await MeetingStore.cleanupAll(7);
+  } catch (_) {}
+
+  // Initial offline check
+  if (!navigator.onLine) {
+    setTimeout(() => {
+      if (typeof appendSystemMsg === "function") {
+        appendSystemMsg(lang === "de"
+          ? "⚠️ Offline — Aufnahme möglich, Report erst bei Verbindung"
+          : "⚠️ Offline — recording possible, report requires connection");
+      }
+    }, 1000);
+  }
+
   // Check URL for meeting_id and test mode
   const params = new URLSearchParams(window.location.search);
   const urlMeetingId = params.get("id");
@@ -827,6 +1273,21 @@ async function initAuth() {
   if (urlMeetingId) {
     await loadMeeting(urlMeetingId);
   } else {
+    // Check for incomplete meetings (global recovery)
+    if (MeetingStore.isAvailable()) {
+      try {
+        const incomplete = await MeetingStore.getIncompleteMeetings();
+        const recoverable = incomplete.filter(m => m.meetingStatus === "report_failed_recoverable");
+        if (recoverable.length > 0) {
+          const latest = recoverable[0]; // sorted by updatedAt desc
+          const date = new Date(latest.updatedAt || latest.createdAt).toLocaleString();
+          const title = latest.meetingTitle || "Meeting";
+          appendSystemMsg(lang === "de"
+            ? `📋 Unvollständiges Meeting gefunden: "${title}" (${date}) — <a href="/meeting/?id=${latest.meetingId}" style="color:#4a7c59;text-decoration:underline;">Report jetzt erstellen</a>`
+            : `📋 Incomplete meeting found: "${title}" (${date}) — <a href="/meeting/?id=${latest.meetingId}" style="color:#4a7c59;text-decoration:underline;">Create report now</a>`);
+        }
+      } catch (_) {}
+    }
     // Go directly to setup (new meeting) — history accessible via back button
     await showSetup();
   }
@@ -1060,6 +1521,28 @@ async function loadMeeting(id) {
       appendSystemMsg(`[${n.note_type.toUpperCase()}] ${n.content}`);
     });
 
+    // Initialize IDB state for this meeting
+    meetingPhase = meetingData.phase;
+    if (MeetingStore.isAvailable()) {
+      try {
+        await MeetingStore.saveState(id, {
+          meetingTitle: meetingData.title || meetingData.meeting_type,
+          meetingStatus: meetingData.phase === "live" ? "recording" : (meetingData.phase === "post" ? "stopped" : "report_completed"),
+          localPersistenceAvailable: true
+        });
+      } catch (_) {}
+
+      // Recovery check: if IDB says report_failed_recoverable, offer retry
+      const idbState = await MeetingStore.getState(id).catch(() => null);
+      if (idbState?.meetingStatus === "report_failed_recoverable") {
+        currentMeetingStatus = "report_failed_recoverable";
+        appendSystemMsg(lang === "de"
+          ? "📋 Report-Erstellung wurde unterbrochen — du kannst es erneut versuchen."
+          : "📋 Report generation was interrupted — you can retry.");
+        showRetryButton();
+      }
+    }
+
     // Show report card if meeting has a report session
     if (meetingData.session_id && (meetingData.phase === "post" || meetingData.phase === "closed")) {
       meetingReportSessionId = meetingData.session_id;
@@ -1164,6 +1647,14 @@ async function transitionPhase(newPhase) {
     // Update UI IMMEDIATELY — don't wait for API
     updatePhaseUI(newPhase);
     meetingData = { ...meetingData, phase: newPhase };
+    meetingPhase = newPhase;
+
+    // Track phase in IDB
+    const statusMap = { live: "recording", post: "stopped", closed: "report_completed" };
+    if (statusMap[newPhase]) {
+      currentMeetingStatus = statusMap[newPhase];
+      MeetingStore.saveState(meetingId, { meetingStatus: statusMap[newPhase] }).catch(() => {});
+    }
 
     // API call in background (non-blocking for UI)
     api("phase", { meeting_id: meetingId, phase: newPhase })
@@ -1514,30 +2005,26 @@ async function saveContext() {
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
+// Request summary generation — API call, returns session ID
+async function requestSummaryGeneration(mid, transcriptText) {
+  const data = await api("summarize", { meeting_id: mid, chat_transcript: transcriptText });
+  if (data.no_content) throw new Error("no_content");
+  if (!data.report_session_id) throw new Error("no_session");
+  return data.report_session_id;
+}
+
 async function generateSummary() {
   appendSystemMsg(lang === "de" ? "Erstelle Zusammenfassung..." : "Generating summary...");
 
   try {
-    // Step 1: Speech recognition transcript (already text, no upload needed)
-    const localText = speechTranscript.join(" ");
+    await MeetingStore.saveState(meetingId, { meetingStatus: "generating_report", reportStatus: "running" });
+    currentMeetingStatus = "generating_report";
 
-    // Step 2: Sophie voice transcript (from DataChannel during unmute)
-    const voiceText = voiceTranscript
-      .filter(m => m.text && m.text.trim())
-      .map(m => `[${m.role === "user" ? "User" : "Sophie"}] ${m.text}`)
-      .join("\n");
+    // Build canonical transcript (Server > IDB > Memory merge)
+    const input = await prepareSummaryInput(meetingId);
+    console.log(`[meeting] Canonical transcript built: ${input.transcriptText.length} chars`);
 
-    // Step 3: Combine all sources — local audio + Sophie voice + chat fallback
-    const allParts = [];
-    if (localText.trim()) allParts.push(`[Aufnahme — Gesprächsinhalt]\n${localText}`);
-    if (voiceText.trim()) allParts.push(`[Sophie Voice Session]\n${voiceText}`);
-
-    let transcriptToSend = allParts.join("\n\n---\n\n");
-    console.log(`[meeting] TRANSCRIPT TO SEND:\n${transcriptToSend}`);
-    appendSystemMsg(`📊 ${speechTranscript.length} Audio-Segmente, ${voiceTranscript.length} Voice-Nachrichten`);
-
-    // Even without transcript, call summarize — backend can use notes/context
-    if (!transcriptToSend.trim()) {
+    if (!input.hasContent) {
       console.log("[meeting] No transcript — will try report from notes/context");
       appendMsg("assistant", lang === "de"
         ? "Kein Audio-Transcript verfügbar — ich versuche den Report aus Notizen und Kontext zu erstellen."
@@ -1547,26 +2034,38 @@ async function generateSummary() {
     // Show report card with progress bar immediately
     $("summaryCard").classList.remove("hidden");
 
-    const data = await api("summarize", { meeting_id: meetingId, chat_transcript: transcriptToSend });
-    // No renderSummary — report card IS the primary output now
-
-    if (data.no_content) {
-      // No content at all — hide progress bar, show clear message
-      $("summaryCard").classList.add("hidden");
-      appendMsg("assistant", lang === "de"
-        ? "Es wurden keine Inhalte erfasst — kein Report möglich. Starte ein neues Meeting mit Mikrofon oder Notizen."
-        : "No content was captured — report not possible. Start a new meeting with microphone or notes.");
-    } else if (data.report_session_id) {
-      triggerAndPollMeetingReport(data.report_session_id, data.report_transcript || "");
-    } else {
-      $("summaryCard").classList.add("hidden");
-      appendSystemMsg("⚠️ Report-Session konnte nicht erstellt werden.");
+    let sessionId;
+    try {
+      sessionId = await requestSummaryGeneration(meetingId, input.transcriptText);
+    } catch (e) {
+      if (e.message === "no_content") {
+        $("summaryCard").classList.add("hidden");
+        appendMsg("assistant", lang === "de"
+          ? "Es wurden keine Inhalte erfasst — kein Report möglich. Starte ein neues Meeting mit Mikrofon oder Notizen."
+          : "No content was captured — report not possible. Start a new meeting with microphone or notes.");
+        await MeetingStore.saveState(meetingId, { meetingStatus: "report_completed", reportStatus: "done" });
+        currentMeetingStatus = "report_completed";
+        return;
+      }
+      throw e;
     }
+
+    // Save session ID for potential retry
+    await MeetingStore.saveState(meetingId, { reportSessionId: sessionId });
+    triggerAndPollMeetingReport(sessionId, input.transcriptText);
+
   } catch (e) {
     console.error("[meeting] generateSummary error:", e);
+    await MeetingStore.saveState(meetingId, {
+      meetingStatus: "report_failed_recoverable", reportStatus: "failed",
+      lastErrorMessage: e.message
+    });
+    currentMeetingStatus = "report_failed_recoverable";
     appendMsg("assistant", lang === "de"
       ? `⚠️ Fehler beim Erstellen des Reports: ${e.message}`
       : `⚠️ Error creating report: ${e.message}`);
+    // Show retry button
+    showRetryButton();
   }
 }
 
@@ -1645,6 +2144,12 @@ async function pollMeetingReport(sessionId) {
 
         meetingReportHtml = data.report_html;
         showMeetingReport(data.report_html);
+
+        // Mark completed + cleanup IDB (in own error-tolerant function)
+        MeetingStore.saveState(meetingId, { meetingStatus: "report_completed", reportStatus: "done" })
+          .then(() => { currentMeetingStatus = "report_completed"; })
+          .catch(() => {});
+        tryCleanup(meetingId);
         return;
       }
 
@@ -1653,6 +2158,9 @@ async function pollMeetingReport(sessionId) {
         reportProgressLabel.textContent = data.detail || (isDE ? "Bitte erneut versuchen." : "Please try again.");
         reportProgressBar.style.background = "#ef4444";
         reportProgressBar.style.width = "100%";
+        MeetingStore.saveState(meetingId, { meetingStatus: "report_failed_recoverable", reportStatus: "failed" }).catch(() => {});
+        currentMeetingStatus = "report_failed_recoverable";
+        showRetryButton();
         return;
       }
     } catch (e) {
@@ -1662,6 +2170,9 @@ async function pollMeetingReport(sessionId) {
 
   reportTitle.textContent = isDE ? "Zeitüberschreitung" : "Timeout";
   reportProgressLabel.textContent = isDE ? "Protokoll konnte nicht erstellt werden." : "Report generation timed out.";
+  MeetingStore.saveState(meetingId, { meetingStatus: "report_failed_recoverable", reportStatus: "failed" }).catch(() => {});
+  currentMeetingStatus = "report_failed_recoverable";
+  showRetryButton();
 }
 
 function showMeetingReport(html) {
@@ -2021,6 +2532,13 @@ function _startNewRecorder() {
 
 function _rotateSegment() {
   if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+  // If emergency flush already saved this segment, skip and reset
+  if (_emergencyFlushed) {
+    _emergencyFlushed = false;
+    liveSegmentIndex++;
+    _startNewRecorder();
+    return;
+  }
   const recorder = mediaRecorder;
   const segIdx = liveSegmentIndex++;
   recorder.onstop = () => {
@@ -2029,6 +2547,12 @@ function _rotateSegment() {
       if (blob.size > 500) {
         audioSegments.push(blob);
         console.log(`[meeting-audio] Segment ${segIdx} saved: ${(blob.size / 1024).toFixed(0)}KB`);
+        // Persist to IDB (awaited for confirmation, non-blocking for recorder)
+        if (MeetingStore.isAvailable() && meetingId) {
+          MeetingStore.saveSegment(meetingId, segIdx, blob, recorder.mimeType || currentMimeType)
+            .then(() => MeetingStore.saveState(meetingId, { totalSegmentCount: segIdx + 1 }))
+            .catch(e => console.error("[meeting-store] Segment persist failed:", e));
+        }
         // Live transcription: send to Whisper with meeting_id
         if (meetingId && meetingData?.phase === "live") {
           transcribeLiveSegment(blob, segIdx);
@@ -2086,6 +2610,8 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
     if (text) {
       liveTranscriptChunks[segIdx] = text;
       console.log(`[meeting-live] Seg ${segIdx}: "${text.slice(0, 80)}..."`);
+      // Track in IDB
+      MeetingStore.updateSegmentTranscript(meetingId, segIdx, "live_ok", "live", text, null).catch(() => {});
     }
     consecutiveTranscribeErrors = 0;
     transcribeWarningShown = false;
@@ -2096,12 +2622,44 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
     if (!isRetry) {
       // Retry once after 2s
       setTimeout(() => transcribeLiveSegment(blob, segIdx, true), 2000);
-    } else if (consecutiveTranscribeErrors >= 2 && !transcribeWarningShown) {
-      transcribeWarningShown = true;
-      appendSystemMsg(lang === "de"
-        ? "⚠️ Live-Transkription unterbrochen — Meeting läuft weiter"
-        : "⚠️ Live transcription interrupted — meeting continues");
+    } else {
+      // Mark as failed in IDB
+      MeetingStore.updateSegmentTranscript(meetingId, segIdx, "live_failed", null, null,
+        { code: "TRANSCRIBE_FAIL", message: e.message, attempts: 2, lastAttemptAt: Date.now() }
+      ).catch(() => {});
+      if (consecutiveTranscribeErrors >= 2 && !transcribeWarningShown) {
+        transcribeWarningShown = true;
+        appendSystemMsg(lang === "de"
+          ? "⚠️ Live-Transkription unterbrochen — Meeting läuft weiter"
+          : "⚠️ Live transcription interrupted — meeting continues");
+      }
     }
+  }
+}
+
+// Show retry button in chat when report generation fails
+function showRetryButton() {
+  const isDE = lang === "de";
+  const existing = document.getElementById("retryReportBtn");
+  if (existing) { existing.disabled = false; return; }
+  const btn = document.createElement("button");
+  btn.id = "retryReportBtn";
+  btn.textContent = isDE ? "Report erneut erstellen" : "Retry report";
+  btn.style.cssText = "margin:8px 0;padding:10px 20px;background:#4a7c59;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;";
+  btn.onclick = () => retryReportGeneration();
+  const chatEl = document.getElementById("chat");
+  if (chatEl) chatEl.appendChild(btn);
+}
+
+// Cleanup IDB after stable report success — error-tolerant, never blocks UI
+async function tryCleanup(mid) {
+  try {
+    const state = await MeetingStore.getState(mid);
+    if (state?.meetingStatus !== "report_completed") return;
+    await MeetingStore.cleanup(mid);
+    console.log("[meeting-store] Cleanup done for", mid);
+  } catch (e) {
+    console.error("[meeting-store] Cleanup failed (will retry next load):", e);
   }
 }
 
@@ -2420,23 +2978,22 @@ async function flushPendingBurstMessages() {
   }
 }
 
-// Batch-transcribe audio segments via MEETING billing path (not old voice-rate)
-async function transcribeMeetingBatch(segments) {
-  if (!segments || segments.length === 0) return "";
-  const valid = segments.filter(b => b && b.size >= 1000);
-  if (valid.length === 0) return "";
-
+// Batch-transcribe: returns per-segment results for IDB tracking
+async function transcribeMeetingBatchPerSegment(segmentItems) {
+  if (!segmentItems || segmentItems.length === 0) return [];
   await refreshAccessToken();
   const authToken = accessToken;
-
   const langCode = lang === "de" ? "de" : lang === "fr" ? "fr" : "en";
   const results = [];
 
-  for (let i = 0; i < valid.length; i++) {
-    const blob = valid[i];
+  for (const item of segmentItems) {
+    const blob = item.blob;
+    if (!blob || blob.size < 1000) {
+      results.push({ segmentIndex: item.segmentIndex, text: null, error: "too small" });
+      continue;
+    }
     const ext = blob.type?.includes("mp4") ? "audio.mp4" : "audio.webm";
-    // Use segment indices starting after live segments
-    const segIdx = liveSegmentIndex + i;
+    const segIdx = item.segmentIndex;
     try {
       const formData = new FormData();
       formData.append("file", blob, ext);
@@ -2449,14 +3006,40 @@ async function transcribeMeetingBatch(segments) {
         headers: { Authorization: `Bearer ${authToken}` },
         body: formData,
       });
-      if (!resp.ok) continue;
+      if (!resp.ok) {
+        results.push({ segmentIndex: segIdx, text: null, error: `HTTP ${resp.status}` });
+        continue;
+      }
       const data = await resp.json();
-      if (data.text) results.push(data.text);
+      results.push({ segmentIndex: segIdx, text: data.text || null, error: null });
     } catch (e) {
-      console.error(`[meeting-batch] Segment ${i} failed:`, e.message);
+      console.error(`[meeting-batch] Segment ${segIdx} failed:`, e.message);
+      results.push({ segmentIndex: segIdx, text: null, error: e.message });
     }
   }
-  return results.join(" ");
+  return results;
+}
+
+// Legacy wrapper — used by transitionPhase post-flow
+async function transcribeMeetingBatch(segments) {
+  if (!segments || segments.length === 0) return "";
+  const valid = segments.filter(b => b && b.size >= 1000);
+  if (valid.length === 0) return "";
+  const items = valid.map((blob, i) => ({
+    blob, segmentIndex: liveSegmentIndex + i, mimeType: blob.type
+  }));
+  const results = await transcribeMeetingBatchPerSegment(items);
+  // Track in IDB
+  for (const r of results) {
+    try {
+      await MeetingStore.updateSegmentTranscript(
+        meetingId, r.segmentIndex,
+        r.text ? "batch_ok" : "batch_failed", "batch", r.text || null,
+        r.error ? { code: "BATCH_FAIL", message: r.error, attempts: 1, lastAttemptAt: Date.now() } : null
+      );
+    } catch (_) {}
+  }
+  return results.filter(r => r.text).map(r => r.text).join(" ");
 }
 
 function cleanupMicStream() {
