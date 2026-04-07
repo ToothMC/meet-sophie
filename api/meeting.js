@@ -377,6 +377,9 @@ async function handlePhase(req, res) {
     return res.status(500).json({ error: "Failed to update phase" });
   }
 
+  // Log phase transition for debugging
+  console.log(`[meeting-phase] ${meeting_id}: ${meeting.phase} → ${phase} | source=${source || "unknown"} | user=${user.id}`);
+
   return res.status(200).json({ ok: true, meeting: data });
 }
 
