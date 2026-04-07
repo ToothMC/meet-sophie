@@ -1677,7 +1677,7 @@ async function transitionPhase(newPhase, source = "unknown") {
     }
 
     // API call in background (non-blocking for UI)
-    api("phase", { meeting_id: meetingId, phase: newPhase })
+    api("phase", { meeting_id: meetingId, phase: newPhase, source })
       .then(data => { meetingData = { ...meetingData, ...data.meeting }; })
       .catch(e => console.error("[meeting] phase API error:", e.message));
     // Phase info messages
