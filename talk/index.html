@@ -5745,14 +5745,21 @@ async function startVoice(){
     _startVoiceLock = false;
     console.error(err);
     cleanupLiveSession();
-    track("talk_start_failed", { error: err?.name || "unknown", message: err?.message?.slice(0, 100) || "" });
-    window.location.href = "/";
 
-    track("talk_start_exception", {
-      message: String(err?.message || err),
+    // Mic permission denied — show overlay instead of silent redirect
+    if (err?.name === "NotAllowedError" || err?.name === "NotFoundError") {
+      track("mic_permission_denied");
+      showMicDeniedOverlay();
+      return;
+    }
+
+    track("talk_start_failed", { error: err?.name || "unknown", message: err?.message?.slice(0, 100) || "" });
+    track("voice_connect_failed", {
+      error: err?.name || "unknown",
+      message: String(err?.message || err).slice(0, 180),
       http_status: status || null,
-      preview: String(err?.bodyPreview || "").slice(0, 180)
     });
+    window.location.href = "/";
   }
 }
 
