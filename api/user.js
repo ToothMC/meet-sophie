@@ -143,6 +143,62 @@ async function handleUsage(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Action: balance — Read-only token balance check (GET)
+// ---------------------------------------------------------------------------
+
+async function handleBalance(req, res) {
+  try {
+    if (req.method !== "GET") {
+      res.setHeader("Allow", "GET");
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
+
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
+
+    const { data: usage } = await supabase
+      .from("user_usage")
+      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!usage) {
+      return res.status(200).json({
+        remaining_tokens: DEFAULT_FREE_TOKENS,
+        totalRemaining: DEFAULT_FREE_TOKENS,
+        usage: { free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0, paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0 },
+      });
+    }
+
+    const freeRem = Math.max(0, (usage.free_tokens_total || 0) - (usage.free_tokens_used || 0));
+    const paidRem = Math.max(0, (usage.paid_tokens_total || 0) - (usage.paid_tokens_used || 0));
+    const topupRem = Math.max(0, usage.topup_tokens_balance || 0);
+    const totalRemaining = freeRem + paidRem + topupRem;
+
+    return res.status(200).json({
+      remaining_tokens: totalRemaining,
+      totalRemaining,
+      usage: {
+        free_tokens_total: usage.free_tokens_total,
+        free_tokens_used: usage.free_tokens_used,
+        paid_tokens_total: usage.paid_tokens_total,
+        paid_tokens_used: usage.paid_tokens_used,
+        topup_tokens_balance: usage.topup_tokens_balance,
+      },
+    });
+  } catch (e) {
+    console.error("user/balance error:", e);
+    return res.status(500).json({ error: "Balance check failed" });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
@@ -151,7 +207,8 @@ export default async function handler(req, res) {
   switch (action) {
     case "track": return handleTrack(req, res);
     case "usage": return handleUsage(req, res);
+    case "balance": return handleBalance(req, res);
     default:
-      return res.status(400).json({ error: "Missing or invalid ?action. Use: track | usage" });
+      return res.status(400).json({ error: "Missing or invalid ?action. Use: track | usage | balance" });
   }
 }
