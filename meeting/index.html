@@ -1047,16 +1047,42 @@ function releaseWakeLock() {
   }
 }
 
+// ── Mic stream health check ──────────────────────────────────────────────
+function isMicStreamDead() {
+  if (!sharedMicStream || !sharedMicStream.active) return true;
+  const tracks = sharedMicStream.getAudioTracks();
+  if (tracks.length === 0) return true;
+  return tracks.every(t => t.readyState === "ended" || !t.enabled);
+}
+
+let _lastVisibilityHidden = null; // Track when page went hidden
+
 // Re-acquire wake lock when page becomes visible again (iOS releases on tab switch)
 document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "hidden" && meetingData?.phase === "live") {
+    _lastVisibilityHidden = Date.now();
+    console.log("[meeting] Page hidden — recording may be interrupted");
+  }
+
   if (document.visibilityState === "visible" && meetingData?.phase === "live") {
+    const hiddenDuration = _lastVisibilityHidden ? Math.round((Date.now() - _lastVisibilityHidden) / 1000) : 0;
+    _lastVisibilityHidden = null;
+    console.log(`[meeting] Page visible again after ${hiddenDuration}s hidden`);
+
     await requestWakeLock();
-    // Check if MediaRecorder died while backgrounded
-    if (mediaRecorder && mediaRecorder.state === "inactive") {
-      console.warn("[meeting] MediaRecorder died while backgrounded — restarting");
-      appendMsg("assistant", lang === "de"
-        ? "⚠️ Die Aufnahme wurde unterbrochen (Bildschirm gesperrt). Ich starte sie neu."
-        : "⚠️ Recording was interrupted (screen locked). Restarting.");
+
+    // Check BOTH recorder state AND mic stream health
+    // iOS: recorder may still say "recording" but mic stream tracks are "ended" → zombie state
+    const recorderDead = !mediaRecorder || mediaRecorder.state === "inactive";
+    const micDead = isMicStreamDead();
+
+    if (recorderDead || micDead) {
+      console.warn(`[meeting] Recording needs restart — recorder=${mediaRecorder?.state || "null"}, micDead=${micDead}, hiddenFor=${hiddenDuration}s`);
+
+      const msg = lang === "de"
+        ? `⚠️ Aufnahme wurde unterbrochen (${hiddenDuration > 0 ? hiddenDuration + "s im Hintergrund" : "Bildschirm gesperrt"}). Starte neu...`
+        : `⚠️ Recording interrupted (${hiddenDuration > 0 ? hiddenDuration + "s in background" : "screen locked"}). Restarting...`;
+      appendMsg("assistant", msg);
 
       // Recover: transcribe any IDB segments that weren't sent during background
       if (MeetingStore.isAvailable() && meetingId) {
@@ -1064,7 +1090,6 @@ document.addEventListener("visibilitychange", async () => {
           const idbSegments = await MeetingStore.getAllSegments(meetingId);
           for (const seg of idbSegments) {
             const idx = seg.segmentIndex;
-            // Skip if already transcribed (present in liveTranscriptChunks)
             if (liveTranscriptChunks[idx]) continue;
             if (seg.blob && seg.blob.size > 500) {
               console.log(`[meeting-recovery] Retrying IDB segment ${idx} (${(seg.blob.size / 1024).toFixed(0)}KB)`);
@@ -1076,7 +1101,18 @@ document.addEventListener("visibilitychange", async () => {
         }
       }
 
+      // Kill old dead stream before starting new one
+      if (sharedMicStream) {
+        sharedMicStream.getTracks().forEach(t => t.stop());
+        sharedMicStream = null;
+      }
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        try { mediaRecorder.stop(); } catch (_) {}
+      }
+      mediaRecorder = null;
+
       await startAudioRecording();
+      consecutiveTranscribeErrors = 0; // Reset error counter after fresh start
     }
   }
 });
@@ -2449,11 +2485,13 @@ function startRecStatusUpdates() {
   el.style.display = "block";
 
   recStatusInterval = setInterval(() => {
-    const srActive = mediaRecorder && mediaRecorder.state === "recording" ? "aktiv" : mediaRecorder?.state || "aus";
-    const segments = speechTranscript.length;
+    const recState = mediaRecorder ? mediaRecorder.state : "null";
+    const micAlive = sharedMicStream?.active && sharedMicStream.getAudioTracks().some(t => t.readyState === "live");
+    const srActive = recState === "recording" && micAlive ? "aktiv" : recState === "recording" ? "⚠️ zombie" : recState;
+    const segments = typeof liveSegmentIndex !== "undefined" ? liveSegmentIndex : 0;
+    const transcribed = Object.keys(liveTranscriptChunks || {}).length;
     const voiceMsgs = voiceTranscript.length;
-    const dcState = sophieVoiceDc ? sophieVoiceDc.readyState : "—";
-    txt.textContent = `Sprache: ${srActive} | Segmente: ${segments} | Sophie: ${voiceMsgs} msgs | DC: ${dcState}`;
+    txt.textContent = `Rec: ${srActive} | Mic: ${micAlive ? "✓" : "✗"} | Seg: ${segments} (${transcribed} OK) | Sophie: ${voiceMsgs}`;
   }, 2000);
 }
 
@@ -2477,7 +2515,34 @@ const AUDIO_SEGMENT_MS = LIVE_SEGMENT_MS; // 60s for live hybrid mode (was 120s)
 
 async function startAudioRecording() {
   try {
+    // Clean up any dead streams/recorders before starting fresh
+    if (mediaRecorder) {
+      try { if (mediaRecorder.state === "recording") mediaRecorder.stop(); } catch (_) {}
+      mediaRecorder = null;
+    }
+    if (sharedMicStream) {
+      sharedMicStream.getTracks().forEach(t => t.stop());
+      sharedMicStream = null;
+    }
+    if (segmentRotationTimer) {
+      clearInterval(segmentRotationTimer);
+      segmentRotationTimer = null;
+    }
+
     sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Monitor track health — if OS kills the mic, we know immediately
+    sharedMicStream.getAudioTracks().forEach(track => {
+      track.addEventListener("ended", () => {
+        console.warn("[meeting-audio] Mic track ended unexpectedly — stream revoked by OS");
+        if (meetingData?.phase === "live") {
+          appendSystemMsg(lang === "de"
+            ? "⚠️ Mikrofon wurde vom System getrennt — bei Rückkehr wird die Aufnahme neu gestartet."
+            : "⚠️ Microphone disconnected by system — recording will restart when you return.");
+        }
+      });
+    });
+
     appendSystemMsg("✅ Mikrofon aktiv — Aufnahme läuft");
 
     // iOS Safari: prefer mp4, desktop: prefer webm/opus
@@ -2553,6 +2618,11 @@ function _startNewRecorder() {
 function _rotateSegment() {
   if (!mediaRecorder || mediaRecorder.state !== "recording") {
     console.warn(`[meeting-audio] _rotateSegment skipped: recorder state=${mediaRecorder?.state || "null"}`);
+    return;
+  }
+  // Detect zombie recorder: "recording" but mic stream is dead → blobs will be empty
+  if (typeof isMicStreamDead === "function" && isMicStreamDead()) {
+    console.warn("[meeting-audio] _rotateSegment: recorder alive but mic stream dead — skipping (waiting for visibility recovery)");
     return;
   }
   // If emergency flush already saved this segment, skip and reset
