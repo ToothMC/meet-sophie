@@ -2408,9 +2408,11 @@ function showMeetingReport(html) {
   }
 
   // Helper: filter report sections based on toggle options (DOM-based, reliable)
+  // Always works on the ORIGINAL report HTML (meetingReportHtml), not the re-rendered version
   function getExportHtml() {
+    const originalHtml = meetingReportHtml || html;
     const tmp = document.createElement("div");
-    tmp.innerHTML = html;
+    tmp.innerHTML = originalHtml;
 
     // Transcript: remove if off, show if on
     const transcriptEl = tmp.querySelector('[data-section="full-transcript"]');
@@ -2422,14 +2424,26 @@ function showMeetingReport(html) {
       }
     }
 
-    // Lean Check: remove if off
-    const leanEl = tmp.querySelector('[data-section="lean-check"]');
-    if (leanEl && !$("optLeanCheck")?.checked) {
-      leanEl.remove();
+    // Lean Check: try data-section first, then find by text content
+    if (!$("optLeanCheck")?.checked) {
+      let leanEl = tmp.querySelector('[data-section="lean-check"]');
+      if (!leanEl) {
+        // AI doesn't always add data-section — find by label text
+        tmp.querySelectorAll("div").forEach(el => {
+          const t = el.textContent.trim().toLowerCase();
+          if (t.startsWith("lean check") && el.children.length <= 2) leanEl = el.closest("div[style]") || el;
+        });
+        // Walk up to find the section container (parent with margin-bottom)
+        if (leanEl) {
+          const parent = leanEl.parentElement;
+          if (parent && parent !== tmp && /margin-bottom/.test(parent.getAttribute("style") || "")) leanEl = parent;
+        }
+      }
+      if (leanEl) leanEl.remove();
     }
 
     // Re-assemble: extract style block + body content
-    const styleMatch = html.match(/<style[^>]*>[\s\S]*?<\/style>/i);
+    const styleMatch = originalHtml.match(/<style[^>]*>[\s\S]*?<\/style>/i);
     const styleBlock = styleMatch ? styleMatch[0] : "";
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styleBlock}</head><body>${tmp.innerHTML}</body></html>`;
   }
@@ -2504,10 +2518,38 @@ function showMeetingReport(html) {
   };
 
   // "Aktualisieren" — re-render report with current toggle options (no AI call)
+  // Always re-filter from the ORIGINAL HTML, then re-render
   $("reportRegenerateBtn").onclick = () => {
-    const exportHtml = getExportHtml();
-    showMeetingReport(exportHtml);
-    // Reset button to inactive
+    const originalHtml = meetingReportHtml || html;
+    const tmp = document.createElement("div");
+    tmp.innerHTML = originalHtml;
+
+    // Apply toggle filters on original
+    const transcriptEl = tmp.querySelector('[data-section="full-transcript"]');
+    if (transcriptEl) {
+      if (!$("optTranscript")?.checked) transcriptEl.remove();
+      else transcriptEl.style.display = "";
+    }
+    if (!$("optLeanCheck")?.checked) {
+      let leanEl = tmp.querySelector('[data-section="lean-check"]');
+      if (!leanEl) {
+        tmp.querySelectorAll("div").forEach(el => {
+          const t = el.textContent.trim().toLowerCase();
+          if (t.startsWith("lean check") && el.children.length <= 2) leanEl = el.closest("div[style]") || el;
+        });
+        if (leanEl) {
+          const parent = leanEl.parentElement;
+          if (parent && parent !== tmp && /margin-bottom/.test(parent.getAttribute("style") || "")) leanEl = parent;
+        }
+      }
+      if (leanEl) leanEl.remove();
+    }
+
+    // Extract style block from original for the re-render
+    const styleMatch = originalHtml.match(/<style[^>]*>[\s\S]*?<\/style>/i);
+    const filtered = (styleMatch ? styleMatch[0] : "") + tmp.innerHTML;
+    showMeetingReport(filtered);
+
     $("reportRegenerateBtn").disabled = true;
     $("reportRegenerateBtn").style.opacity = ".4";
   };
