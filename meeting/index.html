@@ -1656,12 +1656,13 @@ function stopLiveTimer() {
 // ---------------------------------------------------------------------------
 // Phase transitions
 // ---------------------------------------------------------------------------
-async function transitionPhase(newPhase) {
+async function transitionPhase(newPhase, source = "unknown") {
   // Guard: skip if already in this phase
   if (meetingData?.phase === newPhase) {
     console.log(`[meeting] skipping transition — already in phase "${newPhase}"`);
     return;
   }
+  console.log(`[meeting] transitionPhase: ${meetingData?.phase} → ${newPhase} (source: ${source})`);
   try {
     // Update UI IMMEDIATELY — don't wait for API
     updatePhaseUI(newPhase);
