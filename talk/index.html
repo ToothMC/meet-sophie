@@ -5273,8 +5273,60 @@ function setupDataChannelLogging() {
   };
 }
 
-function track(name, payload = {}) {
-  console.log("[track]", name, payload);
+// ── Experience Intelligence: Event Tracking ─────────────────
+const _anonId = (() => {
+  let id = localStorage.getItem("sophie_anon_id");
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem("sophie_anon_id", id); }
+  return id;
+})();
+
+function track(name, meta = {}) {
+  const payload = {
+    event_id: crypto.randomUUID(),
+    event_name: name,
+    meta,
+    anonymous_id: _anonId,
+    page: location.pathname,
+    device: window.innerWidth < 768 ? "mobile" : "desktop",
+  };
+  supabase.auth.getSession().then(({ data }) => {
+    const headers = { "Content-Type": "application/json" };
+    if (data?.session?.access_token) headers["Authorization"] = `Bearer ${data.session.access_token}`;
+    fetch("/api/track", { method: "POST", headers, body: JSON.stringify(payload) }).catch(() => {});
+  }).catch(() => {
+    fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+  });
+}
+
+function trackBeacon(name, meta = {}) {
+  const payload = {
+    event_id: crypto.randomUUID(),
+    event_name: name,
+    meta,
+    anonymous_id: _anonId,
+    page: location.pathname,
+    device: window.innerWidth < 768 ? "mobile" : "desktop",
+  };
+  navigator.sendBeacon("/api/track", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+}
+
+// Talk page viewed
+track("talk_page_viewed", { referrer_page: document.referrer || null });
+
+function showMicDeniedOverlay() {
+  const existing = document.querySelector(".mic-denied-overlay");
+  if (existing) return;
+  const overlay = document.createElement("div");
+  overlay.className = "mic-denied-overlay";
+  overlay.innerHTML = `<div class="mic-denied-card">
+    <h3>Mikrofon-Zugriff abgelehnt</h3>
+    <p>Sophie braucht dein Mikrofon fuer Voice-Gespraeche. Du kannst stattdessen per Chat starten.</p>
+    <div class="mic-denied-actions">
+      <button class="mic-denied-chat" onclick="window.location.href='/?mode=chat'">Per Chat starten</button>
+      <button class="mic-denied-retry" onclick="document.querySelector('.mic-denied-overlay')?.remove();startVoice()">Erneut versuchen</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
 }
 
 async function reportUsage(seconds) {
