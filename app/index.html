@@ -1282,15 +1282,13 @@
             if (isMeeting) {
               location.href = `/meeting/?id=${entry.id}`;
             } else if (isChat) {
-              sessionStorage.setItem("sophie_resume_chat", entry.id);
+              chatSessionId = entry.id;
               openChat();
-              // Load messages from DB
               (async () => {
                 try {
                   const { data: msgs } = await supabase.from("conversation_messages")
                     .select("role, text").eq("session_id", entry.id).order("seq", { ascending: true });
                   if (msgs?.length) {
-                    chatSessionId = entry.id;
                     msgs.forEach(m => {
                       appendBubble(m.role === "user" ? "user" : "sophie", m.text);
                       chatHistory.push({ role: m.role === "user" ? "user" : "assistant", content: m.text });
