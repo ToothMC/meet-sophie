@@ -70,8 +70,8 @@
       top: 0;
       z-index: 40;
       backdrop-filter: blur(16px);
-      background: rgba(249,247,245,.85);
-      border-bottom: 1px solid var(--line);
+      background: rgba(235,233,230,.75);
+      border-bottom: 1px solid rgba(0,0,0,.06);
     }
     .app-header .wrap {
       display: flex;
@@ -439,9 +439,10 @@
       left: 0;
       right: 0;
       z-index: 50;
-      background: rgba(249,247,245,.9);
+      background: rgba(235,233,230,.75);
       backdrop-filter: blur(16px);
-      border-top: 1px solid var(--line);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(0,0,0,.06);
       padding-bottom: env(safe-area-inset-bottom);
     }
     .bottom-nav-inner {
@@ -749,10 +750,10 @@
         <span class="tab-icon">&#9679;</span>
         <span data-i18n="nav_home">Start</span>
       </button>
-      <button class="nav-tab disabled" data-tab="reports">
+      <a class="nav-tab" href="/app/reports/" data-tab="reports">
         <span class="tab-icon">&#9776;</span>
         <span data-i18n="nav_reports">Reports</span>
-      </button>
+      </a>
     </div>
   </nav>
 
@@ -1205,22 +1206,50 @@
         greetingEl.textContent = t("greeting")("");
       }
 
-      // Last session
+      // Last session — check both user_sessions AND meetings, show newest
       const sessionCard = document.getElementById("sessionCard");
       try {
-        const { data: lastSession } = await supabase
-          .from("user_sessions")
-          .select("id, title, session_mode, status, started_at, short_summary")
-          .eq("user_id", userId)
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (lastSession) {
-          const mode = lastSession.session_mode || "talk";
+        const [sessRes, meetRes] = await Promise.all([
+          supabase.from("user_sessions")
+            .select("id, title, session_mode, status, started_at")
+            .eq("user_id", userId)
+            .order("started_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase.from("meetings")
+            .select("id, title, meeting_type, phase, started_at")
+            .eq("user_id", userId)
+            .order("started_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        const lastTalk = sessRes.data;
+        const lastMeeting = meetRes.data;
+
+        // Pick the most recent
+        let entry = null;
+        let isMeeting = false;
+        if (lastTalk && lastMeeting) {
+          if (new Date(lastMeeting.started_at) > new Date(lastTalk.started_at)) {
+            entry = lastMeeting; isMeeting = true;
+          } else {
+            entry = lastTalk;
+          }
+        } else if (lastMeeting) {
+          entry = lastMeeting; isMeeting = true;
+        } else if (lastTalk) {
+          entry = lastTalk;
+        }
+
+        if (entry) {
+          const mode = isMeeting ? "meeting" : (entry.session_mode || "talk");
           const modeLabel = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || mode;
           const icon = MODE_ICONS[mode] || MODE_ICONS.talk;
-          const title = lastSession.title || modeLabel;
-          const continuable = ["paused", "draft", "open"].includes(lastSession.status);
+          const title = entry.title || modeLabel;
+          const continuable = isMeeting
+            ? ["prep", "live", "post"].includes(entry.phase)
+            : ["paused", "draft", "open"].includes(entry.status);
 
           sessionCard.classList.remove("empty");
           sessionCard.innerHTML = `
@@ -1232,14 +1261,14 @@
               <p class="session-title">${escHtml(title)}</p>
             </div>
             ${continuable
-              ? `<button class="session-cta" data-session-id="${lastSession.id}">${t("continue")}</button>`
-              : `<button class="session-cta" data-session-id="${lastSession.id}">${t("reopen")}</button>`
+              ? `<button class="session-cta" data-session-id="${entry.id}">${t("continue")}</button>`
+              : `<button class="session-cta" data-session-id="${entry.id}">${t("reopen")}</button>`
             }
           `;
 
           sessionCard.querySelector(".session-cta")?.addEventListener("click", () => {
-            if (mode === "meeting") {
-              location.href = "/meeting/";
+            if (isMeeting) {
+              location.href = `/meeting/?id=${entry.id}`;
             } else {
               if (mode && mode !== "talk") localStorage.setItem("sophie_session_mode", mode);
               location.href = "/talk";
@@ -1264,6 +1293,31 @@
     }
 
     loadAndRender();
+
+    // ── Resume chat from Reports page ────────────
+    const resumeChatId = sessionStorage.getItem("sophie_resume_chat");
+    if (resumeChatId) {
+      sessionStorage.removeItem("sophie_resume_chat");
+      chatSessionId = resumeChatId;
+      openChat();
+      // Load existing messages
+      (async () => {
+        try {
+          const { data: msgs } = await supabase
+            .from("conversation_messages")
+            .select("role, text, created_at")
+            .eq("session_id", resumeChatId)
+            .order("seq", { ascending: true });
+          if (msgs && msgs.length > 0) {
+            msgs.forEach(m => {
+              const role = m.role === "user" ? "user" : "sophie";
+              appendBubble(role, m.text);
+              chatHistory.push({ role: m.role === "user" ? "user" : "assistant", content: m.text });
+            });
+          }
+        } catch {}
+      })();
+    }
   </script>
 </body>
 </html>
