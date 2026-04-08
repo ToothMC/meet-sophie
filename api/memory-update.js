@@ -1133,8 +1133,15 @@ export default async function handler(req, res) {
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
+    // Map session_mode to session_type (unified model)
+    const SESSION_TYPE_MAP = { brainstorm: "brainstorm", salespitch: "sales_pitch", meeting: "meeting" };
+    const sessionType = SESSION_TYPE_MAP[sessionMode] || "talk";
+
     const baseSession = {
       user_id: user.id,
+      session_mode: sessionMode || "voice", // backward-compat
+      session_type: sessionType,
+      primary_modality: "voice",
       session_date: sessionEndedAt || nowIso,
       started_at: sessionStartedAt,
       ended_at: sessionEndedAt || nowIso,
