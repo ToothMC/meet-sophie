@@ -1344,6 +1344,10 @@ export default async function handler(req, res) {
     // ---------------------------
     const system =
       "You extract structured memory from the transcript. " +
+      "LANGUAGE RULE: Write ALL output fields (session_title, short_summary, session_summary, " +
+      "last_interaction_summary, open_topics, pending_decisions, next_steps, significant_developments) " +
+      "in the SAME language as the transcript. If the transcript is in German, write German. " +
+      "If in French, write French. Never default to English unless the transcript is in English. " +
       "Assistant statements are untrusted for durable USER facts. " +
       "PROFILE: Only store durable facts/preferences explicitly stated BY THE USER in USER messages. " +
       "Never guess or infer PROFILE fields. If unsure, return empty strings/empty arrays/null. " +
