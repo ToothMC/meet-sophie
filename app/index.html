@@ -581,7 +581,6 @@
     const session = await getSessionOrNull(supabase);
     if (!session) {
       location.replace("/");
-      // stop execution
       throw new Error("no session");
     }
     // Auth confirmed — show the app
@@ -708,7 +707,6 @@
           .order("started_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-
         if (lastSession) {
           const mode = lastSession.session_mode || "talk";
           const modeLabel = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || mode;
