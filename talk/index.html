@@ -1676,11 +1676,11 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     window.location.href = "/meeting/";
     return;
   }
-  // Brainstorm excluded — config is transient and lost on page reload
-  if (stored && ["salespitch"].includes(stored)) {
+  if (stored && ["salespitch", "brainstorm"].includes(stored)) {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
+    if (stored === "brainstorm") showBsSeg(localStorage.getItem("sophie_brainstorm_type") || "solo");
   }
   // Hide report toggle for modes where report is mandatory
   if (selectedVoiceMode === "salespitch" || selectedVoiceMode === "brainstorm") {
