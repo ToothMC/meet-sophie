@@ -67,9 +67,8 @@ export default async function handler(req, res) {
           .maybeSingle();
         if (msgs?.length) {
           handover = {
-            recentMessages: msgs.map(m => ({ role: m.role, text: m.text })),
-            resumeContext: prevSession?.short_summary || prevSession?.title || "",
-            resumeSessionType: prevSession?.session_type || "talk",
+            recentMessages: msgs.map(m => ({ role: m.role, content: m.text })),
+            summary: prevSession?.short_summary || prevSession?.title || "",
           };
           console.log("[session] resume context loaded:", resumeSessionId.slice(0, 8), msgs.length, "messages");
         }
