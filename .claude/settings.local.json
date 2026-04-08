@@ -218,7 +218,9 @@
       "Bash(grep -n \"finalize_billing\\\\|finalize-session\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
       "Bash(grep -A 50 \"meeting_segment_upsert\\\\|meeting_segment\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(/usr/local/bin/node)",
-      "Bash(grep -l \"user_sessions\\\\|chat_sessions\\\\|preferred_language\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(grep -l \"user_sessions\\\\|chat_sessions\\\\|preferred_language\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(for dir:*)",
+      "Bash(Gesprächs auch Nachrichten schicken?\" — voice and chat work:*)"
     ]
   },
   "hooks": {
