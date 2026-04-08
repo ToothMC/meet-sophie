@@ -399,7 +399,7 @@ body{
 <div id="meetingArea" class="meeting-area">
   <!-- Topbar -->
   <div class="topbar">
-    <a href="/talk/" class="back" id="backBtn">&larr;</a>
+    <a href="/app" class="back" id="backBtn">&larr;</a>
     <span class="title" id="meetingTitleDisplay">Meeting</span>
     <button class="mute-toggle" id="muteToggle"><span class="mute-icon"></span> Sophie</button>
     <button class="mute-toggle" id="meetingPauseBtn" style="display:none">⏸ Pause</button>
@@ -4154,7 +4154,7 @@ ctaPost.addEventListener("click", async () => {
 ctaClose.addEventListener("click", async () => {
   await transitionPhase("closed", "user_click");
   // Navigate back to home after closing
-  window.location.href = "/";
+  window.location.href = "/app";
 });
 
 $("saveContextBtn").addEventListener("click", saveContext);
