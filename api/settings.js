@@ -209,32 +209,8 @@ export default async function handler(req, res) {
     const meetingSessionIds = new Set((meetings || []).map(m => m.session_id).filter(Boolean));
     const dedupedTalkReports = talkReports.filter(r => !meetingSessionIds.has(r.session_id));
 
-    // Load Chat sessions from user_sessions (no conversation_outputs needed)
-    const chatReports = [];
-    {
-      const { data } = await supabase
-        .from('user_sessions')
-        .select('id, title, status, turn_count, started_at, last_message_at, short_summary')
-        .eq('user_id', user.id)
-        .eq('session_type', 'chat')
-        .gt('turn_count', 0)
-        .order('last_message_at', { ascending: false })
-        .limit(50);
-      for (const c of (data || [])) {
-        chatReports.push({
-          id: c.id,
-          session_id: c.id,
-          title: c.title || c.short_summary || `Chat (${c.turn_count} Nachrichten)`,
-          report_status: 'done',
-          report_style: 'chat',
-          created_at: c.last_message_at || c.started_at,
-          source: 'chat',
-        });
-      }
-    }
-
     // Merge and sort by date
-    const all = [...dedupedTalkReports, ...meetingReports, ...chatReports]
+    const all = [...dedupedTalkReports, ...meetingReports]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     return res.status(200).json({ reports: all });
