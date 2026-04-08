@@ -265,11 +265,11 @@
 
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
-      let target = "/";
+      let target = "/app";
       if (redirect) {
         try {
           const url = new URL(redirect, window.location.origin);
-          const safePaths = ["/pricing", "/talk", "/settings", "/meeting", "/"];
+          const safePaths = ["/app", "/pricing", "/talk", "/settings", "/meeting", "/"];
           if (url.origin === window.location.origin && safePaths.some(p => url.pathname.startsWith(p))) {
             target = url.pathname + url.search;
           }

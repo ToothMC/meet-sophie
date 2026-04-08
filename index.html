@@ -81,6 +81,13 @@
     ]
   }
   </script>
+  <!-- Redirect logged-in users to /app before anything renders -->
+  <script>
+    try {
+      var s = localStorage.getItem("sb-ohzfojsbmzinpxhcynpt-auth-token");
+      if (s && JSON.parse(s).access_token) { location.replace("/app"); }
+    } catch {}
+  </script>
   <style>
     :root{
       --bg:#06070b;

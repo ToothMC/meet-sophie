@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="preconnect" href="https://ohzfojsbmzinpxhcynpt.supabase.co" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#06070b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Sophie</title>
+
+  <!-- Anti-flash: redirect anonymous users before anything renders -->
+  <script>
+    try {
+      var s = localStorage.getItem("sb-ohzfojsbmzinpxhcynpt-auth-token");
+      if (!s || !JSON.parse(s).access_token) { location.replace("/"); }
+    } catch { location.replace("/"); }
+  </script>
+
+  <style>
+    :root {
+      --bg: #06070b;
+      --bg-soft: #0d1018;
+      --card: rgba(255,255,255,.06);
+      --card-strong: rgba(255,255,255,.09);
+      --text: #f6f7fb;
+      --muted: rgba(246,247,251,.74);
+      --line: rgba(255,255,255,.12);
+      --accent: #ffffff;
+      --shadow: 0 18px 60px rgba(0,0,0,.35);
+      --radius: 24px;
+      --max: 600px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(132,148,255,.10), transparent 30%),
+        radial-gradient(circle at top left, rgba(255,199,146,.06), transparent 26%),
+        linear-gradient(180deg, #090b11 0%, #06070b 42%, #090b11 100%);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      /* Hidden until auth confirmed */
+      visibility: hidden;
+    }
+    body.ready { visibility: visible; }
+
+    a { color: inherit; text-decoration: none; }
+
+    .wrap { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(16px);
+      background: rgba(6,7,11,.55);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .app-header .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+    }
+    .brand {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .01em;
+      opacity: .94;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ── Language Dropdown ───────────────────────────────────── */
+    .lang-dropdown { position: relative; }
+    .lang-btn {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      line-height: 1;
+      font-family: inherit;
+    }
+    .lang-btn:hover {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.18);
+    }
+    .lang-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 150px;
+      padding: 6px;
+      border-radius: 16px;
+      background: rgba(10,12,18,.94);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: var(--shadow);
+      display: none;
+      z-index: 100;
+      backdrop-filter: blur(18px);
+    }
+    .lang-menu.open { display: block; }
+    .lang-menu button {
+      width: 100%;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+    }
+    .lang-menu button:hover { background: rgba(255,255,255,.07); }
+
+    /* ── Profile Button ─────────────────────────────────────── */
+    .profile-btn {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      line-height: 1;
+      font-family: inherit;
+    }
+    .profile-btn:hover {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.18);
+    }
+
+    /* ── Main Content ───────────────────────────────────────── */
+    .app-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 120px;
+    }
+    .app-content {
+      width: 100%;
+      max-width: var(--max);
+    }
+
+    /* ── Greeting ────────────────────────────────────────────── */
+    .greeting {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      font-weight: 300;
+      font-style: italic;
+      color: var(--text);
+      margin: 0 0 32px;
+      min-height: 42px;
+    }
+    .greeting .skeleton {
+      display: inline-block;
+      width: 220px;
+      height: 28px;
+      background: rgba(255,255,255,.06);
+      border-radius: 8px;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: .4; }
+      50% { opacity: .8; }
+    }
+
+    /* ── Primary CTA ─────────────────────────────────────────── */
+    .cta-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 18px 24px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 20px;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .18s;
+      margin-bottom: 16px;
+    }
+    .cta-primary:hover {
+      background: rgba(255,255,255,.10);
+      border-color: rgba(255,255,255,.25);
+      transform: translateY(-1px);
+    }
+    .cta-primary .icon {
+      font-size: 20px;
+    }
+
+    /* ── Mode Bar ────────────────────────────────────────────── */
+    .mode-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .mode-pill {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: transparent;
+      color: rgba(246,247,251,.45);
+      cursor: pointer;
+      transition: all .15s;
+      letter-spacing: .01em;
+      font-family: inherit;
+    }
+    .mode-pill:hover {
+      border-color: rgba(255,255,255,.3);
+      color: rgba(246,247,251,.75);
+    }
+    .mode-pill.active {
+      background: rgba(255,255,255,.1);
+      border-color: rgba(255,255,255,.35);
+      color: rgba(246,247,251,.95);
+    }
+
+    /* ── Session Card ────────────────────────────────────────── */
+    .section-label {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .session-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 20px;
+      background: var(--card);
+      margin-bottom: 24px;
+      transition: background .15s;
+    }
+    .session-card:hover {
+      background: var(--card-strong);
+    }
+    .session-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .session-meta .mode-icon {
+      font-size: 14px;
+    }
+    .session-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      margin: 0 0 12px;
+    }
+    .session-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .session-cta:hover {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.22);
+    }
+    .session-card.empty {
+      text-align: center;
+      padding: 28px 20px;
+    }
+    .session-card.empty .empty-text {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .session-card .skeleton-line {
+      height: 14px;
+      background: rgba(255,255,255,.06);
+      border-radius: 6px;
+      animation: pulse 1.8s ease-in-out infinite;
+      margin-bottom: 8px;
+    }
+    .session-card .skeleton-line:first-child { width: 40%; }
+    .session-card .skeleton-line:nth-child(2) { width: 70%; }
+
+    /* ── Secondary CTA ───────────────────────────────────────── */
+    .cta-secondary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 20px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .cta-secondary:hover {
+      background: var(--card);
+      color: var(--text);
+      border-color: rgba(255,255,255,.18);
+    }
+    .cta-secondary .icon { font-size: 16px; }
+
+    /* ── Bottom Nav ──────────────────────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: rgba(6,7,11,.85);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(255,255,255,.06);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bottom-nav-inner {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      padding: 10px 0;
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+    .nav-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 4px 12px;
+      transition: color .15s;
+    }
+    .nav-tab .tab-icon { font-size: 20px; }
+    .nav-tab.active { color: var(--text); }
+    .nav-tab:hover { color: var(--text); }
+    .nav-tab.disabled {
+      opacity: .35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* ── Desktop ─────────────────────────────────────────────── */
+    @media (min-width: 641px) {
+      .app-main { padding-top: 60px; }
+      .greeting { font-size: 32px; }
+      .bottom-nav { display: none; }
+    }
+
+    /* ── Mobile ──────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .app-header .wrap { min-height: 56px; }
+      .greeting { font-size: 24px; margin-bottom: 24px; }
+      .app-main { padding: 24px 16px 100px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="wrap">
+      <a class="brand" href="/app">Sophie</a>
+      <div class="header-right">
+        <div class="lang-dropdown">
+          <button class="lang-btn" id="langToggle" aria-expanded="false" aria-haspopup="true">
+            <span id="lang-label">EN</span>
+          </button>
+          <div class="lang-menu" id="langMenu">
+            <button type="button" data-lang="en">English</button>
+            <button type="button" data-lang="de">Deutsch</button>
+            <button type="button" data-lang="fr">Fran&ccedil;ais</button>
+          </div>
+        </div>
+        <a class="profile-btn" href="/settings/" id="profileBtn">...</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Content ────────────────────────────────────── -->
+  <main class="app-main">
+    <div class="app-content">
+
+      <!-- Greeting -->
+      <h1 class="greeting" id="greeting">
+        <span class="skeleton"></span>
+      </h1>
+
+      <!-- Primary CTA -->
+      <button class="cta-primary" id="startTalkBtn">
+        <span class="icon">&#9679;</span>
+        <span data-i18n="start_talk">Start a conversation</span>
+      </button>
+
+      <!-- Mode Bar -->
+      <div class="mode-bar" id="modeBar">
+        <button class="mode-pill" data-mode="brainstorm">&#10022; Brainstorm</button>
+        <button class="mode-pill" data-mode="meeting">&#9673; Meeting</button>
+        <button class="mode-pill" data-mode="salespitch">&#9650; Sales Pitch</button>
+      </div>
+
+      <!-- Last Session -->
+      <p class="section-label" data-i18n="last_session_label">Last session</p>
+      <div class="session-card" id="sessionCard">
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line"></div>
+      </div>
+
+      <!-- Secondary: Chat -->
+      <button class="cta-secondary" id="startChatBtn">
+        <span class="icon">&#9998;</span>
+        <span data-i18n="write_with_sophie">Write with Sophie</span>
+      </button>
+
+    </div>
+  </main>
+
+  <!-- ── Bottom Nav ──────────────────────────────────────── -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="nav-tab active" data-tab="home">
+        <span class="tab-icon">&#9679;</span>
+        <span data-i18n="nav_home">Start</span>
+      </button>
+      <button class="nav-tab disabled" data-tab="reports">
+        <span class="tab-icon">&#9776;</span>
+        <span data-i18n="nav_reports">Reports</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Script ──────────────────────────────────────────── -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { getSessionOrNull, redirectIfAnonymous } from "/lib/sophie-auth-helper.js";
+
+    const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentLang = localStorage.getItem("preferredLanguage") || "en";
+
+    // ── i18n ──────────────────────────────────────────────
+    const I18N = {
+      en: {
+        start_talk: "Start a conversation",
+        write_with_sophie: "Write with Sophie",
+        last_session_label: "Last session",
+        greeting: (name) => name ? `Welcome back, ${name}` : "Welcome back",
+        no_session: "No session yet — Start your first conversation with Sophie",
+        continue: "Continue",
+        reopen: "Open again",
+        nav_home: "Start",
+        nav_reports: "Reports",
+      },
+      de: {
+        start_talk: "Gespräch starten",
+        write_with_sophie: "Mit Sophie schreiben",
+        last_session_label: "Letzte Session",
+        greeting: (name) => name ? `Willkommen zurück, ${name}` : "Willkommen zurück",
+        no_session: "Noch keine Session — Starte dein erstes Gespräch mit Sophie",
+        continue: "Fortsetzen",
+        reopen: "Erneut öffnen",
+        nav_home: "Start",
+        nav_reports: "Reports",
+      },
+      fr: {
+        start_talk: "Démarrer une conversation",
+        write_with_sophie: "Écrire avec Sophie",
+        last_session_label: "Dernière session",
+        greeting: (name) => name ? `Bon retour, ${name}` : "Bon retour",
+        no_session: "Pas encore de session — Démarre ta première conversation avec Sophie",
+        continue: "Continuer",
+        reopen: "Rouvrir",
+        nav_home: "Accueil",
+        nav_reports: "Rapports",
+      }
+    };
+
+    function t(key) {
+      return (I18N[currentLang] || I18N.en)[key] || (I18N.en)[key] || key;
+    }
+
+    function applyI18n() {
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.dataset.i18n;
+        const val = t(key);
+        if (typeof val === "string") el.textContent = val;
+      });
+    }
+
+    // ── Mode icons ───────────────────────────────────────
+    const MODE_ICONS = {
+      talk: "&#9679;",
+      brainstorm: "&#10022;",
+      meeting: "&#9673;",
+      salespitch: "&#9650;",
+    };
+    const MODE_LABELS = {
+      en: { talk: "Conversation", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch" },
+      de: { talk: "Gespräch", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch" },
+      fr: { talk: "Conversation", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch" },
+    };
+
+    // ── Auth guard (authoritative) ───────────────────────
+    const session = await getSessionOrNull(supabase);
+    if (!session) {
+      location.replace("/");
+      // stop execution
+      throw new Error("no session");
+    }
+    // Auth confirmed — show the app
+    document.body.classList.add("ready");
+
+    // ── Profile button ───────────────────────────────────
+    const profileBtn = document.getElementById("profileBtn");
+    const userEmail = session.user?.email || "";
+    profileBtn.textContent = userEmail.split("@")[0] || "Account";
+
+    // ── Listen for auth changes ──────────────────────────
+    supabase.auth.onAuthStateChange((event, sess) => {
+      if (!sess?.access_token) {
+        location.replace("/");
+      }
+    });
+
+    // ── Language dropdown ────────────────────────────────
+    const langToggle = document.getElementById("langToggle");
+    const langMenu = document.getElementById("langMenu");
+    const langLabel = document.getElementById("lang-label");
+
+    function updateLangLabel() {
+      const labels = { en: "EN", de: "DE", fr: "FR" };
+      langLabel.textContent = labels[currentLang] || "EN";
+    }
+    updateLangLabel();
+
+    langToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      langMenu.classList.toggle("open");
+      langToggle.setAttribute("aria-expanded", langMenu.classList.contains("open"));
+    });
+    document.addEventListener("click", () => {
+      langMenu.classList.remove("open");
+      langToggle.setAttribute("aria-expanded", "false");
+    });
+    langMenu.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentLang = btn.dataset.lang;
+        localStorage.setItem("preferredLanguage", currentLang);
+        updateLangLabel();
+        applyI18n();
+        langMenu.classList.remove("open");
+        // Re-render session card and greeting with new language
+        loadAndRender();
+      });
+    });
+
+    // ── Mode bar ─────────────────────────────────────────
+    let selectedMode = localStorage.getItem("sophie_session_mode") || "";
+    const modeBar = document.getElementById("modeBar");
+
+    function updateModePills() {
+      modeBar.querySelectorAll(".mode-pill").forEach(pill => {
+        pill.classList.toggle("active", pill.dataset.mode === selectedMode);
+      });
+    }
+    updateModePills();
+
+    modeBar.addEventListener("click", (e) => {
+      const pill = e.target.closest(".mode-pill");
+      if (!pill) return;
+      const mode = pill.dataset.mode;
+      if (selectedMode === mode) {
+        selectedMode = "";
+        localStorage.removeItem("sophie_session_mode");
+      } else {
+        selectedMode = mode;
+        localStorage.setItem("sophie_session_mode", mode);
+      }
+      updateModePills();
+    });
+
+    // ── Navigation ───────────────────────────────────────
+    document.getElementById("startTalkBtn").addEventListener("click", () => {
+      if (selectedMode === "meeting") {
+        location.href = "/meeting/";
+      } else {
+        if (selectedMode) localStorage.setItem("sophie_session_mode", selectedMode);
+        location.href = "/talk";
+      }
+    });
+
+    document.getElementById("startChatBtn").addEventListener("click", () => {
+      localStorage.removeItem("sophie_session_mode");
+      location.href = "/talk";
+    });
+
+    // ── Load profile + last session ──────────────────────
+    async function loadAndRender() {
+      const userId = session.user.id;
+
+      // Greeting
+      const greetingEl = document.getElementById("greeting");
+      try {
+        const { data: profile } = await supabase
+          .from("user_profile")
+          .select("first_name, preferred_name, preferred_language")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const name = profile?.preferred_name || profile?.first_name || "";
+        greetingEl.textContent = t("greeting")(name);
+
+        // Use profile language if set and user hasn't explicitly chosen one
+        if (profile?.preferred_language && !localStorage.getItem("preferredLanguage")) {
+          currentLang = profile.preferred_language;
+          localStorage.setItem("preferredLanguage", currentLang);
+          updateLangLabel();
+          applyI18n();
+        }
+      } catch {
+        greetingEl.textContent = t("greeting")("");
+      }
+
+      // Last session
+      const sessionCard = document.getElementById("sessionCard");
+      try {
+        const { data: lastSession } = await supabase
+          .from("user_sessions")
+          .select("id, title, session_mode, status, started_at, short_summary")
+          .eq("user_id", userId)
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lastSession) {
+          const mode = lastSession.session_mode || "talk";
+          const modeLabel = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || mode;
+          const icon = MODE_ICONS[mode] || MODE_ICONS.talk;
+          const title = lastSession.title || modeLabel;
+          const continuable = ["paused", "draft", "open"].includes(lastSession.status);
+
+          sessionCard.classList.remove("empty");
+          sessionCard.innerHTML = `
+            <div class="session-meta">
+              <span class="mode-icon">${icon}</span>
+              <span>${modeLabel}</span>
+            </div>
+            <p class="session-title">${escHtml(title)}</p>
+            ${continuable
+              ? `<button class="session-cta" data-session-id="${lastSession.id}">${t("continue")} &rarr;</button>`
+              : `<button class="session-cta" data-session-id="${lastSession.id}">${t("reopen")} &rarr;</button>`
+            }
+          `;
+
+          sessionCard.querySelector(".session-cta")?.addEventListener("click", () => {
+            if (mode === "meeting") {
+              location.href = "/meeting/";
+            } else {
+              if (mode && mode !== "talk") localStorage.setItem("sophie_session_mode", mode);
+              location.href = "/talk";
+            }
+          });
+        } else {
+          // Empty state
+          sessionCard.classList.add("empty");
+          sessionCard.innerHTML = `<p class="empty-text">${t("no_session")}</p>`;
+        }
+      } catch {
+        sessionCard.classList.add("empty");
+        sessionCard.innerHTML = `<p class="empty-text">${t("no_session")}</p>`;
+      }
+
+      // Apply i18n to static elements
+      applyI18n();
+    }
+
+    function escHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    // Kick off data loading (shell is already visible)
+    loadAndRender();
+  </script>
+</body>
+</html>
