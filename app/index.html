@@ -273,9 +273,16 @@
       background: var(--card);
       margin-bottom: 24px;
       transition: background .15s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
     .session-card:hover {
       background: var(--card-strong);
+    }
+    .session-info {
+      flex: 1;
+      min-width: 0;
     }
     .session-meta {
       display: flex;
@@ -283,18 +290,22 @@
       gap: 8px;
       font-size: 12px;
       color: var(--muted);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .session-meta .mode-icon {
       font-size: 14px;
     }
     .session-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 500;
       color: var(--text);
-      margin: 0 0 12px;
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .session-cta {
+      flex-shrink: 0;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -308,6 +319,7 @@
       cursor: pointer;
       font-family: inherit;
       transition: all .15s;
+      white-space: nowrap;
     }
     .session-cta:hover {
       background: rgba(255,255,255,.08);
@@ -316,6 +328,7 @@
     .session-card.empty {
       text-align: center;
       padding: 28px 20px;
+      justify-content: center;
     }
     .session-card.empty .empty-text {
       font-size: 14px;
