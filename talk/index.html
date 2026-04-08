@@ -1557,6 +1557,7 @@ let pausedElapsedMs = 0;        // elapsed session time before pause
 
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
+let _voiceSessionData = null; // session API response, shared with dc.onopen callback
 
 // ── Brainstorm segmented control logic ─────────────────────
 let _bsMode = "solo";
@@ -4618,8 +4619,8 @@ function attachChannel(ch) {
     } else if (!isFirstSession) {
       // ── Mode-specific kickoffs for returning users ──
       // Single source of truth: exactly ONE opening turn per mode, triggered here.
-      const userName = data?.preferred_name || data?.user_name || "";
-      const greetLang = data?.preferred_language || _uiLang || "en";
+      const userName = _voiceSessionData?.preferred_name || _voiceSessionData?.user_name || "";
+      const greetLang = _voiceSessionData?.preferred_language || _uiLang || "en";
       const isDE = greetLang === "de";
       const nameStr = userName ? ` ${userName}` : "";
 
@@ -5525,6 +5526,7 @@ async function startVoice(){
     });
 
     const data = await safeJson(tokenRes);
+    _voiceSessionData = data; // store for dc.onopen callback
 
     if (tokenRes.status === 402) {
       _startVoiceLock = false;

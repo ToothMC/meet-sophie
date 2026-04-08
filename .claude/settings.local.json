@@ -220,7 +220,11 @@
       "Bash(/usr/local/bin/node)",
       "Bash(grep -l \"user_sessions\\\\|chat_sessions\\\\|preferred_language\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(for dir:*)",
-      "Bash(Gesprächs auch Nachrichten schicken?\" — voice and chat work:*)"
+      "Bash(Gesprächs auch Nachrichten schicken?\" — voice and chat work:*)",
+      "Bash(curl -s -X POST \"https://meet-sophie-lh2mmdk29-michaels-projects-674b8d24.vercel.app/api/chat?action=start\" -H \"Content-Type: application/json\" -d '{\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
+      "Bash(curl -s -X POST \"https://www.meet-sophie.com/api/chat?action=start\" -H \"Content-Type: application/json\" -d '{\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
+      "Bash(curl -s -X POST \"https://www.meet-sophie.com/api/chat?action=message\" -H \"Content-Type: application/json\" -d '{\"\"\"\"session_id\"\"\"\":\"\"\"\"1a79f0fc-4708-4532-a9a5-1e1768a00f1d\"\"\"\",\"\"\"\"messages\"\"\"\":[{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"Hallo Sophie, wie geht es dir?\"\"\"\"}],\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
+      "Bash(curl -s \"https://www.meet-sophie.com/api/session\" -H \"Content-Type: application/json\")"
     ]
   },
   "hooks": {
