@@ -114,35 +114,39 @@ kbd{
     </div>
 
     <!-- ===================== DE ===================== -->
-    <h1 id="de">Datenschutzerklärung</h1>
-    <div class="card">
-      <p class="note">
-        Stand: 03.03.2026
+    <h1 id=”de”>Datenschutzerklärung</h1>
+    <div class=”card”>
+      <p class=”note”>
+        Stand: 08.04.2026
       </p>
 
       <h2>1. Verantwortlicher</h2>
       <p>
         M+M Hammer Ltd<br>
         Akoursos 30A, 8560 Pegeia / Paphos, Cyprus<br>
-        E-Mail: <a href="mailto:info@mmhammer.org">info@mmhammer.org</a>
+        E-Mail: <a href=”mailto:info@mmhammer.org”>info@mmhammer.org</a>
       </p>
 
       <h2>2. Worum geht es bei Meet Sophie?</h2>
       <p>
-        Meet Sophie ist ein KI-gestützter digitaler Begleitservice. Bei Nutzung der Website und insbesondere
-        der Sprach-/Chat-Funktion werden personenbezogene Daten verarbeitet, um den Service bereitzustellen,
-        zu betreiben, zu sichern und abzurechnen.
+        Meet Sophie ist ein KI-gestützter Denkpartner. Sophie verbindet Sprach- und Chat-Kommunikation
+        in Echtzeit: Du kannst mit Sophie sprechen und gleichzeitig Texte, Bilder oder Dateien per Chat
+        senden. Bei Nutzung des Services werden personenbezogene Daten verarbeitet, um den Service
+        bereitzustellen, zu betreiben, zu sichern und abzurechnen.
       </p>
 
       <h2>3. Welche Daten verarbeiten wir?</h2>
       <ul>
         <li><strong>Account- und Profildaten</strong> (z. B. E-Mail, Name/Nickname, Einstellungen)</li>
-        <li><strong>Nutzungsdaten</strong> (z. B. Session-Dauer, Zeitkontingente, technische Logs)</li>
+        <li><strong>Nutzungsdaten</strong> (z. B. Session-Dauer, Token-Verbrauch, technische Logs)</li>
         <li><strong>Inhaltsdaten</strong> (Chat-/Sprachinhalte, soweit du sie im Service eingibst bzw. sprichst)</li>
+        <li><strong>Hochgeladene Dateien</strong> (Bilder, PDFs, Dokumente — werden für die Verarbeitung im Gespräch verwendet und können in Session-Kontext einfließen)</li>
+        <li><strong>Memory-Daten</strong> (Zusammenfassungen und Kontextinformationen aus vergangenen Gesprächen, die Sophie nutzt, um künftige Gespräche relevanter zu gestalten — siehe Abschnitt 5)</li>
+        <li><strong>Meeting-Protokolle</strong> (strukturierte Zusammenfassungen, die Sophie aus Gesprächen oder Meetings erstellt, inkl. Kernpunkte, offene Fragen und nächste Schritte)</li>
         <li><strong>Zahlungs-/Abo-Daten</strong> (über Stripe; wir erhalten i. d. R. keine vollständigen Kartendaten)</li>
         <li><strong>Geräte-/Verbindungsdaten</strong> (IP-Adresse, Browser-Infos; zur Sicherheit/Fehleranalyse)</li>
       </ul>
-      <p class="note">
+      <p class=”note”>
         Hinweis: Bitte teile keine sensiblen Informationen (z. B. Gesundheitsdaten, intime Details, Ausweisdaten),
         wenn du nicht möchtest, dass sie verarbeitet und ggf. in deinem Account gespeichert werden.
       </p>
@@ -151,37 +155,55 @@ kbd{
       <ul>
         <li><strong>Bereitstellung des Services</strong> (Art. 6 Abs. 1 lit. b DSGVO – Vertrag/Anbahnung)</li>
         <li><strong>Abrechnung, Abo-Verwaltung</strong> (Art. 6 Abs. 1 lit. b DSGVO)</li>
+        <li><strong>Personalisierung / Memory</strong> (Art. 6 Abs. 1 lit. b DSGVO – Bestandteil der Leistung)</li>
         <li><strong>Sicherheit, Missbrauchs- und Betrugsprävention</strong> (Art. 6 Abs. 1 lit. f DSGVO – berechtigtes Interesse)</li>
         <li><strong>Fehleranalyse und Stabilität</strong> (Art. 6 Abs. 1 lit. f DSGVO)</li>
         <li><strong>Rechtliche Pflichten</strong> (Art. 6 Abs. 1 lit. c DSGVO, z. B. steuerliche Aufbewahrung)</li>
       </ul>
 
-      <h2>5. „Memory“ / Speicherung von Gesprächsinhalten</h2>
+      <h2>5. Memory — Speicherung von Kontextinformationen</h2>
       <p>
-        Zur Personalisierung speichert der Service eine begrenzte Zusammenfassung
-        (maximal die letzten drei Gesprächs-Summaries). Ältere Inhalte werden
-        automatisch überschrieben. Eine dauerhafte Archivierung vollständiger
-        Gesprächsverläufe erfolgt nicht.
+        Sophie speichert Kontextinformationen aus deinen Gesprächen, um künftige Sitzungen relevanter
+        zu gestalten. Dazu gehören: Themen, die dich beschäftigen, dein bevorzugter Gesprächsstil und
+        inhaltliche Zusammenfassungen. Diese Informationen fließen automatisch in neue Gespräche ein,
+        sodass sich jedes Gespräch wie eine Fortsetzung anfühlt.
+      </p>
+      <p>
+        Du kannst dein Memory jederzeit einsehen und löschen lassen. Eine dauerhafte Archivierung
+        vollständiger Gesprächsverläufe erfolgt nicht — gespeichert werden ausschließlich
+        aufbereitete Zusammenfassungen und Kontextdaten.
       </p>
 
       <h2>6. Empfänger / Dienstleister (Auftragsverarbeitung)</h2>
-      <p>Wir setzen u. a. folgende Dienstleister ein:</p>
+      <p>Wir setzen folgende Dienstleister als Auftragsverarbeiter ein:</p>
       <ul>
-        <li><strong>Supabase</strong> (Datenbank, Auth, Hosting bestimmter Daten)</li>
-        <li><strong>Stripe</strong> (Zahlungen, Abonnements, Checkout)</li>
-        <li><strong>OpenAI</strong> (KI-Modelle für Text/Voice-Verarbeitung)</li>
-        <li><strong>Hosting/Delivery</strong> (z. B. Vercel/Edge/CDN, abhängig vom Deployment)</li>
+        <li><strong>Supabase</strong> — Datenbank, Authentifizierung und primäre Datenhaltung. Standort: <strong>Zürich, Schweiz (eu-central-2)</strong>.</li>
+        <li><strong>OpenAI</strong> — KI-Modelle für Textverarbeitung und Echtzeit-Sprachgespräche.</li>
+        <li><strong>Anthropic (Claude)</strong> — KI-Modelle für tiefgehende Analyse und komplexe Denkaufgaben.</li>
+        <li><strong>Google (Gemini)</strong> — KI-Modelle für schnelle Antworten und multimodale Verarbeitung.</li>
+        <li><strong>Mistral</strong> — KI-Modelle für effiziente Textverarbeitung.</li>
+        <li><strong>Stripe</strong> — Zahlungen, Abonnements und Checkout.</li>
+        <li><strong>Vercel</strong> — Hosting und Content Delivery (CDN/Edge).</li>
       </ul>
-      <p class="note">
-        Mit diesen Anbietern bestehen vertragliche Regelungen zur Datenverarbeitung (insb. DPAs).
+      <p>
+        Sophie wählt je nach Aufgabe automatisch das geeignetste KI-System. Du interagierst
+        immer mit Sophie, nie direkt mit einem einzelnen Modell.
+      </p>
+      <p class=”note”>
+        Mit allen Anbietern bestehen vertragliche Regelungen zur Datenverarbeitung (DPAs/AVV).
       </p>
 
-      <h2>7. Drittlandübermittlung</h2>
+      <h2>7. Datenstandort und Drittlandübermittlung</h2>
       <p>
-        Je nach Anbieter und Konfiguration können Daten in Länder außerhalb des EWR übermittelt werden
-        (z. B. USA). In diesen Fällen stützen wir uns auf geeignete Garantien, insbesondere
-        <strong>Standardvertragsklauseln (SCCs)</strong> und/oder einen anerkannten Angemessenheitsbeschluss
-        (z. B. EU–US Data Privacy Framework, sofern anwendbar).
+        Die primäre Datenhaltung (Datenbank, Nutzerkonten, Memory) erfolgt auf Servern in
+        <strong>Zürich, Schweiz</strong>. Je nach genutztem KI-Anbieter können Gesprächsinhalte
+        zur Verarbeitung an Server in den USA oder anderen Drittländern übermittelt werden.
+        In diesen Fällen stützen wir uns auf geeignete Garantien, insbesondere
+        <strong>Standardvertragsklauseln (SCCs)</strong> und/oder einen anerkannten
+        Angemessenheitsbeschluss (z. B. EU–US Data Privacy Framework).
+      </p>
+      <p class=”note”>
+        Deine Daten werden nicht für das Training von KI-Modellen verwendet.
       </p>
 
       <h2>8. Speicherdauer</h2>
@@ -189,11 +211,13 @@ kbd{
         <li><strong>Account-/Profildaten:</strong> bis zur Löschung deines Accounts, sofern keine gesetzlichen Pflichten entgegenstehen</li>
         <li><strong>Nutzungs-/Logdaten:</strong> so lange wie nötig für Sicherheit/Fehleranalyse, danach Löschung/Anonymisierung</li>
         <li><strong>Abrechnungsdaten:</strong> gemäß gesetzlichen Aufbewahrungsfristen</li>
-        <li><strong>Gesprächsinhalte/Memory:</strong> abhängig von Produktfunktion; auf Anfrage löschbar</li>
+        <li><strong>Memory/Kontext:</strong> bis du sie löschst oder deinen Account löschst</li>
+        <li><strong>Hochgeladene Dateien:</strong> werden für die Dauer der Session verarbeitet; eine dauerhafte Speicherung erfolgt nur, wenn sie in Meeting-Protokolle oder Memory einfließen</li>
+        <li><strong>Meeting-Protokolle:</strong> bis zur Löschung durch dich</li>
       </ul>
 
       <h2>9. Deine Rechte</h2>
-      <p>Du hast – soweit die DSGVO anwendbar ist – insbesondere folgende Rechte:</p>
+      <p>Du hast — soweit die DSGVO bzw. das Schweizer Datenschutzgesetz (nDSG) anwendbar ist — insbesondere folgende Rechte:</p>
       <ul>
         <li>Auskunft, Berichtigung, Löschung</li>
         <li>Einschränkung der Verarbeitung</li>
@@ -202,7 +226,7 @@ kbd{
         <li>Beschwerde bei einer Datenschutzaufsichtsbehörde</li>
       </ul>
       <p>
-        Anfragen bitte an: <a href="mailto:info@mmhammer.org">info@mmhammer.org</a>
+        Anfragen bitte an: <a href=”mailto:info@mmhammer.org”>info@mmhammer.org</a>
       </p>
 
       <h2>10. Cookies / Local Storage</h2>
@@ -223,44 +247,43 @@ kbd{
         Wirkung entfalten oder dich in ähnlicher Weise erheblich beeinträchtigen (Art. 22 DSGVO),
         soweit nicht ausdrücklich anders angegeben.
       </p>
-
-      <p class="note">
-        Hinweis: Diese Vorlage ist bewusst pragmatisch gehalten. Je nach finaler technischer Umsetzung
-        (Analytics, E-Mail-Marketing, Support-Tools, Log-Provider etc.) muss dieser Text ergänzt werden.
-      </p>
     </div>
 
     <hr>
 
     <!-- ===================== EN ===================== -->
-    <h1 id="en">Privacy Policy</h1>
-    <div class="card">
-      <p class="note">
-        Effective date: 2026-03-03
+    <h1 id=”en”>Privacy Policy</h1>
+    <div class=”card”>
+      <p class=”note”>
+        Effective date: 2026-04-08
       </p>
 
       <h2>1. Controller</h2>
       <p>
         M+M Hammer Ltd<br>
         Akoursos 30A, 8560 Pegeia / Paphos, Cyprus<br>
-        Email: <a href="mailto:info@mmhammer.org">info@mmhammer.org</a>
+        Email: <a href=”mailto:info@mmhammer.org”>info@mmhammer.org</a>
       </p>
 
       <h2>2. What is Meet Sophie?</h2>
       <p>
-        Meet Sophie is an AI-powered digital companion service. When you use our website—especially the
-        voice/chat experience—we process personal data to provide, operate, secure, and bill the service.
+        Meet Sophie is an AI-powered thinking partner. Sophie combines voice and chat communication
+        in real time: you can speak with Sophie and simultaneously send texts, images, or files via chat.
+        When you use the service, we process personal data to provide, operate, secure, and bill the service.
       </p>
 
       <h2>3. Data we process</h2>
       <ul>
         <li><strong>Account & profile data</strong> (e.g., email, name/nickname, settings)</li>
-        <li><strong>Usage data</strong> (e.g., session duration, quotas, technical logs)</li>
+        <li><strong>Usage data</strong> (e.g., session duration, token consumption, technical logs)</li>
         <li><strong>Content data</strong> (chat/voice content you provide while using the service)</li>
+        <li><strong>Uploaded files</strong> (images, PDFs, documents — used for processing within the conversation and may flow into session context)</li>
+        <li><strong>Memory data</strong> (summaries and context from past conversations that Sophie uses to make future sessions more relevant — see section 5)</li>
+        <li><strong>Meeting reports</strong> (structured summaries Sophie creates from conversations or meetings, including key points, open questions, and next steps)</li>
         <li><strong>Billing/subscription data</strong> (via Stripe; we typically do not receive full card details)</li>
         <li><strong>Device/connection data</strong> (IP address, browser details for security and debugging)</li>
       </ul>
-      <p class="note">
+      <p class=”note”>
         Please avoid sharing sensitive information (e.g., health data, intimate details, IDs) if you do not
         want it processed and potentially stored in your account.
       </p>
@@ -269,32 +292,53 @@ kbd{
       <ul>
         <li><strong>Providing the service</strong> (GDPR Art. 6(1)(b) – contract / pre-contract)</li>
         <li><strong>Billing and subscription management</strong> (GDPR Art. 6(1)(b))</li>
+        <li><strong>Personalization / Memory</strong> (GDPR Art. 6(1)(b) – part of the service)</li>
         <li><strong>Security and fraud/misuse prevention</strong> (GDPR Art. 6(1)(f) – legitimate interests)</li>
         <li><strong>Debugging and stability</strong> (GDPR Art. 6(1)(f))</li>
         <li><strong>Legal obligations</strong> (GDPR Art. 6(1)(c), e.g., tax retention)</li>
       </ul>
 
-      <h2>5. “Memory” / storing conversation details</h2>
+      <h2>5. Memory — storing context information</h2>
       <p>
-        For personalization purposes, the service stores a limited summary
-        (maximum of the last three conversation summaries). Older content is
-        automatically overwritten. Full conversation histories are not permanently archived.
+        Sophie stores context information from your conversations to make future sessions more relevant.
+        This includes: topics you are working on, your preferred conversation style, and content summaries.
+        This information automatically flows into new conversations, so each session feels like a continuation.
+      </p>
+      <p>
+        You can view and delete your Memory at any time. Full conversation histories are not permanently
+        archived — only processed summaries and context data are stored.
       </p>
 
       <h2>6. Processors / service providers</h2>
-      <p>We use service providers such as:</p>
+      <p>We use the following service providers as processors:</p>
       <ul>
-        <li><strong>Supabase</strong> (database, authentication, hosting of certain data)</li>
-        <li><strong>Stripe</strong> (payments, subscriptions, checkout)</li>
-        <li><strong>OpenAI</strong> (AI models for text/voice processing)</li>
-        <li><strong>Hosting/Delivery</strong> (e.g., Vercel/Edge/CDN depending on deployment)</li>
+        <li><strong>Supabase</strong> — Database, authentication, and primary data storage. Location: <strong>Zurich, Switzerland (eu-central-2)</strong>.</li>
+        <li><strong>OpenAI</strong> — AI models for text processing and real-time voice conversations.</li>
+        <li><strong>Anthropic (Claude)</strong> — AI models for deep analysis and complex reasoning tasks.</li>
+        <li><strong>Google (Gemini)</strong> — AI models for fast responses and multimodal processing.</li>
+        <li><strong>Mistral</strong> — AI models for efficient text processing.</li>
+        <li><strong>Stripe</strong> — Payments, subscriptions, and checkout.</li>
+        <li><strong>Vercel</strong> — Hosting and content delivery (CDN/Edge).</li>
       </ul>
-
-      <h2>7. International transfers</h2>
       <p>
-        Depending on providers and configuration, data may be transferred outside the EEA (e.g., to the US).
+        Sophie automatically selects the most suitable AI system depending on the task. You always
+        interact with Sophie, never directly with an individual model.
+      </p>
+      <p class=”note”>
+        All providers are bound by data processing agreements (DPAs).
+      </p>
+
+      <h2>7. Data location and international transfers</h2>
+      <p>
+        Primary data storage (database, user accounts, Memory) is located on servers in
+        <strong>Zurich, Switzerland</strong>. Depending on the AI provider used, conversation content
+        may be transmitted to servers in the US or other third countries for processing.
         Where applicable, we rely on appropriate safeguards such as
-        <strong>Standard Contractual Clauses (SCCs)</strong> and/or adequacy mechanisms (e.g., EU–US DPF).
+        <strong>Standard Contractual Clauses (SCCs)</strong> and/or adequacy mechanisms
+        (e.g., EU–US Data Privacy Framework).
+      </p>
+      <p class=”note”>
+        Your data is not used for training AI models.
       </p>
 
       <h2>8. Retention</h2>
@@ -302,16 +346,19 @@ kbd{
         <li><strong>Account/profile data:</strong> until account deletion, unless legal obligations apply</li>
         <li><strong>Logs/usage data:</strong> only as long as necessary for security/debugging, then deleted/anonymized</li>
         <li><strong>Billing data:</strong> retained per legal requirements</li>
-        <li><strong>Conversation content/memory:</strong> depends on product features; deletable upon request</li>
+        <li><strong>Memory/context:</strong> until you delete it or delete your account</li>
+        <li><strong>Uploaded files:</strong> processed for the duration of the session; permanently stored only if they flow into meeting reports or Memory</li>
+        <li><strong>Meeting reports:</strong> until you delete them</li>
       </ul>
 
       <h2>9. Your rights</h2>
       <p>
-        Where GDPR applies, you have the right to access, rectify, delete, restrict processing, data portability,
-        object to processing based on legitimate interests, and lodge a complaint with a supervisory authority.
+        Where GDPR or the Swiss Data Protection Act (nDSG) applies, you have the right to access, rectify,
+        delete, restrict processing, data portability, object to processing based on legitimate interests,
+        and lodge a complaint with a supervisory authority.
       </p>
       <p>
-        Contact: <a href="mailto:info@mmhammer.org">info@mmhammer.org</a>
+        Contact: <a href=”mailto:info@mmhammer.org”>info@mmhammer.org</a>
       </p>
 
       <h2>10. Cookies / local storage</h2>
@@ -329,11 +376,6 @@ kbd{
       <p>
         We do not make decisions based solely on automated processing that produce legal effects concerning you
         or similarly significantly affect you (GDPR Art. 22), unless explicitly stated otherwise.
-      </p>
-
-      <p class="note">
-        This is a practical baseline. If you add analytics, email marketing, support tools, additional logging
-        providers, etc., this policy must be updated accordingly.
       </p>
     </div>
 
