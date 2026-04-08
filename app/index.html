@@ -741,15 +741,22 @@
     // Solo/Team segment clicks
     bsSeg.addEventListener("click", (e) => {
       const btn = e.target.closest(".bs-seg-btn");
-      if (!btn) return;
+      if (!btn) {
+        // Clicked segment area but not a button → deselect brainstorm
+        selectedMode = "";
+        localStorage.removeItem("sophie_session_mode");
+        applyHeroMode(selectedMode);
+        return;
+      }
       bsSeg.querySelectorAll(".bs-seg-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      // Store brainstorm sub-mode
       localStorage.setItem("sophie_brainstorm_type", btn.dataset.bs);
     });
     applyHeroMode(selectedMode);
 
     modeBar.addEventListener("click", (e) => {
+      // Handle segment button clicks (don't treat as pill)
+      if (e.target.closest(".bs-seg-btn")) return;
       const pill = e.target.closest(".mode-pill");
       if (!pill) return;
       const mode = pill.dataset.mode;
@@ -769,13 +776,13 @@
         location.href = "/meeting/";
       } else {
         if (selectedMode) localStorage.setItem("sophie_session_mode", selectedMode);
-        location.href = "/talk";
+        location.href = "/?open=chat";
       }
     });
 
     document.getElementById("startChatBtn").addEventListener("click", () => {
       localStorage.removeItem("sophie_session_mode");
-      location.href = "/talk";
+      location.href = "/?open=chat";
     });
 
     // ── Load profile + last session ──────────────────────
