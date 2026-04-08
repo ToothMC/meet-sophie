@@ -1725,7 +1725,8 @@ const voiceChatMessages = document.getElementById("voiceChatMessages");
 const voiceChatInput = document.getElementById("voiceChatInput");
 const voiceChatSendBtn = document.getElementById("voiceChatSend");
 
-// ── Load previous report into chat panel (resume from Verlauf) ──
+// ── Load previous report for resume (Verlauf) ──
+let _resumeReportText = null;
 {
   const resumeReportId = sessionStorage.getItem("sophie_resume_report");
   if (resumeReportId) {
@@ -1736,10 +1737,15 @@ const voiceChatSendBtn = document.getElementById("voiceChatSend");
         if (!data) return;
         const html = data.report_html || (data.detail ? `<p>${data.detail}</p>` : null);
         if (!html) return;
+        // Show in chat panel for user
         const note = document.createElement("div");
         note.style.cssText = "padding:12px;margin:8px;background:rgba(255,255,255,.06);border-radius:12px;font-size:13px;color:rgba(246,247,251,.7);border:1px solid rgba(255,255,255,.08);max-height:300px;overflow-y:auto";
         note.innerHTML = `<div style="font-weight:600;margin-bottom:6px;color:rgba(246,247,251,.9)">${data.title || "Letztes Gespräch"}</div>${html}`;
         voiceChatMessages.appendChild(note);
+        // Store plain text for Sophie to read when session starts
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html;
+        _resumeReportText = `[Vorheriges Gespräch: ${data.title || ""}]\n${tmp.textContent.slice(0, 2000)}`;
       })
       .catch(() => {});
   }
@@ -4629,6 +4635,22 @@ function attachChannel(ch) {
       }
     } catch (e) {
       console.log(`[${runId}] [dc] session.update failed`, e);
+    }
+
+    // Inject resume report as context for Sophie
+    if (_resumeReportText) {
+      try {
+        dcSend({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: _resumeReportText }],
+          },
+        });
+        console.log(`[${runId}] [resume] report context injected (${_resumeReportText.length} chars)`);
+        _resumeReportText = null;
+      } catch (e) { console.warn(`[${runId}] [resume] inject failed:`, e); }
     }
 
     if (voiceHandover && !startModeTriggered) {

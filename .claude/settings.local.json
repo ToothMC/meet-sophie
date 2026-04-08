@@ -224,7 +224,8 @@
       "Bash(curl -s -X POST \"https://meet-sophie-lh2mmdk29-michaels-projects-674b8d24.vercel.app/api/chat?action=start\" -H \"Content-Type: application/json\" -d '{\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
       "Bash(curl -s -X POST \"https://www.meet-sophie.com/api/chat?action=start\" -H \"Content-Type: application/json\" -d '{\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
       "Bash(curl -s -X POST \"https://www.meet-sophie.com/api/chat?action=message\" -H \"Content-Type: application/json\" -d '{\"\"\"\"session_id\"\"\"\":\"\"\"\"1a79f0fc-4708-4532-a9a5-1e1768a00f1d\"\"\"\",\"\"\"\"messages\"\"\"\":[{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"Hallo Sophie, wie geht es dir?\"\"\"\"}],\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
-      "Bash(curl -s \"https://www.meet-sophie.com/api/session\" -H \"Content-Type: application/json\")"
+      "Bash(curl -s \"https://www.meet-sophie.com/api/session\" -H \"Content-Type: application/json\")",
+      "Bash(curl -s \"https://www.meet-sophie.com/api/ai/report-status?session_id=740b7f19-845e-4321-8887-8094c2414714\")"
     ]
   },
   "hooks": {
