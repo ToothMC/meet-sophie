@@ -1732,10 +1732,7 @@ const voiceChatSendBtn = document.getElementById("voiceChatSend");
     sessionStorage.removeItem("sophie_resume_report");
     (async () => {
       try {
-        const { data: { session: authSess } } = await supabase.auth.getSession();
-        if (!authSess) return;
-        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data: output } = await sb
+        const { data: output } = await supabase
           .from("conversation_outputs")
           .select("title, short_summary, report_html")
           .eq("session_id", resumeReportId)
