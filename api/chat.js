@@ -31,6 +31,34 @@ async function trackEvent(supabase, eventName, { user_id, session_id, meta } = {
   try { await supabase.from("analytics_events").insert({ event_name: eventName, user_id: user_id || null, session_id: session_id || null, meta: meta || {} }); } catch { /* non-fatal */ }
 }
 
+// Persist user + assistant messages via atomic RPC (only for canonical user_sessions)
+async function persistChatMessages(supabase, sessionId, userText, assistantText, isCanonical) {
+  if (!isCanonical) return; // Legacy chat_sessions — no message persistence
+  try {
+    const { error: userErr } = await supabase.rpc("insert_conversation_message", {
+      p_session_id: sessionId, p_role: "user", p_text: userText, p_modality: "text",
+    });
+    if (userErr) {
+      console.error("[chat] CRITICAL: user message persist failed:", userErr.message, { sessionId });
+      throw userErr; // Will cause 500 in caller
+    }
+  } catch (e) {
+    console.error("[chat] CRITICAL: user message persist exception:", e.message, { sessionId });
+    throw e;
+  }
+  try {
+    const { error: assistErr } = await supabase.rpc("insert_conversation_message", {
+      p_session_id: sessionId, p_role: "assistant", p_text: assistantText, p_modality: "text",
+    });
+    if (assistErr) {
+      console.error("[chat] WARN: assistant message persist failed:", assistErr.message, { sessionId });
+      // Don't throw — response was already generated, log for repair
+    }
+  } catch (e) {
+    console.error("[chat] WARN: assistant message persist exception:", e.message, { sessionId });
+  }
+}
+
 export const config = { maxDuration: 30 };
 
 const FREE_TURNS_LIMIT = 10;
@@ -353,24 +381,48 @@ async function handleStart(req, res) {
     lang: preferredLanguage,
   });
 
-  // Create chat session — store session_mode + language for server-side prompt rebuild
-  const { data: session, error: sessErr } = await supabase
-    .from("chat_sessions")
-    .insert({
-      user_id: user?.id || null,
-      status: "open",
-      mode: "text",
-      brainstorm_config: brainstormConfig || null,
-      session_mode: sessionMode || null,
-      language: preferredLanguage,
-      conversation_policy: conversationPolicy || null,
-    })
-    .select("id, turn_count, created_at")
-    .single();
+  // Create session — authenticated users → user_sessions (canonical), anonymous → chat_sessions (legacy)
+  let session, sessErr;
+  if (user) {
+    const { data, error } = await supabase
+      .from("user_sessions")
+      .insert({
+        user_id: user.id,
+        session_type: "chat",
+        primary_modality: "text",
+        status: "active",
+        session_mode: sessionMode || null, // backward-compat
+        turn_count: 0,
+        language: preferredLanguage,
+        brainstorm_config: brainstormConfig || null,
+        conversation_policy: conversationPolicy || null,
+        session_date: new Date().toISOString(),
+        started_at: new Date().toISOString(),
+      })
+      .select("id, turn_count, session_date")
+      .single();
+    session = data; sessErr = error;
+  } else {
+    // LEGACY: anonymous chat — no message persistence, no reports/resume
+    const { data, error } = await supabase
+      .from("chat_sessions")
+      .insert({
+        user_id: null,
+        status: "open",
+        mode: "text",
+        brainstorm_config: brainstormConfig || null,
+        session_mode: sessionMode || null,
+        language: preferredLanguage,
+        conversation_policy: conversationPolicy || null,
+      })
+      .select("id, turn_count, created_at")
+      .single();
+    session = data; sessErr = error;
+  }
 
   if (sessErr || !session) {
-    console.error("chat_sessions insert failed:", sessErr);
-    return res.status(500).json({ error: "Failed to create chat session" });
+    console.error("session insert failed:", sessErr);
+    return res.status(500).json({ error: "Failed to create session" });
   }
 
   // Experience Intelligence: session_started
@@ -830,15 +882,31 @@ async function handleMessage(req, res) {
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabase    = createClient(supabaseUrl, serviceKey);
 
-  // Load session (including session_mode + language for prompt rebuild)
-  const { data: session, error: sessErr } = await supabase
-    .from("chat_sessions")
-    .select("id, user_id, status, turn_count, brainstorm_config, session_mode, language, conversation_policy, created_at")
-    .eq("id", session_id)
-    .maybeSingle();
+  // Load session — try user_sessions first (canonical), fallback to chat_sessions (legacy/anon)
+  let session, sessErr, _isCanonical = false;
+  {
+    const { data, error } = await supabase
+      .from("user_sessions")
+      .select("id, user_id, status, turn_count, brainstorm_config, session_mode, language, conversation_policy, session_date")
+      .eq("id", session_id)
+      .maybeSingle();
+    if (data) { session = data; sessErr = error; _isCanonical = true; }
+    else {
+      // Fallback: legacy chat_sessions (anonymous)
+      const { data: legacy, error: legErr } = await supabase
+        .from("chat_sessions")
+        .select("id, user_id, status, turn_count, brainstorm_config, session_mode, language, conversation_policy, created_at")
+        .eq("id", session_id)
+        .maybeSingle();
+      session = legacy; sessErr = legErr;
+    }
+  }
 
   if (sessErr || !session) return res.status(404).json({ error: "Session not found" });
-  if (session.status === "closed") return res.status(410).json({ error: "Session is closed" });
+  if (session.status === "closed" || session.status === "completed") return res.status(410).json({ error: "Session is closed" });
+
+  // Table helper: canonical (user_sessions) vs legacy (chat_sessions)
+  const _sessTable = _isCanonical ? "user_sessions" : "chat_sessions";
 
   // Auth + ownership check
   const token = getToken(req);
@@ -1156,7 +1224,7 @@ async function handleMessage(req, res) {
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
     const curatedReply = getCuratedResponse(lastUserMsg?.content);
     if (curatedReply) {
-      await supabase.from("chat_sessions").update({
+      await supabase.from(_sessTable).update({
         turn_count: session.turn_count + 1,
         last_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -1221,7 +1289,7 @@ async function handleMessage(req, res) {
       .replace(/\s*\[VOICE_CONFIRMED\]\s*/g, "")
       .trim();
 
-    await supabase.from("chat_sessions").update({
+    await supabase.from(_sessTable).update({
       turn_count: session.turn_count + 1,
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1251,7 +1319,10 @@ async function handleMessage(req, res) {
   const lastUserMsgAuth = messages.filter(m => m.role === "user").pop();
   const curatedReplyAuth = getCuratedResponse(lastUserMsgAuth?.content);
   if (curatedReplyAuth) {
-    await supabase.from("chat_sessions").update({
+    try {
+      await persistChatMessages(supabase, session_id, lastUserMsgAuth?.content || "", curatedReplyAuth, _isCanonical);
+    } catch { return res.status(500).json({ error: "Failed to persist message" }); }
+    await supabase.from(_sessTable).update({
       turn_count: session.turn_count + 1,
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1535,6 +1606,12 @@ async function handleMessage(req, res) {
     }
   }
 
+  // Persist messages to conversation_messages (canonical sessions only)
+  const lastUserText = messages.filter(m => m.role === "user").pop()?.content || "";
+  try {
+    await persistChatMessages(supabase, session_id, lastUserText, reply, _isCanonical);
+  } catch { return res.status(500).json({ error: "Failed to persist message" }); }
+
   // Increment turn count + link user if just authenticated
   const updatePatch = {
     turn_count: session.turn_count + 1,
@@ -1543,7 +1620,7 @@ async function handleMessage(req, res) {
   };
   if (user && !session.user_id) updatePatch.user_id = user.id;
 
-  await supabase.from("chat_sessions").update(updatePatch).eq("id", session_id);
+  await supabase.from(_sessTable).update(updatePatch).eq("id", session_id);
 
   const responsePayload = {
     ok: true,
@@ -1587,12 +1664,16 @@ async function handleEnd(req, res) {
   const token = getToken(req) || bodyToken || null;
   const user  = await getUser(token, supabaseUrl, serviceKey);
 
-  // Ownership check: if session has a user_id, caller must match
-  const { data: session } = await supabase
-    .from("chat_sessions")
-    .select("user_id")
-    .eq("id", session_id)
-    .maybeSingle();
+  // Ownership check — try user_sessions first, fallback to chat_sessions (legacy)
+  let session, _endTable;
+  {
+    const { data } = await supabase.from("user_sessions").select("user_id").eq("id", session_id).maybeSingle();
+    if (data) { session = data; _endTable = "user_sessions"; }
+    else {
+      const { data: legacy } = await supabase.from("chat_sessions").select("user_id").eq("id", session_id).maybeSingle();
+      session = legacy; _endTable = "chat_sessions";
+    }
+  }
 
   if (!session) return res.status(404).json({ error: "Session not found" });
 
@@ -1601,10 +1682,10 @@ async function handleEnd(req, res) {
   }
 
   // Close session
-  await supabase
-    .from("chat_sessions")
-    .update({ status: "closed", updated_at: new Date().toISOString() })
-    .eq("id", session_id);
+  const endUpdate = _endTable === "user_sessions"
+    ? { status: "completed", ended_at: new Date().toISOString() }
+    : { status: "closed", updated_at: new Date().toISOString() };
+  await supabase.from(_endTable).update(endUpdate).eq("id", session_id);
 
   // Experience Intelligence: session_ended
   {
@@ -1631,7 +1712,8 @@ async function handleEnd(req, res) {
           transcript,
           session_started_at: null,
           session_ended_at: new Date().toISOString(),
-          chat_session_id: session_id,
+          session_id: session_id,
+          chat_session_id: session_id, // deprecated, kept for backward compat
         }),
       });
     } catch (e) {
@@ -1703,7 +1785,9 @@ async function handleUsage(req, res) {
   if (!session_id) return res.status(400).json({ error: "Missing session_id" });
 
   const supabase = createClient(supabaseUrl, serviceKey);
-  const { data: session } = await supabase.from("chat_sessions").select("turn_count,user_id,status").eq("id", session_id).maybeSingle();
+  let session;
+  { const { data } = await supabase.from("user_sessions").select("turn_count,user_id,status").eq("id", session_id).maybeSingle(); session = data; }
+  if (!session) { const { data } = await supabase.from("chat_sessions").select("turn_count,user_id,status").eq("id", session_id).maybeSingle(); session = data; }
   if (!session) return res.status(404).json({ error: "Session not found" });
 
   // Ownership check: if session has a user_id, caller must match

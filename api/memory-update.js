@@ -1822,40 +1822,86 @@ ${transcriptText}
       ? `Conversation with ${clean(profileRow.preferred_name || profileRow.first_name)}`
       : "Conversation";
 
-    const { data: insertedSession, error: sessErr } = await supabase
-      .from("user_sessions")
-      .insert({
-        ...baseSession,
-        title: finalSessionTitle.slice(0, 120),
-        emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
-        stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
-        closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-        short_summary: sessSummary.slice(0, 300),
-        has_transcript: transcriptArr.length > 0,
-        has_output: false,
-      })
-      .select("id, user_id, session_date, short_summary, title")
-      .single();
+    // Check if session already exists in user_sessions (chat sessions created by /api/chat handleStart)
+    const existingSessionId = body.session_id || null;
+    let insertedSession;
 
-    if (sessErr || !insertedSession?.id) {
-      console.error("user_sessions insert failed:", sessErr);
-      return res.status(500).json({
-        error: "user_sessions insert failed",
-        detail: sessErr?.message || "Missing session id",
-      });
+    if (existingSessionId) {
+      const { data: existing } = await supabase
+        .from("user_sessions")
+        .select("id, user_id")
+        .eq("id", existingSessionId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        // UPDATE existing session (chat path) — messages already persisted per-turn via RPC
+        const { error: updErr } = await supabase
+          .from("user_sessions")
+          .update({
+            title: finalSessionTitle.slice(0, 120),
+            emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+            stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+            closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+            short_summary: sessSummary.slice(0, 300),
+            status: "completed",
+            ended_at: sessionEndedAt || nowIso,
+            duration_seconds: secondsUsed || null,
+            has_transcript: true,
+            has_output: false,
+          })
+          .eq("id", existingSessionId);
+
+        if (updErr) {
+          console.error("user_sessions update failed:", updErr);
+          return res.status(500).json({ error: "user_sessions update failed", detail: updErr.message });
+        }
+
+        insertedSession = { id: existingSessionId, user_id: user.id, session_date: nowIso, short_summary: sessSummary.slice(0, 300), title: finalSessionTitle.slice(0, 120) };
+        console.log("[memory-update] updated existing session:", existingSessionId.slice(0, 8));
+        // Skip conversation_messages insert — already persisted per-turn
+      }
     }
 
-    const messageRows = transcriptArr.map((t, idx) => ({
-      session_id: insertedSession.id,
-      seq: idx,
-      role: t.role || "other",
-      text: clean(t.text),
-    }));
+    if (!insertedSession) {
+      // INSERT new session (voice path — no prior user_sessions row exists)
+      const { data: newSession, error: sessErr } = await supabase
+        .from("user_sessions")
+        .insert({
+          ...baseSession,
+          title: finalSessionTitle.slice(0, 120),
+          emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+          stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+          closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+          short_summary: sessSummary.slice(0, 300),
+          has_transcript: transcriptArr.length > 0,
+          has_output: false,
+        })
+        .select("id, user_id, session_date, short_summary, title")
+        .single();
 
-    if (messageRows.length) {
-      const { error: msgErr } = await supabase.from("conversation_messages").insert(messageRows);
-      if (msgErr) {
-        console.error("conversation_messages insert failed:", msgErr);
+      if (sessErr || !newSession?.id) {
+        console.error("user_sessions insert failed:", sessErr);
+        return res.status(500).json({
+          error: "user_sessions insert failed",
+          detail: sessErr?.message || "Missing session id",
+        });
+      }
+      insertedSession = newSession;
+
+      // Insert conversation messages (voice sessions — not persisted per-turn)
+      const messageRows = transcriptArr.map((t, idx) => ({
+        session_id: insertedSession.id,
+        seq: idx,
+        role: t.role || "other",
+        text: clean(t.text),
+      }));
+
+      if (messageRows.length) {
+        const { error: msgErr } = await supabase.from("conversation_messages").insert(messageRows);
+        if (msgErr) {
+          console.error("conversation_messages insert failed:", msgErr);
+        }
       }
     }
 

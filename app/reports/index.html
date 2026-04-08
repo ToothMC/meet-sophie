@@ -368,41 +368,38 @@
         }));
       }
       if (key === "chats") {
-        // Chats stored in localStorage (not persisted to DB)
-        try {
-          const stored = JSON.parse(localStorage.getItem("sophie_chat_sessions") || "{}");
-          const all = Object.entries(stored)
-            .map(([id, data]) => ({
-              id, title: `Chat (${t("turns")(Math.floor(data.messages.length / 2))})`,
-              type: "chat", date: data.updatedAt, status: "open",
-              continuable: true, turnCount: data.messages.length,
-            }))
-            .filter(c => c.turnCount >= 2)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
-          return all.slice(offset, offset + PAGE_SIZE);
-        } catch { return []; }
+        // Chats now stored in user_sessions with session_type='chat'
+        const { data } = await supabase
+          .from("user_sessions")
+          .select("id, title, status, turn_count, started_at, last_message_at, short_summary")
+          .eq("user_id", userId)
+          .eq("session_type", "chat")
+          .gt("turn_count", 0)
+          .order("last_message_at", { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1);
+        return (data || []).map(c => ({
+          id: c.id, title: c.title || c.short_summary || `Chat (${t("turns")(c.turn_count || 0)})`,
+          type: "chat", date: c.last_message_at || c.started_at, status: c.status,
+          continuable: ["active", "paused"].includes(c.status),
+          turnCount: c.turn_count,
+        }));
       }
-      // talks, brainstorms, pitches — all from user_sessions
-      const modeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "salespitch" };
-      const mode = modeMap[key];
+      // talks, brainstorms, pitches — all from user_sessions via session_type
+      const typeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "sales_pitch" };
+      const sessionType = typeMap[key];
       let query = supabase
         .from("user_sessions")
-        .select("id, title, session_mode, status, started_at, short_summary, duration_seconds")
+        .select("id, title, session_type, status, started_at, short_summary, duration_seconds")
         .eq("user_id", userId)
+        .eq("session_type", sessionType)
         .order("started_at", { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
-      if (mode === "talk") {
-        query = query.or("session_mode.is.null,session_mode.eq.talk,session_mode.eq.");
-      } else {
-        query = query.eq("session_mode", mode);
-      }
-
       const { data } = await query;
       return (data || []).map(s => ({
-        id: s.id, title: s.title || s.short_summary || key.slice(0, -1), type: mode,
+        id: s.id, title: s.title || s.short_summary || key.slice(0, -1), type: sessionType,
         date: s.started_at, status: s.status,
-        continuable: ["paused", "draft", "open"].includes(s.status),
+        continuable: ["active", "paused", "draft"].includes(s.status),
         duration: s.duration_seconds,
       }));
     }
@@ -517,7 +514,7 @@
         case "meeting":
           location.href = `/meeting/?id=${item.id}`;
           break;
-        case "salespitch":
+        case "sales_pitch":
           localStorage.setItem("sophie_session_mode", "salespitch");
           location.href = "/talk";
           break;

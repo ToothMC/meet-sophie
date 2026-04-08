@@ -57,9 +57,9 @@ export default async function handler(req, res) {
     // SECURITY: rebuild system prompt server-side instead of trusting client messages
     if (session_id) {
       try {
-        const { data: session } = await supabase.from('chat_sessions')
-          .select('session_mode, language, brainstorm_config, user_id')
-          .eq('id', session_id).maybeSingle();
+        let session;
+        { const { data } = await supabase.from('user_sessions').select('session_mode, language, brainstorm_config, user_id').eq('id', session_id).maybeSingle(); session = data; }
+        if (!session) { const { data } = await supabase.from('chat_sessions').select('session_mode, language, brainstorm_config, user_id').eq('id', session_id).maybeSingle(); session = data; }
         if (session) {
           const { data: { user } } = await supabase.auth.admin.getUserById(session.user_id || userId);
           const { fullSystemPrompt } = await buildServerSystemPrompt({
