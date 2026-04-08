@@ -846,14 +846,16 @@
     // ── Mode icons ───────────────────────────────────────
     const MODE_ICONS = {
       talk: "&#9679;",
+      chat: "&#9998;",
       brainstorm: "&#10022;",
       meeting: "&#9673;",
       salespitch: "&#9650;",
+      sales_pitch: "&#9650;",
     };
     const MODE_LABELS = {
-      en: { talk: "Conversation", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch" },
-      de: { talk: "Gespräch", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch" },
-      fr: { talk: "Conversation", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch" },
+      en: { talk: "Conversation", chat: "Chat", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch", sales_pitch: "Sales Pitch" },
+      de: { talk: "Gespräch", chat: "Chat", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch", sales_pitch: "Sales Pitch" },
+      fr: { talk: "Conversation", chat: "Chat", brainstorm: "Brainstorm", meeting: "Meeting", salespitch: "Sales Pitch", sales_pitch: "Sales Pitch" },
     };
 
     // ── Auth guard (authoritative) ───────────────────────
@@ -1210,13 +1212,27 @@
       // Last session — check both user_sessions AND meetings, show newest
       const sessionCard = document.getElementById("sessionCard");
       try {
-        const [sessRes, meetRes] = await Promise.all([
+        // Fetch last activity from all sources
+        const [sessRes, chatRes, meetRes] = await Promise.all([
+          // Last talk/brainstorm/pitch with report
           supabase.from("user_sessions")
-            .select("id, title, session_mode, status, started_at")
+            .select("id, title, session_type, status, started_at, last_message_at")
             .eq("user_id", userId)
+            .in("session_type", ["talk", "brainstorm", "sales_pitch"])
+            .eq("has_output", true)
             .order("started_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
+          // Last chat session
+          supabase.from("user_sessions")
+            .select("id, title, session_type, status, started_at, last_message_at")
+            .eq("user_id", userId)
+            .eq("session_type", "chat")
+            .gt("turn_count", 0)
+            .order("last_message_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          // Last meeting
           supabase.from("meetings")
             .select("id, title, meeting_type, phase, started_at")
             .eq("user_id", userId)
@@ -1225,32 +1241,27 @@
             .maybeSingle(),
         ]);
 
-        const lastTalk = sessRes.data;
-        const lastMeeting = meetRes.data;
+        // Pick the most recent across all sources
+        const candidates = [
+          sessRes.data && { ...sessRes.data, _src: "session" },
+          chatRes.data && { ...chatRes.data, _src: "chat" },
+          meetRes.data && { ...meetRes.data, _src: "meeting", started_at: meetRes.data.started_at },
+        ].filter(Boolean);
 
-        // Pick the most recent
-        let entry = null;
-        let isMeeting = false;
-        if (lastTalk && lastMeeting) {
-          if (new Date(lastMeeting.started_at) > new Date(lastTalk.started_at)) {
-            entry = lastMeeting; isMeeting = true;
-          } else {
-            entry = lastTalk;
-          }
-        } else if (lastMeeting) {
-          entry = lastMeeting; isMeeting = true;
-        } else if (lastTalk) {
-          entry = lastTalk;
-        }
+        const entry = candidates.sort((a, b) =>
+          new Date(b.last_message_at || b.started_at) - new Date(a.last_message_at || a.started_at)
+        )[0] || null;
 
         if (entry) {
-          const mode = isMeeting ? "meeting" : (entry.session_mode || "talk");
+          const isMeeting = entry._src === "meeting";
+          const isChat = entry._src === "chat";
+          const mode = isMeeting ? "meeting" : (entry.session_type || "talk");
           const modeLabel = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || mode;
           const icon = MODE_ICONS[mode] || MODE_ICONS.talk;
           const title = entry.title || modeLabel;
           const continuable = isMeeting
-            ? ["prep", "live", "post"].includes(entry.phase)
-            : ["paused", "draft", "open"].includes(entry.status);
+            ? ["prep", "live"].includes(entry.phase)
+            : ["active", "paused"].includes(entry.status);
 
           sessionCard.classList.remove("empty");
           sessionCard.innerHTML = `
@@ -1270,8 +1281,26 @@
           sessionCard.querySelector(".session-cta")?.addEventListener("click", () => {
             if (isMeeting) {
               location.href = `/meeting/?id=${entry.id}`;
+            } else if (isChat) {
+              sessionStorage.setItem("sophie_resume_chat", entry.id);
+              openChat();
+              // Load messages from DB
+              (async () => {
+                try {
+                  const { data: msgs } = await supabase.from("conversation_messages")
+                    .select("role, text").eq("session_id", entry.id).order("seq", { ascending: true });
+                  if (msgs?.length) {
+                    chatSessionId = entry.id;
+                    msgs.forEach(m => {
+                      appendBubble(m.role === "user" ? "user" : "sophie", m.text);
+                      chatHistory.push({ role: m.role === "user" ? "user" : "assistant", content: m.text });
+                    });
+                  }
+                } catch {}
+              })();
             } else {
-              if (mode && mode !== "talk") localStorage.setItem("sophie_session_mode", mode);
+              if (mode === "sales_pitch") localStorage.setItem("sophie_session_mode", "salespitch");
+              else if (mode && mode !== "talk") localStorage.setItem("sophie_session_mode", mode);
               location.href = "/talk";
             }
           });
