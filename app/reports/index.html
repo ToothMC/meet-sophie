@@ -609,11 +609,9 @@
     function resumeEntry(item) {
       switch (item.type) {
         case "talk":
-          sessionStorage.setItem("sophie_resume_session", item.id);
           location.href = "/talk";
           break;
         case "brainstorm":
-          sessionStorage.setItem("sophie_resume_session", item.id);
           localStorage.setItem("sophie_session_mode", "brainstorm");
           location.href = "/talk";
           break;
@@ -621,7 +619,6 @@
           location.href = `/meeting/?id=${item.id}`;
           break;
         case "sales_pitch":
-          sessionStorage.setItem("sophie_resume_session", item.id);
           localStorage.setItem("sophie_session_mode", "salespitch");
           location.href = "/talk";
           break;

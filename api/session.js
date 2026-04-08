@@ -50,33 +50,6 @@ export default async function handler(req, res) {
       handover = null;
     }
 
-    // Resume from Verlauf: load previous conversation as context
-    const resumeSessionId = String(req.headers["x-sophie-resume-session"] || "").trim() || null;
-    if (resumeSessionId && !handover) {
-      try {
-        const { data: msgs } = await supabase
-          .from("conversation_messages")
-          .select("role, text")
-          .eq("session_id", resumeSessionId)
-          .order("seq", { ascending: true })
-          .limit(30);
-        const { data: prevSession } = await supabase
-          .from("user_sessions")
-          .select("title, short_summary, session_type")
-          .eq("id", resumeSessionId)
-          .maybeSingle();
-        if (msgs?.length) {
-          handover = {
-            recentMessages: msgs.map(m => ({ role: m.role, content: m.text })),
-            summary: prevSession?.short_summary || prevSession?.title || "",
-          };
-          console.log("[session] resume context loaded:", resumeSessionId.slice(0, 8), msgs.length, "messages");
-        }
-      } catch (e) {
-        console.warn("[session] resume context load failed:", e?.message);
-      }
-    }
-
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
     const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;

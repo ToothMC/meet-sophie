@@ -2099,9 +2099,8 @@ function clearHandover() {
 
 const voiceHandover = loadHandover();
 
-// Resume from Verlauf page — session_id to continue
-const _resumeSessionId = sessionStorage.getItem("sophie_resume_session");
-if (_resumeSessionId) sessionStorage.removeItem("sophie_resume_session");
+// Clear any stale resume state
+sessionStorage.removeItem("sophie_resume_session");
 
 // ── i18n: UI translations ──────────────────────────────────
 const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
@@ -4620,27 +4619,6 @@ function attachChannel(ch) {
       console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
       kickoffSent = true;
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
-    } else if (_resumeSessionId && !startModeTriggered) {
-      // ── RESUME from Verlauf: Sophie knows the previous conversation ──
-      console.log(`[${runId}] [resume] triggering resume kickoff for session ${_resumeSessionId.slice(0, 8)}`);
-      startModeTriggered = true;
-      kickoffSent = true;
-      const greetLang = _voiceSessionData?.preferred_language || _uiLang || "en";
-      const isDE = greetLang === "de";
-      const langName = isDE ? "DEUTSCH" : greetLang === "fr" ? "FRANÇAIS" : "ENGLISH";
-      const resumeKickoff = isDE
-        ? `SPRACHE: Du MUSST auf DEUTSCH antworten. Kein Englisch.
-Du setzt ein früheres Gespräch fort. Schau in deinem System-Prompt nach dem Handover-Kontext.
-Sage EINEN kurzen Satz auf Deutsch der zeigt dass du weißt worum es ging.
-Dann SCHWEIGE. Keine Zusammenfassung. Kein Hilfsangebot.`
-        : `LANGUAGE: You MUST respond in ${langName}.
-You are resuming a previous conversation. Check your system prompt for handover context.
-Say ONE short sentence showing you know the topic.
-Then STOP and wait. No summary. No help offer.`;
-      try {
-        dcSend({ type: "response.create", response: { modalities: ["audio", "text"], instructions: resumeKickoff } });
-      } catch (e) { console.log(`[${runId}] [resume] kickoff error`, e); }
-
     } else if (!isFirstSession) {
       // ── Mode-specific kickoffs for returning users ──
       // Single source of truth: exactly ONE opening turn per mode, triggered here.
@@ -5538,7 +5516,6 @@ async function startVoice(){
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
         ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
-        ...(_resumeSessionId ? { "X-Sophie-Resume-Session": _resumeSessionId } : {}),
         ...((function() {
           // Build brainstorm config on-the-fly from toggle if not already set
           if (selectedVoiceMode === "brainstorm" && !brainstormVoiceConfig && window._getBrainstormConfig) {
