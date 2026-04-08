@@ -80,14 +80,29 @@
     }
 
     /* ── Type Group ───────────────────────────────── */
-    .type-group { margin-bottom: 28px; }
+    .type-group { margin-bottom: 12px; }
     .type-group.empty { display: none; }
     .type-label {
+      display: flex; align-items: center; justify-content: space-between;
       font-size: 13px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .04em; color: var(--muted);
-      margin: 0 0 10px; padding-left: 2px;
+      margin: 0; padding: 10px 2px;
+      cursor: pointer; user-select: none;
     }
+    .type-label:hover { color: var(--text); }
     .type-icon { margin-right: 4px; }
+    .type-count {
+      font-size: 11px; font-weight: 500;
+      background: rgba(0,0,0,.05); border-radius: 8px;
+      padding: 1px 7px; margin-left: 6px;
+    }
+    .type-chevron {
+      font-size: 14px; transition: transform .2s;
+      margin-left: auto; padding-left: 8px;
+    }
+    .type-group.collapsed .type-chevron { transform: rotate(-90deg); }
+    .type-group.collapsed .type-list,
+    .type-group.collapsed .load-more { display: none; }
 
     /* ── Entry Card ───────────────────────────────── */
     .entry {
@@ -403,15 +418,17 @@
       if (st.items.length === 0 && !st.hasMore) return null;
 
       const group = document.createElement("div");
-      group.className = "type-group";
+      group.className = "type-group collapsed"; // collapsed by default
       group.id = `group-${typeConf.key}`;
 
       const label = document.createElement("p");
       label.className = "type-label";
-      label.innerHTML = `<span class="type-icon">${typeConf.icon}</span> ${typeConf.label}`;
+      label.innerHTML = `<span><span class="type-icon">${typeConf.icon}</span> ${typeConf.label}<span class="type-count">${st.items.length}</span></span><span class="type-chevron">&#9662;</span>`;
+      label.addEventListener("click", () => group.classList.toggle("collapsed"));
       group.appendChild(label);
 
       const list = document.createElement("div");
+      list.className = "type-list";
       list.id = `list-${typeConf.key}`;
       st.items.forEach(item => list.appendChild(renderEntry(item, typeConf)));
       group.appendChild(list);
@@ -420,13 +437,15 @@
         const btn = document.createElement("button");
         btn.className = "load-more";
         btn.textContent = t("load_more");
-        btn.addEventListener("click", async () => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
           btn.textContent = "...";
           const more = await fetchGroup(typeConf.key, st.offset);
           if (more.length < PAGE_SIZE) st.hasMore = false;
           st.items.push(...more);
           st.offset += more.length;
           more.forEach(item => list.appendChild(renderEntry(item, typeConf)));
+          label.querySelector(".type-count").textContent = st.items.length;
           if (!st.hasMore || more.length === 0) btn.remove();
           else btn.textContent = t("load_more");
         });
