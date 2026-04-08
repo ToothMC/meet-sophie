@@ -682,8 +682,8 @@ async function loadReports() {
     const groupLabels = { meeting: "Meeting", salespitch: "Sales Pitch", brainstorm: "Brainstorming", talk: "Gespräche" };
     for (const r of (data.reports || [])) {
       const cat = (r.source === 'meeting' || r.report_style === 'meeting') ? 'meeting'
-        : (r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
-        : r.report_style === 'brainstorm' ? 'brainstorm'
+        : (r.source === 'salespitch' || r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
+        : (r.source === 'brainstorm' || r.report_style === 'brainstorm') ? 'brainstorm'
         : 'talk';
       groups[cat].push(r);
     }
