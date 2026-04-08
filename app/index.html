@@ -325,7 +325,6 @@
       background: rgba(245,200,66,.15);
       color: #b8860b;
     }
-
     /* ── Section Label ───────────────────────────────────────── */
     .section-label {
       font-size: 15px;
@@ -658,10 +657,7 @@
 
     // ── Auth guard (authoritative) ───────────────────────
     const session = await getSessionOrNull(supabase);
-    if (!session) {
-      location.replace("/");
-      throw new Error("no session");
-    }
+    if (!session) { location.replace("/"); throw new Error("no session"); }
     // Auth confirmed — show the app
     document.body.classList.add("ready");
 
@@ -739,15 +735,15 @@
     }
 
     // Solo/Team segment clicks
+    function deselectMode() {
+      selectedMode = "";
+      localStorage.removeItem("sophie_session_mode");
+      applyHeroMode(selectedMode);
+    }
+
     bsSeg.addEventListener("click", (e) => {
       const btn = e.target.closest(".bs-seg-btn");
-      if (!btn) {
-        // Clicked segment area but not a button → deselect brainstorm
-        selectedMode = "";
-        localStorage.removeItem("sophie_session_mode");
-        applyHeroMode(selectedMode);
-        return;
-      }
+      if (!btn) return;
       bsSeg.querySelectorAll(".bs-seg-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       localStorage.setItem("sophie_brainstorm_type", btn.dataset.bs);
@@ -776,13 +772,13 @@
         location.href = "/meeting/";
       } else {
         if (selectedMode) localStorage.setItem("sophie_session_mode", selectedMode);
-        location.href = "/?open=chat";
+        location.href = "/talk";
       }
     });
 
     document.getElementById("startChatBtn").addEventListener("click", () => {
       localStorage.removeItem("sophie_session_mode");
-      location.href = "/?open=chat";
+      location.href = "/talk";
     });
 
     // ── Load profile + last session ──────────────────────

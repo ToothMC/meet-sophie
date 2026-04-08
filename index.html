@@ -85,8 +85,7 @@
   <script>
     try {
       var s = localStorage.getItem("sb-ohzfojsbmzinpxhcynpt-auth-token");
-      var skip = new URLSearchParams(location.search).get("open");
-      if (s && JSON.parse(s).access_token && !skip) { location.replace("/app"); }
+      if (s && JSON.parse(s).access_token) { location.replace("/app"); }
     } catch {}
   </script>
   <style>
@@ -3306,11 +3305,6 @@
       }, 200);
     }
     function closeChatForeground() {
-      // If opened from /app, navigate back instead of showing landing page
-      if (new URLSearchParams(location.search).get("open") === "chat") {
-        location.replace("/app");
-        return;
-      }
       const chatCard = document.getElementById("sophieChat");
       if (!chatCard) return;
       const savedY = chatCard._savedScrollY || 0;
@@ -4429,10 +4423,6 @@
     // Also kick off getSession to populate the cache
     getToken().catch(() => {});
 
-    // Auto-open chat when coming from /app with ?open=chat
-    if (new URLSearchParams(location.search).get("open") === "chat") {
-      setTimeout(() => openChatForeground(), 300);
-    }
 
     if (authEmail) authEmail.value = "";
     function clearDemoAndStartReal() {
