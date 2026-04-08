@@ -1730,22 +1730,18 @@ const voiceChatSendBtn = document.getElementById("voiceChatSend");
   const resumeReportId = sessionStorage.getItem("sophie_resume_report");
   if (resumeReportId) {
     sessionStorage.removeItem("sophie_resume_report");
-    (async () => {
-      try {
-        const { data: output } = await supabase
-          .from("conversation_outputs")
-          .select("title, short_summary, report_html")
-          .eq("session_id", resumeReportId)
-          .maybeSingle();
-        const content = output?.report_html || output?.short_summary;
-        if (content) {
-          const note = document.createElement("div");
-          note.style.cssText = "padding:12px;margin:8px;background:rgba(255,255,255,.06);border-radius:12px;font-size:13px;color:rgba(246,247,251,.7);border:1px solid rgba(255,255,255,.08);max-height:300px;overflow-y:auto";
-          note.innerHTML = `<div style="font-weight:600;margin-bottom:6px;color:rgba(246,247,251,.9)">${output.title || "Letztes Gespräch"}</div>${output.report_html || `<p>${output.short_summary}</p>`}`;
-          voiceChatMessages.appendChild(note);
-        }
-      } catch {}
-    })();
+    fetch(`/api/ai/report-status?session_id=${resumeReportId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const html = data.report_html || (data.detail ? `<p>${data.detail}</p>` : null);
+        if (!html) return;
+        const note = document.createElement("div");
+        note.style.cssText = "padding:12px;margin:8px;background:rgba(255,255,255,.06);border-radius:12px;font-size:13px;color:rgba(246,247,251,.7);border:1px solid rgba(255,255,255,.08);max-height:300px;overflow-y:auto";
+        note.innerHTML = `<div style="font-weight:600;margin-bottom:6px;color:rgba(246,247,251,.9)">${data.title || "Letztes Gespräch"}</div>${html}`;
+        voiceChatMessages.appendChild(note);
+      })
+      .catch(() => {});
   }
 }
 
