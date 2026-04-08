@@ -392,6 +392,7 @@
         .select("id, title, session_type, status, started_at, short_summary, duration_seconds")
         .eq("user_id", userId)
         .eq("session_type", sessionType)
+        .eq("has_output", true)
         .order("started_at", { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
