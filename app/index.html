@@ -368,6 +368,7 @@
       border-color: rgba(255,255,255,.18);
     }
     .cta-secondary .icon { font-size: 16px; }
+    .cta-secondary .arrow { margin-left: auto; opacity: .5; }
 
     /* ── Bottom Nav ──────────────────────────────────────────── */
     .bottom-nav {
@@ -483,6 +484,7 @@
       <button class="cta-secondary" id="startChatBtn">
         <span class="icon">&#9998;</span>
         <span data-i18n="write_with_sophie">Write with Sophie</span>
+        <span class="arrow">&rarr;</span>
       </button>
 
     </div>
@@ -716,14 +718,16 @@
 
           sessionCard.classList.remove("empty");
           sessionCard.innerHTML = `
-            <div class="session-meta">
-              <span class="mode-icon">${icon}</span>
-              <span>${modeLabel}</span>
+            <div class="session-info">
+              <div class="session-meta">
+                <span class="mode-icon">${icon}</span>
+                <span>${modeLabel}</span>
+              </div>
+              <p class="session-title">${escHtml(title)}</p>
             </div>
-            <p class="session-title">${escHtml(title)}</p>
             ${continuable
-              ? `<button class="session-cta" data-session-id="${lastSession.id}">${t("continue")} &rarr;</button>`
-              : `<button class="session-cta" data-session-id="${lastSession.id}">${t("reopen")} &rarr;</button>`
+              ? `<button class="session-cta" data-session-id="${lastSession.id}">${t("continue")}</button>`
+              : `<button class="session-cta" data-session-id="${lastSession.id}">${t("reopen")}</button>`
             }
           `;
 
