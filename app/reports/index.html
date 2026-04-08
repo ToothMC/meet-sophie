@@ -15,7 +15,7 @@
   <meta name="theme-color" content="#f9f7f5" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Sophie — Reports</title>
+  <title>Sophie — Verlauf</title>
 
   <script>
     try {
@@ -90,7 +90,11 @@
       cursor: pointer; user-select: none;
     }
     .type-label:hover { color: var(--text); }
-    .type-icon { margin-right: 4px; }
+    .type-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 6px;
+      font-size: 12px; margin-right: 6px;
+    }
     .type-count {
       font-size: 11px; font-weight: 500;
       background: rgba(0,0,0,.05); border-radius: 8px;
@@ -104,9 +108,9 @@
     .type-group.collapsed .type-list,
     .type-group.collapsed .load-more { display: none; }
 
-    /* ── Entry Card ───────────────────────────────── */
+    /* ── Entry Card (Rich) ────────────────────────── */
     .entry {
-      display: flex; align-items: center; gap: 14px;
+      display: flex; gap: 12px;
       padding: 14px 16px;
       background: var(--card);
       border: 1px solid var(--line);
@@ -118,26 +122,44 @@
     }
     .entry:hover { background: #f9f7f5; }
     .entry:active { background: #f0eeec; }
+    .entry-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
     .entry-info { flex: 1; min-width: 0; }
+    .entry-top {
+      display: flex; align-items: center; gap: 6px;
+    }
     .entry-title {
-      font-size: 15px; font-weight: 500; color: var(--text);
+      font-size: 14px; font-weight: 600; color: var(--text);
       margin: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1;
     }
-    .entry-meta {
-      font-size: 12px; color: var(--muted); margin-top: 2px;
+    .entry-date {
+      font-size: 11px; color: var(--muted); flex-shrink: 0;
     }
-    .entry-arrow {
-      color: var(--muted); font-size: 16px; flex-shrink: 0; opacity: .4;
+    .entry-summary {
+      font-size: 12px; color: var(--muted); margin-top: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .entry-bottom {
+      display: flex; align-items: center; gap: 6px; margin-top: 6px;
     }
     .entry-badge {
       display: inline-block;
       font-size: 10px; font-weight: 600;
       padding: 2px 8px; border-radius: 6px;
-      margin-left: 6px;
+    }
+    .badge-type {
+      border: 1px solid currentColor; opacity: .7;
     }
     .badge-open { background: rgba(52,196,122,.12); color: #1e9957; }
-    .badge-closed { background: rgba(0,0,0,.05); color: var(--muted); }
+    .entry-arrow {
+      color: var(--muted); font-size: 16px; flex-shrink: 0; opacity: .3;
+      align-self: center;
+    }
 
     /* ── Title Group (same title merged) ────────── */
     .title-group {
@@ -246,9 +268,9 @@
         <span class="tab-icon">&#9679;</span>
         <span>Start</span>
       </a>
-      <button class="nav-tab active" data-tab="reports">
+      <button class="nav-tab active" data-tab="history">
         <span class="tab-icon">&#9776;</span>
-        <span>Reports</span>
+        <span>Verlauf</span>
       </button>
     </div>
   </nav>
@@ -277,7 +299,7 @@
     // ── i18n ──────────────────────────────────────
     const L = {
       en: {
-        title: "Reports",
+        title: "History",
         talks: "Conversations",
         brainstorms: "Brainstorming",
         meetings: "Meetings",
@@ -290,7 +312,7 @@
         ago: (s) => s,
       },
       de: {
-        title: "Reports",
+        title: "Verlauf",
         talks: "Gespräche",
         brainstorms: "Brainstorming",
         meetings: "Meetings",
@@ -303,7 +325,7 @@
         ago: (s) => s,
       },
       fr: {
-        title: "Rapports",
+        title: "Historique",
         talks: "Conversations",
         brainstorms: "Brainstorming",
         meetings: "Réunions",
@@ -398,7 +420,8 @@
 
       const { data } = await query;
       return (data || []).map(s => ({
-        id: s.id, title: s.title || s.short_summary || key.slice(0, -1), type: sessionType,
+        id: s.id, title: s.title || key.slice(0, -1), type: sessionType,
+        summary: s.short_summary || "",
         date: s.started_at, status: s.status,
         continuable: ["active", "paused", "draft"].includes(s.status),
         duration: s.duration_seconds,
@@ -408,16 +431,51 @@
     // ── Render ────────────────────────────────────
     function cleanTitle(t) { return (t || "").replace(/_\d+$/, "").trim(); }
 
+    const TYPE_COLORS = {
+      talk: { bg: "rgba(63,140,255,.10)", fg: "#3f8cff", icon: "&#9679;" },
+      chat: { bg: "rgba(107,114,128,.10)", fg: "#6b7280", icon: "&#9998;" },
+      brainstorm: { bg: "rgba(212,160,23,.10)", fg: "#d4a017", icon: "&#10022;" },
+      meeting: { bg: "rgba(30,153,87,.10)", fg: "#1e9957", icon: "&#9673;" },
+      sales_pitch: { bg: "rgba(198,40,40,.10)", fg: "#c62828", icon: "&#9650;" },
+    };
+    const TYPE_BADGE_LABELS = {
+      en: { talk: "Talk", chat: "Chat", brainstorm: "Brainstorm", meeting: "Meeting", sales_pitch: "Pitch" },
+      de: { talk: "Gespräch", chat: "Chat", brainstorm: "Brainstorm", meeting: "Meeting", sales_pitch: "Pitch" },
+      fr: { talk: "Conversation", chat: "Chat", brainstorm: "Brainstorm", meeting: "Meeting", sales_pitch: "Pitch" },
+    };
+
+    function formatDuration(sec) {
+      if (!sec || sec < 10) return "";
+      if (sec < 60) return `${sec}s`;
+      const m = Math.floor(sec / 60);
+      return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
+    }
+
     function renderEntry(item) {
       const div = document.createElement("div");
       div.className = "entry";
-      const badge = item.continuable
+      const tc = TYPE_COLORS[item.type] || TYPE_COLORS.talk;
+      const badgeLabel = (TYPE_BADGE_LABELS[lang] || TYPE_BADGE_LABELS.en)[item.type] || item.type;
+      const durStr = formatDuration(item.duration);
+      const resumeBadge = item.continuable
         ? `<span class="entry-badge badge-open">${t("resume")}</span>`
         : "";
+      const summaryHtml = item.summary
+        ? `<div class="entry-summary">${escHtml(item.summary)}</div>`
+        : "";
       div.innerHTML = `
+        <div class="entry-icon" style="background:${tc.bg};color:${tc.fg}">${tc.icon}</div>
         <div class="entry-info">
-          <p class="entry-title">${escHtml(item.title)}${badge}</p>
-          <div class="entry-meta">${formatDate(item.date)}</div>
+          <div class="entry-top">
+            <p class="entry-title">${escHtml(item.title)}</p>
+            <span class="entry-date">${formatDate(item.date)}</span>
+          </div>
+          ${summaryHtml}
+          <div class="entry-bottom">
+            <span class="entry-badge badge-type" style="color:${tc.fg}">${badgeLabel}</span>
+            ${durStr ? `<span class="entry-badge" style="background:rgba(0,0,0,.04);color:var(--muted)">${durStr}</span>` : ""}
+            ${resumeBadge}
+          </div>
         </div>
         <span class="entry-arrow">&rsaquo;</span>
       `;
@@ -456,7 +514,8 @@
 
       const label = document.createElement("p");
       label.className = "type-label";
-      label.innerHTML = `<span><span class="type-icon">${typeConf.icon}</span> ${typeConf.label}<span class="type-count">${st.items.length}</span></span><span class="type-chevron">&#9662;</span>`;
+      const tc = TYPE_COLORS[typeConf.key === "talks" ? "talk" : typeConf.key === "brainstorms" ? "brainstorm" : typeConf.key === "pitches" ? "sales_pitch" : typeConf.key === "chats" ? "chat" : "meeting"] || TYPE_COLORS.talk;
+      label.innerHTML = `<span style="display:flex;align-items:center;gap:8px"><span class="type-icon" style="background:${tc.bg};color:${tc.fg}">${typeConf.icon}</span> ${typeConf.label}<span class="type-count">${st.items.length}</span></span><span class="type-chevron">&#9662;</span>`;
       label.addEventListener("click", () => group.classList.toggle("collapsed"));
       group.appendChild(label);
 
