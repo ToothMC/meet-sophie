@@ -1216,10 +1216,11 @@
         const [sessRes, chatRes, meetRes] = await Promise.all([
           // Last talk/brainstorm/pitch with report
           supabase.from("user_sessions")
-            .select("id, title, session_type, status, started_at, last_message_at")
+            .select("id, title, session_type, status, started_at, last_message_at, session_date")
             .eq("user_id", userId)
             .in("session_type", ["talk", "brainstorm", "sales_pitch"])
             .eq("has_output", true)
+            .not("started_at", "is", null)
             .order("started_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
@@ -1249,7 +1250,7 @@
         ].filter(Boolean);
 
         const entry = candidates.sort((a, b) =>
-          new Date(b.last_message_at || b.started_at) - new Date(a.last_message_at || a.started_at)
+          new Date(b.last_message_at || b.started_at || b.session_date || 0) - new Date(a.last_message_at || a.started_at || a.session_date || 0)
         )[0] || null;
 
         if (entry) {
