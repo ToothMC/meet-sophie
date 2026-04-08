@@ -368,20 +368,19 @@
         }));
       }
       if (key === "chats") {
-        const { data } = await supabase
-          .from("chat_sessions")
-          .select("id, status, turn_count, created_at, last_message_at, session_mode")
-          .eq("user_id", userId)
-          .is("session_mode", null)
-          .gte("turn_count", 2)
-          .order("last_message_at", { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1);
-        return (data || []).map(c => ({
-          id: c.id, title: `Chat (${t("turns")(c.turn_count || 0)})`, type: "chat",
-          date: c.last_message_at || c.created_at, status: c.status,
-          continuable: c.status === "open",
-          turnCount: c.turn_count,
-        }));
+        // Chats stored in localStorage (not persisted to DB)
+        try {
+          const stored = JSON.parse(localStorage.getItem("sophie_chat_sessions") || "{}");
+          const all = Object.entries(stored)
+            .map(([id, data]) => ({
+              id, title: `Chat (${t("turns")(Math.floor(data.messages.length / 2))})`,
+              type: "chat", date: data.updatedAt, status: "open",
+              continuable: true, turnCount: data.messages.length,
+            }))
+            .filter(c => c.turnCount >= 2)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+          return all.slice(offset, offset + PAGE_SIZE);
+        } catch { return []; }
       }
       // talks, brainstorms, pitches — all from user_sessions
       const modeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "salespitch" };

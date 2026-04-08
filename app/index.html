@@ -1032,6 +1032,43 @@
     document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
     chatBackdrop.addEventListener("click", closeChat);
 
+    // ── Chat persistence (localStorage) ──────────
+    const CHAT_STORAGE_KEY = "sophie_chat_sessions";
+
+    function saveChatHistory() {
+      if (!chatSessionId || chatHistory.length === 0) return;
+      try {
+        const stored = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "{}");
+        stored[chatSessionId] = {
+          messages: chatHistory,
+          updatedAt: new Date().toISOString(),
+        };
+        // Keep max 50 sessions
+        const keys = Object.keys(stored);
+        if (keys.length > 50) {
+          const sorted = keys.sort((a, b) => new Date(stored[b].updatedAt) - new Date(stored[a].updatedAt));
+          sorted.slice(50).forEach(k => delete stored[k]);
+        }
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(stored));
+      } catch {}
+    }
+
+    function loadChatHistory(sessionId) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "{}");
+        return stored[sessionId]?.messages || [];
+      } catch { return []; }
+    }
+
+    function getChatSessionList() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "{}");
+        return Object.entries(stored)
+          .map(([id, data]) => ({ id, messageCount: data.messages.length, updatedAt: data.updatedAt }))
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      } catch { return []; }
+    }
+
     // Auto-resize textarea
     chatInput.addEventListener("input", () => {
       chatInput.style.height = "auto";
@@ -1167,6 +1204,7 @@
           appendBubble("sophie", result.reply);
           chatHistory.push({ role: "assistant", content: result.reply });
           if (result.session_id) chatSessionId = result.session_id;
+          saveChatHistory();
         }
       } catch (err) {
         chatTyping.classList.remove("visible");
@@ -1300,23 +1338,15 @@
       sessionStorage.removeItem("sophie_resume_chat");
       chatSessionId = resumeChatId;
       openChat();
-      // Load existing messages
-      (async () => {
-        try {
-          const { data: msgs } = await supabase
-            .from("conversation_messages")
-            .select("role, text, created_at")
-            .eq("session_id", resumeChatId)
-            .order("seq", { ascending: true });
-          if (msgs && msgs.length > 0) {
-            msgs.forEach(m => {
-              const role = m.role === "user" ? "user" : "sophie";
-              appendBubble(role, m.text);
-              chatHistory.push({ role: m.role === "user" ? "user" : "assistant", content: m.text });
-            });
-          }
-        } catch {}
-      })();
+      // Load messages from localStorage
+      const msgs = loadChatHistory(resumeChatId);
+      if (msgs.length > 0) {
+        msgs.forEach(m => {
+          const role = m.role === "user" ? "user" : "sophie";
+          appendBubble(role, m.content);
+        });
+        chatHistory = [...msgs];
+      }
     }
   </script>
 </body>
