@@ -397,7 +397,9 @@ async function generateConversationOutput({
     "Also generate a short session_title with max 4 words. " +
     "The title must name the main topic only, not a sentence. " +
     "Avoid generic titles like Conversation, Session, Discussion. " +
-    "IMPORTANT: Write the entire output in the SAME language as the transcript.";
+    "CRITICAL LANGUAGE RULE: Write the ENTIRE output (session_title, short_summary, key_insights, action_plan, open_questions) " +
+    "in the SAME language as the transcript. German transcript → German output. French transcript → French output. " +
+    "NEVER write English output for a non-English transcript.";
 
   const userMsg = `
 Fallback summary from session memory:
@@ -1399,6 +1401,9 @@ significant_developments: ${(existingLtm?.significant_developments || []).join("
 
 NEW transcript (includes USER + ASSISTANT; remember: only USER messages count):
 ${transcriptText}
+
+MANDATORY OUTPUT LANGUAGE: ${existing.preferred_language === "de" ? "German (Deutsch)" : existing.preferred_language === "fr" ? "French (Français)" : "English"}
+You MUST write session_title, short_summary, session_summary, last_interaction_summary, open_topics, pending_decisions, next_steps, and significant_developments in ${existing.preferred_language === "de" ? "GERMAN" : existing.preferred_language === "fr" ? "FRENCH" : "ENGLISH"}.
 `.trim();
 
     const schema = {
