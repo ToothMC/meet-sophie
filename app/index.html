@@ -904,7 +904,9 @@
     });
 
     // ── Mode bar + CTA sync ─────────────────────────────
-    let selectedMode = localStorage.getItem("sophie_session_mode") || "";
+    // Clear mode on return to /app — session already started, mode was consumed
+    localStorage.removeItem("sophie_session_mode");
+    let selectedMode = "";
     const modeBar = document.getElementById("modeBar");
     const ctaBtn = document.getElementById("startTalkBtn");
     const ctaLabel = document.getElementById("ctaLabel");
@@ -1061,6 +1063,26 @@
       return s?.access_token || null;
     }
 
+    async function startChatSession() {
+      if (chatSessionId) return;
+      const token = await getToken();
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/chat?action=start", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ language: currentLang }),
+      });
+      if (!res.ok) throw new Error("Failed to start session");
+      const data = await res.json();
+      chatSessionId = data.session_id;
+      // Show Sophie's opener if present
+      if (data.opener) {
+        appendBubble("sophie", data.opener);
+        chatHistory.push({ role: "assistant", content: data.opener });
+      }
+    }
+
     async function sendMessage() {
       const text = chatInput.value.trim();
       if (!text || chatSending) return;
@@ -1078,6 +1100,9 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
 
       try {
+        // Ensure session exists
+        await startChatSession();
+
         const token = await getToken();
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
