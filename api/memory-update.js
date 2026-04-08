@@ -1361,7 +1361,10 @@ export default async function handler(req, res) {
       "significant_developments: Major life events worth remembering long-term. " +
       "session_summary: 1-2 sentence summary of THIS session. " +
       "open_topics/pending_decisions/next_steps: Unresolved items from this session. " +
-      "importance_score: 0.0–1.0, how significant this session was (casual chat=0.2, major decision=0.9).";
+      "importance_score: 0.0–1.0, how significant this session was (casual chat=0.2, major decision=0.9). " +
+      "SESSION: session_title must be a short (max 4 words) topic-based title for this session. " +
+      "Write it in the same language as the transcript. " +
+      "Name the main topic, not a generic label like 'Conversation' or 'Session'.";
 
     const userMsg = `
 CURRENT structured profile (existing DB values):
@@ -1441,12 +1444,13 @@ ${transcriptText}
           type: "object",
           additionalProperties: false,
           properties: {
+            session_title: { type: "string" },
             emotional_tone: { type: "string" },
             stress_level: { type: "integer", minimum: 0, maximum: 10 },
             closeness_level: { type: "integer", minimum: 0, maximum: 10 },
             short_summary: { type: "string" },
           },
-          required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
+          required: ["session_title", "emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
         structured_memory: {
           type: "object",
@@ -1813,9 +1817,9 @@ ${transcriptText}
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
 
-    const finalSessionTitle = clean(profileRow.preferred_name || profileRow.first_name)
-      ? `Conversation with ${clean(profileRow.preferred_name || profileRow.first_name)}`
-      : "Conversation";
+    // Use AI-generated title from session analysis, fallback to generic
+    const aiTitle = clean(ss.session_title || "").slice(0, 120);
+    const finalSessionTitle = aiTitle || sessSummary.slice(0, 80) || "Session";
 
     // Check if session already exists in user_sessions (chat sessions created by /api/chat handleStart)
     const existingSessionId = body.session_id || null;
