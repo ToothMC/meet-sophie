@@ -4627,15 +4627,16 @@ function attachChannel(ch) {
       kickoffSent = true;
       const greetLang = _voiceSessionData?.preferred_language || _uiLang || "en";
       const isDE = greetLang === "de";
+      const langName = isDE ? "DEUTSCH" : greetLang === "fr" ? "FRANÇAIS" : "ENGLISH";
       const resumeKickoff = isDE
-        ? `Du setzt ein früheres Gespräch fort. Der Kontext dieses Gesprächs steht in deinem System-Prompt unter "CHAT-TO-VOICE HANDOVER".
-Lies die Recent messages dort und knüpfe direkt an.
-Sage EINEN kurzen Satz der zeigt dass du weißt worum es ging, z.B. "Wir hatten über [Thema] gesprochen — sollen wir da weitermachen?"
-Dann SCHWEIGE und warte auf die Antwort. Keine lange Zusammenfassung. Kein Hilfsangebot.`
-        : `You are resuming a previous conversation. The context is in your system prompt under "CHAT-TO-VOICE HANDOVER".
-Read the Recent messages there and pick up where it left off.
-Say ONE short sentence showing you know the topic, e.g. "We were talking about [topic] — shall we continue?"
-Then STOP and wait. No long summary. No help offer.`;
+        ? `SPRACHE: Du MUSST auf DEUTSCH antworten. Kein Englisch.
+Du setzt ein früheres Gespräch fort. Schau in deinem System-Prompt nach dem Handover-Kontext.
+Sage EINEN kurzen Satz auf Deutsch der zeigt dass du weißt worum es ging.
+Dann SCHWEIGE. Keine Zusammenfassung. Kein Hilfsangebot.`
+        : `LANGUAGE: You MUST respond in ${langName}.
+You are resuming a previous conversation. Check your system prompt for handover context.
+Say ONE short sentence showing you know the topic.
+Then STOP and wait. No summary. No help offer.`;
       try {
         dcSend({ type: "response.create", response: { modalities: ["audio", "text"], instructions: resumeKickoff } });
       } catch (e) { console.log(`[${runId}] [resume] kickoff error`, e); }
