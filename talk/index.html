@@ -2099,6 +2099,10 @@ function clearHandover() {
 
 const voiceHandover = loadHandover();
 
+// Resume from Verlauf page — session_id to continue
+const _resumeSessionId = sessionStorage.getItem("sophie_resume_session");
+if (_resumeSessionId) sessionStorage.removeItem("sophie_resume_session");
+
 // ── i18n: UI translations ──────────────────────────────────
 const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
 document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
@@ -5513,6 +5517,7 @@ async function startVoice(){
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
         ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
+        ...(_resumeSessionId ? { "X-Sophie-Resume-Session": _resumeSessionId } : {}),
         ...((function() {
           // Build brainstorm config on-the-fly from toggle if not already set
           if (selectedVoiceMode === "brainstorm" && !brainstormVoiceConfig && window._getBrainstormConfig) {
