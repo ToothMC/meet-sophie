@@ -609,6 +609,7 @@
     function resumeEntry(item) {
       switch (item.type) {
         case "talk":
+          sessionStorage.setItem("sophie_resume_report", item.id);
           location.href = "/talk";
           break;
         case "brainstorm":

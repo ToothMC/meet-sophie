@@ -1725,6 +1725,32 @@ const voiceChatMessages = document.getElementById("voiceChatMessages");
 const voiceChatInput = document.getElementById("voiceChatInput");
 const voiceChatSendBtn = document.getElementById("voiceChatSend");
 
+// ── Load previous report into chat panel (resume from Verlauf) ──
+{
+  const resumeReportId = sessionStorage.getItem("sophie_resume_report");
+  if (resumeReportId) {
+    sessionStorage.removeItem("sophie_resume_report");
+    (async () => {
+      try {
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        if (!authSess) return;
+        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data: output } = await sb
+          .from("conversation_outputs")
+          .select("title, short_summary, report_html")
+          .eq("session_id", resumeReportId)
+          .maybeSingle();
+        if (output?.report_html) {
+          const note = document.createElement("div");
+          note.style.cssText = "padding:12px;margin:8px;background:rgba(255,255,255,.06);border-radius:12px;font-size:13px;color:rgba(246,247,251,.7);border:1px solid rgba(255,255,255,.08);max-height:300px;overflow-y:auto";
+          note.innerHTML = `<div style="font-weight:600;margin-bottom:6px;color:rgba(246,247,251,.9)">${output.title || "Letztes Gespräch"}</div>${output.report_html}`;
+          voiceChatMessages.appendChild(note);
+        }
+      } catch {}
+    })();
+  }
+}
+
 // ── Voice Chat File Upload ──
 const vcUploadBtn = document.getElementById("vcUploadBtn");
 const vcFileInput = document.getElementById("vcFileInput");
