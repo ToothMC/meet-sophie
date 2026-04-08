@@ -139,6 +139,37 @@
     .badge-open { background: rgba(52,196,122,.12); color: #1e9957; }
     .badge-closed { background: rgba(0,0,0,.05); color: var(--muted); }
 
+    /* ── Title Group (same title merged) ────────── */
+    .title-group {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow);
+    }
+    .title-group-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      background: var(--card);
+      cursor: pointer; user-select: none;
+      font-size: 15px; font-weight: 500; color: var(--text);
+    }
+    .title-group-header:hover { background: #f9f7f5; }
+    .title-group-count {
+      font-size: 11px; color: var(--muted); margin-left: auto;
+    }
+    .title-group-chevron {
+      font-size: 12px; color: var(--muted);
+      transition: transform .2s;
+      transform: rotate(-90deg);
+    }
+    .title-group-list { padding: 0 8px 8px; background: var(--card); }
+    .title-group-list .entry {
+      margin-bottom: 4px;
+      border: 1px solid rgba(0,0,0,.04);
+      box-shadow: none;
+    }
+
     /* ── Load More ────────────────────────────────── */
     .load-more {
       display: block; width: 100%;
@@ -322,22 +353,15 @@
     TYPES.forEach(tp => { state[tp.key] = { items: [], offset: 0, hasMore: true }; });
 
     // ── Fetch data ───────────────────────────────
-    // Only show sessions that still have a report (conversation_outputs/meeting_summary)
     async function fetchGroup(key, offset) {
       if (key === "meetings") {
-        // Only meetings that have a summary
-        const { data: summaryIds } = await supabase
-          .from("meeting_summary")
-          .select("meeting_id");
-        const validIds = new Set((summaryIds || []).map(s => s.meeting_id));
-
         const { data } = await supabase
           .from("meetings")
           .select("id, title, meeting_type, phase, started_at, ended_at")
           .eq("user_id", userId)
           .order("started_at", { ascending: false })
           .range(offset, offset + PAGE_SIZE - 1);
-        return (data || []).filter(m => validIds.has(m.id)).map(m => ({
+        return (data || []).map(m => ({
           id: m.id, title: m.title || "Meeting", type: "meeting",
           date: m.started_at, status: m.phase,
           continuable: ["prep", "live"].includes(m.phase),
@@ -359,21 +383,15 @@
           turnCount: c.turn_count,
         }));
       }
-      // talks, brainstorms, pitches — only sessions with existing report
+      // talks, brainstorms, pitches — all from user_sessions
       const modeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "salespitch" };
       const mode = modeMap[key];
-
-      // Get session IDs that still have a conversation_outputs entry
-      const { data: outputIds } = await supabase
-        .from("conversation_outputs")
-        .select("session_id");
-      const validIds = new Set((outputIds || []).map(o => o.session_id));
-
       let query = supabase
         .from("user_sessions")
         .select("id, title, session_mode, status, started_at, short_summary, duration_seconds")
         .eq("user_id", userId)
-        .order("started_at", { ascending: false });
+        .order("started_at", { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
 
       if (mode === "talk") {
         query = query.or("session_mode.is.null,session_mode.eq.talk,session_mode.eq.");
@@ -382,24 +400,21 @@
       }
 
       const { data } = await query;
-      // Filter to only sessions with existing report, then paginate
-      const filtered = (data || []).filter(s => validIds.has(s.id));
-      const paged = filtered.slice(offset, offset + PAGE_SIZE);
-      return paged.map(s => ({
+      return (data || []).map(s => ({
         id: s.id, title: s.title || s.short_summary || key.slice(0, -1), type: mode,
         date: s.started_at, status: s.status,
         continuable: ["paused", "draft", "open"].includes(s.status),
         duration: s.duration_seconds,
-        _totalFiltered: filtered.length,
       }));
     }
 
     // ── Render ────────────────────────────────────
-    function renderEntry(item, typeConf) {
+    function cleanTitle(t) { return (t || "").replace(/_\d+$/, "").trim(); }
+
+    function renderEntry(item) {
       const div = document.createElement("div");
       div.className = "entry";
-      const isOpen = item.continuable;
-      const badge = isOpen
+      const badge = item.continuable
         ? `<span class="entry-badge badge-open">${t("resume")}</span>`
         : "";
       div.innerHTML = `
@@ -411,6 +426,27 @@
       `;
       div.addEventListener("click", () => resumeEntry(item));
       return div;
+    }
+
+    function renderTitleGroup(title, items) {
+      if (items.length === 1) return renderEntry(items[0]);
+      const wrap = document.createElement("div");
+      wrap.className = "title-group";
+      const header = document.createElement("div");
+      header.className = "title-group-header";
+      header.innerHTML = `<span>${escHtml(title)}</span><span class="title-group-count">${items.length}&times;</span><span class="title-group-chevron">&#9662;</span>`;
+      const sub = document.createElement("div");
+      sub.className = "title-group-list";
+      sub.style.display = "none";
+      items.forEach(item => sub.appendChild(renderEntry(item)));
+      header.addEventListener("click", () => {
+        const open = sub.style.display !== "none";
+        sub.style.display = open ? "none" : "block";
+        header.querySelector(".title-group-chevron").style.transform = open ? "rotate(-90deg)" : "";
+      });
+      wrap.appendChild(header);
+      wrap.appendChild(sub);
+      return wrap;
     }
 
     function renderGroup(typeConf) {
@@ -430,7 +466,16 @@
       const list = document.createElement("div");
       list.className = "type-list";
       list.id = `list-${typeConf.key}`;
-      st.items.forEach(item => list.appendChild(renderEntry(item, typeConf)));
+      // Group by title (like Settings page)
+      const titleGroups = {};
+      for (const item of st.items) {
+        const key2 = cleanTitle(item.title);
+        if (!titleGroups[key2]) titleGroups[key2] = [];
+        titleGroups[key2].push(item);
+      }
+      for (const [title, items] of Object.entries(titleGroups)) {
+        list.appendChild(renderTitleGroup(title, items));
+      }
       group.appendChild(list);
 
       if (st.hasMore && st.items.length >= PAGE_SIZE) {
