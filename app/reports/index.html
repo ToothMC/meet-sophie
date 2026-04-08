@@ -196,13 +196,13 @@
     .entry-delete {
       width: 28px; height: 28px; border-radius: 50%;
       border: none; background: transparent;
-      color: var(--muted); font-size: 14px;
+      color: var(--muted); font-size: 16px;
       cursor: pointer; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity .15s, background .12s;
+      transition: background .12s;
+      opacity: .4;
     }
-    .entry:hover .entry-delete { opacity: 1; }
-    .entry-delete:hover { background: rgba(239,68,68,.10); color: #dc2626; }
+    .entry-delete:hover { background: rgba(239,68,68,.10); color: #dc2626; opacity: 1; }
 
     /* ── Load More ────────────────────────────────── */
     .load-more {
