@@ -80,11 +80,17 @@
       min-height: 60px;
     }
     .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-size: 17px;
       font-weight: 800;
       letter-spacing: .02em;
       text-transform: uppercase;
       color: var(--text);
+    }
+    .brand-icon {
+      border-radius: 8px;
     }
     .header-right {
       display: flex;
@@ -277,6 +283,49 @@
       color: #c62828;
     }
 
+    /* ── Brainstorm Solo/Team Segment ────────────────────────── */
+    .bs-pill-wrap {
+      display: inline-flex;
+      min-width: 114px;
+      justify-content: center;
+    }
+    .bs-seg {
+      display: inline-flex;
+      border: 1px solid rgba(245,200,66,.45);
+      border-radius: 20px;
+      overflow: hidden;
+      height: 32px;
+      align-items: stretch;
+      box-shadow: var(--shadow);
+      background: var(--card);
+    }
+    .bs-seg-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 0 14px;
+      cursor: pointer;
+      transition: all .15s;
+      position: relative;
+    }
+    .bs-seg-btn:first-child::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 20%;
+      height: 60%;
+      width: 1px;
+      background: rgba(245,200,66,.25);
+    }
+    .bs-seg-btn:hover { color: var(--text); }
+    .bs-seg-btn.active {
+      background: rgba(245,200,66,.15);
+      color: #b8860b;
+    }
+
     /* ── Section Label ───────────────────────────────────────── */
     .section-label {
       font-size: 15px;
@@ -448,16 +497,19 @@
   <!-- ── Header ──────────────────────────────────────────── -->
   <header class="app-header">
     <div class="wrap">
-      <a class="brand" href="/app">SOPHIE</a>
+      <a class="brand" href="/app">
+        <img class="brand-icon" src="/apple-touch-icon.png" alt="" width="32" height="32" />
+        SOPHIE
+      </a>
       <div class="header-right">
         <div class="lang-dropdown">
           <button class="lang-btn" id="langToggle" aria-expanded="false" aria-haspopup="true">
             <span id="lang-label">EN</span>
           </button>
           <div class="lang-menu" id="langMenu">
-            <button type="button" data-lang="en">English</button>
-            <button type="button" data-lang="de">Deutsch</button>
-            <button type="button" data-lang="fr">Fran&ccedil;ais</button>
+            <button type="button" data-lang="en">&#127468;&#127463; English</button>
+            <button type="button" data-lang="de">&#127465;&#127466; Deutsch</button>
+            <button type="button" data-lang="fr">&#127467;&#127479; Fran&ccedil;ais</button>
           </div>
         </div>
         <a class="profile-btn" href="/settings/" id="profileBtn">...</a>
@@ -482,7 +534,13 @@
 
       <!-- Mode Bar -->
       <div class="mode-bar" id="modeBar">
-        <button class="mode-pill" data-mode="brainstorm">Brainstorm</button>
+        <div class="bs-pill-wrap">
+          <button class="mode-pill" data-mode="brainstorm" id="bsPillMain">Brainstorm</button>
+          <div class="bs-seg" id="bsSeg" style="display:none">
+            <button class="bs-seg-btn active" data-bs="solo">Solo</button>
+            <button class="bs-seg-btn" data-bs="group">Team</button>
+          </div>
+        </div>
         <button class="mode-pill" data-mode="meeting">Meeting</button>
         <button class="mode-pill" data-mode="salespitch">Sales Pitch</button>
       </div>
@@ -533,7 +591,7 @@
     const I18N = {
       en: {
         start_talk: "Talk to Sophie",
-        write_with_sophie: "Write with Sophie ...",
+        write_with_sophie: "Write with Sophie...",
         last_session_label: "Last session",
         greeting: (name) => name ? `Welcome back, ${name}` : "Welcome back",
         no_session: "No session yet — Start your first conversation with Sophie",
@@ -543,8 +601,8 @@
         nav_reports: "Reports",
       },
       de: {
-        start_talk: "Gespräch starten",
-        write_with_sophie: "Mit Sophie schreiben ...",
+        start_talk: "Mit Sophie sprechen",
+        write_with_sophie: "Mit Sophie schreiben...",
         last_session_label: "Letzte Session",
         greeting: (name) => name ? `Willkommen zurück, ${name}` : "Willkommen zurück",
         no_session: "Noch keine Session — Starte dein erstes Gespräch mit Sophie",
@@ -555,7 +613,7 @@
       },
       fr: {
         start_talk: "Parler avec Sophie",
-        write_with_sophie: "Écrire avec Sophie ...",
+        write_with_sophie: "Écrire avec Sophie...",
         last_session_label: "Dernière session",
         greeting: (name) => name ? `Bon retour, ${name}` : "Bon retour",
         no_session: "Pas encore de session — Démarre ta première conversation avec Sophie",
@@ -614,9 +672,7 @@
 
     // ── Listen for auth changes ──────────────────────────
     supabase.auth.onAuthStateChange((event, sess) => {
-      if (!sess?.access_token) {
-        location.replace("/");
-      }
+      if (!sess?.access_token) { location.replace("/"); }
     });
 
     // ── Language dropdown ────────────────────────────────
@@ -625,8 +681,8 @@
     const langLabel = document.getElementById("lang-label");
 
     function updateLangLabel() {
-      const labels = { en: "EN", de: "DE", fr: "FR" };
-      langLabel.textContent = labels[currentLang] || "EN";
+      const labels = { en: "\u{1F1EC}\u{1F1E7} EN", de: "\u{1F1E9}\u{1F1EA} DE", fr: "\u{1F1EB}\u{1F1F7} FR" };
+      langLabel.textContent = labels[currentLang] || "\u{1F1EC}\u{1F1E7} EN";
     }
     updateLangLabel();
 
@@ -657,6 +713,9 @@
     const ctaBtn = document.getElementById("startTalkBtn");
     const ctaLabel = document.getElementById("ctaLabel");
 
+    const bsPillMain = document.getElementById("bsPillMain");
+    const bsSeg = document.getElementById("bsSeg");
+
     function applyHeroMode(mode) {
       // Update CTA button class + text
       ctaBtn.classList.remove("mode-brainstorm", "mode-meeting", "mode-salespitch");
@@ -668,7 +727,26 @@
       modeBar.querySelectorAll(".mode-pill").forEach(pill => {
         pill.classList.toggle("active", pill.dataset.mode === mode);
       });
+
+      // Brainstorm Solo/Team toggle
+      if (mode === "brainstorm") {
+        bsPillMain.style.display = "none";
+        bsSeg.style.display = "inline-flex";
+      } else {
+        bsPillMain.style.display = "";
+        bsSeg.style.display = "none";
+      }
     }
+
+    // Solo/Team segment clicks
+    bsSeg.addEventListener("click", (e) => {
+      const btn = e.target.closest(".bs-seg-btn");
+      if (!btn) return;
+      bsSeg.querySelectorAll(".bs-seg-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      // Store brainstorm sub-mode
+      localStorage.setItem("sophie_brainstorm_type", btn.dataset.bs);
+    });
     applyHeroMode(selectedMode);
 
     modeBar.addEventListener("click", (e) => {
