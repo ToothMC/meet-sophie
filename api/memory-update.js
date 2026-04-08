@@ -1144,20 +1144,8 @@ export default async function handler(req, res) {
     };
 
     if (!transcriptText || transcriptText.trim().length < 10) {
-      const { data: emptySession, error: sessErr } = await supabase
-        .from("user_sessions")
-        .insert({
-          ...baseSession,
-          emotional_tone: "unknown",
-          stress_level: null,
-          closeness_level: null,
-          short_summary: `No transcript captured. duration=${secondsUsed}s`.slice(0, 300),
-          title: "Conversation",
-        })
-        .select("id, session_date, short_summary, title")
-        .single();
-
-      if (sessErr) console.error("user_sessions insert failed:", sessErr);
+      // No meaningful transcript — don't create a session without report
+      console.log("[memory-update] skipping session creation — no transcript", { user: user.id.slice(0, 8), duration: secondsUsed });
 
       return res.status(200).json({
         ok: true,
