@@ -633,26 +633,18 @@
       }
     }
 
-    // ── Delete logic ─────────────────────────────
+    // ── Delete logic — uses Settings API (service role, bypasses RLS) ──
     async function deleteEntry(item) {
       try {
-        if (item.type === "meeting") {
-          // Delete meeting + all related data
-          await supabase.from("meeting_summary").delete().eq("meeting_id", item.id);
-          await supabase.from("meeting_notes").delete().eq("meeting_id", item.id);
-          await supabase.from("meeting_segments").delete().eq("meeting_id", item.id);
-          await supabase.from("meeting_context").delete().eq("meeting_id", item.id);
-          await supabase.from("meeting_burst_messages").delete().eq("meeting_id", item.id);
-          const { data: mtg } = await supabase.from("meetings").select("session_id").eq("id", item.id).maybeSingle();
-          if (mtg?.session_id) {
-            await supabase.from("conversation_outputs").delete().eq("session_id", mtg.session_id);
-            await supabase.from("user_sessions").delete().eq("id", mtg.session_id);
-          }
-          await supabase.from("meetings").delete().eq("id", item.id);
-        } else {
-          // Delete user_session (CASCADE deletes conversation_outputs + conversation_messages)
-          await supabase.from("user_sessions").delete().eq("id", item.id).eq("user_id", userId);
-        }
+        const token = (await supabase.auth.getSession()).data?.session?.access_token;
+        if (!token) { console.error("No auth token"); return; }
+        const source = item.type === "meeting" ? "meeting" : "talk";
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ action: "delete-report", session_id: item.id, source }),
+        });
+        if (!res.ok) console.error("Delete failed:", await res.text());
       } catch (e) {
         console.error("Delete failed:", e);
       }
