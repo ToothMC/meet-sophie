@@ -501,14 +501,25 @@
         const msg = lang === "de" ? "Diesen Eintrag löschen?" : "Delete this entry?";
         if (!confirm(msg)) return;
         await deleteEntry(item);
+        // Save references BEFORE removing from DOM
+        const titleGroupEl = div.closest(".title-group");
+        const typeGroupEl = div.closest(".type-group") || titleGroupEl?.closest(".type-group");
         div.remove();
-        // Update group count
-        const groupEl = div.closest(".type-group");
-        if (groupEl) {
-          const countEl = groupEl.querySelector(".type-count");
-          const listEl = groupEl.querySelector(".type-list");
-          if (countEl && listEl) countEl.textContent = listEl.children.length;
-          if (listEl && listEl.children.length === 0) groupEl.remove();
+        // Clean up empty title-group wrapper
+        if (titleGroupEl) {
+          const subList = titleGroupEl.querySelector(".title-group-list");
+          if (!subList || subList.children.length === 0) titleGroupEl.remove();
+          else {
+            const countEl = titleGroupEl.querySelector(".title-group-count");
+            if (countEl) countEl.textContent = subList.children.length + "×";
+          }
+        }
+        // Clean up empty type-group
+        if (typeGroupEl) {
+          const listEl = typeGroupEl.querySelector(".type-list");
+          const countEl = typeGroupEl.querySelector(".type-count");
+          if (listEl && listEl.children.length === 0) typeGroupEl.remove();
+          else if (countEl && listEl) countEl.textContent = listEl.querySelectorAll(".entry").length;
         }
       });
       div.querySelector(".entry-info").addEventListener("click", () => resumeEntry(item));
