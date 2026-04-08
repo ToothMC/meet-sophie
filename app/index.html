@@ -1216,7 +1216,7 @@
         const [sessRes, chatRes, meetRes] = await Promise.all([
           // Last talk/brainstorm/pitch with report
           supabase.from("user_sessions")
-            .select("id, title, session_type, status, started_at, last_message_at, session_date")
+            .select("id, title, session_type, status, started_at, last_message_at, session_date, conversation_outputs(title)")
             .eq("user_id", userId)
             .in("session_type", ["talk", "brainstorm", "sales_pitch"])
             .eq("has_output", true)
@@ -1259,7 +1259,8 @@
           const mode = isMeeting ? "meeting" : (entry.session_type || "talk");
           const modeLabel = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || mode;
           const icon = MODE_ICONS[mode] || MODE_ICONS.talk;
-          const title = entry.title || modeLabel;
+          const co = Array.isArray(entry.conversation_outputs) ? entry.conversation_outputs[0] : entry.conversation_outputs;
+          const title = co?.title || entry.title || modeLabel;
           const continuable = isMeeting
             ? ["prep", "live"].includes(entry.phase)
             : ["active", "paused"].includes(entry.status);

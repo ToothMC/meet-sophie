@@ -421,23 +421,27 @@
       // talks, brainstorms, pitches — all from user_sessions via session_type
       const typeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "sales_pitch" };
       const sessionType = typeMap[key];
+      // Join conversation_outputs for correct-language title/summary
       let query = supabase
         .from("user_sessions")
-        .select("id, title, session_type, status, started_at, short_summary, duration_seconds")
+        .select("id, title, session_type, status, started_at, short_summary, duration_seconds, conversation_outputs(title, short_summary)")
         .eq("user_id", userId)
         .eq("session_type", sessionType)
         .eq("has_output", true)
+        .not("started_at", "is", null)
         .order("started_at", { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
       const { data } = await query;
-      return (data || []).map(s => ({
-        id: s.id, title: s.title || key.slice(0, -1), type: sessionType,
-        summary: s.short_summary || "",
+      return (data || []).map(s => {
+        const co = Array.isArray(s.conversation_outputs) ? s.conversation_outputs[0] : s.conversation_outputs;
+        return {
+        id: s.id, title: co?.title || s.title || key.slice(0, -1), type: sessionType,
+        summary: co?.short_summary || s.short_summary || "",
         date: s.started_at, status: s.status,
         continuable: ["active", "paused", "draft"].includes(s.status),
         duration: s.duration_seconds,
-      }));
+      }; });
     }
 
     // ── Render ────────────────────────────────────
