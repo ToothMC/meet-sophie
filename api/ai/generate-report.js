@@ -206,7 +206,12 @@ RESPONSIVE:
   * { box-sizing:border-box; }
   .meeting-protocol { max-width:780px; margin:0 auto; padding:48px 60px; }
   @media(max-width:640px){ .meeting-protocol{max-width:100%!important;padding:14px!important;box-shadow:none!important;} }
-  @media print { @page{size:A4;margin:20mm 18mm;} .meeting-protocol{max-width:100%!important;padding:0!important;box-shadow:none!important;} }
+  @media print {
+    @page{size:A4;margin:18mm 16mm;}
+    .meeting-protocol{max-width:100%!important;padding:12px 0!important;box-shadow:none!important;}
+    .meeting-protocol>div{margin-bottom:16px!important;page-break-inside:avoid;}
+    h1{font-size:18px!important;}
+  }
 
 ${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
 
@@ -295,7 +300,12 @@ RESPONSIVE:
   * { box-sizing:border-box; }
   .meeting-protocol { max-width:780px; margin:0 auto; padding:48px 60px; }
   @media(max-width:640px){ .meeting-protocol{max-width:100%!important;padding:14px!important;box-shadow:none!important;} }
-  @media print { @page{size:A4;margin:20mm 18mm;} .meeting-protocol{max-width:100%!important;padding:0!important;box-shadow:none!important;} }
+  @media print {
+    @page{size:A4;margin:18mm 16mm;}
+    .meeting-protocol{max-width:100%!important;padding:12px 0!important;box-shadow:none!important;}
+    .meeting-protocol>div{margin-bottom:16px!important;page-break-inside:avoid;}
+    h1{font-size:18px!important;}
+  }
 
 ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
