@@ -1339,7 +1339,81 @@ DIE DESIGN-ANFORDERUNGEN AUS ${analyses.length} ANALYSEN:
 ${analysesBlock}`;
       } else {
         // CONTENT-MODE: Normal conversation → summarize content as report
-        htmlPrompt = `Du bist ein Report-Designer.
+        htmlPrompt = isEN ? `You are a report designer.
+${analyses.length} AIs analyzed the same conversation independently.
+${dateInstruction}
+
+Create a REPORT as pure HTML (only <body> content, no <html>/<head>).
+
+You have complete creative freedom with design. No predefined colors, no predefined structure. Design to match the content.
+
+RULES:
+- ONLY use facts confirmed by at least 2 AIs
+- The CONTENT determines EVERYTHING — form, colors, layout, structure
+- Use modern CSS (inline styles)
+- Font: system font stack
+- Responsive: max-width 100%, no fixed pixel widths
+- Write in the same language as the analyses
+- Do NOT bring any own branding. Start neutral.
+- "Protocol" / "Created by" is ALWAYS "Sophie"
+
+CRITICAL — DO NOT HALLUCINATE:
+- If information is NOT in the analyses, LEAVE IT OUT
+- NO invented names, times, locations, roles or deadlines
+- NO placeholders like [Name], [Role], —, "Not specified"
+- Only include sections that have real content
+- Better a shorter report than one with invented data
+
+FORMAT IDEAS (just inspiration):
+- Meeting → Protocol with decisions + action items
+- Brainstorm → Idea clusters
+- Short conversation → Compact summary
+- Decision → Pro/Contra side by side
+
+Reply ONLY with the HTML. No Markdown, no text before/after.
+
+THE ${analyses.length} ANALYSES:
+
+${analysesBlock}`
+
+        : isFR ? `Tu es un designer de rapports.
+${analyses.length} IAs ont analysé la même conversation indépendamment.
+${dateInstruction}
+
+Crée un RAPPORT en HTML pur (uniquement contenu <body>, pas de <html>/<head>).
+
+Tu as une liberté créative totale pour le design. Pas de couleurs prédéfinies, pas de structure prédéfinie. Conçois selon le contenu.
+
+RÈGLES :
+- Utiliser UNIQUEMENT les faits confirmés par au moins 2 IAs
+- Le CONTENU détermine TOUT — forme, couleurs, layout, structure
+- Utiliser du CSS moderne (styles inline)
+- Police : system font stack
+- Responsive : max-width 100%, pas de largeurs fixes en pixels
+- Écrire dans la même langue que les analyses
+- NE PAS apporter de branding propre. Commencer neutre.
+- "Protocole" / "Créé par" est TOUJOURS "Sophie"
+
+CRITIQUE — NE PAS HALLUCINER :
+- Si une information N'EST PAS dans les analyses, L'OMETTRE
+- PAS de noms, heures, lieux, rôles ou échéances inventés
+- PAS de marqueurs comme [Nom], [Rôle], —, "Non spécifié"
+- N'inclure que les sections ayant du contenu réel
+- Mieux vaut un rapport plus court qu'un avec des données inventées
+
+IDÉES DE FORMAT (juste inspiration) :
+- Réunion → Protocole avec décisions + actions
+- Brainstorm → Groupes d'idées
+- Conversation courte → Résumé compact
+- Décision → Pour/Contre côte à côte
+
+Répondre UNIQUEMENT avec le HTML. Pas de Markdown, pas de texte avant/après.
+
+LES ${analyses.length} ANALYSES :
+
+${analysesBlock}`
+
+        : `Du bist ein Report-Designer.
 ${analyses.length} KIs haben dasselbe Gespräch unabhängig analysiert.
 ${dateInstruction}
 
