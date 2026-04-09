@@ -23,8 +23,14 @@
   <script>
     try {
       var s = localStorage.getItem("sb-ohzfojsbmzinpxhcynpt-auth-token");
-      if (!s || !JSON.parse(s).access_token) { location.replace("/"); }
-    } catch { location.replace("/"); }
+      if (!s || !JSON.parse(s).access_token) {
+        localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token");
+        location.replace("/");
+      }
+    } catch {
+      localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token");
+      location.replace("/");
+    }
   </script>
 
   <style>
