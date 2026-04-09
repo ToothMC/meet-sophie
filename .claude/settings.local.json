@@ -63,7 +63,9 @@
       "Bash(node -c lib/report-templates.js)",
       "Bash(node -c api/ai/generate-report.js)",
       "Bash(node -c lib/sophie-report-overlay.js)",
-      "Bash(node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/landing-demo-i18n.js)"
+      "Bash(node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/landing-demo-i18n.js)",
+      "Bash(ls -d /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*/)",
+      "Bash(git log:*)"
     ]
   },
   "hooks": {
