@@ -3491,8 +3491,11 @@
               const y = section.getBoundingClientRect().top + window.scrollY;
               window.scrollTo({top: y, behavior: 'smooth'});
             }
-            if (window._msScrollToCard) window._msScrollToCard(target.index);
-            if (window._msUpdateCards) window._msUpdateCards(target.index);
+            // Wait for page scroll to settle, then switch card
+            setTimeout(() => {
+              if (window._msUpdateCards) window._msUpdateCards(target.index);
+              if (window._msScrollToCard) window._msScrollToCard(target.index);
+            }, 600);
           } else {
             const el = document.getElementById(target.id);
             if (el) {
