@@ -939,7 +939,7 @@
         color:rgba(246,247,251,.72);
       }
 
-      /* --- Hero Hub Visual (atmospheric) --- */
+      /* --- Hero Hub Visual (cosmic max CSS) --- */
       .hero-hub{
         display:flex;
         flex-direction:column;
@@ -950,109 +950,169 @@
         padding:0 20px;
         position:relative;
       }
+      /* Ambient particle glow behind hub */
+      .hero-hub::before{
+        content:"";
+        position:absolute;
+        top:-60px;
+        left:50%;
+        transform:translateX(-50%);
+        width:320px;
+        height:400px;
+        background:
+          radial-gradient(ellipse 120px 80px at 50% 15%, rgba(100,180,255,.10) 0%, transparent 100%),
+          radial-gradient(ellipse 200px 120px at 50% 55%, rgba(255,160,60,.06) 0%, transparent 100%),
+          radial-gradient(circle 3px at 20% 25%, rgba(255,200,100,.35) 0%, transparent 100%),
+          radial-gradient(circle 2px at 75% 20%, rgba(255,200,100,.25) 0%, transparent 100%),
+          radial-gradient(circle 2px at 85% 45%, rgba(255,180,80,.30) 0%, transparent 100%),
+          radial-gradient(circle 1.5px at 12% 55%, rgba(255,200,100,.20) 0%, transparent 100%),
+          radial-gradient(circle 2px at 90% 70%, rgba(255,180,80,.22) 0%, transparent 100%),
+          radial-gradient(circle 1.5px at 30% 80%, rgba(255,200,100,.18) 0%, transparent 100%),
+          radial-gradient(circle 2px at 65% 85%, rgba(255,180,80,.25) 0%, transparent 100%),
+          radial-gradient(circle 1px at 45% 15%, rgba(180,220,255,.30) 0%, transparent 100%),
+          radial-gradient(circle 1.5px at 55% 35%, rgba(255,200,100,.20) 0%, transparent 100%);
+        pointer-events:none;
+        z-index:0;
+        animation:hubGlow 4s ease-in-out infinite;
+      }
       .hero-hub .hero-actions{
         margin-top:0;
         padding:0;
         width:100%;
         position:relative;
-        z-index:1;
+        z-index:2;
       }
+      /* CTA button: warm golden glow ring */
       .hero-hub .hero-actions .btn-primary{
         position:relative;
-        z-index:1;
-        animation:hubPulse 3s ease-in-out infinite;
+        z-index:2;
         border-radius:20px;
+        box-shadow:
+          0 0 20px 4px rgba(255,160,60,.18),
+          0 0 50px 8px rgba(255,140,40,.10),
+          inset 0 1px 0 rgba(255,255,255,.08);
+        animation:hubGlow 3s ease-in-out infinite;
       }
-      /* --- Internet node: floating glow text --- */
+      /* --- Internet portal: glowing elliptical ring --- */
       .hub-internet{
-        display:inline-flex;
+        display:flex;
+        align-items:center;
+        justify-content:center;
         position:relative;
-        font-size:11px;
-        font-weight:500;
-        letter-spacing:.08em;
+        width:140px;
+        height:38px;
+        font-size:12px;
+        font-weight:600;
+        letter-spacing:.10em;
         text-transform:uppercase;
-        color:rgba(140,210,255,.65);
+        color:rgba(160,220,255,.85);
         padding:0;
-        border:none;
-        background:none;
-        margin-bottom:4px;
-      }
-      .hub-internet::before{
-        content:"";
-        position:absolute;
-        inset:-6px -16px;
+        border:1.5px solid rgba(100,190,255,.35);
         border-radius:50%;
-        background:radial-gradient(ellipse at center, rgba(100,180,255,.12) 0%, transparent 70%);
-        filter:blur(4px);
-        z-index:-1;
+        background:radial-gradient(ellipse at center, rgba(80,170,255,.08) 0%, transparent 70%);
+        box-shadow:
+          0 0 12px 3px rgba(80,180,255,.20),
+          0 0 30px 6px rgba(80,180,255,.10),
+          inset 0 0 10px 2px rgba(80,180,255,.08);
+        margin-bottom:0;
+        z-index:2;
+        animation:hubGlow 3.5s ease-in-out infinite;
       }
-      /* --- Top beam: soft vertical glow --- */
+      /* --- Top beam: golden vertical energy line --- */
       .hub-line-top{
         display:block;
-        width:1px;
-        height:24px;
-        background:linear-gradient(180deg, rgba(120,200,255,.08) 0%, rgba(63,140,255,.30) 50%, rgba(63,140,255,.08) 100%);
+        position:relative;
+        width:2px;
+        height:40px;
         margin:0 auto;
-        filter:blur(0.5px);
-        box-shadow:0 0 6px 1px rgba(100,170,255,.12);
+        z-index:1;
+        background:linear-gradient(180deg,
+          rgba(100,180,255,.15) 0%,
+          rgba(200,170,100,.50) 30%,
+          rgba(255,160,60,.65) 50%,
+          rgba(200,170,100,.50) 70%,
+          rgba(255,160,60,.15) 100%);
+        box-shadow:
+          0 0 8px 2px rgba(255,160,60,.25),
+          0 0 20px 4px rgba(255,160,60,.10);
+        animation:hubGlow 3s ease-in-out infinite;
       }
-      /* --- Bottom glow cone: soft diffused light --- */
+      .hub-line-top::before{
+        content:"";
+        position:absolute;
+        top:0;left:50%;
+        transform:translateX(-50%);
+        width:8px;
+        height:100%;
+        background:linear-gradient(180deg, rgba(255,170,60,.08) 0%, rgba(255,160,60,.15) 50%, rgba(255,170,60,.08) 100%);
+        filter:blur(4px);
+      }
+      /* --- Bottom: golden fan lines via SVG --- */
       .hub-line-bottom-wrap{
         display:block;
         position:relative;
-        width:240px;
-        height:20px;
+        width:280px;
+        height:36px;
         margin:0 auto;
+        z-index:1;
       }
+      .hub-line-bottom-wrap svg{
+        display:block;
+        width:280px;
+        height:36px;
+        overflow:visible;
+        filter:blur(0.5px);
+      }
+      .hub-line-bottom-wrap svg line{
+        stroke:rgba(255,160,60,.35);
+        stroke-width:1.2;
+      }
+      /* glow layer behind SVG */
       .hub-line-bottom-wrap::before{
         content:"";
         position:absolute;
-        top:0;
-        left:50%;
-        transform:translateX(-50%);
-        width:4px;
-        height:100%;
-        background:linear-gradient(180deg, rgba(63,140,255,.20) 0%, transparent 100%);
-        filter:blur(3px);
-      }
-      .hub-line-bottom-wrap::after{
-        content:"";
-        position:absolute;
-        bottom:0;
+        top:-4px;
         left:50%;
         transform:translateX(-50%);
         width:200px;
-        height:1px;
-        background:radial-gradient(ellipse at center, rgba(63,140,255,.18) 0%, transparent 70%);
-        filter:blur(1px);
+        height:40px;
+        background:radial-gradient(ellipse 100px 20px at 50% 0%, rgba(255,160,60,.12) 0%, transparent 100%);
+        filter:blur(4px);
+        pointer-events:none;
       }
-      .hub-line-bottom-wrap svg{display:none}
-      /* --- Provider names: ghostly floating --- */
+      /* --- Provider badges: light background pills --- */
       .hub-providers{
         display:flex !important;
-        gap:14px;
+        gap:6px;
         justify-content:center;
         flex-wrap:nowrap;
         margin-top:2px;
+        z-index:2;
+        position:relative;
       }
       .hub-pill{
         display:inline-flex;
         align-items:center;
         gap:4px;
         font-size:10.5px;
-        font-weight:500;
-        letter-spacing:.03em;
-        color:rgba(246,247,251,.50);
-        padding:0;
+        font-weight:600;
+        letter-spacing:.02em;
+        color:rgba(20,20,30,.75);
+        padding:5px 10px;
         border:none;
-        border-radius:0;
-        background:none;
+        border-radius:16px;
+        background:rgba(255,255,255,.88);
         font-family:inherit;
         white-space:nowrap;
+        box-shadow:
+          0 1px 4px rgba(0,0,0,.15),
+          0 0 12px 2px rgba(255,180,80,.08);
       }
       .hub-pill svg{
         flex-shrink:0;
-        opacity:.45;
+      }
+      .hub-pill svg *{
+        fill:rgba(20,20,30,.6);
       }
 
       /* --- Mode pills under CTA in hub --- */
