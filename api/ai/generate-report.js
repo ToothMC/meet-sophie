@@ -756,6 +756,27 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
             const { error: pitchErr } = await supabase.from('sophie_pitch_memory').insert(pitchRow);
             if (pitchErr) console.error(`[report] pitch memory save failed:`, pitchErr.message);
             else console.log(`[report] Pitch memory saved: topic="${pitchRow.topic}", type=${pitchRow.pitch_type}, score=${pitchRow.score}, v${pitchRow.version}`);
+
+            // Write pitch-specific data back to conversation_outputs for resume context
+            try {
+              await supabase.from('conversation_outputs').update({
+                structured_summary: {
+                  summary: reportTitle,
+                  audience_type: pitchData.audience_type || "",
+                  overall_score: pitchData.overall_score ? Math.round(pitchData.overall_score * 20) : 0,
+                  scores_content: pitchData.scores_content || {},
+                  strongest_elements: pitchData.strengths || [],
+                  main_weaknesses: pitchData.weaknesses || [],
+                  recommended_next_attempt: "", // not extracted in this step
+                  confidence_level: pitchData.confidence_level || "low",
+                },
+                key_insights: (pitchData.strengths || []).map(s => typeof s === 'string' ? s : s.text || String(s)),
+                open_questions: (pitchData.weaknesses || []).map(w => typeof w === 'string' ? w : w.text || String(w)),
+              }).eq('session_id', session_id);
+              console.log(`[report] Pitch resume data saved to conversation_outputs`);
+            } catch (resumeErr) {
+              console.error(`[report] pitch resume data save failed (non-critical):`, resumeErr?.message);
+            }
           }
         } catch (pitchMemErr) {
           console.error(`[report] pitch memory extraction failed (non-critical):`, pitchMemErr?.message);
