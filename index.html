@@ -2707,6 +2707,10 @@
         });
       });
 
+      // Expose for hero CTA scroll-to-card
+      window._msScrollToCard = scrollToCard;
+      window._msUpdateCards = updateCards;
+
       /* Init: center first card + set arrow state */
       setTimeout(() => {
         updateCards(0);
