@@ -6061,14 +6061,6 @@ async function finalizeSessionAfterSummary() {
 let _startVoiceLock = false;
 async function startVoice(){
 
-  // ── Create AudioContext NOW during user gesture (autoplay policy!) ──
-  try {
-    _hyperAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // Explicitly resume in case it's suspended
-    if (_hyperAudioCtx.state === 'suspended') await _hyperAudioCtx.resume();
-    console.log("[hyper] AudioContext created during user gesture, state:", _hyperAudioCtx.state);
-  } catch (e) { console.warn("[hyper] AudioContext creation failed:", e); }
-
   // prevent double session
   if (pc || stream || _startVoiceLock) {
     console.log("Session already running or starting → ignore");
