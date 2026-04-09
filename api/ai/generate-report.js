@@ -488,16 +488,18 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
             const prev = prevPitches[0];
             const pc = prev.scores_content || {};
             const pd = prev.scores_delivery || {};
-            prevPitchContext = `\n\nVORHERIGER PITCH (v${prev.version || 1}) — "${prev.topic}":
+            const prevLabel = isEN ? 'PREVIOUS PITCH' : isFR ? 'PITCH PRÉCÉDENT' : 'VORHERIGER PITCH';
+            const prevCompare = isEN
+              ? `IMPORTANT — COMPARISON IN SCORE BAR:\nThis is a follow-up pitch. For EVERY criterion you have the previous score above.\nUse the COMPARISON BAR DESIGN (see HTML template below) instead of simple bars.\nEach score bar shows: Ghost-Bar (old score, semi-transparent) + new bar + Delta-Badge.\nThe Delta-Badge shows the change: green ▲ +X.X for improvement, red ▼ -X.X for decline, gray ● for same.`
+              : isFR
+              ? `IMPORTANT — COMPARAISON DANS LA BARRE DE SCORE :\nCeci est un pitch de suivi. Pour CHAQUE critère tu as le score précédent ci-dessus.\nUtilise le DESIGN DE BARRE COMPARATIVE (voir template HTML ci-dessous) au lieu des barres simples.\nChaque barre de score montre : Ghost-Bar (ancien score, semi-transparent) + nouvelle barre + Delta-Badge.\nLe Delta-Badge montre le changement : vert ▲ +X.X pour amélioration, rouge ▼ -X.X pour déclin, gris ● pour identique.`
+              : `WICHTIG — VERGLEICH IM SCORE-BAR:\nDies ist ein Folge-Pitch. Für JEDES Kriterium hast du den vorherigen Score oben.\nVerwende das VERGLEICHS-BAR-DESIGN (siehe HTML-Vorlage unten) statt der einfachen Bars.\nJeder Score-Balken zeigt: Ghost-Bar (alter Score, halbtransparent) + neuer Balken + Delta-Badge.\nDas Delta-Badge zeigt die Veränderung: grün ▲ +X.X bei Verbesserung, rot ▼ -X.X bei Verschlechterung, grau ● bei gleich.`;
+            prevPitchContext = `\n\n${prevLabel} (v${prev.version || 1}) — "${prev.topic}":
 Overall Score: ${prev.score || 0}/100
 Content Scores: clarity=${pc.clarity||0}, problem_sharpness=${pc.problem_sharpness||0}, value_proposition=${pc.value_proposition||pc.value_prop||0}, structure=${pc.structure||0}, differentiation=${pc.differentiation||0}, credibility=${pc.credibility||0}, audience_fit=${pc.audience_fit||0}
 Delivery Scores: opening=${pd.opening||0}, closing=${pd.closing||0}, voice_rhythm=${pd.voice_rhythm||0}, rhetoric_language=${pd.rhetoric_language||0}, authenticity=${pd.authenticity||0}, persuasiveness=${pd.persuasiveness||0}
 
-WICHTIG — VERGLEICH IM SCORE-BAR:
-Dies ist ein Folge-Pitch. Für JEDES Kriterium hast du den vorherigen Score oben.
-Verwende das VERGLEICHS-BAR-DESIGN (siehe HTML-Vorlage unten) statt der einfachen Bars.
-Jeder Score-Balken zeigt: Ghost-Bar (alter Score, halbtransparent) + neuer Balken + Delta-Badge.
-Das Delta-Badge zeigt die Veränderung: grün ▲ +X.X bei Verbesserung, rot ▼ -X.X bei Verschlechterung, grau ● bei gleich.\n`;
+${prevCompare}\n`;
           }
         }
       } catch (e) { console.error('[report] prev pitch load failed:', e?.message); }
