@@ -3624,13 +3624,6 @@
     // ──────────────────────────────────────────────────────────
 
     // Mode pills — toggle active state + update button label/color
-    // Scroll targets for hero mode pills
-    const modeScrollTargets = {
-      salespitch: () => { const c = document.querySelector('.ms-card[data-index="1"]'); if (c) c.scrollIntoView({behavior:'smooth', block:'start'}); },
-      meeting: () => { const el = document.getElementById('mode-meeting'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); },
-      brainstorm: () => { const el = document.getElementById('mode-brainstorm'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); },
-    };
-
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
