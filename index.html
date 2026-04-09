@@ -2241,6 +2241,7 @@
   </style>
   <script async src="https://plausible.io/js/pa-1OMRAStrHWUobLDx17XLI.js"></script>
   <script>window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()</script>
+  <script src="landing-demo-i18n.js"></script>
 </head>
 <body>
 
@@ -3079,6 +3080,17 @@
       const cl = chatLabels[lang] || chatLabels.en;
       document.documentElement.style.setProperty("--chat-header-label", `"${cl.header}"`);
       document.documentElement.style.setProperty("--chat-send-label", `"${cl.send}"`);
+      // Swap demo modal content to match language
+      if (window.DEMO_MODALS) {
+        const dm = window.DEMO_MODALS[lang] || window.DEMO_MODALS.de;
+        for (let i = 1; i <= 5; i++) {
+          const modal = document.getElementById("exampleModal" + i);
+          if (modal && dm["modal" + i]) {
+            const inner = modal.querySelector(".example-modal-inner");
+            if (inner) inner.innerHTML = dm["modal" + i];
+          }
+        }
+      }
     }
     function detectLanguage() {
       const saved = localStorage.getItem("preferredLanguage");
