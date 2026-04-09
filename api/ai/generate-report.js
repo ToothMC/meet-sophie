@@ -112,7 +112,8 @@ export default async function handler(req, res) {
         }
       } catch (_) {}
       if (!meetingTemplate) {
-        const { DEFAULT_TEMPLATES: DT } = await import('../../lib/report-templates.js');
+        const { getDefaultTemplates: gdt } = await import('../../lib/report-templates.js');
+        const DT = gdt(reportLang || 'de');
         meetingTemplate = DT?.meeting || DT?.default || null;
       }
 
