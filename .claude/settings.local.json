@@ -62,7 +62,8 @@
       "Bash(grep -r \"language\\\\|i18n\\\\|locale\\\\|translation\\\\|de\\\\|en\\\\|fr\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/*.js /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/*.js)",
       "Bash(node -c lib/report-templates.js)",
       "Bash(node -c api/ai/generate-report.js)",
-      "Bash(node -c lib/sophie-report-overlay.js)"
+      "Bash(node -c lib/sophie-report-overlay.js)",
+      "Bash(node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/landing-demo-i18n.js)"
     ]
   },
   "hooks": {
