@@ -717,7 +717,7 @@ ${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : i
     <!-- FÜR JEDES Delivery-Kriterium (gleiche Struktur wie Content): -->
     <!-- Bei low-confidence Kriterien: * nach dem Namen + kursiver Hinweis -->
     <div style="text-align:right;font-size:13px;font-weight:600;color:#555;margin-top:14px;">Delivery Score: [X.X] / 5.0</div>
-    <div style="margin-top:8px;font-size:11px;color:#aaa;font-style:italic;">[NUR bei Text-Pitch: "* Textbasiert — Confidence: low. Für vollständige Bewertung: Voice-Modus nutzen."]</div>
+    <div style="margin-top:8px;font-size:11px;color:#aaa;font-style:italic;">[${isEN ? 'Only for text pitches: "* Text-based — Confidence: low. For full evaluation, use voice mode."' : isFR ? 'Uniquement pour les pitchs texte : "* Basé sur le texte — Confidence : low. Pour une évaluation complète, utilisez le mode vocal."' : 'NUR bei Text-Pitch: "* Textbasiert — Confidence: low. Für vollständige Bewertung: Voice-Modus nutzen."'}]</div>
   </div>
 
   <!-- OVERALL VERDICT: 2-4 Sätze, direkt und ehrlich -->
