@@ -3512,6 +3512,8 @@
         // Read active mode from pill state (more reliable than variable)
         const activePill = document.querySelector('#heroModeBar .hero-mode-pill.active');
         const mode = activePill ? activePill.dataset.mode : 'talk';
+        window.__heroDebugMode = mode;
+        window.__heroDebugPill = activePill ? activePill.textContent : 'none';
         scrollToLandingTarget(mode);
       });
     }
