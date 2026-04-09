@@ -240,18 +240,28 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
 }
 .wrap.session-active{
   align-self:flex-start;
-  padding-top:60px;
+  padding-top:max(12px, env(safe-area-inset-top));
+  padding-bottom:max(16px, env(safe-area-inset-bottom));
   display:flex;
   flex-direction:column;
   min-height:100dvh;
   min-height:100vh;
 }
+/* Hide headline, status, mode-indicator during active session (visualizer header replaces them) */
+.wrap.session-active #headline,
+.wrap.session-active #status,
+.wrap.session-active .mode-indicator,
+.wrap.session-active #timer{ display:none; }
 .wrap.session-active .session-spacer{
-  height:8px;
+  height:4px;
 }
+/* In browser (not PWA), add bottom padding for browser toolbar */
 @media not (display-mode: standalone) {
+  .wrap.session-active{
+    padding-bottom:80px;
+  }
   .wrap.session-active .session-spacer{
-    height:8px;
+    height:4px;
   }
 }
 
