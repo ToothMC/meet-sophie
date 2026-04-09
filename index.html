@@ -3488,8 +3488,8 @@
           const section = document.getElementById('use-cases');
           if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
           // Activate the right card in the swiper
-          if (typeof scrollToCard === 'function') scrollToCard(target.index);
-          if (typeof updateCards === 'function') updateCards(target.index);
+          if (window._msScrollToCard) window._msScrollToCard(target.index);
+          if (window._msUpdateCards) window._msUpdateCards(target.index);
         } else {
           const el = document.getElementById(target.id);
           if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
