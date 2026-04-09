@@ -642,17 +642,101 @@ export default async function handler(req, res) {
             // Talk/Brainstorm/Pitch/Chat: load from conversation_outputs
             const { data: output } = await supabase
               .from("conversation_outputs")
-              .select("title, short_summary, key_insights, action_plan, open_questions, structured_summary")
+              .select("title, short_summary, key_insights, action_plan, open_questions, structured_summary, report_html")
               .eq("session_id", resumeSessionId)
               .maybeSingle();
-            resumeContext = buildResumeBlock(sType, {
+
+            let resumeData = {
               title: output?.title || resumeSession.title,
               summary: output?.short_summary || resumeSession.short_summary,
               key_insights: output?.key_insights,
               action_plan: output?.action_plan,
               open_questions: output?.open_questions,
               structured_summary: output?.structured_summary,
-            }, sLang);
+            };
+
+            // Sales Pitch: enrich from multiple sources
+            if (sType === "sales_pitch" || sType === "salespitch") {
+              let enriched = false;
+
+              // Source 1: sophie_pitch_memory (best structured data)
+              try {
+                const { data: pitchMem } = await supabase
+                  .from("sophie_pitch_memory")
+                  .select("topic, target_audience, pitch_type, score, strengths, weaknesses")
+                  .eq("conversation_id", resumeSessionId)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (pitchMem) {
+                  resumeData.structured_summary = {
+                    ...(resumeData.structured_summary || {}),
+                    audience_type: pitchMem.target_audience || "",
+                    overall_score: pitchMem.score || 0,
+                    strongest_elements: pitchMem.strengths || [],
+                    main_weaknesses: pitchMem.weaknesses || [],
+                  };
+                  if (!resumeData.key_insights?.length && pitchMem.strengths?.length) resumeData.key_insights = pitchMem.strengths;
+                  if (!resumeData.open_questions?.length && pitchMem.weaknesses?.length) resumeData.open_questions = pitchMem.weaknesses;
+                  if (!resumeData.title && pitchMem.topic) resumeData.title = pitchMem.topic;
+                  enriched = true;
+                  console.log("[session] pitch resume enriched from sophie_pitch_memory:", pitchMem.topic, "score:", pitchMem.score);
+                }
+              } catch (e) { console.warn("[session] pitch memory lookup failed:", e?.message); }
+
+              // Source 2: Parse report_html if still no strengths/weaknesses
+              if (!enriched && output?.report_html) {
+                try {
+                  const html = output.report_html;
+                  // Extract plain text from HTML for quick parsing
+                  const strip = s => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+                  const textContent = strip(html).slice(0, 5000);
+
+                  // Try to find score
+                  const scoreMatch = html.match(/font-size:\s*(?:48|42|40|36)px[^>]*>(\d+\.?\d*)/);
+                  const score = scoreMatch ? Math.round(parseFloat(scoreMatch[1]) * 20) : 0;
+
+                  // Try to find strengths/weaknesses sections
+                  const extractSection = (label) => {
+                    const patterns = [
+                      new RegExp(label + '[:\\s]*</[^>]+>\\s*<ul[^>]*>([\\s\\S]*?)</ul>', 'i'),
+                      new RegExp(label + '[:\\s]*([\\s\\S]*?)(?:</?(?:div|h[1-6]|section))', 'i'),
+                    ];
+                    for (const re of patterns) {
+                      const m = html.match(re);
+                      if (m) {
+                        const items = m[1].match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+                        if (items) return items.map(i => strip(i)).filter(Boolean).slice(0, 4);
+                      }
+                    }
+                    return [];
+                  };
+
+                  const strengths = extractSection("(?:Stärken|Strengths|Points forts|Strongest)");
+                  const weaknesses = extractSection("(?:Schwächen|Weaknesses|Points faibles|Areas|Verbesserung)");
+
+                  if (strengths.length || weaknesses.length || score) {
+                    resumeData.structured_summary = {
+                      ...(resumeData.structured_summary || {}),
+                      overall_score: score,
+                      strongest_elements: strengths,
+                      main_weaknesses: weaknesses,
+                    };
+                    if (!resumeData.key_insights?.length && strengths.length) resumeData.key_insights = strengths;
+                    if (!resumeData.open_questions?.length && weaknesses.length) resumeData.open_questions = weaknesses;
+                    enriched = true;
+                    console.log("[session] pitch resume parsed from report_html: score:", score, "strengths:", strengths.length, "weaknesses:", weaknesses.length);
+                  }
+                } catch (e) { console.warn("[session] report_html parsing failed:", e?.message); }
+              }
+
+              // Source 3: Last resort — use summary as context
+              if (!enriched && resumeData.summary) {
+                console.log("[session] pitch resume using summary only (no structured data available)");
+              }
+            }
+
+            resumeContext = buildResumeBlock(sType, resumeData, sLang);
           }
 
           if (resumeContext) {

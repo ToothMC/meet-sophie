@@ -287,6 +287,8 @@
     </div>
   </nav>
 
+  <script src="/lib/sophie-export.js"></script>
+  <script src="/lib/sophie-report-overlay.js"></script>
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
     import { getSessionOrNull } from "/lib/sophie-auth-helper.js";
@@ -606,7 +608,74 @@
     }
 
     // ── Resume logic ─────────────────────────────
-    function resumeEntry(item) {
+    async function resumeEntry(item) {
+      // Report laden und im Overlay anzeigen
+      if (window.SophieReportOverlay) {
+        try {
+          const token = (await supabase.auth.getSession()).data?.session?.access_token;
+          const source = item.type === "meeting" ? "meeting" : "talk";
+          const res = await fetch(`/api/settings?action=report-detail&session_id=${encodeURIComponent(item.id)}&source=${source}`, {
+            headers: token ? { "Authorization": `Bearer ${token}` } : {},
+          });
+          if (!res.ok) throw new Error("Fetch failed");
+          const data = await res.json();
+
+          // Typ-Mapping
+          const typeMap = { talk: "talk", brainstorm: "brainstorm", sales_pitch: "salespitch", meeting: "meeting", chat: "chat" };
+          const type = typeMap[item.type] || "talk";
+
+          // Fallback HTML für Meetings ohne report_html
+          let htmlContent = data.report_html || "";
+          if (!htmlContent && data.short_summary) {
+            htmlContent = `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
+            if (data.action_items?.length) {
+              htmlContent += `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">Action Items</h4>` +
+                data.action_items.map(i => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${typeof i === 'string' ? i : i.text || i}</div>`).join('') + '</div>';
+            }
+          }
+
+          const reportData = {
+            id: item.id,
+            type,
+            source: "reports",
+            title: data.title || item.title || "Report",
+            createdAt: item.date || data.created_at || new Date().toISOString(),
+            html: htmlContent,
+            plainText: null,
+            hasTranscript: false,
+            transcriptHtml: null,
+            continuePayload: {
+              sourceType: type,
+              sourceId: item.id,
+              resumeSessionId: item.id,
+              targetMode: type === "meeting" ? "meeting" : (type === "talk" ? null : type),
+            },
+          };
+
+          SophieReportOverlay.open(reportData, {
+            lang: "de",
+            onContinue: (payload) => {
+              // Direkte Navigation als Fortführen
+              _navigateToResume(item);
+            },
+            onDelete: async (rd) => {
+              await deleteEntry(item);
+              SophieReportOverlay.close();
+              loadAll();
+            },
+          });
+        } catch (e) {
+          console.error("[resumeEntry]", e);
+          // Fallback: direkte Navigation
+          _navigateToResume(item);
+        }
+      } else {
+        // Ohne Modul: direkte Navigation
+        _navigateToResume(item);
+      }
+    }
+
+    function _navigateToResume(item) {
       switch (item.type) {
         case "talk":
           sessionStorage.setItem("sophie_resume_session_id", item.id);
@@ -626,7 +695,6 @@
           location.href = "/talk";
           break;
         case "chat":
-          // Store chat session ID, open chat overlay on /app
           sessionStorage.setItem("sophie_resume_chat", item.id);
           location.href = "/app";
           break;

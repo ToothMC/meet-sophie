@@ -1879,6 +1879,40 @@
       font-family:'DM Sans',sans-serif;transition:background .15s,border-color .15s;
     }
     .ms-cta-card:hover{background:rgba(176,123,94,.06);border-color:rgba(176,123,94,.5)}
+    .ms-result-box{
+      background:rgba(176,123,94,.06);border-left:2.5px solid rgba(176,123,94,.4);
+      border-radius:6px;padding:12px 14px;
+    }
+    .ms-result-label{
+      font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+      color:#b07b5e;margin:0 0 4px;font-family:'DM Sans',sans-serif;
+    }
+    .ms-result-text{
+      font-size:14px;color:#3a2e28;margin:0;line-height:1.5;font-family:'DM Sans',sans-serif;
+    }
+    .ms-secondary-link{
+      display:block;margin-top:10px;font-size:12px;color:#b07b5e;opacity:.7;
+      text-decoration:none;font-family:'DM Sans',sans-serif;cursor:pointer;
+      transition:opacity .15s;
+    }
+    .ms-secondary-link:hover{opacity:1}
+    .example-modal-overlay{
+      position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);
+      display:flex;justify-content:center;align-items:flex-start;
+      overflow-y:auto;padding:40px 16px;backdrop-filter:blur(4px);
+    }
+    .example-modal-overlay[hidden]{display:none}
+    .example-modal-inner{
+      position:relative;max-width:640px;width:100%;background:#fff;
+      border-radius:20px;padding:32px 24px 40px;box-shadow:0 8px 40px rgba(0,0,0,.2);
+    }
+    .example-modal-close{
+      position:sticky;top:0;float:right;z-index:1;width:36px;height:36px;
+      border:none;background:rgba(0,0,0,.06);border-radius:50%;cursor:pointer;
+      font-size:18px;color:#2a2420;display:flex;align-items:center;justify-content:center;
+      transition:background .15s;margin:-8px -8px 0 0;
+    }
+    .example-modal-close:hover{background:rgba(0,0,0,.12)}
     .ms-dots{
       display:flex;
       height:36px;justify-content:center;align-items:center;gap:7px;
@@ -2287,9 +2321,8 @@
           <p class="ms-card-title" id="ms-card1-title">Wichtiges Gespräch morgen?</p>
           <p class="ms-card-sub" id="ms-card1-sub">Besser gut vorbereitet als hinterher sprachlos.</p>
           <div class="ms-divider"></div>
-          <p class="ms-body" id="ms-card1-body1">Wichtige Gespräche entscheiden oft mehr, als man denkt. Trotzdem geht man viel zu oft mit zu wenig Klarheit hinein.</p>
-          <p class="ms-body" id="ms-card1-body2">Im Nachhinein ist es fast immer dasselbe: <strong>Das hätte ich noch sagen sollen.</strong></p>
-          <p class="ms-body" id="ms-card1-body3">Ob Gehaltsverhandlung, Kundencall, Beziehungsgespräch oder Spannungen mit dem Co-Founder: Sophie hilft dir, vorher klarer zu werden.</p>
+          <p class="ms-body" id="ms-card1-body1">Wichtige Gespräche entscheiden oft mehr, als man denkt. Und trotzdem geht man viel zu oft mit zu wenig Klarheit hinein.</p>
+          <p class="ms-body" id="ms-card1-body3">Ob Gehaltsverhandlung, schwieriger Kundencall, Beziehungsgespräch, Entschuldigung, Grenzen setzen oder Spannungen mit dem Co-Founder: Sophie hilft dir, vorher klarer zu werden.</p>
           <p class="ms-section-label" id="ms-card1-label">Mit Sophie kannst du:</p>
           <ul class="ms-bullets">
             <li id="ms-card1-b1">Gedanken sortieren</li>
@@ -2299,16 +2332,20 @@
             <li id="ms-card1-b5">kritische Momente vorwegdenken</li>
           </ul>
           <div class="ms-spacer"></div>
-          <p class="ms-outro" id="ms-card1-outro">Du gehst nicht einfach hinein. Du gehst vorbereitet hinein.</p>
+          <div class="ms-result-box" id="ms-card1-outro">
+            <p class="ms-result-label">Du bekommst danach:</p>
+            <p class="ms-result-text">Einen klaren Gesprächsleitfaden mit Kernbotschaften, Formulierungen und nächsten Schritten.</p>
+          </div>
           <div class="ms-spacer"></div>
-          <button class="ms-cta-card" id="ms-cta1" onclick="location.href='/login/'">Mit Sophie sprechen →</button>
+          <button class="ms-cta-card" id="ms-cta1" onclick="location.href='/login/'">Gespräch vorbereiten →</button>
+          <a class="ms-secondary-link" id="ms-card1-secondary" href="#" data-open-example="exampleModal1">Beispiel-Protokoll ansehen →</a>
         </div>
         <div class="ms-card" data-index="1">
           <p class="ms-card-title" id="ms-card2-title">Besser verkaufen — aber wie?</p>
           <p class="ms-card-sub" id="ms-card2-sub">Weil es im Kopf meist besser klingt als in echt.</p>
           <div class="ms-divider"></div>
-          <p class="ms-body" id="ms-card2-body1">Was beim Denken noch klar wirkt, ist beim Sprechen oft zu lang, zu ungenau oder nicht stark genug. Ehrliches Feedback bekommt man selten.</p>
-          <p class="ms-body" id="ms-card2-body2">Ob Sales Pitch, Investor-Präsentation oder Bewerbung: Sophie hilft dir, deine Wirkung zu verbessern, bevor es darauf ankommt.</p>
+          <p class="ms-body" id="ms-card2-body1">Was beim Denken noch klar wirkt, ist beim Sprechen oft zu lang, zu ungenau oder nicht stark genug. Und ehrliches, fundiertes Feedback bekommt man selten.</p>
+          <p class="ms-body" id="ms-card2-body2">Ob Sales Pitch, Investor-Präsentation, Bewerbungsgespräch oder wichtige Präsentation: Sophie hilft dir, deine Wirkung zu verbessern, bevor es darauf ankommt.</p>
           <p class="ms-section-label" id="ms-card2-label">Mit Sophie kannst du:</p>
           <ul class="ms-bullets">
             <li id="ms-card2-b1">deinen Pitch laut durchgehen</li>
@@ -2319,33 +2356,37 @@
             <li id="ms-card2-b6">realistische Situationen üben</li>
           </ul>
           <div class="ms-spacer"></div>
-          <p class="ms-outro" id="ms-card2-outro">Aus einer vagen Botschaft wird ein überzeugenderer Auftritt.</p>
+          <div class="ms-result-box" id="ms-card2-outro">
+            <p class="ms-result-label">Du bekommst danach:</p>
+            <p class="ms-result-text">Eine Pitch-Scorecard mit konkretem Feedback und eine klarere, stärkere Version deines Pitchs.</p>
+          </div>
           <div class="ms-spacer"></div>
-          <button class="ms-cta-card" id="ms-cta2" onclick="location.href='/login/'">Sales Pitch starten →</button>
+          <button class="ms-cta-card" id="ms-cta2" onclick="location.href='/login/'">Pitch schärfen →</button>
+          <a class="ms-secondary-link" id="ms-card2-secondary" href="#" data-open-example="exampleModal2">Beispiel-Scorecard ansehen →</a>
         </div>
         <div class="ms-card" data-index="2">
           <p class="ms-card-title" id="ms-card3-title">Allein Entscheidungen treffen?</p>
-          <p class="ms-card-sub" id="ms-card3-sub">Nicht jeder Gedanke gehört in Slack.</p>
+          <p class="ms-card-sub" id="ms-card3-sub">Nicht jeder Gedanke gehört nach außen.</p>
           <div class="ms-divider"></div>
-          <p class="ms-body" id="ms-card3-body1">Nicht jede Unsicherheit möchte man mit dem Team teilen. Manche Gedanken sind noch nicht bereit, nach außen zu gehen.</p>
-          <p class="ms-body" id="ms-card3-body2">Sophie gibt dir einen privaten Raum — ohne Bewertung, ohne sozialen Druck, ohne dass man sofort eine Antwort haben muss.</p>
+          <p class="ms-body" id="ms-card3-body1">Manche Gedanken sind noch nicht bereit, mit dem Team, Freunden oder anderen geteilt zu werden. Gerade dann braucht man einen privaten Raum, um laut zu denken, Klarheit zu finden und Entscheidungen sauberer zu sortieren.</p>
+          <p class="ms-body" id="ms-card3-body2">Sophie gibt dir genau diesen Raum — ohne Bewertung, ohne sozialen Druck und ohne dass du sofort eine fertige Antwort haben musst.</p>
           <p class="ms-section-label" id="ms-card3-label">Mit Sophie kannst du:</p>
           <ul class="ms-bullets">
             <li id="ms-card3-b1">Gedanken entwirren</li>
             <li id="ms-card3-b2">Prioritäten klären</li>
             <li id="ms-card3-b3">Entscheidungen abwägen</li>
-            <li id="ms-card3-b4">Gespräche reflektieren</li>
-            <li id="ms-card3-b5">Druck abladen — ohne Therapie</li>
+            <li id="ms-card3-b4">Meetings vorbereiten</li>
+            <li id="ms-card3-b5">Gespräche und Situationen reflektieren</li>
+            <li id="ms-card3-b6">innere Unruhe in Klarheit verwandeln</li>
           </ul>
-          <p class="ms-section-label" id="ms-card3-modes-label" style="margin-top:0.5rem">Gesprächsmodi:</p>
-          <div class="ms-modes">
-            <span class="ms-pill" id="ms-pill-talk">Talk <small>freies Sprechen</small></span>
-            <span class="ms-pill" id="ms-pill-explore">Explore <small>neue Ideen</small></span>
-            <span class="ms-pill" id="ms-pill-decide">Decide <small>Entscheidungen</small></span>
-            <span class="ms-pill" id="ms-pill-reflect">Reflect <small>aus Erlebtem lernen</small></span>
+          <div class="ms-spacer"></div>
+          <div class="ms-result-box" id="ms-card3-outro">
+            <p class="ms-result-label">Du bekommst danach:</p>
+            <p class="ms-result-text">Ein klares Protokoll mit Optionen, Abwägungen und einer belastbaren Entscheidungsgrundlage.</p>
           </div>
           <div class="ms-spacer"></div>
-          <button class="ms-cta-card" id="ms-cta3" onclick="location.href='/login/'">Gleich kostenlos ausprobieren →</button>
+          <button class="ms-cta-card" id="ms-cta3" onclick="location.href='/login/'">Privates Gespräch starten →</button>
+          <a class="ms-secondary-link" id="ms-card3-secondary" href="#" data-open-example="exampleModal3">Beispiel-Protokoll ansehen →</a>
         </div>
         <div class="ms-track-pad"></div>
       </div>
@@ -2639,24 +2680,25 @@
         source_2_title: "Mercer", source_2_text: "Dialogic Learning",
         source_3_title: "Socratic Method", source_3_text: "Stanford Encyclopedia of Philosophy",
         ms_card1_title: "Important conversation tomorrow?", ms_card1_sub: "Better prepared than speechless afterwards.",
-        ms_card1_body1: "Important conversations often decide more than you think. Yet too often you go in without enough clarity.",
-        ms_card1_body2: "In hindsight, it is almost always the same: <strong>I should have said that.</strong>",
-        ms_card1_label: "With Sophie you can:", ms_card1_outro: "You do not just walk in. You walk in prepared.",
-        ms_card1_body3: "Whether salary negotiation, client call, relationship talk, or tensions with your co-founder: Sophie helps you get clearer beforehand.",
+        ms_card1_body1: "Important conversations often decide more than you think. And yet too often you go in without enough clarity.",
+        ms_card1_label: "With Sophie you can:", ms_card1_result_label: "What you get:", ms_card1_result_text: "A clear conversation guide with key messages, phrases, and next steps.",
+        ms_card1_body3: "Whether salary negotiation, difficult client call, relationship talk, apology, setting boundaries, or tensions with your co-founder: Sophie helps you get clearer beforehand.",
         ms_card1_b1: "Sort your thoughts", ms_card1_b2: "Sharpen your core message", ms_card1_b3: "Test difficult phrasing", ms_card1_b4: "Develop a conversation strategy", ms_card1_b5: "Anticipate critical moments",
+        ms_card1_secondary: "View example protocol →",
         ms_card2_title: "Sell better — but how?", ms_card2_sub: "Because it usually sounds better in your head.",
-        ms_card2_body1: "What seems clear when thinking is often too long, too vague, or not strong enough when speaking.",
-        ms_card2_body2: "Whether sales pitch, investor presentation, or job interview: Sophie helps you improve your impact.",
-        ms_card2_label: "With Sophie you can:", ms_card2_outro: "A vague message becomes a more convincing performance.",
+        ms_card2_body1: "What seems clear when thinking is often too long, too vague, or not strong enough when speaking. And honest, well-founded feedback is hard to come by.",
+        ms_card2_body2: "Whether sales pitch, investor presentation, job interview, or important presentation: Sophie helps you improve your impact before it counts.",
+        ms_card2_label: "With Sophie you can:", ms_card2_result_label: "What you get:", ms_card2_result_text: "A pitch scorecard with concrete feedback and a clearer, stronger version of your pitch.",
         ms_card2_b1: "Walk through your pitch out loud", ms_card2_b2: "Spot unclear points", ms_card2_b3: "Sharpen your story", ms_card2_b4: "Simulate objections", ms_card2_b5: "Formulate a stronger version", ms_card2_b6: "Practice realistic situations",
-        ms_card3_title: "Making decisions alone?", ms_card3_sub: "Not every thought belongs in Slack.",
-        ms_card3_body1: "Not every uncertainty is something you want to share with the team. Some thoughts are not ready to go out.",
-        ms_card3_body2: "Sophie gives you a private space — without judgement, without social pressure.",
+        ms_card2_secondary: "View example scorecard →",
+        ms_card3_title: "Making decisions alone?", ms_card3_sub: "Not every thought belongs out there.",
+        ms_card3_body1: "Some thoughts aren't ready to be shared with the team, friends, or anyone else. That's exactly when you need a private space to think out loud, find clarity, and sort decisions more cleanly.",
+        ms_card3_body2: "Sophie gives you exactly that space — without judgement, without social pressure, and without needing a ready answer right away.",
         ms_card3_label: "With Sophie you can:",
-        ms_card3_b1: "Untangle thoughts", ms_card3_b2: "Clarify priorities", ms_card3_b3: "Weigh decisions", ms_card3_b4: "Reflect on conversations", ms_card3_b5: "Release pressure — without therapy",
-        ms_card3_modes_label: "Conversation modes:",
-        ms_pill_talk: "Talk", ms_pill_talk_sub: "free speaking", ms_pill_explore: "Explore", ms_pill_explore_sub: "new ideas", ms_pill_decide: "Decide", ms_pill_decide_sub: "decisions", ms_pill_reflect: "Reflect", ms_pill_reflect_sub: "learn from experience",
-        ms_cta1: "Talk to Sophie →", ms_cta2: "Start Sales Pitch →", ms_cta3: "Try it free now →",
+        ms_card3_b1: "Untangle thoughts", ms_card3_b2: "Clarify priorities", ms_card3_b3: "Weigh decisions", ms_card3_b4: "Prepare for meetings", ms_card3_b5: "Reflect on conversations and situations", ms_card3_b6: "Turn inner restlessness into clarity",
+        ms_card3_result_label: "What you get:", ms_card3_result_text: "A clear protocol with options, trade-offs, and a solid basis for your decision.",
+        ms_card3_secondary: "View example protocol →",
+        ms_cta1: "Prepare conversation →", ms_cta2: "Sharpen your pitch →", ms_cta3: "Start private conversation →",
         pricing_label_left: "Pricing", pricing_title_left: "Start free.\nMore if you want.",
         pricing_btn: "See pricing →",
         faq_title: "Frequently asked questions",
@@ -2719,24 +2761,25 @@
         source_2_title: "Mercer", source_2_text: "Dialogic Learning",
         source_3_title: "Sokratische Methode", source_3_text: "Stanford Encyclopedia of Philosophy",
         ms_card1_title: "Wichtiges Gespräch morgen?", ms_card1_sub: "Besser gut vorbereitet als hinterher sprachlos.",
-        ms_card1_body1: "Wichtige Gespräche entscheiden oft mehr, als man denkt. Trotzdem geht man viel zu oft mit zu wenig Klarheit hinein.",
-        ms_card1_body2: "Im Nachhinein ist es fast immer dasselbe: <strong>Das hätte ich noch sagen sollen.</strong>",
-        ms_card1_label: "Mit Sophie kannst du:", ms_card1_outro: "Du gehst nicht einfach hinein. Du gehst vorbereitet hinein.",
-        ms_card1_body3: "Ob Gehaltsverhandlung, Kundencall, Beziehungsgespräch oder Spannungen mit dem Co-Founder: Sophie hilft dir, vorher klarer zu werden.",
+        ms_card1_body1: "Wichtige Gespräche entscheiden oft mehr, als man denkt. Und trotzdem geht man viel zu oft mit zu wenig Klarheit hinein.",
+        ms_card1_label: "Mit Sophie kannst du:", ms_card1_result_label: "Du bekommst danach:", ms_card1_result_text: "Einen klaren Gesprächsleitfaden mit Kernbotschaften, Formulierungen und nächsten Schritten.",
+        ms_card1_body3: "Ob Gehaltsverhandlung, schwieriger Kundencall, Beziehungsgespräch, Entschuldigung, Grenzen setzen oder Spannungen mit dem Co-Founder: Sophie hilft dir, vorher klarer zu werden.",
         ms_card1_b1: "Gedanken sortieren", ms_card1_b2: "deine Kernbotschaft schärfen", ms_card1_b3: "schwierige Formulierungen testen", ms_card1_b4: "eine Gesprächsstrategie entwickeln", ms_card1_b5: "kritische Momente vorwegdenken",
+        ms_card1_secondary: "Beispiel-Protokoll ansehen →",
         ms_card2_title: "Besser verkaufen — aber wie?", ms_card2_sub: "Weil es im Kopf meist besser klingt als in echt.",
-        ms_card2_body1: "Was beim Denken noch klar wirkt, ist beim Sprechen oft zu lang, zu ungenau oder nicht stark genug.",
-        ms_card2_body2: "Ob Sales Pitch, Investor-Präsentation oder Bewerbung: Sophie hilft dir, deine Wirkung zu verbessern.",
-        ms_card2_label: "Mit Sophie kannst du:", ms_card2_outro: "Aus einer vagen Botschaft wird ein überzeugenderer Auftritt.",
+        ms_card2_body1: "Was beim Denken noch klar wirkt, ist beim Sprechen oft zu lang, zu ungenau oder nicht stark genug. Und ehrliches, fundiertes Feedback bekommt man selten.",
+        ms_card2_body2: "Ob Sales Pitch, Investor-Präsentation, Bewerbungsgespräch oder wichtige Präsentation: Sophie hilft dir, deine Wirkung zu verbessern, bevor es darauf ankommt.",
+        ms_card2_label: "Mit Sophie kannst du:", ms_card2_result_label: "Du bekommst danach:", ms_card2_result_text: "Eine Pitch-Scorecard mit konkretem Feedback und eine klarere, stärkere Version deines Pitchs.",
+        ms_card2_secondary: "Beispiel-Scorecard ansehen →",
         ms_card2_b1: "deinen Pitch laut durchgehen", ms_card2_b2: "Unklarheiten erkennen", ms_card2_b3: "deine Story schärfen", ms_card2_b4: "Einwände simulieren", ms_card2_b5: "eine stärkere Version formulieren", ms_card2_b6: "realistische Situationen üben",
-        ms_card3_title: "Allein Entscheidungen treffen?", ms_card3_sub: "Nicht jeder Gedanke gehört in Slack.",
-        ms_card3_body1: "Nicht jede Unsicherheit möchte man mit dem Team teilen. Manche Gedanken sind noch nicht bereit, nach außen zu gehen.",
-        ms_card3_body2: "Sophie gibt dir einen privaten Raum — ohne Bewertung, ohne sozialen Druck.",
+        ms_card3_title: "Allein Entscheidungen treffen?", ms_card3_sub: "Nicht jeder Gedanke gehört nach außen.",
+        ms_card3_body1: "Manche Gedanken sind noch nicht bereit, mit dem Team, Freunden oder anderen geteilt zu werden. Gerade dann braucht man einen privaten Raum, um laut zu denken, Klarheit zu finden und Entscheidungen sauberer zu sortieren.",
+        ms_card3_body2: "Sophie gibt dir genau diesen Raum — ohne Bewertung, ohne sozialen Druck und ohne dass du sofort eine fertige Antwort haben musst.",
         ms_card3_label: "Mit Sophie kannst du:",
-        ms_card3_b1: "Gedanken entwirren", ms_card3_b2: "Prioritäten klären", ms_card3_b3: "Entscheidungen abwägen", ms_card3_b4: "Gespräche reflektieren", ms_card3_b5: "Druck abladen — ohne Therapie",
-        ms_card3_modes_label: "Gesprächsmodi:",
-        ms_pill_talk: "Talk", ms_pill_talk_sub: "freies Sprechen", ms_pill_explore: "Explore", ms_pill_explore_sub: "neue Ideen", ms_pill_decide: "Decide", ms_pill_decide_sub: "Entscheidungen", ms_pill_reflect: "Reflect", ms_pill_reflect_sub: "aus Erlebtem lernen",
-        ms_cta1: "Mit Sophie sprechen →", ms_cta2: "Sales Pitch starten →", ms_cta3: "Gleich kostenlos ausprobieren →",
+        ms_card3_b1: "Gedanken entwirren", ms_card3_b2: "Prioritäten klären", ms_card3_b3: "Entscheidungen abwägen", ms_card3_b4: "Meetings vorbereiten", ms_card3_b5: "Gespräche und Situationen reflektieren", ms_card3_b6: "innere Unruhe in Klarheit verwandeln",
+        ms_card3_result_label: "Du bekommst danach:", ms_card3_result_text: "Ein klares Protokoll mit Optionen, Abwägungen und einer belastbaren Entscheidungsgrundlage.",
+        ms_card3_secondary: "Beispiel-Protokoll ansehen →",
+        ms_cta1: "Gespräch vorbereiten →", ms_cta2: "Pitch schärfen →", ms_cta3: "Privates Gespräch starten →",
         pricing_label_left: "Preise", pricing_title_left: "Kostenlos starten.\nMehr wenn du willst.",
         pricing_btn: "Preise ansehen →",
         faq_title: "Häufig gestellte Fragen",
@@ -2800,24 +2843,25 @@
       source_2_title: "Mercer", source_2_text: "Dialogic Learning",
       source_3_title: "M\u00e9thode socratique", source_3_text: "Stanford Encyclopedia of Philosophy",
       ms_card1_title: "Conversation importante demain ?", ms_card1_sub: "Mieux vaut être préparé que muet après coup.",
-      ms_card1_body1: "Les conversations importantes décident souvent de plus qu'on ne le pense. Pourtant, on y entre trop souvent sans assez de clarté.",
-      ms_card1_body2: "Après coup, c'est presque toujours pareil : <strong>J'aurais dû dire ça.</strong>",
-      ms_card1_label: "Avec Sophie tu peux :", ms_card1_outro: "Tu n'y vas pas comme ça. Tu y vas préparé.",
-      ms_card1_body3: "Négociation salariale, appel client, discussion de couple ou tensions avec ton co-fondateur : Sophie t'aide à y voir plus clair avant.",
+      ms_card1_body1: "Les conversations importantes décident souvent de plus qu'on ne le pense. Et pourtant, on y entre trop souvent sans assez de clarté.",
+      ms_card1_label: "Avec Sophie tu peux :", ms_card1_result_label: "Ce que tu reçois :", ms_card1_result_text: "Un guide de conversation clair avec messages clés, formulations et prochaines étapes.",
+      ms_card1_body3: "Négociation salariale, appel client difficile, discussion de couple, excuses, poser des limites ou tensions avec ton co-fondateur : Sophie t'aide à y voir plus clair avant.",
       ms_card1_b1: "Trier tes pensées", ms_card1_b2: "Affûter ton message clé", ms_card1_b3: "Tester des formulations difficiles", ms_card1_b4: "Développer une stratégie de conversation", ms_card1_b5: "Anticiper les moments critiques",
+      ms_card1_secondary: "Voir un exemple de protocole →",
       ms_card2_title: "Mieux vendre — mais comment ?", ms_card2_sub: "Parce que ça sonne toujours mieux dans ta tête.",
-      ms_card2_body1: "Ce qui semble clair en pensant est souvent trop long, trop vague ou pas assez fort en parlant.",
-      ms_card2_body2: "Pitch, présentation investisseur ou candidature : Sophie t'aide à améliorer ton impact.",
-      ms_card2_label: "Avec Sophie tu peux :", ms_card2_outro: "Un message vague devient une prestation plus convaincante.",
+      ms_card2_body1: "Ce qui semble clair en pensant est souvent trop long, trop vague ou pas assez fort en parlant. Et un feedback honnête et fondé, on en reçoit rarement.",
+      ms_card2_body2: "Pitch, présentation investisseur, entretien d'embauche ou présentation importante : Sophie t'aide à améliorer ton impact avant le moment décisif.",
+      ms_card2_label: "Avec Sophie tu peux :", ms_card2_result_label: "Ce que tu reçois :", ms_card2_result_text: "Une scorecard de pitch avec un feedback concret et une version plus claire et plus forte de ton pitch.",
       ms_card2_b1: "Répéter ton pitch à voix haute", ms_card2_b2: "Repérer les zones floues", ms_card2_b3: "Affûter ton histoire", ms_card2_b4: "Simuler des objections", ms_card2_b5: "Formuler une version plus forte", ms_card2_b6: "S'entraîner dans des situations réalistes",
-      ms_card3_title: "Prendre des décisions seul ?", ms_card3_sub: "Toutes les pensées ne vont pas dans Slack.",
-      ms_card3_body1: "On ne veut pas toujours partager ses incertitudes avec l'équipe. Certaines pensées ne sont pas prêtes.",
-      ms_card3_body2: "Sophie te donne un espace privé — sans jugement, sans pression sociale.",
+      ms_card2_secondary: "Voir un exemple de scorecard →",
+      ms_card3_title: "Prendre des décisions seul ?", ms_card3_sub: "Toutes les pensées ne sont pas prêtes à être partagées.",
+      ms_card3_body1: "Certaines pensées ne sont pas encore prêtes à être partagées avec l'équipe, les amis ou d'autres. C'est exactement là qu'on a besoin d'un espace privé pour penser à voix haute, trouver de la clarté et mieux trier ses décisions.",
+      ms_card3_body2: "Sophie te donne exactement cet espace — sans jugement, sans pression sociale et sans devoir avoir une réponse toute faite.",
       ms_card3_label: "Avec Sophie tu peux :",
-      ms_card3_b1: "Démêler tes pensées", ms_card3_b2: "Clarifier les priorités", ms_card3_b3: "Peser les décisions", ms_card3_b4: "Réfléchir aux conversations", ms_card3_b5: "Relâcher la pression — sans thérapie",
-      ms_card3_modes_label: "Modes de conversation :",
-      ms_pill_talk: "Talk", ms_pill_talk_sub: "parler librement", ms_pill_explore: "Explore", ms_pill_explore_sub: "nouvelles idées", ms_pill_decide: "Decide", ms_pill_decide_sub: "décisions", ms_pill_reflect: "Reflect", ms_pill_reflect_sub: "apprendre du vécu",
-      ms_cta1: "Parler avec Sophie →", ms_cta2: "Lancer le Sales Pitch →", ms_cta3: "Essayer gratuitement →",
+      ms_card3_b1: "Démêler tes pensées", ms_card3_b2: "Clarifier les priorités", ms_card3_b3: "Peser les décisions", ms_card3_b4: "Préparer des réunions", ms_card3_b5: "Réfléchir aux conversations et situations", ms_card3_b6: "Transformer l'agitation intérieure en clarté",
+      ms_card3_result_label: "Ce que tu reçois :", ms_card3_result_text: "Un protocole clair avec options, compromis et une base de décision solide.",
+      ms_card3_secondary: "Voir un exemple de protocole →",
+      ms_cta1: "Préparer la conversation →", ms_cta2: "Affûter ton pitch →", ms_cta3: "Démarrer une conversation privée →",
       pricing_label_left: "Tarifs", pricing_title_left: "Commencer gratuitement.\nPlus si vous le souhaitez.",
       pricing_btn: "Voir les tarifs →",
       faq_title: "Questions fréquemment posées",
@@ -2873,16 +2917,15 @@
         "source-2-title": t.source_2_title, "source-2-text": t.source_2_text,
         "source-3-title": t.source_3_title, "source-3-text": t.source_3_text,
         "ms-card1-title": t.ms_card1_title, "ms-card1-sub": t.ms_card1_sub,
-        "ms-card1-label": t.ms_card1_label, "ms-card1-outro": t.ms_card1_outro,
+        "ms-card1-label": t.ms_card1_label,
         "ms-card1-b1": t.ms_card1_b1, "ms-card1-b2": t.ms_card1_b2, "ms-card1-b3": t.ms_card1_b3, "ms-card1-b4": t.ms_card1_b4, "ms-card1-b5": t.ms_card1_b5,
         "ms-card2-title": t.ms_card2_title, "ms-card2-sub": t.ms_card2_sub,
-        "ms-card2-label": t.ms_card2_label, "ms-card2-outro": t.ms_card2_outro,
+        "ms-card2-label": t.ms_card2_label, "ms-card2-secondary": t.ms_card2_secondary,
         "ms-card2-b1": t.ms_card2_b1, "ms-card2-b2": t.ms_card2_b2, "ms-card2-b3": t.ms_card2_b3, "ms-card2-b4": t.ms_card2_b4, "ms-card2-b5": t.ms_card2_b5, "ms-card2-b6": t.ms_card2_b6,
         "ms-card3-title": t.ms_card3_title, "ms-card3-sub": t.ms_card3_sub,
         "ms-card3-label": t.ms_card3_label,
-        "ms-card3-b1": t.ms_card3_b1, "ms-card3-b2": t.ms_card3_b2, "ms-card3-b3": t.ms_card3_b3, "ms-card3-b4": t.ms_card3_b4, "ms-card3-b5": t.ms_card3_b5,
-        "ms-card3-modes-label": t.ms_card3_modes_label,
-        "ms-cta1": t.ms_cta1, "ms-cta2": t.ms_cta2, "ms-cta3": t.ms_cta3,
+        "ms-card3-b1": t.ms_card3_b1, "ms-card3-b2": t.ms_card3_b2, "ms-card3-b3": t.ms_card3_b3, "ms-card3-b4": t.ms_card3_b4, "ms-card3-b5": t.ms_card3_b5, "ms-card3-b6": t.ms_card3_b6,
+        "ms-cta1": t.ms_cta1, "ms-cta2": t.ms_cta2, "ms-cta3": t.ms_cta3, "ms-card1-secondary": t.ms_card1_secondary, "ms-card2-secondary": t.ms_card2_secondary, "ms-card3-secondary": t.ms_card3_secondary,
         "pricing-label-left": t.pricing_label_left,
         "pricing-btn": t.pricing_btn,
         "faq-title": t.faq_title, "faq-copy": t.faq_copy,
@@ -2913,7 +2956,7 @@
       const htmlMap = {
         "hero-title": t.hero_title, "thinking-highlight": t.thinking_highlight,
         "pricing-title-left": t.pricing_title_left ? t.pricing_title_left.replace(/\n/g, '<br>') : '',
-        "ms-card1-body1": t.ms_card1_body1, "ms-card1-body2": t.ms_card1_body2, "ms-card1-body3": t.ms_card1_body3,
+        "ms-card1-body1": t.ms_card1_body1, "ms-card1-body3": t.ms_card1_body3,
         "ms-pill-talk": t.ms_pill_talk ? t.ms_pill_talk + ' <small>' + t.ms_pill_talk_sub + '</small>' : '',
         "ms-pill-explore": t.ms_pill_explore ? t.ms_pill_explore + ' <small>' + t.ms_pill_explore_sub + '</small>' : '',
         "ms-pill-decide": t.ms_pill_decide ? t.ms_pill_decide + ' <small>' + t.ms_pill_decide_sub + '</small>' : '',
@@ -2924,6 +2967,15 @@
       Object.entries(htmlMap).forEach(([id, value]) => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = value;
+      });
+      // Update result boxes
+      [["ms-card1-outro","ms_card1"],["ms-card2-outro","ms_card2"],["ms-card3-outro","ms_card3"]].forEach(([id,k])=>{
+        const box = document.getElementById(id);
+        if (!box) return;
+        const rl = box.querySelector(".ms-result-label");
+        const rt = box.querySelector(".ms-result-text");
+        if (rl && t[k+"_result_label"]) rl.textContent = t[k+"_result_label"];
+        if (rt && t[k+"_result_text"]) rt.textContent = t[k+"_result_text"];
       });
       // Update chat i18n
       const inputEl = document.getElementById("chatInput");
@@ -5201,6 +5253,566 @@
     // Make translations available to module scope
     /* translations already attached to window in the inline script above */
 
+    // ── Example-modal logic ──
+    (function(){
+      let _trigger = null;
+      function openExampleModal(id, triggerEl) {
+        const overlay = document.getElementById(id);
+        if (!overlay) return;
+        _trigger = triggerEl || document.activeElement;
+        overlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+        const closeBtn = overlay.querySelector('.example-modal-close');
+        if (closeBtn) closeBtn.focus();
+      }
+      function closeExampleModal(id) {
+        const overlay = document.getElementById(id);
+        if (!overlay || overlay.hidden) return;
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+        if (_trigger) { _trigger.focus(); _trigger = null; }
+      }
+      document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('[data-open-example]');
+        if (trigger) { e.preventDefault(); openExampleModal(trigger.dataset.openExample, trigger); return; }
+        const closeBtn = e.target.closest('.example-modal-close');
+        if (closeBtn) { closeExampleModal(closeBtn.closest('.example-modal-overlay').id); return; }
+        if (e.target.classList.contains('example-modal-overlay')) { closeExampleModal(e.target.id); }
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          const open = document.querySelector('.example-modal-overlay:not([hidden])');
+          if (open) closeExampleModal(open.id);
+        }
+      });
+    })();
+
   </script>
+
+  <!-- Example Protocol Modal -->
+  <div class="example-modal-overlay" id="exampleModal1" role="dialog" aria-modal="true" aria-labelledby="demoReportTitle1" hidden>
+    <div class="example-modal-inner">
+      <button class="example-modal-close" aria-label="Schließen">&times;</button>
+      <!-- BUILD:DEMO_REPORT_1 — generated by scripts/build-demo-report.mjs -->
+<div style="font-family:Georgia,'Times New Roman',serif;max-width:640px;margin:0 auto;padding:48px 0;color:#2c2420;line-height:1.85;">
+<div style="margin-bottom:44px;">
+  <div style="font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#c4a882;margin-bottom:10px;">Sophie · Gesprächsleitfaden</div>
+  <h1 id="demoReportTitle1" style="font-size:26px;font-weight:400;color:#1a1210;margin:0 0 8px;font-style:italic;letter-spacing:0.01em;">Gesprächsleitfaden für das Gehaltsgespräch</h1>
+  <div style="font-size:13px;color:#a09080;">Michael</div>
+</div>
+<div style="height:1px;background:linear-gradient(to right,#c4a882 40%,transparent);margin-bottom:40px;"></div>
+
+<div style="margin-bottom:40px;">
+  <p style="font-size:17px;color:#3a3028;margin:0;line-height:1.9;text-align:justify;">Michael bereitet sich auf ein Gehaltsgespräch mit seiner Vorgesetzten am Freitag vor. Im Mittelpunkt steht der Wunsch, klar und ruhig zu kommunizieren, warum eine Gehaltserhöhung gerechtfertigt ist. Dabei geht es nicht nur um die inhaltlichen Argumente, sondern auch um die eigene Haltung im Gespräch: nicht zu weich werden, den roten Faden behalten und die eigene Leistung ohne Rechtfertigungsdruck benennen. Ziel ist ein Gespräch, das sachlich, direkt und verbindlich geführt wird.</p>
+</div>
+
+<div style="margin:40px 0;padding:24px 28px;background:#faf7f4;border-radius:14px;border:1px solid #ede8e2;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Was mir aufgefallen ist</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Die Kernherausforderung liegt nicht im Fehlen von Argumenten, sondern darin, sie im Gespräch klar und stabil zu vertreten.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Die gewünschte Haltung ist eindeutig: ruhig, konkret und ohne sich kleinzumachen.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Entscheidend ist, dass am Ende nicht nur das Thema angesprochen wurde, sondern auch eine klare Erwartung und ein nächster Schritt im Raum stehen.</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Was ich mitnehme</div>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Klar in die Gehaltsanpassung gehen</div>
+      <div style="font-size:13px;color:#7a6a5a;margin-top:3px;">Die eigene Entwicklung, übernommene Verantwortung und konkrete Ergebnisse sollen klar benannt werden — mit dem Ziel, eine Gehaltsanpassung nicht nur anzusprechen, sondern verbindlich zu platzieren.</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Kernbotschaft</div>
+  <div style="margin:0;padding:20px 24px;background:#faf7f4;border-radius:12px;border-left:3px solid #c4a882;font-size:16px;font-style:italic;color:#2a2420;line-height:1.8;">Ich möchte meine Leistung klar benennen und eine konkrete Gehaltsanpassung ansprechen, ohne mich zu rechtfertigen oder kleinzumachen.</div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Was ich unbedingt sagen will</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Ich habe in den letzten 12 Monaten mehr Verantwortung übernommen.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Meine Ergebnisse waren messbar und relevant.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Ich möchte, dass sich diese Entwicklung auch im Gehalt widerspiegelt.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Ich spreche das bewusst klar und direkt an.</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Mein Gesprächsziel</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">dass ich eine Anpassung erwarte</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">in welchem Rahmen ich sie mir vorstelle</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">bis wann es eine verbindliche Rückmeldung gibt</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Formulierungen, die ich nutzen kann</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Einstieg</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">„Ich möchte heute offen über meine Entwicklung und mein Gehalt sprechen."</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Leistungsbezug</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">„Ich habe in den letzten Monaten deutlich mehr Verantwortung übernommen, vor allem bei X und Y."</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Konkrete Forderung</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">„Aus meiner Sicht ist jetzt der richtige Zeitpunkt für eine Gehaltsanpassung."</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Wenn ausgewichen wird</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">„Mir ist wichtig, dass wir das nicht offen lassen. Wann kann ich mit einer klaren Rückmeldung rechnen?"</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Kritische Momente vorbereiten</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;color:#7a6a5a;margin-bottom:4px;">Möglicher Einwand: „Dafür ist aktuell kein Budget da."</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;font-style:italic;">„Ich verstehe den Rahmen. Trotzdem möchte ich festhalten, dass das Thema aus meiner Sicht berechtigt ist. Welche konkrete Perspektive können Sie mir geben?"</div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;color:#7a6a5a;margin-bottom:4px;">Möglicher Einwand: „Lassen Sie uns das später nochmal anschauen."</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;font-style:italic;">„Okay. Dann würde ich gerne jetzt schon einen konkreten Zeitpunkt festlegen."</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Worauf ich achten sollte</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">nicht zu schnell reden</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">nicht anfangen, mich zu entschuldigen</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">nicht zu viele Nebenthemen aufmachen</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">nach einer klaren nächsten Verabredung fragen</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">Nächste Schritte</div>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Gespräch am Freitag führen</div>
+    </div>
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Ergebnis direkt danach notieren</div>
+    </div>
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Falls keine Entscheidung fällt: Follow-up-Termin anfordern</div>
+    </div>
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Falls nötig: schriftliche Zusammenfassung senden</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:52px;padding-top:20px;border-top:1px solid #ede8e2;font-size:11px;color:#b0a090;text-align:center;font-style:italic;">Sophie · meet-sophie.com</div>
+</div>
+      <!-- /BUILD:DEMO_REPORT_1 -->
+    </div>
+  </div>
+
+  <!-- Example Scorecard Modal -->
+  <div class="example-modal-overlay" id="exampleModal2" role="dialog" aria-modal="true" aria-labelledby="demoReportTitle2" hidden>
+    <div class="example-modal-inner">
+      <button class="example-modal-close" aria-label="Schließen">&times;</button>
+      <!-- BUILD:DEMO_SCORECARD_2 — generated by scripts/build-demo-scorecard.mjs -->
+<div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:700px;margin:0 auto;padding:40px 0;color:#1a1a1a;line-height:1.6;">
+  <div style="text-align:center;margin-bottom:36px;">
+    <div style="display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:12px;">Score Card</div>
+    <h1 id="demoReportTitle2" style="font-size:26px;font-weight:700;color:#111;margin:8px 0 4px;letter-spacing:-0.02em;">Pitch-Scorecard</h1>
+    <div style="font-size:14px;color:#888;">Confidence: high</div>
+  </div>
+
+  <div style="margin-bottom:28px;padding:16px 20px;background:#f8f8f8;border-radius:12px;font-size:14px;color:#555;line-height:1.7;">
+    <strong>Situation:</strong> Gründer pitcht seine AI-Meeting-Software vor einem potenziellen Investor<br><strong>Ziel:</strong> Klarer, relevanter und überzeugender auftreten<br><strong>Hauptproblem:</strong> Der Pitch klingt zu breit und erklärt zu viel auf einmal
+  </div>
+
+  <div style="background:#f8f8f8;border-radius:16px;padding:28px;margin-bottom:28px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:48px;font-weight:800;color:#111;letter-spacing:-0.03em;">72</div>
+      <div style="font-size:12px;color:#888;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;">Overall Score</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Content (60%)</div>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Clarity</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">2.5 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:50%;background:#ef4444;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Die Kernidee wird erst zu spät verständlich.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Problem Sharpness</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Das Problem ist relevant, aber noch nicht hart genug zugespitzt.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Value Proposition</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">2.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:40%;background:#ef4444;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Der konkrete Nutzen bleibt zu allgemein und nicht scharf genug.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Structure</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">2.5 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:50%;background:#ef4444;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Der Pitch wirkt etwas sprunghaft und nicht klar geführt.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Differentiation</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Die Einzigartigkeit ist erkennbar, aber nicht stark genug herausgearbeitet.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Credibility</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Es gibt Ansätze, aber noch zu wenig belastbare Substanz.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Audience Fit</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Der Pitch ist noch nicht präzise genug auf Investoren zugeschnitten.</div>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:13px;font-weight:600;color:#555;">Content Score: 2.7 / 5.0</div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Delivery (40%)</div>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Opening</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.5 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:70%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Der Einstieg funktioniert, ist aber noch nicht scharf genug.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Closing</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Das Ende bleibt etwas offen und setzt keinen starken Schlusspunkt.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Voice & Rhythm</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.5 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:70%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Der Vortrag klingt solide, aber stellenweise monoton.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Rhetoric & Language</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.5 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:70%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Die Sprache ist ordentlich, aber noch nicht pointiert genug.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Authenticity</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Die Wirkung ist glaubwürdig, aber noch nicht durchgehend stark.</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#333;">Persuasiveness</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">3.0 / 5</span>
+        </div>
+        <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;border-radius:4px;width:60%;background:#eab308;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">Die Richtung stimmt, aber der Zug nach vorn fehlt.</div>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:13px;font-weight:600;color:#555;">Delivery Score: 3.3 / 5.0</div>
+  </div>
+
+  <div style="background:#111;border-radius:14px;padding:24px;margin-bottom:28px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:8px;">Verdict</div>
+    <div style="font-size:16px;color:#fff;line-height:1.7;">Der Pitch hat Potenzial, verliert aber Wirkung durch Breite, fehlende Zuspitzung und einen noch zu weichen Nutzen. Für einen Investor-Pitch braucht es mehr Klarheit, mehr Relevanz und einen stärkeren Spannungsbogen.</div>
+  </div>
+
+  <div style="margin-bottom:28px;">
+    <h2 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Stärken</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:14px;color:#333;">Das Problem wirkt nicht erfunden</div>
+      <div style="padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:14px;color:#333;">Es gibt ein relevantes Anwendungsfeld</div>
+      <div style="padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:14px;color:#333;">Der Pitch hat Substanz</div>
+    </div>
+  </div>
+  <div style="margin-bottom:28px;">
+    <h2 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Schwächen</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:12px 16px;background:#fffbeb;border-radius:10px;border-left:3px solid #eab308;font-size:14px;color:#333;">Zu viele Erklärungen am Anfang</div>
+      <div style="padding:12px 16px;background:#fffbeb;border-radius:10px;border-left:3px solid #eab308;font-size:14px;color:#333;">Nutzen wird nicht schnell genug greifbar</div>
+      <div style="padding:12px 16px;background:#fffbeb;border-radius:10px;border-left:3px solid #eab308;font-size:14px;color:#333;">Kein starker Satz, der hängen bleibt</div>
+    </div>
+  </div>
+  <div style="margin-bottom:28px;">
+    <h2 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Nächste Schritte</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:12px 16px;background:#f8f8f8;border-radius:10px;border-left:3px solid #111;font-size:14px;color:#333;">Einstieg deutlich kürzen und schneller zum Schmerz kommen</div>
+      <div style="padding:12px 16px;background:#f8f8f8;border-radius:10px;border-left:3px solid #111;font-size:14px;color:#333;">Nutzen in einem klaren Satz formulieren</div>
+      <div style="padding:12px 16px;background:#f8f8f8;border-radius:10px;border-left:3px solid #111;font-size:14px;color:#333;">Pitch stärker auf Investor-Logik zuschneiden</div>
+      <div style="padding:12px 16px;background:#f8f8f8;border-radius:10px;border-left:3px solid #111;font-size:14px;color:#333;">Abschluss mit klarem Takeaway schärfen</div>
+    </div>
+  </div>
+
+  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;">Erstellt mit Sophie · meet-sophie.com</div>
+</div>
+      <!-- /BUILD:DEMO_SCORECARD_2 -->
+    </div>
+  </div>
+
+  <!-- Example Decision Protocol Modal -->
+  <div class="example-modal-overlay" id="exampleModal3" role="dialog" aria-modal="true" aria-labelledby="demoReportTitle3" hidden>
+    <div class="example-modal-inner">
+      <button class="example-modal-close" aria-label="Schließen">&times;</button>
+      <!-- BUILD:DEMO_DECISION_3 — generated by scripts/build-demo-decision.mjs -->
+<div style="font-family:Georgia,'Times New Roman',serif;max-width:640px;margin:0 auto;padding:48px 0;color:#2c2420;line-height:1.85;">
+<div style="margin-bottom:44px;">
+  <div style="font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#c4a882;margin-bottom:10px;">Sophie · Entscheidungsprotokoll</div>
+  <h1 id="demoReportTitle3" style="font-size:26px;font-weight:400;color:#1a1210;margin:0 0 8px;font-style:italic;letter-spacing:0.01em;">Soll ich kündigen und voll auf mein Projekt setzen?</h1>
+  <div style="font-size:13px;color:#a09080;">Entscheidungsprotokoll</div>
+</div>
+<div style="height:1px;background:linear-gradient(to right,#c4a882 40%,transparent);margin-bottom:40px;"></div>
+
+<div style="margin-bottom:40px;">
+  <p style="font-size:17px;color:#3a3028;margin:0;line-height:1.9;text-align:justify;"><strong>Situation:</strong> Soll ich meinen sicheren Job kündigen und mich voll auf mein eigenes Projekt konzentrieren?<br><strong>Ziel:</strong> Eine belastbare Entscheidung treffen statt weiter innerlich zu pendeln<br><strong>Hauptproblem:</strong> Ich schwanke jeden Tag zwischen Mut und Angst</p>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">1. Die eigentliche Entscheidungsfrage</div>
+  <div style="margin:0;padding:20px 24px;background:#faf7f4;border-radius:12px;border-left:3px solid #c4a882;font-size:16px;font-style:italic;color:#2a2420;line-height:1.8;">Soll ich in den nächsten 3 Monaten kündigen und mich voll auf mein Projekt konzentrieren — oder noch im Job bleiben und das Risiko reduzieren?</div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">2. Was emotional im Hintergrund mitläuft</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Angst vor Einkommensverlust</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Sorge, später zu bereuen, es nicht versucht zu haben</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Druck, endlich voranzukommen</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Unsicherheit, ob der richtige Zeitpunkt schon da ist</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">3. Option A — Im Job bleiben</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Vorteile</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">finanzielle Sicherheit</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">weniger Druck</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">mehr Zeit zum Validieren</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Nachteile</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">langsamer Fortschritt</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">hohe Doppelbelastung</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">Gefahr, sich weiter aufzuschieben</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">4. Option B — In 3 Monaten kündigen</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Vorteile</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">voller Fokus</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">schnellere Lernkurve</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">echte Verbindlichkeit</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:#2a2420;margin-bottom:6px;">Nachteile</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">finanzielles Risiko</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">emotional höherer Druck</div>
+      <div style="font-size:15px;font-style:italic;color:#3a3028;line-height:1.8;margin:8px 0 0;padding:10px 16px;background:rgba(196,168,130,0.05);border-radius:8px;">mehr Unsicherheit im Alltag</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">5. Was in der Entscheidung wirklich zählt</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">finanzielle Reichweite</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Marktfeedback der nächsten 8–12 Wochen</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">mein Energielevel</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">realistische Traktion, nicht Wunschdenken</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">wie viel Risiko ich psychologisch tragen kann</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin:40px 0;padding:24px 28px;background:#faf7f4;border-radius:14px;border:1px solid #ede8e2;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">6. Nüchterne Abwägung</div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Aktuell spricht emotional viel für den Sprung.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Sachlich fehlt aber noch eine stabilere Grundlage.</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div style="color:#c4a882;font-size:18px;line-height:1;margin-top:2px;">·</div>
+      <div style="font-size:15px;color:#3a3028;line-height:1.8;">Die stärkere Entscheidung ist deshalb nicht „sofort kündigen", sondern eine klare Zwischenstrategie mit messbaren Kriterien.</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">7. Vorläufige Empfehlung</div>
+  <div style="margin:0;padding:20px 24px;background:#faf7f4;border-radius:12px;border-left:3px solid #c4a882;font-size:16px;font-style:italic;color:#2a2420;line-height:1.8;">Noch nicht kündigen. Stattdessen in den nächsten 8 Wochen drei harte Validierungspunkte definieren: X zahlende Gespräche, Y echte Nutzung, Z belastbare Nachfrage-Signale. Wenn diese Punkte erreicht werden, wird die Kündigung deutlich fundierter.</div>
+</div>
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c4a882;margin-bottom:14px;">8. Nächste Schritte</div>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Finanzielle Runway sauber ausrechnen</div>
+    </div>
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">8-Wochen-Validierungsplan festlegen</div>
+    </div>
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Entscheidungstermin jetzt schon setzen</div>
+    </div>
+    <div style="padding:14px 20px;background:rgba(196,168,130,0.08);border-radius:12px;border-left:3px solid #c4a882;">
+      <div style="font-size:15px;font-weight:600;color:#2a2420;">Bis dahin keine tägliche Neuverhandlung im Kopf</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:52px;padding-top:20px;border-top:1px solid #ede8e2;font-size:11px;color:#b0a090;text-align:center;font-style:italic;">Sophie · meet-sophie.com</div>
+</div>
+      <!-- /BUILD:DEMO_DECISION_3 -->
+    </div>
+  </div>
+
 </body>
 </html>

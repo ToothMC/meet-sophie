@@ -444,6 +444,8 @@ main{max-width:520px;margin:0 auto;padding:12px}
 
 </main>
 
+<script src="/lib/sophie-export.js"></script>
+<script src="/lib/sophie-report-overlay.js"></script>
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SophieTabManager } from "/lib/sophie-tab-manager.js";
@@ -806,67 +808,71 @@ async function deleteSelectedReports() {
 }
 
 async function openReportDetail(sessionId, source = 'talk') {
-  const overlay = document.getElementById("reportDetailOverlay");
-  const titleEl = document.getElementById("reportDetailTitle");
-  const contentEl = document.getElementById("reportDetailContent");
-  overlay.style.display = "block";
-  titleEl.textContent = "Laden...";
-  contentEl.innerHTML = '<p class="msg">Laden...</p>';
   try {
     const data = await api("report-detail&session_id=" + sessionId + "&source=" + source);
     _reportDetailData = data;
-    titleEl.textContent = data.title || "Report";
 
-    // Show "Pitch again" button only for salespitch reports
-    const pitchBar = document.getElementById("pitchAgainBar");
-    const demoBtn = document.getElementById("pitchDemoBtn");
-    if (pitchBar) {
-      const isSalespitch = data.report_style === 'salespitch' || data.report_style === 'pitch';
-      pitchBar.style.display = isSalespitch ? 'block' : 'none';
+    // Typ aus source/report_style ableiten
+    const typeMap = { talk: "talk", brainstorm: "brainstorm", salespitch: "salespitch", meeting: "meeting", chat: "chat" };
+    const type = typeMap[data.report_style] || typeMap[source] || "talk";
 
-      if (isSalespitch && demoBtn) {
-        demoBtn.disabled = false;
-        demoBtn.style.opacity = '1';
-        demoBtn.style.cursor = 'pointer';
-      }
-    }
-
-    if (data.report_html) {
-      // Render HTML report in iframe for proper isolation
-      contentEl.innerHTML = '<iframe id="settingsReportFrame" style="width:100%;border:none;min-height:500px;background:#fff;border-radius:8px" sandbox="allow-same-origin"></iframe>';
-      const iframe = document.getElementById("settingsReportFrame");
-      iframe.addEventListener("load", () => {
-        const doc = iframe.contentDocument;
-        doc.open();
-        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}.meeting-protocol{max-width:100%;padding:16px}@media print{@page{size:A4;margin:18mm 16mm}.meeting-protocol{padding:0!important;box-shadow:none!important}.meeting-protocol>div{margin-bottom:14px!important;page-break-inside:avoid}}</style></head><body>${data.report_html}</body></html>`);
-        doc.close();
-        // Auto-resize iframe to content
-        setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 200);
-      });
-      // Trigger load
-      const doc = iframe.contentDocument;
-      doc.open();
-      doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#fff;color:#1a1a1a;line-height:1.6}img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left}.meeting-protocol{max-width:100%;padding:16px}@media print{@page{size:A4;margin:18mm 16mm}.meeting-protocol{padding:0!important;box-shadow:none!important}.meeting-protocol>div{margin-bottom:14px!important;page-break-inside:avoid}}</style></head><body>${data.report_html}</body></html>`);
-      doc.close();
-      setTimeout(() => { iframe.style.height = (doc.body.scrollHeight + 40) + 'px'; }, 300);
-    } else if (data.short_summary) {
-      // Fallback: structured summary for meetings without HTML report
-      let html = `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
+    // Fallback HTML für Meetings ohne report_html
+    let htmlContent = data.report_html || "";
+    if (!htmlContent && data.short_summary) {
+      htmlContent = `<p style="margin:0 0 16px;color:#3a3028;line-height:1.7">${data.short_summary}</p>`;
       const renderSection = (items, label) => {
         if (!items?.length) return '';
         return `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">${label}</h4>`
-          + items.map(i => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${i.text || i}</div>`).join('') + '</div>';
+          + items.map(i => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${typeof i === 'string' ? i : i.text || i}</div>`).join('') + '</div>';
       };
-      html += renderSection(data.decisions, "Beschlüsse");
-      html += renderSection(data.action_items, "Action Items");
-      html += renderSection(data.open_points, "Offene Punkte");
-      contentEl.innerHTML = html;
+      htmlContent += renderSection(data.decisions, "Beschlüsse");
+      htmlContent += renderSection(data.action_items, "Action Items");
+      htmlContent += renderSection(data.open_points, "Offene Punkte");
+    }
+
+    // Report-Objekt für Overlay-Modul
+    const reportData = {
+      id: sessionId,
+      type,
+      source: "settings",
+      title: data.title || "Report",
+      createdAt: data.created_at || new Date().toISOString(),
+      html: htmlContent,
+      plainText: null,
+      hasTranscript: false,
+      transcriptHtml: null,
+      continuePayload: {
+        sourceType: type,
+        sourceId: sessionId,
+        resumeSessionId: sessionId,
+        targetMode: type === "meeting" ? "meeting" : (type === "talk" ? null : type),
+      },
+    };
+
+    // Overlay via Modul öffnen
+    if (window.SophieReportOverlay) {
+      SophieReportOverlay.open(reportData, {
+        lang: "de",
+        onSaveTemplate: type === "meeting" ? async () => {
+          await api("save-report-template", { mode: "default", report_html: htmlContent }, "POST");
+        } : null,
+        onDelete: async (rd) => {
+          await api("delete-report", { session_id: rd.id, source }, "POST");
+          loadReports();
+        },
+      });
     } else {
-      contentEl.innerHTML = '<p class="msg">Kein Report vorhanden.</p>';
+      // Fallback: altes Overlay (sollte nicht passieren)
+      const overlay = document.getElementById("reportDetailOverlay");
+      if (overlay) {
+        overlay.style.display = "block";
+        document.getElementById("reportDetailTitle").textContent = data.title || "Report";
+        document.getElementById("reportDetailContent").innerHTML = htmlContent || '<p class="msg">Kein Report vorhanden.</p>';
+      }
     }
   } catch (e) {
-    titleEl.textContent = "Fehler";
-    contentEl.innerHTML = '<p class="msg">Report konnte nicht geladen werden.</p>';
+    console.error("[openReportDetail]", e);
+    alert("Report konnte nicht geladen werden.");
   }
 }
 window.openReportDetail = openReportDetail;
@@ -874,7 +880,11 @@ window.updateDeleteBar = updateDeleteBar;
 window.deleteSelectedReports = deleteSelectedReports;
 
 function closeReportDetail() {
-  document.getElementById("reportDetailOverlay").style.display = "none";
+  if (window.SophieReportOverlay) {
+    SophieReportOverlay.close();
+  }
+  const overlay = document.getElementById("reportDetailOverlay");
+  if (overlay) overlay.style.display = "none";
   _reportDetailData = null;
 }
 window.closeReportDetail = closeReportDetail;
