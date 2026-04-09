@@ -989,36 +989,35 @@
         overflow:visible;
       }
       .hub-line-bottom-wrap svg line{
-        stroke:rgba(255,180,100,.2);
+        stroke:rgba(63,140,255,.22);
         stroke-width:1.2;
         stroke-dasharray:6 4;
         animation:hubFlow 2.5s linear infinite;
       }
       .hub-providers{
         display:flex !important;
-        gap:6px;
+        gap:5px;
         justify-content:center;
-        flex-wrap:wrap;
+        flex-wrap:nowrap;
         margin-top:0;
       }
       .hub-pill{
         display:inline-flex;
         align-items:center;
-        gap:5px;
-        font-size:10.5px;
+        gap:4px;
+        font-size:10px;
         font-weight:500;
         letter-spacing:.02em;
-        color:rgba(246,247,251,.45);
-        padding:4px 10px;
-        border:1px solid rgba(255,255,255,.08);
-        border-radius:14px;
+        color:rgba(246,247,251,.42);
+        padding:3px 8px;
+        border:1px solid rgba(255,255,255,.07);
+        border-radius:12px;
         background:rgba(255,255,255,.03);
         font-family:inherit;
+        white-space:nowrap;
       }
-      .hub-pill img{
-        width:12px;
-        height:12px;
-        opacity:.5;
+      .hub-pill svg{
+        flex-shrink:0;
       }
 
       /* --- Mode pills deprioritized --- */
