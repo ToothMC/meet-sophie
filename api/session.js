@@ -4,6 +4,79 @@ import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from "../lib/billing-constants.js";
 
+// ── Resume: build structured prompt block per session type ──
+function buildResumeBlock(sessionType, data, lang) {
+  const isDE = lang === "de";
+  const isFR = lang === "fr";
+
+  function strip(s) { return String(s || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(); }
+  function truncate(s, max) { const t = strip(s); return t.length > max ? t.slice(0, max) + "…" : t; }
+  function list(arr, max = 3, charLimit = 100) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, max).map(item => {
+      const text = typeof item === "string" ? item : (item?.text || item?.label || item?.task || item?.detail || JSON.stringify(item));
+      return truncate(text, charLimit);
+    }).filter(Boolean);
+  }
+  function bullets(arr) { return arr.map(s => `- ${s}`).join("\n"); }
+
+  const title = truncate(data.title, 80);
+  const summary = truncate(data.summary, 200);
+  if (!title && !summary) return null; // invalid resume
+
+  const L = {
+    de: { topic: "Thema", summary: "Zusammenfassung", points: "Wichtigste Punkte", open: "Offene Fragen", next: "Nächste Schritte", strengths: "Stärken", weaknesses: "Schwächen", recommendation: "Empfehlung", target: "Zielgruppe", score: "Letzter Score", decisions: "Entscheidungen", actions: "Action Items", openPts: "Offene Punkte", agenda: "Agenda",
+      talkIntro: "Du setzt dieses Gespräch fort. Biete subtil Anschluss an. Kein Monolog über Vergangenes.",
+      pitchIntro: "Der User möchte seinen Pitch verbessern. Referenziere Schwächen konstruktiv.",
+      meetingIntro: "Knüpfe an offene Punkte und Action Items an." },
+    en: { topic: "Topic", summary: "Summary", points: "Key points", open: "Open questions", next: "Next steps", strengths: "Strengths", weaknesses: "Weaknesses", recommendation: "Recommendation", target: "Audience", score: "Last score", decisions: "Decisions", actions: "Action items", openPts: "Open points", agenda: "Agenda",
+      talkIntro: "You are resuming this conversation. Subtly offer to continue. No monologue about the past.",
+      pitchIntro: "The user wants to improve their pitch. Reference weaknesses constructively.",
+      meetingIntro: "Pick up on open points and action items." },
+    fr: { topic: "Sujet", summary: "Résumé", points: "Points clés", open: "Questions ouvertes", next: "Prochaines étapes", strengths: "Points forts", weaknesses: "Points faibles", recommendation: "Recommandation", target: "Public", score: "Dernier score", decisions: "Décisions", actions: "Actions", openPts: "Points ouverts", agenda: "Ordre du jour",
+      talkIntro: "Tu reprends cette conversation. Propose subtilement de continuer. Pas de monologue.",
+      pitchIntro: "L'utilisateur veut améliorer son pitch. Référence les faiblesses de manière constructive.",
+      meetingIntro: "Reprends les points ouverts et les actions." },
+  };
+  const l = L[lang] || L.de;
+
+  let block = "";
+
+  if (sessionType === "sales_pitch" || sessionType === "salespitch") {
+    const ss = data.structured_summary || {};
+    const scores = ss.scores_content || ss.overall_score;
+    const scoreStr = typeof scores === "number" ? `${scores}/100` : (ss.overall_score ? `${ss.overall_score}/100` : "");
+    block = `FORTGESETZTER SALES PITCH
+${l.topic}: ${title}${ss.audience_type ? ` | ${l.target}: ${strip(ss.audience_type)}` : ""}
+${scoreStr ? `${l.score}: ${scoreStr}\n` : ""}${l.strengths}: ${list(ss.strongest_elements || data.key_insights, 3).join(", ") || "—"}
+${l.weaknesses}: ${list(ss.main_weaknesses || data.open_questions, 3).join(", ") || "—"}
+${ss.recommended_next_attempt ? `${l.recommendation}: ${truncate(ss.recommended_next_attempt, 150)}` : ""}
+
+${l.pitchIntro}`;
+  } else if (sessionType === "meeting") {
+    const decs = list(data.decisions, 5);
+    const acts = list(data.action_items, 5);
+    const opens = list(data.open_points, 3);
+    block = `FORTGESETZTES MEETING
+${l.topic}: ${title}
+${data.agenda ? `${l.agenda}: ${truncate(data.agenda, 200)}\n` : ""}${decs.length ? `${l.decisions}:\n${bullets(decs)}\n` : ""}${acts.length ? `${l.actions}:\n${bullets(acts)}\n` : ""}${opens.length ? `${l.openPts}:\n${bullets(opens)}\n` : ""}
+${l.meetingIntro}`;
+  } else {
+    // Talk, Brainstorm, Chat
+    const header = sessionType === "brainstorm" ? "FORTGESETZTES BRAINSTORMING" : "FORTGESETZTES GESPRÄCH";
+    const insights = list(data.key_insights, 3);
+    const questions = list(data.open_questions, 3);
+    const steps = list(data.action_plan, 3);
+    block = `${header}
+${l.topic}: ${title}
+${summary ? `${l.summary}: ${summary}\n` : ""}${insights.length ? `${l.points}:\n${bullets(insights)}\n` : ""}${questions.length ? `${l.open}:\n${bullets(questions)}\n` : ""}${steps.length ? `${l.next}:\n${bullets(steps)}\n` : ""}
+${l.talkIntro}`;
+  }
+
+  // Hard total limit: max 2000 chars
+  return block.trim().slice(0, 2000) || null;
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "GET") {
@@ -49,6 +122,10 @@ export default async function handler(req, res) {
       console.warn("Invalid handover header:", e?.message || e);
       handover = null;
     }
+
+    // ── Resume from Verlauf: load structured context for specific session ──
+    const resumeSessionId = String(req.headers["x-sophie-resume-session"] || "").trim() || null;
+    let resumeContext = null;
 
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
@@ -528,6 +605,68 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Build structured resume context if resuming a specific session ──
+    if (resumeSessionId && user) {
+      try {
+        // 1. Validate ownership
+        const { data: resumeSession } = await supabase
+          .from("user_sessions")
+          .select("id, user_id, session_type, title, short_summary, language")
+          .eq("id", resumeSessionId)
+          .maybeSingle();
+
+        if (resumeSession && resumeSession.user_id === user.id) {
+          const sType = resumeSession.session_type || "talk";
+          const sLang = resumeSession.language || preferredLanguage || "de";
+
+          // 2. Load mode-specific data
+          if (sType === "meeting") {
+            // Meeting: load from meeting tables
+            const { data: mtg } = await supabase.from("meetings").select("id, title").eq("session_id", resumeSessionId).maybeSingle();
+            if (mtg) {
+              const [sumRes, ctxRes] = await Promise.all([
+                supabase.from("meeting_summary").select("short_summary, decisions, action_items, open_points").eq("meeting_id", mtg.id).maybeSingle(),
+                supabase.from("meeting_context").select("context_type, content").eq("meeting_id", mtg.id),
+              ]);
+              const agenda = (ctxRes.data || []).filter(c => c.context_type === "agenda").map(c => c.content).join(", ");
+              resumeContext = buildResumeBlock(sType, {
+                title: mtg.title || resumeSession.title,
+                summary: sumRes.data?.short_summary,
+                decisions: sumRes.data?.decisions,
+                action_items: sumRes.data?.action_items,
+                open_points: sumRes.data?.open_points,
+                agenda,
+              }, sLang);
+            }
+          } else {
+            // Talk/Brainstorm/Pitch/Chat: load from conversation_outputs
+            const { data: output } = await supabase
+              .from("conversation_outputs")
+              .select("title, short_summary, key_insights, action_plan, open_questions, structured_summary")
+              .eq("session_id", resumeSessionId)
+              .maybeSingle();
+            resumeContext = buildResumeBlock(sType, {
+              title: output?.title || resumeSession.title,
+              summary: output?.short_summary || resumeSession.short_summary,
+              key_insights: output?.key_insights,
+              action_plan: output?.action_plan,
+              open_questions: output?.open_questions,
+              structured_summary: output?.structured_summary,
+            }, sLang);
+          }
+
+          if (resumeContext) {
+            console.log("[session] resume context built:", resumeSessionId.slice(0, 8), sType, resumeContext.length, "chars");
+          }
+        } else {
+          console.warn("[session] resume session not found or wrong owner:", resumeSessionId.slice(0, 8));
+        }
+      } catch (e) {
+        console.warn("[session] resume context build failed:", e?.message);
+        resumeContext = null;
+      }
+    }
+
     const sophiePrompt = buildSophiePrompt({
       tier,
       sessionMode,
@@ -618,6 +757,7 @@ export default async function handler(req, res) {
       recentReports,
       recentConversations,
       channel: "voice",
+      resumeContext,
     });
 
     // Tool instructions — only for modes that have tools active

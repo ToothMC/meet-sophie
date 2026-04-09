@@ -1725,31 +1725,9 @@ const voiceChatMessages = document.getElementById("voiceChatMessages");
 const voiceChatInput = document.getElementById("voiceChatInput");
 const voiceChatSendBtn = document.getElementById("voiceChatSend");
 
-// ── Load previous report for resume (Verlauf) ──
-let _resumeReportText = null;
-{
-  const resumeReportId = sessionStorage.getItem("sophie_resume_report");
-  if (resumeReportId) {
-    sessionStorage.removeItem("sophie_resume_report");
-    fetch(`/api/ai/report-status?session_id=${resumeReportId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        const html = data.report_html || (data.detail ? `<p>${data.detail}</p>` : null);
-        if (!html) return;
-        // Show in chat panel for user
-        const note = document.createElement("div");
-        note.style.cssText = "padding:12px;margin:8px;background:rgba(255,255,255,.06);border-radius:12px;font-size:13px;color:rgba(246,247,251,.7);border:1px solid rgba(255,255,255,.08);max-height:300px;overflow-y:auto";
-        note.innerHTML = `<div style="font-weight:600;margin-bottom:6px;color:rgba(246,247,251,.9)">${data.title || "Letztes Gespräch"}</div>${html}`;
-        voiceChatMessages.appendChild(note);
-        // Store plain text for Sophie to read when session starts
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html;
-        _resumeReportText = `[Vorheriges Gespräch: ${data.title || ""}]\n${tmp.textContent.slice(0, 2000)}`;
-      })
-      .catch(() => {});
-  }
-}
+// ── Resume from Verlauf: session ID for server-side context loading ──
+const _resumeSessionId = sessionStorage.getItem("sophie_resume_session_id");
+if (_resumeSessionId) sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── Voice Chat File Upload ──
 const vcUploadBtn = document.getElementById("vcUploadBtn");
@@ -4637,22 +4615,6 @@ function attachChannel(ch) {
       console.log(`[${runId}] [dc] session.update failed`, e);
     }
 
-    // Inject resume report as context for Sophie
-    if (_resumeReportText) {
-      try {
-        dcSend({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{ type: "input_text", text: _resumeReportText }],
-          },
-        });
-        console.log(`[${runId}] [resume] report context injected (${_resumeReportText.length} chars)`);
-        _resumeReportText = null;
-      } catch (e) { console.warn(`[${runId}] [resume] inject failed:`, e); }
-    }
-
     if (voiceHandover && !startModeTriggered) {
       console.log(`[${runId}] [handover] triggering contextual kickoff`);
       kickoffSent = true;
@@ -5558,6 +5520,7 @@ async function startVoice(){
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
         ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
+        ...(_resumeSessionId ? { "X-Sophie-Resume-Session": _resumeSessionId } : {}),
         ...((function() {
           // Build brainstorm config on-the-fly from toggle if not already set
           if (selectedVoiceMode === "brainstorm" && !brainstormVoiceConfig && window._getBrainstormConfig) {
