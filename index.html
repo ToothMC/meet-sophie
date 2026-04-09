@@ -3499,6 +3499,28 @@
       });
     }
 
+    // Card/section CTAs → open chat with matching mode pill
+    document.querySelectorAll('[data-chat-mode]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const mode = btn.dataset.chatMode;
+        if (mode && mode !== 'talk') {
+          setFunnelMode(mode);
+          applyHeroMode(mode);
+          // Activate the matching hero pill
+          document.querySelectorAll('#heroModeBar .hero-mode-pill').forEach(b => b.classList.remove('active'));
+          const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${mode}"]`);
+          if (pill) pill.classList.add('active');
+        } else {
+          setFunnelMode(null);
+          applyHeroMode(null);
+          document.querySelectorAll('#heroModeBar .hero-mode-pill').forEach(b => b.classList.remove('active'));
+        }
+        openChatForeground();
+        quickStartChat();
+      });
+    });
+
     // "Oder schreiben" → opens chat foreground for text-only
     const heroWriteBtn = document.getElementById("hero-btn-secondary");
     if (heroWriteBtn) {
