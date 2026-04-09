@@ -1068,7 +1068,7 @@ ${isEN ? 'Then your structured analysis follows.' : isFR ? 'Ensuite suit ton ana
       .update({
         report_progress: 70,
         report_status_detail: hasTemplate
-          ? `Fülle Template mit ${analyses.length} Analysen...`
+          ? (isEN ? `Filling template with ${analyses.length} analyses...` : isFR ? `Remplissage du template avec ${analyses.length} analyses...` : `Fülle Template mit ${analyses.length} Analysen...`)
           : isEN ? `Creating report from ${analyses.length} analyses...` : isFR ? `Création du rapport à partir de ${analyses.length} analyses...` : `Erstelle Report aus ${analyses.length} Analysen...`,
       })
       .eq('session_id', session_id);
