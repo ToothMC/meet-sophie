@@ -3500,6 +3500,7 @@
         e.preventDefault();
         e.stopImmediatePropagation();
         const mode = selectedChatMode || 'talk';
+        console.log('[HERO-CTA] mode=' + mode, heroScrollTargets[mode]);
         scrollToLandingTarget(mode);
       });
     }
