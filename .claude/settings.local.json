@@ -225,7 +225,12 @@
       "Bash(curl -s -X POST \"https://www.meet-sophie.com/api/chat?action=start\" -H \"Content-Type: application/json\" -d '{\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
       "Bash(curl -s -X POST \"https://www.meet-sophie.com/api/chat?action=message\" -H \"Content-Type: application/json\" -d '{\"\"\"\"session_id\"\"\"\":\"\"\"\"1a79f0fc-4708-4532-a9a5-1e1768a00f1d\"\"\"\",\"\"\"\"messages\"\"\"\":[{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"Hallo Sophie, wie geht es dir?\"\"\"\"}],\"\"\"\"language\"\"\"\":\"\"\"\"de\"\"\"\"}')",
       "Bash(curl -s \"https://www.meet-sophie.com/api/session\" -H \"Content-Type: application/json\")",
-      "Bash(curl -s \"https://www.meet-sophie.com/api/ai/report-status?session_id=740b7f19-845e-4321-8887-8094c2414714\")"
+      "Bash(curl -s \"https://www.meet-sophie.com/api/ai/report-status?session_id=740b7f19-845e-4321-8887-8094c2414714\")",
+      "Bash(node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/sophie-core.js)",
+      "Bash(/usr/local/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/sophie-core.js)",
+      "Bash(/opt/homebrew/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/sophie-core.js)",
+      "Bash(/opt/homebrew/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)",
+      "Bash(/usr/local/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)"
     ]
   },
   "hooks": {
