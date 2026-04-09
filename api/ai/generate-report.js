@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     .eq('session_id', session_id);
 
   try {
-    const modeHint = session_mode ? `Session-Modus: "${session_mode}".` : '';
+    const modeHint = session_mode ? (isEN ? `Session mode: "${session_mode}".` : isFR ? `Mode de session : "${session_mode}".` : `Session-Modus: "${session_mode}".`) : '';
     const dateLocale = isEN ? 'en-US' : isFR ? 'fr-FR' : 'de-DE';
     const todayDate = new Date().toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
     const dateInstruction = isEN
