@@ -2104,7 +2104,7 @@ function clearHandover() {
 const voiceHandover = loadHandover();
 
 // Clear any stale resume state
-sessionStorage.removeItem("sophie_resume_session");
+sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── i18n: UI translations ──────────────────────────────────
 const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
