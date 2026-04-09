@@ -3469,30 +3469,33 @@
     }
 
     if (heroCta) {
-      // Scroll targets for mode-aware hero CTA
+      // Hero CTA scrolls to relevant landing section based on selected pill
       const heroScrollTargets = {
-        salespitch: '.ms-card[data-index="1"]',
-        meeting: '#mode-meeting',
-        brainstorm: '#mode-brainstorm',
+        talk: { type:'card', index: 0 },
+        salespitch: { type:'card', index: 1 },
+        meeting: { type:'section', id: 'mode-meeting' },
+        brainstorm: { type:'section', id: 'mode-brainstorm' },
       };
+
+      function scrollToLandingTarget(mode) {
+        const target = heroScrollTargets[mode];
+        if (!target) return;
+        if (target.type === 'card') {
+          const section = document.getElementById('use-cases');
+          if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
+          // Activate the right card in the swiper
+          if (typeof scrollToCard === 'function') scrollToCard(target.index);
+          if (typeof updateCards === 'function') updateCards(target.index);
+        } else {
+          const el = document.getElementById(target.id);
+          if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+        }
+      }
 
       heroCta.addEventListener("click", async (e) => {
         e.preventDefault();
-        // If a mode pill is active that has a landing section, scroll there
-        if (selectedChatMode && heroScrollTargets[selectedChatMode]) {
-          const target = document.querySelector(heroScrollTargets[selectedChatMode]);
-          if (target) { target.scrollIntoView({behavior:'smooth', block:'start'}); return; }
-        }
-        track("hero_cta_clicked", { cta_type: "talk" });
-        // Logged-in users go directly to voice — skip chat funnel
-        const token = await getToken();
-        if (token) {
-          goToVoiceFromChat();
-          return;
-        }
-        // Not logged in — open chat for funnel/onboarding
-        openChatForeground();
-        quickStartChat();
+        const mode = selectedChatMode || 'talk';
+        scrollToLandingTarget(mode);
       });
     }
 
