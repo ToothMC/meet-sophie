@@ -3509,7 +3509,9 @@
       heroCta.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
-        const mode = selectedChatMode || 'talk';
+        // Read active mode from pill state (more reliable than variable)
+        const activePill = document.querySelector('#heroModeBar .hero-mode-pill.active');
+        const mode = activePill ? activePill.dataset.mode : 'talk';
         scrollToLandingTarget(mode);
       });
     }
