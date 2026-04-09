@@ -3496,8 +3496,9 @@
         }
       }
 
-      heroCta.addEventListener("click", async (e) => {
+      heroCta.addEventListener("click", (e) => {
         e.preventDefault();
+        e.stopImmediatePropagation();
         const mode = selectedChatMode || 'talk';
         scrollToLandingTarget(mode);
       });
