@@ -2952,14 +2952,15 @@
         const el = document.getElementById(id);
         if (el) el.innerHTML = value;
       });
-      // Update result box
-      const resultBox = document.getElementById("ms-card1-outro");
-      if (resultBox) {
-        const rl = resultBox.querySelector(".ms-result-label");
-        const rt = resultBox.querySelector(".ms-result-text");
-        if (rl && t.ms_card1_result_label) rl.textContent = t.ms_card1_result_label;
-        if (rt && t.ms_card1_result_text) rt.textContent = t.ms_card1_result_text;
-      }
+      // Update result boxes
+      [["ms-card1-outro","ms_card1"],["ms-card2-outro","ms_card2"]].forEach(([id,k])=>{
+        const box = document.getElementById(id);
+        if (!box) return;
+        const rl = box.querySelector(".ms-result-label");
+        const rt = box.querySelector(".ms-result-text");
+        if (rl && t[k+"_result_label"]) rl.textContent = t[k+"_result_label"];
+        if (rt && t[k+"_result_text"]) rt.textContent = t[k+"_result_text"];
+      });
       // Update chat i18n
       const inputEl = document.getElementById("chatInput");
       const authTextEl = document.getElementById("chatAuthText");
