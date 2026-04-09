@@ -175,12 +175,29 @@ DESIGN RULES (IMPORTANT):
 - Font: system-ui, -apple-system, sans-serif
 - Main color: #2a2420 (text), #c4a882 (accent, lines, heading decoration)
 - Background: #fff, sections with fine border (#ede8e2) or subtle background (#faf9f6)
-- Header: title large (24px), metadata (date, protocol) small below, no heavy border
+- Header: title large (24px on desktop, 20px on mobile), metadata small below
 - Sections: clear headings (uppercase, 11px, letter-spacing, color #a09080), content 14px
-- Agenda items: numbered, clear separation, ample whitespace
+- Agenda items: numbered, clear separation
 - Action Items: with responsible person and deadline if mentioned
-- Overall impression: elegant, professional, generous whitespace. Like a document from a premium consultancy — not an auto-generated form.
+- Overall impression: elegant, professional, generous whitespace. Premium consultancy quality.
 - No emojis in the final report.
+
+MOBILE / PWA OPTIMIZATION (CRITICAL):
+- The report MUST be readable on mobile screens (320px-428px width).
+- Use max-width: 100%; padding: 16px; on the outer container. NO fixed widths.
+- Font sizes: body 14px, headings 18-20px (not larger). Line-height: 1.6.
+- Tables: use overflow-x: auto wrapper. Or avoid tables — use stacked cards/lists instead.
+- Action items / decisions: use simple list layout, not multi-column grids.
+- Long words: word-break: break-word; overflow-wrap: break-word;
+- Touch targets: links/buttons min 44px height.
+- The <style> block MUST include:
+  @media (max-width: 640px) {
+    body, .report { padding: 12px !important; font-size: 14px !important; }
+    h1 { font-size: 20px !important; }
+    h2, h3 { font-size: 15px !important; }
+    table { display: block; overflow-x: auto; }
+  }
+- PRINT remains A4 (the @page + @media print rules stay unchanged).
 
 ${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
 
@@ -238,12 +255,28 @@ DESIGN-REGELN (WICHTIG):
 - Font: system-ui, -apple-system, sans-serif
 - Hauptfarbe: #2a2420 (Text), #c4a882 (Akzent, Linien, Überschriften-Deko)
 - Hintergrund: #fff, Sektionen mit feinem Border (#ede8e2) oder dezenter Hintergrund (#faf9f6)
-- Header: Titel groß (24px), Metadaten (Datum, Protokoll) klein darunter, kein fetter Rahmen
+- Header: Titel groß (24px Desktop, 20px Mobil), Metadaten klein darunter
 - Sektionen: klare Überschriften (uppercase, 11px, letter-spacing, Farbe #a09080), Inhalt 14px
-- Tagesordnungspunkte: nummeriert, klare Trennung, genug Whitespace
+- Tagesordnungspunkte: nummeriert, klare Trennung
 - Action Items: mit Verantwortlichem und Frist falls genannt
-- Gesamteindruck: elegant, professionell, viel Weißraum. Wie ein Dokument von einer Premium-Beratung — nicht wie ein automatisch generiertes Formular.
+- Gesamteindruck: elegant, professionell, viel Weißraum. Premium-Beratung Qualität.
 - Keine Emojis im finalen Report.
+
+MOBILE / PWA OPTIMIERUNG (KRITISCH):
+- Report MUSS auf Mobilgeräten lesbar sein (320px-428px Breite).
+- Äußerer Container: max-width: 100%; padding: 16px; KEINE festen Breiten.
+- Schriftgrößen: Body 14px, Überschriften 18-20px. Line-height: 1.6.
+- Tabellen: overflow-x: auto Wrapper. Besser: Listen statt Tabellen.
+- Action Items / Beschlüsse: einfaches Listen-Layout, keine Mehrspalten-Grids.
+- Lange Wörter: word-break: break-word; overflow-wrap: break-word;
+- Der <style>-Block MUSS enthalten:
+  @media (max-width: 640px) {
+    body, .report { padding: 12px !important; font-size: 14px !important; }
+    h1 { font-size: 20px !important; }
+    h2, h3 { font-size: 15px !important; }
+    table { display: block; overflow-x: auto; }
+  }
+- PRINT bleibt DIN A4 (@page + @media print Regeln bleiben unverändert).
 
 ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
