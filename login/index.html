@@ -114,7 +114,7 @@
 
     .back {
       position: fixed;
-      top: 18px;
+      top: calc(18px + env(safe-area-inset-top, 0px));
       left: 16px;
       z-index: 3;
       color: rgba(255,255,255,.8);
