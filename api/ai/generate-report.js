@@ -194,12 +194,13 @@ CONTENT FORMATTING (follow EXACTLY — violations are unacceptable):
   GOOD: "1. Sophie muss offene Fragen und nächste Schritte kennen (Anna)\n2. Resümee-Logik serverseitig über System-Prompt (David)\n3. Start muss natürlich bleiben (Julia)"
 - GOAL: One paragraph after header.
 - DECISIONS: Numbered (1. 2. 3.), each one concise sentence.
-- ACTION ITEMS: Format per item: "[Owner] — [Task], bis [Date]"
-  Example: "David — Fehlerpfade prüfen, bis 11.04.2026"
+- ACTION ITEMS: NEVER use <table>. Use a simple <div> list. Each item as ONE line:
+  "<div style='padding:6px 0;border-bottom:1px solid #ede8e2;font-size:13px'>David — Fehlerpfade prüfen, bis 11.04.2026</div>"
+  Format: "[Owner] — [Task], bis [Date]"
 - OPEN POINTS: Numbered (1. 2. 3.), each one short line. NEVER text blocks.
-- NEXT MEETING: "Wann: [Date, Time] | Wo: [Location or 'Remote'] | Wer lädt ein: [Name]"
-  If location or organizer not mentioned, omit that part.
-- NEVER write flowing text paragraphs for discussion points, open items, or problems. ALWAYS numbered lists.
+- NEXT MEETING: One line: "Wann: [Date, Time] | Wo: [Location] | Wer lädt ein: [Name]"
+- ABSOLUTELY FORBIDDEN: <table>, <tr>, <td>, <th> tags anywhere in the report. Use <div> lists instead.
+- NEVER write flowing text paragraphs for discussion points. ALWAYS numbered lists.
 
 RESPONSIVE:
 - <style> block MUST include:
@@ -288,12 +289,13 @@ INHALTS-FORMATIERUNG (EXAKT befolgen — Verstöße sind inakzeptabel):
   GUT: "1. Sophie muss offene Fragen und nächste Schritte kennen (Anna)\n2. Resümee-Logik serverseitig über System-Prompt (David)\n3. Start muss natürlich bleiben (Julia)"
 - ZIEL: Ein Absatz nach Header.
 - BESCHLÜSSE: Nummeriert (1. 2. 3.), jeder ein knapper Satz.
-- AUFGABEN: Format pro Aufgabe: "[Wer] — [Was], bis [Wann]"
-  Beispiel: "David — Fehlerpfade prüfen, bis 11.04.2026"
+- AUFGABEN: NIEMALS <table> verwenden. Einfache <div>-Liste. Jede Aufgabe als EINE Zeile:
+  "<div style='padding:6px 0;border-bottom:1px solid #ede8e2;font-size:13px'>David — Fehlerpfade prüfen, bis 11.04.2026</div>"
+  Format: "[Wer] — [Was], bis [Wann]"
 - OFFENE PUNKTE: Nummeriert (1. 2. 3.), jeder eine kurze Zeile. NIEMALS Textblöcke.
-- NÄCHSTES MEETING: "Wann: [Datum, Uhrzeit] | Wo: [Ort oder 'Remote'] | Wer lädt ein: [Name]"
-  Wenn Ort oder Einladender nicht genannt, diesen Teil weglassen.
-- NIEMALS Fließtext-Absätze für Diskussionspunkte, offene Punkte oder Probleme. IMMER nummerierte Listen.
+- NÄCHSTES MEETING: Eine Zeile: "Wann: [Datum, Uhrzeit] | Wo: [Ort] | Wer lädt ein: [Name]"
+- ABSOLUT VERBOTEN: <table>, <tr>, <td>, <th> Tags irgendwo im Report. Stattdessen <div>-Listen verwenden.
+- NIEMALS Fließtext-Absätze für Diskussionspunkte. IMMER nummerierte Listen.
 
 RESPONSIVE:
 - <style>-Block MUSS enthalten:
