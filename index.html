@@ -3484,14 +3484,15 @@
       function scrollToLandingTarget(mode) {
         const target = heroScrollTargets[mode];
         if (!target) return;
-        setTimeout(() => {
+        // Use requestAnimationFrame to escape current event stack
+        requestAnimationFrame(() => {
           if (target.type === 'card') {
             const section = document.getElementById('use-cases');
             if (section) {
               const y = section.getBoundingClientRect().top + window.scrollY;
               window.scrollTo({top: y, behavior: 'smooth'});
             }
-            // Wait for page scroll to settle, then switch card
+            // Switch card after page scroll settles
             setTimeout(() => {
               if (window._msUpdateCards) window._msUpdateCards(target.index);
               if (window._msScrollToCard) window._msScrollToCard(target.index);
@@ -3503,7 +3504,7 @@
               window.scrollTo({top: y, behavior: 'smooth'});
             }
           }
-        }, 10);
+        });
       }
 
       heroCta.addEventListener("click", (e) => {
