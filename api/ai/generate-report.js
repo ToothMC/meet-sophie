@@ -1020,10 +1020,10 @@ KRITISCHE REGELN:
       ? structuredAnalysisInstructions
       : `${structuredAnalysisInstructions}
 
-ZUSÄTZLICH: Beginne deine Antwort mit GENAU EINER dieser Zeilen:
-[TYPE:DESIGN] — wenn das Gespräch hauptsächlich darum geht, wie ein Dokument/Report/Template aussehen soll
-[TYPE:CONTENT] — wenn es ein normales Gespräch ist (Meeting, Brainstorm, Beratung, etc.)
-Danach folgt deine strukturierte Analyse.`;
+${isEN ? 'ADDITIONALLY: Start your response with EXACTLY ONE of these lines' : isFR ? 'EN PLUS : Commence ta réponse par EXACTEMENT UNE de ces lignes' : 'ZUSÄTZLICH: Beginne deine Antwort mit GENAU EINER dieser Zeilen'}:
+[TYPE:DESIGN] — ${isEN ? 'if the conversation is mainly about how a document/report/template should look' : isFR ? 'si la conversation porte principalement sur l\'apparence d\'un document/rapport/template' : 'wenn das Gespräch hauptsächlich darum geht, wie ein Dokument/Report/Template aussehen soll'}
+[TYPE:CONTENT] — ${isEN ? 'if it is a normal conversation (meeting, brainstorm, consulting, etc.)' : isFR ? 'si c\'est une conversation normale (réunion, brainstorm, conseil, etc.)' : 'wenn es ein normales Gespräch ist (Meeting, Brainstorm, Beratung, etc.)'}
+${isEN ? 'Then your structured analysis follows.' : isFR ? 'Ensuite suit ton analyse structurée.' : 'Danach folgt deine strukturierte Analyse.'}`;
 
     // Run all 4 analyses in parallel for speed
     await supabase.from('conversation_outputs')
