@@ -142,13 +142,16 @@ RULES:
    EXCEPTION — Correct common speech recognition errors: "Lead Check" → "Lean Check", "Meet Sofie" → "MeetSophie"
 3. CLEARLY DISTINGUISH:
    - Metadata of THIS meeting (date, location, time) — only if explicitly stated about THIS meeting
-   - Info about FUTURE appointments → belongs in Action Items or "Next Meeting", NOT in header
+   - Info about FUTURE appointments → belongs in Action Items or "Next Meeting" section, NOT in header
 4. If info is not in the transcript → REMOVE section entirely (not "[Name]" or "—")
-5. Participants: ONLY those named. Unknown → remove section
+5. Participants: ONLY those named in [PARTICIPANTS] or transcript. Unknown → remove section
 6. Time: ONLY if stated for THIS meeting. Otherwise remove.
 7. Location: ONLY if stated for THIS meeting. Otherwise remove.
 8. NEVER invent: no names, times, locations, roles, deadlines
 9. Empty sections (no decisions, no action items) → REMOVE COMPLETELY
+9b. AGENDA: If [AGENDA] is in the transcript, include it as a numbered section near the top of the protocol, BEFORE the discussion content.
+9c. GOAL/OBJECTIVE: If [GOAL] is in the transcript, include it as a short section after the header (e.g. "Ziel des Meetings: ...").
+9d. NEXT MEETING: If a next meeting date/time is mentioned, include it as a clearly labeled section (e.g. "Nächstes Meeting: Dienstag, 14.04.2026, 10:00 Uhr").
 10. LEAN CHECK — ALWAYS generate as last content section, wrapped in <div data-section="lean-check">:
     Analyze the conversation and create a Lean analysis with these categories:
     - FACTS: What was stated as proven/validated fact?
@@ -209,6 +212,9 @@ REGELN:
 7. Ort: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
 8. NIEMALS erfinden: keine Namen, Uhrzeiten, Orte, Rollen, Fristen
 9. Leere Sektionen (keine Beschlüsse, keine Action Items) → KOMPLETT ENTFERNEN
+9b. TAGESORDNUNG: Wenn [AGENDA] im Transcript steht, als nummerierte Sektion nahe am Anfang des Protokolls einfügen, VOR dem Gesprächsinhalt.
+9c. ZIEL: Wenn [GOAL] im Transcript steht, als kurze Sektion nach dem Header einfügen (z.B. "Ziel des Meetings: ...").
+9d. NÄCHSTER TERMIN: Wenn ein Folgetermin mit Datum/Uhrzeit genannt wird, als eigene Sektion einfügen (z.B. "Nächstes Meeting: Dienstag, 14.04.2026, 10:00 Uhr").
 10. LEAN CHECK — IMMER als letzte inhaltliche Sektion generieren, eingewickelt in <div data-section="lean-check">:
     Analysiere das Gespräch und erstelle eine Lean-Analyse mit diesen Kategorien:
     - FAKTEN: Was wurde als bewiesene/validierte Tatsache genannt?
