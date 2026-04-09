@@ -663,7 +663,7 @@ ${prevPitchContext ? `WICHTIG: Dies ist ein FOLGE-PITCH. Du MUSST das Vergleichs
 Schreibe in der gleichen Sprache wie das Transcript.
 Antworte NUR mit HTML. Kein Markdown, kein Text davor/danach.
 
-HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen):
+${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : isFR ? 'STRUCTURE HTML (garder le design EXACTEMENT, remplacer uniquement valeurs + textes)' : 'HTML-STRUKTUR (Design EXAKT beibehalten, nur Werte + Texte ersetzen)'}:
 <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:700px;margin:0 auto;padding:40px 0;color:#1a1a1a;line-height:1.6;">
   <div style="text-align:center;margin-bottom:36px;">
     <div style="display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:12px;">Score Card</div>
