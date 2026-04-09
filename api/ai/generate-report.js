@@ -324,6 +324,7 @@ Antworte NUR mit JSON in exakt diesem Format:
   "decisions": [{"text": "...", "owner": "..."}],
   "action_items": [{"text": "...", "owner": "...", "due": "...", "status": "open"}],
   "open_points": [{"text": "..."}],
+  "next_meeting": "Nächster Termin wie im Transkript genannt, z.B. 'Dienstag, 15.04.2026, 10:00 Uhr' — oder null wenn nicht genannt",
   "lean_check": {
     "facts": ["Was als validierte Tatsache genannt wurde"],
     "assumptions": ["Was als Fakt behandelt wurde aber ungeprüft ist"],
@@ -339,6 +340,7 @@ REGELN:
 - "due" nur wenn Datum/Frist genannt, sonst ""
 - Wenn eine Kategorie leer ist: leeres Array []
 - status ist immer "open" (wird später aktualisiert)
+- next_meeting: Datum, Uhrzeit und ggf. Ort wenn im Transkript genannt. Relative Angaben ("nächsten Dienstag") in absolute Daten umrechnen wenn möglich. null wenn kein Termin genannt.
 - lean_check: nur Kategorien mit Inhalt. Wenn das Meeting keine Lean-Aspekte hat, lean_check weglassen` }],
             model: 'gpt-4o-mini', maxTokens: 1500, temperature: 0.1,
           });
@@ -359,15 +361,19 @@ REGELN:
               risks: [],
             };
             if (structured.lean_check) upsertData.lean_check = structured.lean_check;
+            if (structured.next_meeting) upsertData.next_meeting = structured.next_meeting;
 
             const { error: sumErr } = await supabase.from('meeting_summary').upsert(upsertData, { onConflict: 'meeting_id' });
             if (sumErr) console.error(`[report] structured data save failed:`, sumErr.message);
             else console.log(`[report] Structured data saved: ${(structured.decisions||[]).length} decisions, ${(structured.action_items||[]).length} actions, ${(structured.open_points||[]).length} open, lean=${!!structured.lean_check}`);
 
-            // Also update meeting title if empty
+            // Set AI-generated title ONLY if user never provided one
+            // User-title is canonical — AI title goes in conversation_outputs.title only
             const { data: mtg } = await supabase.from('meetings').select('title').eq('id', meetingRow.id).maybeSingle();
             if (mtg && !mtg.title && structured.short_summary) {
+              // No user title → use AI summary as fallback
               await supabase.from('meetings').update({ title: structured.short_summary.slice(0, 60) }).eq('id', meetingRow.id);
+              console.log(`[report] Meeting title set (was empty): "${structured.short_summary.slice(0, 60)}"`);
             }
           }
         } catch (extractErr) {

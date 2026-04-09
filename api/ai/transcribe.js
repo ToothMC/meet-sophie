@@ -186,6 +186,16 @@ export default async function handler(req, res) {
     }
 
     const result = await whisperRes.json();
+    // Filter known Whisper end-of-audio hallucination artifacts
+    if (result.text) {
+      const ARTIFACTS = ["Untertitel der Amara.org-Community","Untertitel von der Amara.org-Community","Vielen Dank fürs Zuschauen","Vielen Dank für's Zuschauen","Thanks for watching","Thank you for watching","Sous-titres réalisés par la communauté d'Amara.org","Merci d'avoir regardé"];
+      for (const a of ARTIFACTS) {
+        if (result.text.trim().endsWith(a)) {
+          console.log(`[transcribe] Whisper artifact removed: "${a}"`);
+          result.text = result.text.trim().slice(0, -a.length).trim();
+        }
+      }
+    }
     console.log(`[transcribe] OK: ${(result.text || '').slice(0, 100)}...`);
 
     const actualDuration = result.duration || null;

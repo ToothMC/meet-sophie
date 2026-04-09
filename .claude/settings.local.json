@@ -233,7 +233,12 @@
       "Bash(/usr/local/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)",
       "Bash(grep -n \"meeting_segment_upsert\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -A 30 \"meeting_segment\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "Bash(grep -rn \"CREATE OR REPLACE FUNCTION\\\\|increment_meeting_cost\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(grep -rn \"CREATE OR REPLACE FUNCTION\\\\|increment_meeting_cost\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -type f \\\\\\(-name *.js -o -name *.html -o -name *.json \\\\\\))",
+      "Bash(grep -r \"update_meeting\\\\|update.*title\\\\|edit.*title\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
+      "Bash(grep -l \"meeting_create_with_token_gate\\\\|CREATE TABLE meetings\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -l \"meeting_create_with_token_gate\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -A 10 \"CREATE TABLE.*conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {

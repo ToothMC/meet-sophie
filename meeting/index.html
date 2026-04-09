@@ -2916,7 +2916,24 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
     }
 
     const data = await resp.json();
-    const text = (data.text || "").trim();
+    let text = (data.text || "").trim();
+    // Filter known Whisper end-of-audio hallucination artifacts
+    const WHISPER_ARTIFACTS = [
+      "Untertitel der Amara.org-Community",
+      "Untertitel von der Amara.org-Community",
+      "Vielen Dank fürs Zuschauen",
+      "Vielen Dank für's Zuschauen",
+      "Thanks for watching",
+      "Thank you for watching",
+      "Sous-titres réalisés par la communauté d'Amara.org",
+      "Merci d'avoir regardé",
+    ];
+    for (const artifact of WHISPER_ARTIFACTS) {
+      if (text.endsWith(artifact)) {
+        console.log(`[meeting-live] Whisper artifact removed: "${artifact}"`);
+        text = text.slice(0, -artifact.length).trim();
+      }
+    }
     if (text) {
       liveTranscriptChunks[segIdx] = text;
       console.log(`[meeting-live] Seg ${segIdx}: "${text.slice(0, 80)}..."`);
