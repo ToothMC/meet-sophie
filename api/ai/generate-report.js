@@ -680,44 +680,44 @@ ${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : i
       <!-- <div style="font-size:14px;font-weight:600;margin-top:4px;color:[${isEN ? 'green/red' : isFR ? 'vert/rouge' : 'grün/rot'}];">▲ +0.4 vs. v[N-1]</div> -->
     </div>
     <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Content (60%)</div>
-    <!-- FÜR JEDES Content-Kriterium — WENN kein Vergleich (erster Pitch): -->
+    <!-- ${isEN ? 'FOR EACH Content criterion — IF no comparison (first pitch)' : isFR ? 'POUR CHAQUE critère Content — SI pas de comparaison (premier pitch)' : 'FÜR JEDES Content-Kriterium — WENN kein Vergleich (erster Pitch)'}: -->
     <div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-        <span style="font-size:13px;font-weight:500;color:#333;">[Kriterium]</span>
+        <span style="font-size:13px;font-weight:500;color:#333;">[${isEN ? 'Criterion' : isFR ? 'Critère' : 'Kriterium'}]</span>
         <span style="font-size:13px;font-weight:700;color:#111;">[X.X] / 5</span>
       </div>
       <div style="height:8px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
-        <div style="height:100%;width:[PROZENT]%;background:[FARBE];border-radius:4px;"></div>
+        <div style="height:100%;width:[${isEN ? 'PERCENT' : isFR ? 'POURCENT' : 'PROZENT'}]%;background:[${isEN ? 'COLOR' : isFR ? 'COULEUR' : 'FARBE'}];border-radius:4px;"></div>
       </div>
-      <div style="font-size:12px;color:#888;margin-top:2px;">[1-Satz Begründung]</div>
+      <div style="font-size:12px;color:#888;margin-top:2px;">[${isEN ? '1-sentence rationale' : isFR ? 'justification en 1 phrase' : '1-Satz Begründung'}]</div>
     </div>
-    <!-- WENN Vergleich vorhanden (Folge-Pitch) — verwende DIESES Design stattdessen: -->
-    <!-- Ghost-Bar = alter Score halbtransparent, neuer Balken darüber, Delta-Badge rechts -->
+    <!-- ${isEN ? 'IF comparison exists (follow-up pitch) — use THIS design instead' : isFR ? 'SI comparaison existante (pitch de suivi) — utiliser CE design à la place' : 'WENN Vergleich vorhanden (Folge-Pitch) — verwende DIESES Design stattdessen'}: -->
+    <!-- Ghost-Bar = ${isEN ? 'old score semi-transparent, new bar on top, Delta-Badge right' : isFR ? 'ancien score semi-transparent, nouvelle barre par-dessus, Delta-Badge à droite' : 'alter Score halbtransparent, neuer Balken darüber, Delta-Badge rechts'} -->
     <div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:13px;font-weight:500;color:#333;">[Kriterium]</span>
+        <span style="font-size:13px;font-weight:500;color:#333;">[${isEN ? 'Criterion' : isFR ? 'Critère' : 'Kriterium'}]</span>
         <span style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:13px;font-weight:700;color:#111;">[NEU X.X] / 5</span>
-          <!-- Delta-Badge: grün bei Verbesserung, rot bei Verschlechterung, grau bei gleich -->
-          <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;background:[DELTA_BG];color:[DELTA_COLOR];">[▲+0.5 oder ▼-0.3 oder ●]</span>
+          <span style="font-size:13px;font-weight:700;color:#111;">[${isEN ? 'NEW' : isFR ? 'NOUVEAU' : 'NEU'} X.X] / 5</span>
+          <!-- Delta-Badge: ${isEN ? 'green for improvement, red for decline, gray for same' : isFR ? 'vert pour amélioration, rouge pour déclin, gris pour identique' : 'grün bei Verbesserung, rot bei Verschlechterung, grau bei gleich'} -->
+          <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;background:[DELTA_BG];color:[DELTA_COLOR];">[▲+0.5 ${isEN ? 'or' : isFR ? 'ou' : 'oder'} ▼-0.3 ${isEN ? 'or' : isFR ? 'ou' : 'oder'} ●]</span>
         </span>
       </div>
       <div style="position:relative;height:12px;background:#e5e5e5;border-radius:4px;overflow:hidden;">
-        <!-- Ghost-Bar: vorheriger Score (halbtransparent, gestreift) -->
-        <div style="position:absolute;top:0;left:0;height:100%;width:[ALT_PROZENT]%;background:repeating-linear-gradient(90deg,[ALT_FARBE]33 0,transparent 0,transparent 3px,[ALT_FARBE]33 3px,[ALT_FARBE]33 6px);border-radius:4px;"></div>
-        <!-- Neuer Score-Balken (solid, darüber) -->
-        <div style="position:relative;height:100%;width:[NEU_PROZENT]%;background:[NEU_FARBE];border-radius:4px;"></div>
+        <!-- Ghost-Bar: ${isEN ? 'previous score (semi-transparent, striped)' : isFR ? 'score précédent (semi-transparent, rayé)' : 'vorheriger Score (halbtransparent, gestreift)'} -->
+        <div style="position:absolute;top:0;left:0;height:100%;width:[${isEN ? 'OLD_PERCENT' : isFR ? 'ANCIEN_POURCENT' : 'ALT_PROZENT'}]%;background:repeating-linear-gradient(90deg,[${isEN ? 'OLD_COLOR' : isFR ? 'ANCIENNE_COULEUR' : 'ALT_FARBE'}]33 0,transparent 0,transparent 3px,[${isEN ? 'OLD_COLOR' : isFR ? 'ANCIENNE_COULEUR' : 'ALT_FARBE'}]33 3px,[${isEN ? 'OLD_COLOR' : isFR ? 'ANCIENNE_COULEUR' : 'ALT_FARBE'}]33 6px);border-radius:4px;"></div>
+        <!-- ${isEN ? 'New score bar (solid, on top)' : isFR ? 'Nouvelle barre de score (solide, par-dessus)' : 'Neuer Score-Balken (solid, darüber)'} -->
+        <div style="position:relative;height:100%;width:[${isEN ? 'NEW_PERCENT' : isFR ? 'NOUVEAU_POURCENT' : 'NEU_PROZENT'}]%;background:[${isEN ? 'NEW_COLOR' : isFR ? 'NOUVELLE_COULEUR' : 'NEU_FARBE'}];border-radius:4px;"></div>
       </div>
-      <div style="font-size:12px;color:#888;margin-top:2px;">[1-Satz Begründung]</div>
+      <div style="font-size:12px;color:#888;margin-top:2px;">[${isEN ? '1-sentence rationale' : isFR ? 'justification en 1 phrase' : '1-Satz Begründung'}]</div>
     </div>
-    <!-- DELTA-BADGE Farben: Verbesserung (>=+0.3): background:rgba(34,197,94,.12) color:#22c55e -->
-    <!-- Verschlechterung (<=-0.3): background:rgba(239,68,68,.12) color:#ef4444 -->
-    <!-- Gleich: background:rgba(0,0,0,.06) color:#999 -->
+    <!-- DELTA-BADGE ${isEN ? 'Colors: Improvement' : isFR ? 'Couleurs : Amélioration' : 'Farben: Verbesserung'} (>=+0.3): background:rgba(34,197,94,.12) color:#22c55e -->
+    <!-- ${isEN ? 'Decline' : isFR ? 'Déclin' : 'Verschlechterung'} (<=-0.3): background:rgba(239,68,68,.12) color:#ef4444 -->
+    <!-- ${isEN ? 'Same' : isFR ? 'Identique' : 'Gleich'}: background:rgba(0,0,0,.06) color:#999 -->
     <div style="text-align:right;font-size:13px;font-weight:600;color:#555;margin:14px 0 20px;">Content Score: [X.X] / 5.0</div>
 
     <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Delivery (40%)</div>
-    <!-- FÜR JEDES Delivery-Kriterium (gleiche Struktur wie Content): -->
-    <!-- Bei low-confidence Kriterien: * nach dem Namen + kursiver Hinweis -->
+    <!-- ${isEN ? 'FOR EACH Delivery criterion (same structure as Content)' : isFR ? 'POUR CHAQUE critère Delivery (même structure que Content)' : 'FÜR JEDES Delivery-Kriterium (gleiche Struktur wie Content)'}: -->
+    <!-- ${isEN ? 'For low-confidence criteria: * after name + italic note' : isFR ? 'Pour les critères low-confidence : * après le nom + note en italique' : 'Bei low-confidence Kriterien: * nach dem Namen + kursiver Hinweis'} -->
     <div style="text-align:right;font-size:13px;font-weight:600;color:#555;margin-top:14px;">Delivery Score: [X.X] / 5.0</div>
     <div style="margin-top:8px;font-size:11px;color:#aaa;font-style:italic;">[${isEN ? 'Only for text pitches: "* Text-based — Confidence: low. For full evaluation, use voice mode."' : isFR ? 'Uniquement pour les pitchs texte : "* Basé sur le texte — Confidence : low. Pour une évaluation complète, utilisez le mode vocal."' : 'NUR bei Text-Pitch: "* Textbasiert — Confidence: low. Für vollständige Bewertung: Voice-Modus nutzen."'}]</div>
   </div>
