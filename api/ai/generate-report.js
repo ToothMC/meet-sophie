@@ -669,7 +669,7 @@ ${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : i
 <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:700px;margin:0 auto;padding:40px 0;color:#1a1a1a;line-height:1.6;">
   <div style="text-align:center;margin-bottom:36px;">
     <div style="display:inline-block;background:#111;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:12px;">Score Card</div>
-    <h1 style="font-size:26px;font-weight:700;color:#111;margin:8px 0 4px;letter-spacing:-0.02em;">[PITCH THEMA]</h1>
+    <h1 style="font-size:26px;font-weight:700;color:#111;margin:8px 0 4px;letter-spacing:-0.02em;">[${isEN ? 'PITCH TOPIC' : isFR ? 'SUJET DU PITCH' : 'PITCH THEMA'}]</h1>
     <div style="font-size:14px;color:#888;">${todayDate} · [pitch_type] · Confidence: [level]</div>
   </div>
   <div style="background:#f8f8f8;border-radius:16px;padding:28px;margin-bottom:28px;">
