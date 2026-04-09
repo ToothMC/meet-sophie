@@ -720,35 +720,35 @@ ${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : i
     <div style="margin-top:8px;font-size:11px;color:#aaa;font-style:italic;">[${isEN ? 'Only for text pitches: "* Text-based — Confidence: low. For full evaluation, use voice mode."' : isFR ? 'Uniquement pour les pitchs texte : "* Basé sur le texte — Confidence : low. Pour une évaluation complète, utilisez le mode vocal."' : 'NUR bei Text-Pitch: "* Textbasiert — Confidence: low. Für vollständige Bewertung: Voice-Modus nutzen."'}]</div>
   </div>
 
-  <!-- OVERALL VERDICT: 2-4 Sätze, direkt und ehrlich -->
+  <!-- OVERALL VERDICT -->
   <div style="background:#faf9f6;border-left:3px solid #c4a882;border-radius:8px;padding:20px;margin-bottom:28px;">
     <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#a09080;margin-bottom:8px;">Verdict</div>
-    <div style="font-size:15px;color:#333;line-height:1.7;">[2-4 Sätze Gesamtbewertung — ehrlich, direkt, kein Schönreden]</div>
+    <div style="font-size:15px;color:#333;line-height:1.7;">[${isEN ? '2-4 sentences overall assessment — honest, direct, no sugarcoating' : isFR ? '2-4 phrases d\'évaluation globale — honnête, direct, sans enjoliver' : '2-4 Sätze Gesamtbewertung — ehrlich, direkt, kein Schönreden'}]</div>
   </div>
 
-  <!-- STÄRKEN (grüne Boxen) -->
+  <!-- ${isEN ? 'STRENGTHS (green boxes)' : isFR ? 'POINTS FORTS (boîtes vertes)' : 'STÄRKEN (grüne Boxen)'} -->
   <div style="margin-bottom:28px;">
-    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Stärken</div>
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">${isEN ? 'Strengths' : isFR ? 'Points forts' : 'Stärken'}</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div style="padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:14px;color:#333;">[Stärke — nur wenn wirklich vorhanden]</div>
+      <div style="padding:12px 16px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:14px;color:#333;">[${isEN ? 'Strength — only if genuinely present' : isFR ? 'Point fort — seulement si réellement présent' : 'Stärke — nur wenn wirklich vorhanden'}]</div>
     </div>
   </div>
 
-  <!-- SCHWÄCHEN (gelbe/rote Boxen) -->
+  <!-- ${isEN ? 'WEAKNESSES (yellow/red boxes)' : isFR ? 'FAIBLESSES (boîtes jaunes/rouges)' : 'SCHWÄCHEN (gelbe/rote Boxen)'} -->
   <div style="margin-bottom:28px;">
-    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">Schwächen</div>
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#111;margin:0 0 14px;">${isEN ? 'Weaknesses' : isFR ? 'Points faibles' : 'Schwächen'}</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div style="padding:12px 16px;background:#fffbeb;border-radius:10px;border-left:3px solid #eab308;font-size:14px;color:#333;">[Schwäche — konkret und spezifisch]</div>
+      <div style="padding:12px 16px;background:#fffbeb;border-radius:10px;border-left:3px solid #eab308;font-size:14px;color:#333;">[${isEN ? 'Weakness — specific and concrete' : isFR ? 'Point faible — spécifique et concret' : 'Schwäche — konkret und spezifisch'}]</div>
     </div>
   </div>
 
-  <!-- TOP 3 PRIORITÄTEN (schwarze Box) -->
+  <!-- ${isEN ? 'TOP 3 PRIORITIES (black box)' : isFR ? 'TOP 3 PRIORITÉS (boîte noire)' : 'TOP 3 PRIORITÄTEN (schwarze Box)'} -->
   <div style="background:#111;border-radius:14px;padding:24px;margin-bottom:28px;">
-    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:8px;">Nächste Schritte</div>
-    <div style="font-size:16px;color:#fff;line-height:1.7;">[Top 3 Verbesserungen für den nächsten Versuch]</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin-bottom:8px;">${isEN ? 'Next Steps' : isFR ? 'Prochaines étapes' : 'Nächste Schritte'}</div>
+    <div style="font-size:16px;color:#fff;line-height:1.7;">[${isEN ? 'Top 3 improvements for the next attempt' : isFR ? 'Top 3 améliorations pour le prochain essai' : 'Top 3 Verbesserungen für den nächsten Versuch'}]</div>
   </div>
 
-  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;">Erstellt mit Sophie · meet-sophie.com</div>
+  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;">${isEN ? 'Created with Sophie · meet-sophie.com' : isFR ? 'Créé avec Sophie · meet-sophie.com' : 'Erstellt mit Sophie · meet-sophie.com'}</div>
 </div>`;
 
       const pitchSynthProviders = isEco ? [
