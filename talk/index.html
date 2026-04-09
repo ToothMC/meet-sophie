@@ -34,10 +34,142 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  background:#0b0f14;
+  background:#04040a;
   position:relative;
   overflow:hidden;
+  font-family:'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif;
 }
+
+/* ── Hyper dark background ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 30%, rgba(80,40,200,.18) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(40,100,200,.1) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(140,60,200,.1) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 50% at 50% 100%, rgba(40,80,180,.14) 0%, transparent 55%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(80,60,200,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80,60,200,.03) 1px, transparent 1px);
+  background-size:32px 32px;
+}
+
+/* ── Hyper Animations ── */
+@keyframes pulse-ring  { 0%{transform:scale(.88);opacity:.85} 50%{transform:scale(1.08);opacity:.18} 100%{transform:scale(.88);opacity:.85} }
+@keyframes pulse-ring2 { 0%{transform:scale(.75);opacity:.55} 50%{transform:scale(1.16);opacity:.04} 100%{transform:scale(.75);opacity:.55} }
+@keyframes pulse-ring3 { 0%{transform:scale(.62);opacity:.35} 50%{transform:scale(1.28);opacity:0}   100%{transform:scale(.62);opacity:.35} }
+@keyframes rot-cw      { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
+@keyframes rot-ccw     { from{transform:rotate(0)}   to{transform:rotate(-360deg)} }
+@keyframes breathe     { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+@keyframes flash-hyper { 0%,100%{opacity:.12} 50%{opacity:1} }
+@keyframes core-glow-sm {
+  0%,100% { box-shadow:0 0 16px 5px rgba(120,80,255,.5), inset 0 0 12px rgba(255,255,255,.07); }
+  50%     { box-shadow:0 0 30px 10px rgba(140,90,255,.8), inset 0 0 20px rgba(255,255,255,.15); }
+}
+@keyframes globe-pulse { 0%,100%{opacity:.2} 50%{opacity:.6} }
+@keyframes text-pulse  { 0%,100%{opacity:.7;text-shadow:0 0 10px rgba(120,200,255,.4)} 50%{opacity:1;text-shadow:0 0 20px rgba(120,200,255,.95)} }
+@keyframes scan-h      { 0%{left:-4%;opacity:0} 5%{opacity:.6} 95%{opacity:.6} 100%{left:100%;opacity:0} }
+@keyframes fade-label  { 0%,100%{opacity:.4} 50%{opacity:.85} }
+@keyframes status-blink { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
+
+/* ── Corner decorations ── */
+.cdeco{position:absolute;width:28px;height:28px;pointer-events:none;opacity:.28;z-index:3}
+.cdeco.tl{top:14px;left:14px;border-top:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:3px 0 0 0}
+.cdeco.tr{top:14px;right:14px;border-top:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 3px 0 0}
+.cdeco.bl{bottom:14px;left:14px;border-bottom:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:0 0 0 3px}
+.cdeco.br{bottom:14px;right:14px;border-bottom:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 0 3px 0}
+
+/* ── Scatter particles ── */
+.hyper-particle{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
+
+/* ── Voice Visualizer Header ── */
+.sv-header{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:18px;position:relative;z-index:10;
+}
+.globe-wrap{
+  position:relative;width:52px;height:52px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:filter .4s ease;
+}
+.globe-wrap svg{position:absolute;inset:0;width:100%;height:100%}
+.globe-inet{
+  position:relative;z-index:2;font-size:7px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(160,220,255,.95);animation:text-pulse 2.5s ease-in-out infinite;
+  white-space:nowrap;
+}
+.globe-wrap.searching{filter:brightness(1.8) drop-shadow(0 0 8px rgba(80,200,255,.7))}
+.globe-wrap.searching .globe-inet{animation:text-pulse .8s ease-in-out infinite}
+.v-conn{
+  width:1.5px;height:20px;flex-shrink:0;align-self:stretch;margin:auto 0;max-height:20px;
+  background:linear-gradient(to bottom,rgba(80,160,255,.4),rgba(120,80,255,.7));
+  animation:flash-hyper 2s ease-in-out infinite;
+  transition:background .3s,box-shadow .3s;
+}
+.v-conn.searching{
+  background:linear-gradient(to bottom,rgba(80,220,255,.8),rgba(120,180,255,.9));
+  box-shadow:0 0 8px rgba(80,200,255,.6);
+}
+.avatar-wrap{position:relative;flex-shrink:0}
+.avatar{
+  width:48px;height:48px;border-radius:50%;
+  background:radial-gradient(ellipse at 35% 30%,rgba(180,140,255,.88),rgba(100,60,220,.94) 50%,rgba(35,15,110,1));
+  animation:core-glow-sm 2.8s ease-in-out infinite,breathe 4s ease-in-out infinite;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+}
+.avatar-letter{font-size:18px;font-weight:700;color:rgba(240,230,255,.97);position:relative;z-index:2;text-shadow:0 0 12px rgba(200,170,255,.8)}
+.avatar-scan{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,transparent,rgba(200,180,255,.8),transparent);animation:scan-h 3.2s linear infinite;pointer-events:none}
+.avatar-facet{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0%,rgba(255,255,255,.05) 15%,transparent 30%,rgba(255,255,255,.07) 50%,transparent 65%,transparent 100%);animation:rot-cw 10s linear infinite;pointer-events:none}
+.avatar-ring{position:absolute;border-radius:50%;pointer-events:none}
+.ar1{inset:-10px;border:1px solid rgba(120,80,255,.55);animation:pulse-ring 2.8s ease-in-out infinite}
+.ar2{inset:-18px;border:.5px solid rgba(80,160,255,.3);animation:pulse-ring2 2.8s ease-in-out infinite .7s}
+.ar3{inset:-27px;border:.5px solid rgba(180,100,255,.15);animation:pulse-ring3 2.8s ease-in-out infinite 1.4s}
+.avatar-orb{position:absolute;border-radius:50%;pointer-events:none}
+.ao1{inset:-22px;border:1px dashed rgba(100,200,255,.18);animation:rot-cw 12s linear infinite}
+.ao2{inset:-34px;border:.5px dashed rgba(180,80,255,.12);animation:rot-ccw 18s linear infinite}
+.avatar-dot{position:absolute;border-radius:50%;pointer-events:none}
+.sv-header-info{flex:1;min-width:0;text-align:left}
+.sv-name{font-size:15px;font-weight:700;letter-spacing:.04em;color:rgba(230,220,255,.95)}
+.sv-status{display:flex;align-items:center;gap:6px;margin-top:3px}
+.sv-status-dot{
+  width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  background:rgba(125,249,170,1);box-shadow:0 0 6px 2px rgba(125,249,170,.6);
+  animation:status-blink 1.5s ease-in-out infinite;
+}
+.sv-status-text{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(125,249,170,.8);font-weight:500}
+.sv-timer{font-size:12px;color:rgba(140,120,200,.55);font-variant-numeric:tabular-nums;font-weight:500}
+
+/* ── Waveform Canvas ── */
+.wave-card{
+  position:relative;border-radius:14px;overflow:hidden;
+  background:rgba(255,255,255,.018);border:.5px solid rgba(100,80,200,.2);
+  margin-bottom:14px;
+}
+.wave-card::before,.wave-card::after{
+  content:'';position:absolute;top:0;bottom:0;width:36px;z-index:2;pointer-events:none;
+}
+.wave-card::before{left:0;background:linear-gradient(to right,rgba(4,4,10,1),transparent)}
+.wave-card::after{right:0;background:linear-gradient(to left,rgba(4,4,10,1),transparent)}
+canvas#waveCanvas{display:block;width:100%;height:120px}
+.wave-meta{position:absolute;top:8px;left:12px;right:12px;z-index:3;display:flex;justify-content:space-between;pointer-events:none}
+.wave-label{font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(140,120,255,.6);animation:fade-label 3s ease-in-out infinite}
+.wave-hz{font-size:10px;color:rgba(120,200,255,.55);font-family:'SF Mono','Fira Code',monospace;font-weight:500}
+
+/* ── EQ Bars ── */
+.eq-wrap{
+  display:flex;align-items:flex-end;gap:2.5px;justify-content:center;
+  height:28px;margin-bottom:18px;position:relative;z-index:10;
+}
+.eq-bar{border-radius:2px 2px 0 0;width:3.5px;transition:height .06s ease}
+
+/* ── Hyper Visualizer Section (shown during session) ── */
+#hyperVisualizer{display:none}
+.wrap.session-active #hyperVisualizer{display:block}
 
 /* Topbar */
 .topbar{
@@ -78,30 +210,8 @@ body{
   cursor:not-allowed;
 }
 
-/* Hintergrundbild */
-.bg{
-  position:fixed;
-  inset:0;
-  background:url("/sophie-opt.jpg") center/cover no-repeat;
-  background:image-set(url("/sophie.webp") type("image/webp"), url("/sophie-opt.jpg") type("image/jpeg")) center/cover no-repeat;
-  opacity:1;
-  transition:opacity .5s ease;
-  z-index:0;
-}
-
-/* dunkles Overlay */
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  opacity:1;
-  transition:opacity .5s ease;
-  z-index:1;
-}
-
-/* Aktiv-Zustand */
-.bg.active,
-.overlay.active{ opacity:1; }
+/* Legacy bg/overlay — replaced by hyper body::before/after */
+.bg,.overlay{display:none}
 
 /* Auth-Loading */
 #authLoading{
@@ -137,11 +247,11 @@ body{
   min-height:100vh;
 }
 .wrap.session-active .session-spacer{
-  height:28vh;
+  height:8px;
 }
 @media not (display-mode: standalone) {
   .wrap.session-active .session-spacer{
-    height:18vh;
+    height:8px;
   }
 }
 
@@ -161,16 +271,25 @@ body{
   -webkit-user-select:none;
 }
 
-#start{ background:#ffffff; color:#000; }
+#start{
+  background:radial-gradient(ellipse 80% 120% at 30% 30%,rgba(180,140,255,.88) 0%,rgba(100,60,220,.94) 45%,rgba(35,15,110,1) 100%);
+  color:rgba(240,230,255,.97);
+  border:1px solid rgba(200,170,255,.22);
+  box-shadow:0 0 28px 8px rgba(120,80,255,.35),0 0 70px 18px rgba(80,180,255,.1);
+  text-shadow:0 0 16px rgba(180,140,255,.6);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+#start:hover{transform:scale(1.03)}
+#start:active{transform:scale(.97)}
 #end{
-  background:rgba(255,255,255,.15);
-  color:#fff;
-  border:1px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.08);
+  color:rgba(230,220,255,.9);
+  border:1px solid rgba(100,80,200,.3);
 }
 #pauseBtn{
-  background:transparent;
-  color:rgba(255,255,255,.7);
-  border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.05);
+  color:rgba(200,180,255,.7);
+  border:1px solid rgba(100,80,200,.25);
   padding:12px 20px;
   font-size:17px;
   font-weight:600;
@@ -190,9 +309,10 @@ body{
 .session-bar{
   margin:16px auto 0;
   width:100%;
-  background:rgba(0,0,0,.75);
+  background:rgba(10,8,30,.8);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-radius:14px;
+  border:.5px solid rgba(100,80,200,.18);
   padding:8px 12px;
   display:flex;align-items:center;justify-content:space-between;
   box-sizing:border-box;gap:8px;
@@ -394,9 +514,9 @@ body{
   display:flex;
   flex-direction:column;
   max-height:30dvh;
-  background:#1e1e1e;
-  border-top:1px solid rgba(255,255,255,.08);
-  box-shadow:0 -4px 20px rgba(0,0,0,.25);
+  background:rgba(4,4,10,.95);
+  border-top:1px solid rgba(100,80,200,.2);
+  box-shadow:0 -4px 20px rgba(0,0,0,.5);
   padding-bottom:env(safe-area-inset-bottom);
   animation:vcSlideUp .3s ease;
 }
@@ -1120,6 +1240,10 @@ body{
 <div class="bg" id="bg"></div>
 <div class="overlay" id="overlay"></div>
 
+<!-- Hyper corner decorations -->
+<div class="cdeco tl"></div><div class="cdeco tr"></div>
+<div class="cdeco bl"></div><div class="cdeco br"></div>
+
 <div class="topbar">
   <a href="/app" id="backToLandingBtn">← Back</a>
   <a href="/settings/" id="settingsBtn" style="color:rgba(255,255,255,.6);font-size:18px;text-decoration:none;padding:6px;border-radius:8px;display:flex;align-items:center" title="Einstellungen">&#9881;</a>
@@ -1149,6 +1273,54 @@ body{
   </div>
   <div class="timer" id="timer">Time: --:--</div>
   <div class="softHint" id="softHint"></div>
+
+  <!-- ══════════════════════════════════════════
+       HYPER VOICE VISUALIZER (shown during session)
+  ══════════════════════════════════════════ -->
+  <div id="hyperVisualizer">
+    <!-- Header: Globe + Avatar + Status -->
+    <div class="sv-header">
+      <div class="globe-wrap" id="globeWrap">
+        <svg id="globeSvgMini" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"></svg>
+        <span class="globe-inet">NET</span>
+      </div>
+      <div class="v-conn" id="vConn"></div>
+      <div class="avatar-wrap">
+        <div class="avatar-ring ar3"></div>
+        <div class="avatar-ring ar2"></div>
+        <div class="avatar-ring ar1"></div>
+        <div class="avatar-orb ao2"></div>
+        <div class="avatar-orb ao1"></div>
+        <div class="avatar-dot" style="top:-2px;right:2px;width:5px;height:5px;background:#7df9aa;box-shadow:0 0 6px 2px rgba(125,249,170,.55);animation:flash-hyper 1.6s ease-in-out infinite"></div>
+        <div class="avatar-dot" style="bottom:0;left:0;width:4px;height:4px;background:#7bd4ff;box-shadow:0 0 5px 1px rgba(123,212,255,.5);animation:flash-hyper 2s ease-in-out infinite .7s"></div>
+        <div class="avatar">
+          <div class="avatar-scan"></div>
+          <div class="avatar-facet"></div>
+          <span class="avatar-letter">S</span>
+        </div>
+      </div>
+      <div class="sv-header-info">
+        <div class="sv-name">Sophie</div>
+        <div class="sv-status">
+          <div class="sv-status-dot" id="svStatusDot"></div>
+          <span class="sv-status-text" id="svStatusText">verbunden</span>
+        </div>
+      </div>
+      <div class="sv-timer" id="svTimer">0:00</div>
+    </div>
+
+    <!-- Waveform Canvas -->
+    <div class="wave-card">
+      <div class="wave-meta">
+        <span class="wave-label" id="waveLabel">Stimme · Live</span>
+        <span class="wave-hz" id="waveHz">&ndash;</span>
+      </div>
+      <canvas id="waveCanvas"></canvas>
+    </div>
+
+    <!-- EQ Bars -->
+    <div class="eq-wrap" id="eqWrap"></div>
+  </div>
 
   <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
     <div class="inlineReportProgressTrack">
@@ -2046,6 +2218,7 @@ const limitVideo = document.getElementById("limitVideo");
 let pc = null;
 let stream = null;
 let audioEl = null;
+let _hyperAudioCtx = null; // Created early during user gesture for autoplay policy
 let dc = null;
 let voiceWakeLock = null;
 let voiceWakeLockWanted = false;
@@ -2376,16 +2549,25 @@ function showImportToast() {
 function showResearchIndicator() {
   if (!researchEl) return;
   researchEl.classList.add("visible");
-  // Activate all icons with staggered animation
   const icons = researchEl.querySelectorAll(".ri-icon");
   icons.forEach((icon, i) => {
     setTimeout(() => icon.classList.add("active"), i * 200);
   });
+  // Activate globe NET indicator
+  const gw = document.getElementById("globeWrap");
+  const vc = document.getElementById("vConn");
+  if (gw) gw.classList.add("searching");
+  if (vc) vc.classList.add("searching");
 }
 function hideResearchIndicator() {
   if (!researchEl) return;
   researchEl.classList.remove("visible");
   researchEl.querySelectorAll(".ri-icon").forEach(icon => icon.classList.remove("active"));
+  // Deactivate globe NET indicator
+  const gw = document.getElementById("globeWrap");
+  const vc = document.getElementById("vConn");
+  if (gw) gw.classList.remove("searching");
+  if (vc) vc.classList.remove("searching");
 }
 
 function showReadyStatus() {
@@ -2402,6 +2584,355 @@ function showLiveBadge(on){
   if (on) liveBadge.classList.add("active");
   else liveBadge.classList.remove("active");
 }
+
+// ══════════════════════════════════════════════════════════
+// HYPER VOICE VISUALIZER ENGINE
+// ══════════════════════════════════════════════════════════
+
+// ── SVG helper ──
+function _svgEl(tag, attrs, parent) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ── Globe builder ──
+function _buildGlobe(svgEl_, size, R) {
+  const cx = size / 2, cy = size / 2;
+  _svgEl('circle', { cx, cy, r: R, fill: 'rgba(10,20,60,.55)', stroke: 'rgba(80,120,255,.28)', 'stroke-width': '1' }, svgEl_);
+  for (let i = 1; i < 6; i++) {
+    const lat = (i / 6) * Math.PI - Math.PI / 2;
+    const ry = Math.abs(Math.cos(lat)) * R, py = cy - Math.sin(lat) * R;
+    if (ry > 2) {
+      const e = _svgEl('ellipse', { cx, cy: py, rx: ry, ry: ry * .28, fill: 'none', stroke: 'rgba(60,140,255,.18)', 'stroke-width': '.6' }, svgEl_);
+      e.style.animation = `globe-pulse ${2 + i * .22}s ease-in-out infinite ${i * .15}s`;
+    }
+  }
+  for (let j = 0; j < 9; j++) {
+    const lon = (j / 9) * 2 * Math.PI, pts = [];
+    for (let k = 0; k <= 24; k++) {
+      const lat2 = (k / 24) * Math.PI - Math.PI / 2;
+      pts.push(`${cx + Math.cos(lat2) * Math.sin(lon) * R},${cy - Math.sin(lat2) * R}`);
+    }
+    const l = _svgEl('polyline', { points: pts.join(' '), fill: 'none', stroke: 'rgba(60,140,255,.13)', 'stroke-width': '.5' }, svgEl_);
+    l.style.animation = `globe-pulse ${1.8 + j * .2}s ease-in-out infinite ${j * .13}s`;
+  }
+  [{ lat: .5, lon: -.4 }, { lat: -.4, lon: 1.1 }, { lat: .3, lon: 2.6 }, { lat: .7, lon: 1.7 }, { lat: -.2, lon: -.7 }].forEach((h, i) => {
+    const x = cx + Math.cos(h.lat) * Math.sin(h.lon) * R, y = cy - Math.sin(h.lat) * R;
+    const c = _svgEl('circle', { cx: x, cy: y, r: 2, fill: 'rgba(120,200,255,.9)' }, svgEl_);
+    c.style.animation = `flash-hyper ${1.4 + i * .35}s ease-in-out infinite ${i * .2}s`;
+  });
+  _svgEl('circle', { cx, cy, r: R, fill: 'none', stroke: 'rgba(100,160,255,.38)', 'stroke-width': '1.2' }, svgEl_);
+  const sc = _svgEl('ellipse', { cx, cy, rx: R * .75, ry: R * .75 * .28, fill: 'none', stroke: 'rgba(120,200,255,.5)', 'stroke-width': '.8', 'stroke-dasharray': '5 4' }, svgEl_);
+  sc.style.animation = 'rot-cw 8s linear infinite';
+}
+
+// Build globe on page load
+const _globeSvgMini = document.getElementById('globeSvgMini');
+if (_globeSvgMini) _buildGlobe(_globeSvgMini, 52, 22);
+
+// ── Scatter particles ──
+(function() {
+  const root = document.querySelector('.wrap');
+  if (!root) return;
+  const cols = ['rgba(120,80,255,.6)', 'rgba(80,160,255,.5)', 'rgba(200,120,255,.45)', 'rgba(100,210,200,.45)'];
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('div');
+    p.className = 'hyper-particle';
+    const s = 0.8 + Math.random() * 2;
+    p.style.cssText = `width:${s}px;height:${s}px;left:${5 + Math.random() * 90}%;top:${5 + Math.random() * 90}%;background:${cols[i % 4]};animation:flash-hyper ${(1.5 + Math.random() * 3).toFixed(1)}s ease-in-out infinite ${(Math.random() * 3).toFixed(2)}s;`;
+    root.appendChild(p);
+  }
+})();
+
+// ── Waveform + EQ Engine ──
+const _waveCanvas = document.getElementById('waveCanvas');
+const _waveCtx = _waveCanvas ? _waveCanvas.getContext('2d') : null;
+const _W = 600, _H = 120;
+if (_waveCanvas) { _waveCanvas.width = _W; _waveCanvas.height = _H; }
+
+let _hyperVoiceMode = 'silent';
+let _waveRunning = false;
+let _waveT = 0;
+let _amp = 0.035, _ampTarget = 0.035;
+let _hyperAnalyser = null;
+let _hyperDataArray = null;
+let _hyperAnalyserWorks = false; // true once we detect real audio data from analyser
+let _hyperSophieSpeaking = false; // event-driven: set by DataChannel response.created / response.done
+let _hyperZeroRmsCount = 0; // count consecutive zero-RMS frames to detect broken analyser
+
+// Noise seeds
+const _seeds = Array.from({ length: 16 }, () => Math.random() * 1000);
+
+const _MODES = {
+  sophie: {
+    colors: ['rgba(160,120,255,1)', 'rgba(100,180,255,1)', 'rgba(200,140,255,1)'],
+    glowRgb: '140,100,255',
+    ampBase: 0.82, ampVar: 0.32,
+    freqBase: 1.3, freqVar: 0.7,
+    waves: 3,
+    label: 'Stimme · Live',
+    status: 'spricht gerade',
+  },
+  silent: {
+    colors: ['rgba(70,70,130,1)', 'rgba(55,55,110,1)'],
+    glowRgb: '80,80,160',
+    ampBase: 0.035, ampVar: 0.015,
+    freqBase: 0.4, freqVar: 0.08,
+    waves: 2,
+    label: 'Stille',
+    status: 'wartet',
+  },
+};
+
+function _oNoise(seed, t, freq) {
+  return Math.sin(t * freq + seed) * 0.52
+       + Math.sin(t * freq * 2.13 + seed * 1.31) * 0.29
+       + Math.sin(t * freq * 0.45 + seed * 0.71) * 0.19;
+}
+
+function _buildWave(cfg, wi, ampNow, t) {
+  const pts = [];
+  const freq = cfg.freqBase + wi * 0.55
+             + _oNoise(_seeds[wi], t * 0.25, 0.38) * cfg.freqVar * 0.45;
+  const phase = wi * 0.72;
+  for (let x = 0; x <= _W; x += 2) {
+    const xn = x / _W;
+    const env = Math.sin(xn * Math.PI);
+    const y1 = _oNoise(_seeds[wi],     t * freq + xn * 8 + phase, 1);
+    const y2 = _oNoise(_seeds[wi + 4], t * (freq * 0.58) + xn * 5, 1);
+    const y3 = _oNoise(_seeds[wi + 8], t * (freq * 1.42) + xn * 12 + phase * 2, 0.5);
+    const y  = _H / 2 + (y1 * 0.55 + y2 * 0.3 + y3 * 0.15) * ampNow * _H * 0.36 * env;
+    pts.push([x, y]);
+  }
+  return pts;
+}
+
+function _strokeWave(pts) {
+  _waveCtx.beginPath();
+  pts.forEach(([x, y], i) => {
+    if (i === 0) { _waveCtx.moveTo(x, y); return; }
+    const [px, py] = pts[i - 1];
+    const cpx = (px + x) / 2;
+    _waveCtx.bezierCurveTo(cpx, py, cpx, y, x, y);
+  });
+  _waveCtx.stroke();
+}
+
+function _drawFrame() {
+  if (!_waveRunning || !_waveCtx) return;
+  // Use sophie mode colors when audio amplitude is above threshold, silent otherwise
+  const _hasAudio = _amp > 0.08;
+  const cfg = _hasAudio ? _MODES.sophie : _MODES.silent;
+  _waveT += 0.015;
+
+  // ── Hybrid amplitude: try real audio, fallback to event-driven synthetic ──
+  let _useRealAudio = false;
+  if (_hyperAnalyser && _hyperDataArray) {
+    _hyperAnalyser.getFloatTimeDomainData(_hyperDataArray);
+    const rms = Math.sqrt(_hyperDataArray.reduce((s, v) => s + v * v, 0) / _hyperDataArray.length);
+    if (rms > 0.005) {
+      // Real audio data flowing!
+      _hyperAnalyserWorks = true;
+      _hyperZeroRmsCount = 0;
+      _ampTarget = Math.max(0.03, Math.min(1.0, rms * 12));
+      _useRealAudio = true;
+    } else {
+      _hyperZeroRmsCount++;
+      // After 180 zero frames (~3s), analyser is not providing data
+      if (_hyperZeroRmsCount > 180) _hyperAnalyserWorks = false;
+    }
+    // Debug: log every ~2s
+    if (Math.floor(_waveT * 66) % 120 === 0) {
+      console.log("[hyper] RMS:", rms.toFixed(4), "amp:", _amp.toFixed(3), "real:", _hyperAnalyserWorks, "speaking:", _hyperSophieSpeaking, "ctx:", _hyperAudioCtx?.state);
+    }
+  }
+  // Fallback: event-driven synthetic amplitude (when analyser fails or absent)
+  if (!_useRealAudio) {
+    if (_hyperSophieSpeaking) {
+      // Sophie is responding → simulate speech-like amplitude
+      const sophieCfg = _MODES.sophie;
+      _ampTarget = sophieCfg.ampBase + _oNoise(_seeds[0], _waveT * 0.75, 1) * sophieCfg.ampVar;
+    } else {
+      const silentCfg = _MODES.silent;
+      _ampTarget = silentCfg.ampBase + _oNoise(_seeds[0], _waveT * 0.75, 1) * silentCfg.ampVar;
+    }
+  }
+  // Fast follow for speech sync (0.18 = responsive, 0.045 was too sluggish)
+  _amp += (_ampTarget - _amp) * 0.18;
+
+  _waveCtx.clearRect(0, 0, _W, _H);
+
+  // Baseline
+  _waveCtx.save();
+  _waveCtx.strokeStyle = 'rgba(80,60,180,.1)';
+  _waveCtx.lineWidth = 0.5;
+  _waveCtx.setLineDash([4, 10]);
+  _waveCtx.beginPath(); _waveCtx.moveTo(0, _H / 2); _waveCtx.lineTo(_W, _H / 2); _waveCtx.stroke();
+  _waveCtx.setLineDash([]);
+  _waveCtx.restore();
+
+  for (let wi = cfg.waves - 1; wi >= 0; wi--) {
+    const pts = _buildWave(cfg, wi, _amp, _waveT);
+    const color = cfg.colors[wi % cfg.colors.length];
+    const alpha = wi === 0 ? 0.92 : Math.max(0.1, 0.38 - wi * 0.12);
+    const lw = wi === 0 ? 1.8 : 0.9;
+    const isFront = wi === 0;
+
+    // Glow pass
+    if (isFront && _hyperVoiceMode !== 'silent') {
+      _waveCtx.save();
+      _waveCtx.globalAlpha = 0.15;
+      _waveCtx.strokeStyle = `rgba(${cfg.glowRgb},1)`;
+      _waveCtx.lineWidth = 14;
+      _waveCtx.lineCap = 'round';
+      _strokeWave(pts);
+      _waveCtx.restore();
+    }
+
+    // Fill
+    if (isFront) {
+      const grad = _waveCtx.createLinearGradient(0, _H / 2 - _amp * _H * 0.36, 0, _H / 2 + _amp * _H * 0.36);
+      grad.addColorStop(0, `rgba(${cfg.glowRgb},0.1)`);
+      grad.addColorStop(0.5, `rgba(${cfg.glowRgb},0.03)`);
+      grad.addColorStop(1, `rgba(${cfg.glowRgb},0.1)`);
+      _waveCtx.fillStyle = grad;
+      _waveCtx.beginPath();
+      _waveCtx.moveTo(pts[0][0], _H / 2);
+      pts.forEach(([x, y]) => _waveCtx.lineTo(x, y));
+      _waveCtx.lineTo(pts[pts.length - 1][0], _H / 2);
+      _waveCtx.closePath();
+      _waveCtx.fill();
+
+      // Mirror
+      _waveCtx.save();
+      _waveCtx.globalAlpha = 0.28;
+      _waveCtx.strokeStyle = color;
+      _waveCtx.lineWidth = 0.8;
+      _waveCtx.beginPath();
+      pts.forEach(([x, y], i) => {
+        const my = _H - y;
+        i === 0 ? _waveCtx.moveTo(x, my) : _waveCtx.lineTo(x, my);
+      });
+      _waveCtx.stroke();
+      _waveCtx.restore();
+    }
+
+    // Main wave
+    _waveCtx.save();
+    _waveCtx.globalAlpha = alpha;
+    _waveCtx.strokeStyle = color;
+    _waveCtx.lineWidth = lw;
+    _waveCtx.lineCap = 'round';
+    _waveCtx.lineJoin = 'round';
+    _strokeWave(pts);
+    _waveCtx.restore();
+
+    // Peak glow dot
+    if (isFront && _hyperVoiceMode !== 'silent') {
+      let peakX = 0, peakY = _H / 2, peakD = 0;
+      pts.forEach(([x, y]) => { const d = Math.abs(y - _H / 2); if (d > peakD) { peakD = d; peakX = x; peakY = y; } });
+      if (peakD > 6) {
+        _waveCtx.save();
+        _waveCtx.globalAlpha = 0.9;
+        _waveCtx.fillStyle = cfg.colors[0];
+        _waveCtx.shadowColor = `rgba(${cfg.glowRgb},0.9)`;
+        _waveCtx.shadowBlur = 10;
+        _waveCtx.beginPath();
+        _waveCtx.arc(peakX, peakY, 2.8, 0, Math.PI * 2);
+        _waveCtx.fill();
+        _waveCtx.restore();
+      }
+    }
+  }
+
+  // Hz readout + status sync (driven by real amplitude)
+  const hz = _hasAudio ? Math.round(160 + _amp * 240) + ' Hz' : '—';
+  const hzEl = document.getElementById('waveHz');
+  if (hzEl) hzEl.textContent = hz;
+  // Auto-update status text
+  const _stEl = document.getElementById('svStatusText');
+  if (_stEl) _stEl.textContent = _hasAudio ? 'spricht gerade' : 'wartet';
+  const _sdEl = document.getElementById('svStatusDot');
+  if (_sdEl) {
+    _sdEl.style.background = _hasAudio ? '#7df9aa' : 'rgba(140,120,200,.5)';
+    _sdEl.style.boxShadow = _hasAudio ? '0 0 6px 2px rgba(125,249,170,.6)' : 'none';
+  }
+
+  requestAnimationFrame(_drawFrame);
+}
+
+// ── EQ Bars ──
+const _eqWrap = document.getElementById('eqWrap');
+const _N_BARS = 32;
+const _eqBars = [];
+let _eqT = 0;
+if (_eqWrap) {
+  for (let i = 0; i < _N_BARS; i++) {
+    const b = document.createElement('div');
+    b.className = 'eq-bar';
+    b.style.background = `hsl(${255 + i * 2.8},65%,65%)`;
+    _eqWrap.appendChild(b);
+    _eqBars.push(b);
+  }
+}
+
+function _animateEq() {
+  if (!_waveRunning) return;
+  _eqT += 0.038;
+  _eqBars.forEach((b, i) => {
+    const n = i / _N_BARS;
+    const bell = Math.sin(n * Math.PI);
+    const w1 = 0.5 + 0.5 * Math.sin(_eqT * (1.4 + n * 1.8) + i * 0.42 + n * 3.2);
+    const w2 = 0.5 + 0.5 * Math.sin(_eqT * 2.1 + i * 0.65);
+    const h = Math.max(1.5, (w1 * 0.58 + w2 * 0.42) * bell * _amp * 24);
+    b.style.height = h + 'px';
+    b.style.opacity = _amp < 0.08 ? '0.12' : (0.35 + bell * 0.55).toFixed(2);
+  });
+  requestAnimationFrame(_animateEq);
+}
+
+// ── Voice mode switch (called from DataChannel events) ──
+function setHyperVoiceMode(m) {
+  _hyperVoiceMode = m;
+  _hyperSophieSpeaking = (m === 'sophie');
+  console.log("[hyper] Voice mode →", m, "| analyserWorks:", _hyperAnalyserWorks);
+}
+
+// ── Start/stop wave rendering ──
+function startHyperWave() {
+  if (_waveRunning) return;
+  _waveRunning = true;
+  _drawFrame();
+  _animateEq();
+}
+
+function stopHyperWave() {
+  _waveRunning = false;
+}
+
+// ── Sync sv-timer with existing timer ──
+let _svTimerInterval;
+let _svCallSec = 0;
+function startSvTimer() {
+  _svCallSec = 0;
+  _svTimerInterval = setInterval(() => {
+    _svCallSec++;
+    const m = Math.floor(_svCallSec / 60);
+    const s = _svCallSec % 60;
+    const el = document.getElementById('svTimer');
+    if (el) el.textContent = m + ':' + String(s).padStart(2, '0');
+  }, 1000);
+}
+function stopSvTimer() {
+  clearInterval(_svTimerInterval);
+  _svCallSec = 0;
+  const el = document.getElementById('svTimer');
+  if (el) el.textContent = '0:00';
+}
+
+// ══════════════════════════════════════════════════════════
 
 function playReadySound(){
   try{
@@ -4910,6 +5441,8 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
         }
 
         sophieIsResponding = true;
+        // Note: setHyperVoiceMode('sophie') is triggered later on audio_transcript.delta
+        // to avoid the ~0.5s gap between response.created and actual audio playback
         // Sophie is speaking — stop inactivity timer
         if (selectedVoiceMode === "salespitch") stopPitchInactivity();
         return;
@@ -5222,6 +5755,8 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
       if (msg?.type === "response.audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) {
+          // First transcript delta = Sophie is actually speaking now
+          if (!_hyperSophieSpeaking) setHyperVoiceMode('sophie');
           partialAssistant += chunk;
           if (closingResponseActive) closingHasSpoken = true;
         }
@@ -5262,6 +5797,7 @@ ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
         }
 
         sophieIsResponding = false;
+        setHyperVoiceMode('silent');
         // Sophie finished speaking — reset inactivity timestamp (but not during grace period)
         if (!inactivityWarningFired) touchActivity();
         // NO inactivity timer on response.done — user may pause mid-pitch to think.
@@ -5525,6 +6061,14 @@ async function finalizeSessionAfterSummary() {
 let _startVoiceLock = false;
 async function startVoice(){
 
+  // ── Create AudioContext NOW during user gesture (autoplay policy!) ──
+  try {
+    _hyperAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Explicitly resume in case it's suspended
+    if (_hyperAudioCtx.state === 'suspended') await _hyperAudioCtx.resume();
+    console.log("[hyper] AudioContext created during user gesture, state:", _hyperAudioCtx.state);
+  } catch (e) { console.warn("[hyper] AudioContext creation failed:", e); }
+
   // prevent double session
   if (pc || stream || _startVoiceLock) {
     console.log("Session already running or starting → ignore");
@@ -5760,9 +6304,8 @@ async function startVoice(){
     track("mic_permission_granted");
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
-    // Single audio path: <audio> element only — provides playback + browser AEC.
-    // No Web Audio GainNode to speakers (caused double playback).
-    // Volume fades use audioEl.volume directly.
+    // Single audio path: <audio> element for playback + browser AEC.
+    // Web Audio analyser taps the remote stream separately (analysis only, no routing to speakers).
     audioEl = document.createElement("audio");
     audioEl.autoplay = true;
     audioEl.playsInline = true;
@@ -5775,6 +6318,22 @@ async function startVoice(){
       if (ontrackFired) return;
       ontrackFired = true;
       audioEl.srcObject = e.streams[0];
+
+      // ── Hyper Visualizer: tap remote stream for analysis (NOT routed to speakers) ──
+      try {
+        if (!_hyperAudioCtx) _hyperAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_hyperAudioCtx.state === 'suspended') _hyperAudioCtx.resume();
+        const _source = _hyperAudioCtx.createMediaStreamSource(e.streams[0]);
+        _hyperAnalyser = _hyperAudioCtx.createAnalyser();
+        _hyperAnalyser.fftSize = 512;
+        _hyperAnalyser.smoothingTimeConstant = 0.65;
+        _source.connect(_hyperAnalyser);
+        // Do NOT connect to destination — audioEl handles playback
+        _hyperDataArray = new Float32Array(_hyperAnalyser.fftSize);
+        console.log("[hyper] Analyser connected to remote stream, AudioContext state:", _hyperAudioCtx.state);
+      } catch (err) {
+        console.warn("[hyper] Could not create audio analyser:", err);
+      }
     };
 
     const offer = await pc.createOffer();
@@ -5822,6 +6381,11 @@ async function startVoice(){
     updateSessionBarMode(selectedVoiceMode || "talk");
     document.querySelector(".wrap")?.classList.add("session-active");
     showVoiceChat(true);
+
+    // Start hyper visualizer
+    startHyperWave();
+    startSvTimer();
+    setHyperVoiceMode('silent');
 
     setTimeout(() => {
       playReadySound();
@@ -5968,6 +6532,16 @@ async function stopVoice(triggeredByLimit = false){
   showSessionBar(false);
   document.querySelector(".wrap")?.classList.remove("session-active");
   isPaused = false;
+
+  // Stop hyper visualizer
+  stopHyperWave();
+  stopSvTimer();
+  _hyperAnalyser = null;
+  _hyperDataArray = null;
+  _hyperAnalyserWorks = false;
+  _hyperSophieSpeaking = false;
+  _hyperZeroRmsCount = 0;
+  if (_hyperAudioCtx) { try { _hyperAudioCtx.close(); } catch(_){} _hyperAudioCtx = null; }
 
   // Salespitch: always use clean teardown (preserves audio, generates report correctly)
   if (selectedVoiceMode === "salespitch") {
