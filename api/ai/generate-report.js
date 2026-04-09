@@ -1085,7 +1085,99 @@ ${isEN ? 'Then your structured analysis follows.' : isFR ? 'Ensuite suit ton ana
       // Pass full template (up to 8000 chars to stay within context limits)
       const templateHtml = savedTemplate.length > 8000 ? savedTemplate.slice(0, 8000) : savedTemplate;
 
-      htmlPrompt = `Du füllst ein bestehendes Report-Template mit neuem Inhalt.
+      htmlPrompt = isEN ? `You are filling an existing report template with new content.
+
+The user saved this HTML layout as THEIR template. The design is SACRED — do NOT change it.
+
+TASK:
+1. Keep the EXACT HTML structure, ALL CSS styles, colors, fonts and design elements
+2. Replace ONLY the text content (placeholders, example texts) with real facts from the analyses
+3. Adjust the number of sections/rows to match actual content (more or fewer rows as needed)
+4. New sections: in the EXACT SAME style as existing sections in the template
+5. Language: same as the analyses
+6. "Protocol" / "Created by" is ALWAYS "Sophie" (the AI assistant that recorded the meeting)
+
+CRITICAL — MAPPING:
+- The analyses have a clear structure (TITLE, PARTICIPANTS, DECISIONS, NEXT MEETING, etc.)
+- "NEXT MEETING" info (date, time, location) is NOT the metadata of THIS meeting!
+  → It belongs in Action Items or a separate "Next Meeting" section
+- "Time" in template header: ONLY use if the analyses mention a time for THIS meeting
+- "Location" in template header: ONLY use if the analyses mention a location for THIS meeting
+
+CRITICAL — DO NOT HALLUCINATE:
+- If information is NOT in the analyses, REMOVE the section completely from the HTML
+- NO invented names, times, locations, roles or deadlines
+- If no participants are named: REMOVE "Participants" section
+- If no time for THIS meeting is mentioned: REMOVE "Time" field
+- If no decisions were made: REMOVE "Decisions" section
+- If no action items exist: REMOVE "Action Items" section
+- NEVER leave placeholders like [Name], [Role], [00:00], — or "Not specified" in output
+- Better to omit a section than fill it with invented data
+
+FORBIDDEN:
+- Changing the design
+- Changing colors
+- Changing fonts
+- Changing layout structure
+- Adding own design elements
+- Inventing content not in the transcript
+
+Reply ONLY with the HTML. No Markdown, no text before/after.
+
+THE USER'S TEMPLATE:
+${templateHtml}
+
+THE ${analyses.length} ANALYSES (CONTENT ONLY):
+
+${analysesBlock}`
+
+      : isFR ? `Tu remplis un template de rapport existant avec du nouveau contenu.
+
+L'utilisateur a enregistré ce layout HTML comme SON template. Le design est SACRÉ — ne le modifie PAS.
+
+TÂCHE :
+1. Garder la structure HTML EXACTE, TOUS les styles CSS, couleurs, polices et éléments de design
+2. Remplacer UNIQUEMENT le contenu textuel (marqueurs, textes d'exemple) par les faits réels des analyses
+3. Adapter le nombre de sections/lignes au contenu réel (plus ou moins de lignes selon les besoins)
+4. Nouvelles sections : dans le MÊME style EXACT que les sections existantes du template
+5. Langue : la même que les analyses
+6. "Protocole" / "Créé par" est TOUJOURS "Sophie" (l'assistante IA qui a enregistré la réunion)
+
+CRITIQUE — ATTRIBUTION :
+- Les analyses ont une structure claire (TITRE, PARTICIPANTS, DÉCISIONS, PROCHAINE RÉUNION, etc.)
+- Les infos "PROCHAINE RÉUNION" (date, heure, lieu) ne sont PAS les métadonnées de CETTE réunion !
+  → Elles appartiennent aux Actions ou une section "Prochaine réunion" séparée
+- "Heure" dans l'en-tête du template : UNIQUEMENT si les analyses mentionnent une heure pour CETTE réunion
+- "Lieu" dans l'en-tête du template : UNIQUEMENT si les analyses mentionnent un lieu pour CETTE réunion
+
+CRITIQUE — NE PAS HALLUCINER :
+- Si une information N'EST PAS dans les analyses, SUPPRIMER la section complètement du HTML
+- PAS de noms, heures, lieux, rôles ou échéances inventés
+- Si aucun participant n'est nommé : SUPPRIMER la section "Participants"
+- Si aucune heure n'est mentionnée pour CETTE réunion : SUPPRIMER le champ "Heure"
+- Si aucune décision n'a été prise : SUPPRIMER la section "Décisions"
+- Si aucune action n'existe : SUPPRIMER la section "Actions"
+- JAMAIS laisser des marqueurs comme [Nom], [Rôle], [00:00], — ou "Non spécifié" dans le résultat
+- Mieux vaut omettre une section que la remplir avec des données inventées
+
+INTERDIT :
+- Modifier le design
+- Modifier les couleurs
+- Modifier les polices
+- Modifier la structure du layout
+- Ajouter ses propres éléments de design
+- Inventer du contenu absent du transcript
+
+Répondre UNIQUEMENT avec le HTML. Pas de Markdown, pas de texte avant/après.
+
+LE TEMPLATE DE L'UTILISATEUR :
+${templateHtml}
+
+LES ${analyses.length} ANALYSES (CONTENU UNIQUEMENT) :
+
+${analysesBlock}`
+
+      : `Du füllst ein bestehendes Report-Template mit neuem Inhalt.
 
 Der User hat dieses HTML-Layout als SEINE Vorlage gespeichert. Das Design ist HEILIG — ändere es NICHT.
 
