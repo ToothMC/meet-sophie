@@ -929,7 +929,65 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
     console.log(`[report] ${session_id} — template=${templateSource}, mode=${mode}, len=${savedTemplate?.length || 0}`);
 
     // Step 1: All 4 AIs analyze the transcript (content only, no design classification if template exists)
-    const structuredAnalysisInstructions = `Analysiere dieses Gespräch STRUKTURIERT. ${dateInstruction}
+    const structuredAnalysisInstructions = isEN ? `Analyze this conversation STRUCTURALLY. ${dateInstruction}
+${modeHint}
+
+TRANSCRIPT FORMAT NOTES:
+- Lines with "[user]: [chat] ..." are text messages typed by the user DURING the voice conversation. These often contain important facts, links or instructions — treat equally.
+- Lines with "[assistant]: [chat note] ..." are short notes Sophie displayed in the chat panel (e.g. bullet points, summaries). These show what Sophie highlighted as particularly important.
+
+Respond in the language of the transcript using EXACTLY these sections:
+
+TITLE: [1 sentence — what was it about]
+PARTICIPANTS: [Only names EXPLICITLY mentioned in the conversation. If no names: "Not mentioned"]
+TOPICS DISCUSSED:
+- [Topic 1]: [What was said about it]
+- [Topic 2]: [What was said about it]
+DECISIONS:
+- [Only if explicitly decided, with exact wording]
+ACTION ITEMS:
+- [Task] → [Responsible, only if named] → [Deadline, only if named]
+NEXT MEETING: [Date, time, location — ONLY if explicitly mentioned. Otherwise: "Not agreed"]
+OPEN POINTS:
+- [Topics that remained open]
+
+CRITICAL RULES:
+- Write ONLY what was LITERALLY said. NEVER invent.
+- Clearly distinguish: info about THIS meeting vs. info about FUTURE meetings/appointments
+- "Next meeting on Wednesday 3pm" is NOT the time of this meeting — it's a future appointment
+- If something was not said, write "Not mentioned" — NEVER invent
+- No interpretation, no assumptions, no conclusions`
+
+    : isFR ? `Analyse cette conversation de manière STRUCTURÉE. ${dateInstruction}
+${modeHint}
+
+NOTES SUR LE FORMAT DU TRANSCRIPT :
+- Les lignes avec "[user]: [chat] ..." sont des messages texte tapés par l'utilisateur PENDANT la conversation vocale. Ils contiennent souvent des faits importants, liens ou instructions — traiter également.
+- Les lignes avec "[assistant]: [chat note] ..." sont de courtes notes que Sophie a affichées dans le panneau de chat (ex : points clés, résumés). Elles montrent ce que Sophie a jugé particulièrement important.
+
+Réponds dans la langue du transcript avec EXACTEMENT ces sections :
+
+TITRE : [1 phrase — de quoi il s'agissait]
+PARTICIPANTS : [Uniquement les noms EXPLICITEMENT mentionnés dans la conversation. Si aucun nom : "Non mentionné"]
+SUJETS DISCUTÉS :
+- [Sujet 1] : [Ce qui a été dit à ce propos]
+- [Sujet 2] : [Ce qui a été dit à ce propos]
+DÉCISIONS :
+- [Uniquement si explicitement décidé, avec le libellé exact]
+ACTIONS :
+- [Tâche] → [Responsable, uniquement si nommé] → [Échéance, uniquement si nommée]
+PROCHAINE RÉUNION : [Date, heure, lieu — UNIQUEMENT si explicitement mentionné. Sinon : "Non convenu"]
+POINTS OUVERTS :
+- [Sujets restés en suspens]
+
+RÈGLES CRITIQUES :
+- Écrire UNIQUEMENT ce qui a été LITTÉRALEMENT dit. NE JAMAIS inventer.
+- Distinguer clairement : infos sur CETTE réunion vs. infos sur des réunions/rendez-vous FUTURS
+- "Prochaine réunion mercredi 15h" n'est PAS l'heure de cette réunion — c'est un rendez-vous futur
+- Si quelque chose n'a pas été dit, écrire "Non mentionné" — NE JAMAIS inventer
+- Pas d'interprétation, pas de suppositions, pas de conclusions`
+
+    : `Analysiere dieses Gespräch STRUKTURIERT. ${dateInstruction}
 ${modeHint}
 
 HINWEIS ZUM TRANSCRIPT-FORMAT:
