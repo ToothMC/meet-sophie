@@ -381,36 +381,36 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
         try {
           const extractAdapter = getAdapter('openai');
           const extractResp = await extractAdapter.complete({
-            messages: [{ role: 'user', content: `Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.
+            messages: [{ role: 'user', content: `${isEN ? 'Extract structured data from this meeting protocol as JSON.' : isFR ? 'Extrais les données structurées de ce compte rendu de réunion en JSON.' : 'Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.'}
 ${dateInstruction}
 
 HTML-REPORT:
 ${reportHtml.slice(0, 10000)}
 
-Antworte NUR mit JSON in exakt diesem Format:
+${isEN ? 'Reply ONLY with JSON in exactly this format' : isFR ? 'Réponds UNIQUEMENT avec du JSON dans exactement ce format' : 'Antworte NUR mit JSON in exakt diesem Format'}:
 {
-  "short_summary": "1-2 Sätze Zusammenfassung",
+  "short_summary": "${isEN ? '1-2 sentence summary' : isFR ? 'Résumé en 1-2 phrases' : '1-2 Sätze Zusammenfassung'}",
   "decisions": [{"text": "...", "owner": "..."}],
   "action_items": [{"text": "...", "owner": "...", "due": "...", "status": "open"}],
   "open_points": [{"text": "..."}],
-  "next_meeting": "Nächster Termin wie im Transkript genannt, z.B. 'Dienstag, 15.04.2026, 10:00 Uhr' — oder null wenn nicht genannt",
+  "next_meeting": "${isEN ? 'Next meeting as mentioned in transcript, e.g. \'Tuesday, 15.04.2026, 10:00 AM\' — or null if not mentioned' : isFR ? 'Prochaine réunion telle que mentionnée dans le transcript, ex : \'mardi 15/04/2026, 10h00\' — ou null si non mentionnée' : 'Nächster Termin wie im Transkript genannt, z.B. \'Dienstag, 15.04.2026, 10:00 Uhr\' — oder null wenn nicht genannt'}",
   "lean_check": {
-    "facts": ["Was als validierte Tatsache genannt wurde"],
-    "assumptions": ["Was als Fakt behandelt wurde aber ungeprüft ist"],
-    "hypotheses": ["Wenn-Dann Hypothesen die aufgestellt wurden"],
-    "tests": ["Beschlossene Tests/Experimente"],
-    "signals": ["Kriterien für weitermachen/stoppen/anpassen"]
+    "facts": ["${isEN ? 'What was stated as validated fact' : isFR ? 'Ce qui a été affirmé comme fait validé' : 'Was als validierte Tatsache genannt wurde'}"],
+    "assumptions": ["${isEN ? 'What was treated as fact but is unverified' : isFR ? 'Ce qui a été traité comme un fait mais est non vérifié' : 'Was als Fakt behandelt wurde aber ungeprüft ist'}"],
+    "hypotheses": ["${isEN ? 'If-then hypotheses that were proposed' : isFR ? 'Hypothèses si-alors qui ont été proposées' : 'Wenn-Dann Hypothesen die aufgestellt wurden'}"],
+    "tests": ["${isEN ? 'Decided tests/experiments' : isFR ? 'Tests/expériences décidés' : 'Beschlossene Tests/Experimente'}"],
+    "signals": ["${isEN ? 'Criteria for continue/stop/pivot' : isFR ? 'Critères pour continuer/arrêter/pivoter' : 'Kriterien für weitermachen/stoppen/anpassen'}"]
   }
 }
 
-REGELN:
-- NUR was im Report steht — nichts erfinden
-- "owner" nur wenn namentlich zugeordnet, sonst ""
-- "due" nur wenn Datum/Frist genannt, sonst ""
-- Wenn eine Kategorie leer ist: leeres Array []
-- status ist immer "open" (wird später aktualisiert)
-- next_meeting: Datum, Uhrzeit und ggf. Ort wenn im Transkript genannt. Relative Angaben ("nächsten Dienstag") in absolute Daten umrechnen wenn möglich. null wenn kein Termin genannt.
-- lean_check: nur Kategorien mit Inhalt. Wenn das Meeting keine Lean-Aspekte hat, lean_check weglassen` }],
+${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
+- ${isEN ? 'ONLY what is in the report — never invent' : isFR ? 'UNIQUEMENT ce qui est dans le rapport — ne jamais inventer' : 'NUR was im Report steht — nichts erfinden'}
+- "owner" ${isEN ? 'only if assigned by name, otherwise ""' : isFR ? 'uniquement si assigné par nom, sinon ""' : 'nur wenn namentlich zugeordnet, sonst ""'}
+- "due" ${isEN ? 'only if date/deadline mentioned, otherwise ""' : isFR ? 'uniquement si date/échéance mentionnée, sinon ""' : 'nur wenn Datum/Frist genannt, sonst ""'}
+- ${isEN ? 'If a category is empty: empty array []' : isFR ? 'Si une catégorie est vide : tableau vide []' : 'Wenn eine Kategorie leer ist: leeres Array []'}
+- status ${isEN ? 'is always "open" (updated later)' : isFR ? 'est toujours "open" (mis à jour plus tard)' : 'ist immer "open" (wird später aktualisiert)'}
+- next_meeting: ${isEN ? 'Date, time and location if mentioned in transcript. Convert relative references ("next Tuesday") to absolute dates if possible. null if no meeting mentioned.' : isFR ? 'Date, heure et lieu si mentionnés dans le transcript. Convertir les références relatives ("mardi prochain") en dates absolues si possible. null si aucune réunion mentionnée.' : 'Datum, Uhrzeit und ggf. Ort wenn im Transkript genannt. Relative Angaben ("nächsten Dienstag") in absolute Daten umrechnen wenn möglich. null wenn kein Termin genannt.'}
+- lean_check: ${isEN ? 'only categories with content. If the meeting has no Lean aspects, omit lean_check' : isFR ? 'uniquement les catégories avec du contenu. Si la réunion n\'a pas d\'aspects Lean, omettre lean_check' : 'nur Kategorien mit Inhalt. Wenn das Meeting keine Lean-Aspekte hat, lean_check weglassen'}` }],
             model: 'gpt-4o-mini', maxTokens: 1500, temperature: 0.1,
           });
           const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
