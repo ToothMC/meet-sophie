@@ -3469,8 +3469,20 @@
     }
 
     if (heroCta) {
+      // Scroll targets for mode-aware hero CTA
+      const heroScrollTargets = {
+        salespitch: '.ms-card[data-index="1"]',
+        meeting: '#mode-meeting',
+        brainstorm: '#mode-brainstorm',
+      };
+
       heroCta.addEventListener("click", async (e) => {
         e.preventDefault();
+        // If a mode pill is active that has a landing section, scroll there
+        if (selectedChatMode && heroScrollTargets[selectedChatMode]) {
+          const target = document.querySelector(heroScrollTargets[selectedChatMode]);
+          if (target) { target.scrollIntoView({behavior:'smooth', block:'start'}); return; }
+        }
         track("hero_cta_clicked", { cta_type: "talk" });
         // Logged-in users go directly to voice — skip chat funnel
         const token = await getToken();
