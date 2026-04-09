@@ -172,32 +172,35 @@ RULES:
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
 DESIGN RULES (IMPORTANT):
-- Font: system-ui, -apple-system, sans-serif
-- Main color: #2a2420 (text), #c4a882 (accent, lines, heading decoration)
-- Background: #fff, sections with fine border (#ede8e2) or subtle background (#faf9f6)
-- Header: title large (24px on desktop, 20px on mobile), metadata small below
-- Sections: clear headings (uppercase, 11px, letter-spacing, color #a09080), content 14px
-- Agenda items: numbered, clear separation
-- Action Items: with responsible person and deadline if mentioned
-- Overall impression: elegant, professional, generous whitespace. Premium consultancy quality.
-- No emojis in the final report.
+- Font: system-ui, -apple-system, sans-serif. Color: #2a2420 (text), #c4a882 (accent).
+- Outer container: max-width:100%; padding:16px; NO fixed widths. word-break:break-word;
+- Title: 20px. Section headings: uppercase, 11px, letter-spacing, color #a09080. Body: 14px, line-height:1.6.
+- No emojis. Elegant, professional, compact.
 
-MOBILE / PWA OPTIMIZATION (CRITICAL):
-- The report MUST be readable on mobile screens (320px-428px width).
-- Use max-width: 100%; padding: 16px; on the outer container. NO fixed widths.
-- Font sizes: body 14px, headings 18-20px (not larger). Line-height: 1.6.
-- Tables: use overflow-x: auto wrapper. Or avoid tables — use stacked cards/lists instead.
-- Action items / decisions: use simple list layout, not multi-column grids.
-- Long words: word-break: break-word; overflow-wrap: break-word;
-- Touch targets: links/buttons min 44px height.
+FORMATTING RULES (CRITICAL — follow exactly):
+- PARTICIPANTS: Always comma-separated on ONE line. Example: "Michael, Anna, David, Julia". NEVER as vertical list.
+- AGENDA: Numbered list (1. 2. 3.). Each point as one short line.
+- GOAL: One paragraph directly after header. Label: "Ziel des Meetings:" or "Objective:".
+- DECISIONS: Numbered list (1. 2. 3.). Each decision as one concise sentence.
+- ACTION ITEMS: Compact table or structured list. Each item on ONE line with format:
+  "1. [Task] — [Owner], bis [Date]"
+  Example: "1. Fehlerpfade prüfen — David, bis 11.04.2026"
+  Do NOT use multi-line cards, grids, or separate rows for task/owner/date.
+- OPEN POINTS: Numbered list (1. 2. 3.).
+- NEXT MEETING: One line. Example: "Nächstes Meeting: Dienstag, 15.04.2026, 10:00 Uhr"
+- NEVER use grid layouts or multi-column for action items/decisions. Always simple vertical list.
+- NEVER list items as descriptive paragraphs. Always structured numbered points.
+
+MOBILE / PWA (CRITICAL):
+- Must be readable on 320px-428px screens.
 - The <style> block MUST include:
+  * { box-sizing: border-box; }
+  .meeting-protocol { max-width: 100%; padding: 16px; }
   @media (max-width: 640px) {
-    body, .report { padding: 12px !important; font-size: 14px !important; }
+    .meeting-protocol { padding: 12px !important; }
     h1 { font-size: 20px !important; }
-    h2, h3 { font-size: 15px !important; }
-    table { display: block; overflow-x: auto; }
   }
-- PRINT remains A4 (the @page + @media print rules stay unchanged).
+- PRINT remains A4 (@page + @media print unchanged).
 
 ${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
 
@@ -252,31 +255,35 @@ REGELN:
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
 DESIGN-REGELN (WICHTIG):
-- Font: system-ui, -apple-system, sans-serif
-- Hauptfarbe: #2a2420 (Text), #c4a882 (Akzent, Linien, Überschriften-Deko)
-- Hintergrund: #fff, Sektionen mit feinem Border (#ede8e2) oder dezenter Hintergrund (#faf9f6)
-- Header: Titel groß (24px Desktop, 20px Mobil), Metadaten klein darunter
-- Sektionen: klare Überschriften (uppercase, 11px, letter-spacing, Farbe #a09080), Inhalt 14px
-- Tagesordnungspunkte: nummeriert, klare Trennung
-- Action Items: mit Verantwortlichem und Frist falls genannt
-- Gesamteindruck: elegant, professionell, viel Weißraum. Premium-Beratung Qualität.
-- Keine Emojis im finalen Report.
+- Font: system-ui, -apple-system, sans-serif. Farbe: #2a2420 (Text), #c4a882 (Akzent).
+- Äußerer Container: max-width:100%; padding:16px; KEINE festen Breiten. word-break:break-word;
+- Titel: 20px. Sektionsüberschriften: uppercase, 11px, letter-spacing, Farbe #a09080. Body: 14px, line-height:1.6.
+- Keine Emojis. Elegant, professionell, kompakt.
 
-MOBILE / PWA OPTIMIERUNG (KRITISCH):
-- Report MUSS auf Mobilgeräten lesbar sein (320px-428px Breite).
-- Äußerer Container: max-width: 100%; padding: 16px; KEINE festen Breiten.
-- Schriftgrößen: Body 14px, Überschriften 18-20px. Line-height: 1.6.
-- Tabellen: overflow-x: auto Wrapper. Besser: Listen statt Tabellen.
-- Action Items / Beschlüsse: einfaches Listen-Layout, keine Mehrspalten-Grids.
-- Lange Wörter: word-break: break-word; overflow-wrap: break-word;
+FORMAT-REGELN (KRITISCH — exakt befolgen):
+- TEILNEHMER: Immer kommagetrennt in EINER Zeile. Beispiel: "Michael, Anna, David, Julia". NIEMALS als vertikale Liste.
+- TAGESORDNUNG: Nummerierte Liste (1. 2. 3.). Jeder Punkt als eine kurze Zeile.
+- ZIEL: Ein Absatz direkt nach dem Header. Label: "Ziel des Meetings:".
+- BESCHLÜSSE: Nummerierte Liste (1. 2. 3.). Jeder Beschluss als ein knapper Satz.
+- AUFGABEN: Kompakte Liste. Jede Aufgabe auf EINER Zeile im Format:
+  "1. [Aufgabe] — [Verantwortlich], bis [Datum]"
+  Beispiel: "1. Fehlerpfade prüfen — David, bis 11.04.2026"
+  KEINE mehrzeiligen Karten, Grids oder separate Zeilen für Aufgabe/Person/Datum.
+- OFFENE PUNKTE: Nummerierte Liste (1. 2. 3.).
+- NÄCHSTES MEETING: Eine Zeile. Beispiel: "Nächstes Meeting: Dienstag, 15.04.2026, 10:00 Uhr"
+- NIEMALS Grid-Layouts oder Mehrspalten für Aufgaben/Beschlüsse. Immer einfache vertikale Liste.
+- NIEMALS Punkte als beschreibende Absätze. Immer strukturierte nummerierte Punkte.
+
+MOBILE / PWA (KRITISCH):
+- Muss auf 320px-428px Bildschirmen lesbar sein.
 - Der <style>-Block MUSS enthalten:
+  * { box-sizing: border-box; }
+  .meeting-protocol { max-width: 100%; padding: 16px; }
   @media (max-width: 640px) {
-    body, .report { padding: 12px !important; font-size: 14px !important; }
+    .meeting-protocol { padding: 12px !important; }
     h1 { font-size: 20px !important; }
-    h2, h3 { font-size: 15px !important; }
-    table { display: block; overflow-x: auto; }
   }
-- PRINT bleibt DIN A4 (@page + @media print Regeln bleiben unverändert).
+- PRINT bleibt DIN A4 (@page + @media print unverändert).
 
 ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
