@@ -230,7 +230,10 @@
       "Bash(/usr/local/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/sophie-core.js)",
       "Bash(/opt/homebrew/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/lib/sophie-core.js)",
       "Bash(/opt/homebrew/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)",
-      "Bash(/usr/local/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)"
+      "Bash(/usr/local/bin/node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api/session.js)",
+      "Bash(grep -n \"meeting_segment_upsert\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -A 30 \"meeting_segment\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -rn \"CREATE OR REPLACE FUNCTION\\\\|increment_meeting_cost\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {

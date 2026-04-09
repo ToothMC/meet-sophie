@@ -3078,11 +3078,24 @@ function stopAudioRecording() {
       return;
     }
     const recorder = mediaRecorder;
-    recorder.onstop = () => {
-      // Save final segment
+    recorder.onstop = async () => {
+      // Save final segment — MUST persist and transcribe (was lost before!)
       if (audioChunks.length > 0) {
         const blob = new Blob(audioChunks, { type: recorder.mimeType || currentMimeType });
-        if (blob.size > 500) audioSegments.push(blob);
+        if (blob.size > 500) {
+          const finalIdx = liveSegmentIndex++;
+          audioSegments.push(blob);
+          // Persist to IDB so gap-filling can find it
+          try {
+            await MeetingStore.saveSegment(meetingId, finalIdx, blob, currentMimeType);
+            console.log(`[meeting-audio] Final segment ${finalIdx} saved to IDB (${(blob.size/1024).toFixed(0)}KB)`);
+          } catch (e) { console.warn("[meeting-audio] Final segment IDB save failed:", e?.message); }
+          // Live-transcribe the final segment
+          try {
+            await transcribeLiveSegment(blob, finalIdx);
+            console.log(`[meeting-audio] Final segment ${finalIdx} transcribed`);
+          } catch (e) { console.warn("[meeting-audio] Final segment transcription failed:", e?.message); }
+        }
         audioChunks = [];
       }
       const totalKB = audioSegments.reduce((s, b) => s + b.size, 0) / 1024;
