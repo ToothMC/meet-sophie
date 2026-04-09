@@ -473,23 +473,6 @@
       background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.35);
       color:rgba(246,247,251,.95);
     }
-    /* ===== HERO HUB (visual only on mobile) ===== */
-    .hub-internet,
-    .hub-line-top,
-    .hub-line-bottom-wrap,
-    .hub-providers{display:none}
-    @keyframes hubGlow{
-      0%,100%{opacity:.7;transform:scale(1)}
-      50%{opacity:1;transform:scale(1.02)}
-    }
-    @keyframes hubBeamFlow{
-      0%{background-position:0 0}
-      100%{background-position:0 40px}
-    }
-    @keyframes hubRingSpin{
-      0%{transform:rotate(0deg)}
-      100%{transform:rotate(360deg)}
-    }
     .hero-visual{
       position:relative;
       min-height:720px;
@@ -840,12 +823,12 @@
       }
       .hero::before{
         background:
-          linear-gradient(180deg, rgba(8,10,16,.92) 0%, rgba(8,10,16,.82) 30%, rgba(8,10,16,.78) 50%, rgba(8,10,16,.85) 75%, rgba(8,10,16,.95) 100%),
-          radial-gradient(ellipse 60% 40% at 50% 45%, rgba(255,140,50,.04) 0%, transparent 100%),
+          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
+          linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
           url("hero-opt.jpg") 63% center / cover no-repeat;
         background:
-          linear-gradient(180deg, rgba(8,10,16,.92) 0%, rgba(8,10,16,.82) 30%, rgba(8,10,16,.78) 50%, rgba(8,10,16,.85) 75%, rgba(8,10,16,.95) 100%),
-          radial-gradient(ellipse 60% 40% at 50% 45%, rgba(255,140,50,.04) 0%, transparent 100%),
+          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
+          linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
           image-set(url("hero-768w.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 63% center / cover no-repeat;
       }
       .hero-grid{
@@ -905,11 +888,8 @@
       }
 
       /* --- CTA area --- */
-      .hero-copy-col .hero-hub{
-        margin-top:auto;
-      }
       .hero-copy-col .hero-actions{
-        margin-top:0;
+        margin-top:auto;
       }
       .hero-actions{display:flex;flex-direction:column;gap:14px;padding:0 20px}
       .btn{min-width:0;min-height:48px;font-size:15px;padding:0 22px}
@@ -939,185 +919,9 @@
         color:rgba(246,247,251,.72);
       }
 
-      /* --- Hero Hub Visual (cosmic max CSS) --- */
-      .hero-hub{
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-        gap:0;
-        width:100%;
-        margin-top:auto;
-        padding:0 20px;
-        position:relative;
-      }
-      /* Ambient particle glow behind hub */
-      .hero-hub::before{
-        content:"";
-        position:absolute;
-        top:-60px;
-        left:50%;
-        transform:translateX(-50%);
-        width:320px;
-        height:400px;
-        background:
-          radial-gradient(ellipse 120px 80px at 50% 15%, rgba(100,180,255,.10) 0%, transparent 100%),
-          radial-gradient(ellipse 200px 120px at 50% 55%, rgba(255,160,60,.06) 0%, transparent 100%),
-          radial-gradient(circle 3px at 20% 25%, rgba(255,200,100,.35) 0%, transparent 100%),
-          radial-gradient(circle 2px at 75% 20%, rgba(255,200,100,.25) 0%, transparent 100%),
-          radial-gradient(circle 2px at 85% 45%, rgba(255,180,80,.30) 0%, transparent 100%),
-          radial-gradient(circle 1.5px at 12% 55%, rgba(255,200,100,.20) 0%, transparent 100%),
-          radial-gradient(circle 2px at 90% 70%, rgba(255,180,80,.22) 0%, transparent 100%),
-          radial-gradient(circle 1.5px at 30% 80%, rgba(255,200,100,.18) 0%, transparent 100%),
-          radial-gradient(circle 2px at 65% 85%, rgba(255,180,80,.25) 0%, transparent 100%),
-          radial-gradient(circle 1px at 45% 15%, rgba(180,220,255,.30) 0%, transparent 100%),
-          radial-gradient(circle 1.5px at 55% 35%, rgba(255,200,100,.20) 0%, transparent 100%);
-        pointer-events:none;
-        z-index:0;
-        animation:hubGlow 4s ease-in-out infinite;
-      }
-      .hero-hub .hero-actions{
-        margin-top:0;
-        padding:0;
-        width:100%;
-        position:relative;
-        z-index:2;
-      }
-      /* CTA button: warm golden glow ring */
-      .hero-hub .hero-actions .btn-primary{
-        position:relative;
-        z-index:2;
-        border-radius:20px;
-        box-shadow:
-          0 0 20px 4px rgba(255,160,60,.18),
-          0 0 50px 8px rgba(255,140,40,.10),
-          inset 0 1px 0 rgba(255,255,255,.08);
-        animation:hubGlow 3s ease-in-out infinite;
-      }
-      /* --- Internet portal: glowing elliptical ring --- */
-      .hub-internet{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        position:relative;
-        width:140px;
-        height:38px;
-        font-size:12px;
-        font-weight:600;
-        letter-spacing:.10em;
-        text-transform:uppercase;
-        color:rgba(160,220,255,.85);
-        padding:0;
-        border:1.5px solid rgba(100,190,255,.35);
-        border-radius:50%;
-        background:radial-gradient(ellipse at center, rgba(80,170,255,.08) 0%, transparent 70%);
-        box-shadow:
-          0 0 12px 3px rgba(80,180,255,.20),
-          0 0 30px 6px rgba(80,180,255,.10),
-          inset 0 0 10px 2px rgba(80,180,255,.08);
-        margin-bottom:0;
-        z-index:2;
-        animation:hubGlow 3.5s ease-in-out infinite;
-      }
-      /* --- Top beam: golden vertical energy line --- */
-      .hub-line-top{
-        display:block;
-        position:relative;
-        width:2px;
-        height:40px;
-        margin:0 auto;
-        z-index:1;
-        background:linear-gradient(180deg,
-          rgba(100,180,255,.15) 0%,
-          rgba(200,170,100,.50) 30%,
-          rgba(255,160,60,.65) 50%,
-          rgba(200,170,100,.50) 70%,
-          rgba(255,160,60,.15) 100%);
-        box-shadow:
-          0 0 8px 2px rgba(255,160,60,.25),
-          0 0 20px 4px rgba(255,160,60,.10);
-        animation:hubGlow 3s ease-in-out infinite;
-      }
-      .hub-line-top::before{
-        content:"";
-        position:absolute;
-        top:0;left:50%;
-        transform:translateX(-50%);
-        width:8px;
-        height:100%;
-        background:linear-gradient(180deg, rgba(255,170,60,.08) 0%, rgba(255,160,60,.15) 50%, rgba(255,170,60,.08) 100%);
-        filter:blur(4px);
-      }
-      /* --- Bottom: golden fan lines via SVG --- */
-      .hub-line-bottom-wrap{
-        display:block;
-        position:relative;
-        width:280px;
-        height:36px;
-        margin:0 auto;
-        z-index:1;
-      }
-      .hub-line-bottom-wrap svg{
-        display:block;
-        width:280px;
-        height:36px;
-        overflow:visible;
-        filter:blur(0.5px);
-      }
-      .hub-line-bottom-wrap svg line{
-        stroke:rgba(255,160,60,.35);
-        stroke-width:1.2;
-      }
-      /* glow layer behind SVG */
-      .hub-line-bottom-wrap::before{
-        content:"";
-        position:absolute;
-        top:-4px;
-        left:50%;
-        transform:translateX(-50%);
-        width:200px;
-        height:40px;
-        background:radial-gradient(ellipse 100px 20px at 50% 0%, rgba(255,160,60,.12) 0%, transparent 100%);
-        filter:blur(4px);
-        pointer-events:none;
-      }
-      /* --- Provider badges: light background pills --- */
-      .hub-providers{
-        display:flex !important;
-        gap:6px;
-        justify-content:center;
-        flex-wrap:nowrap;
-        margin-top:2px;
-        z-index:2;
-        position:relative;
-      }
-      .hub-pill{
-        display:inline-flex;
-        align-items:center;
-        gap:4px;
-        font-size:10.5px;
-        font-weight:600;
-        letter-spacing:.02em;
-        color:rgba(20,20,30,.75);
-        padding:5px 10px;
-        border:none;
-        border-radius:16px;
-        background:rgba(255,255,255,.88);
-        font-family:inherit;
-        white-space:nowrap;
-        box-shadow:
-          0 1px 4px rgba(0,0,0,.15),
-          0 0 12px 2px rgba(255,180,80,.08);
-      }
-      .hub-pill svg{
-        flex-shrink:0;
-      }
-      .hub-pill svg *{
-        fill:rgba(20,20,30,.6);
-      }
-
-      /* --- Mode pills under CTA in hub --- */
+      /* --- Mode pills deprioritized --- */
       .hero-mode-bar{
-        margin-top:16px;
+        margin-top:24px;
         justify-content:center;
       }
       .hero-mode-pill{
@@ -2474,39 +2278,23 @@
           <div class="eyebrow" id="hero-eyebrow">Clarity begins in conversation</div>
           <h1 id="hero-title">THINK FIRST.<br>THEN ACT.</h1>
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
-          <div class="hero-hub">
-            <div class="hub-internet" id="hub-internet">Internet</div>
-            <div class="hub-line-top"></div>
-            <div class="hero-actions">
-              <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
-              <button class="hero-write-btn" id="hero-btn-secondary" type="button"><svg class="hero-write-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg><span class="hero-write-text">Write to Sophie…</span><svg class="hero-write-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
-            </div>
-            <div class="hub-line-bottom-wrap">
-              <svg viewBox="0 0 280 36" fill="none"><line x1="140" y1="0" x2="35" y2="36"/><line x1="140" y1="0" x2="105" y2="36"/><line x1="140" y1="0" x2="175" y2="36"/><line x1="140" y1="0" x2="245" y2="36"/></svg>
-            </div>
-            <div class="hero-mode-bar" id="heroModeBar">
-              <div class="bs-pill-wrap">
-                <button class="hero-mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
-                <div class="bs-seg" id="bsSeg" style="display:none">
-                  <button class="bs-seg-btn active" data-bs="solo">Solo</button>
-                  <button class="bs-seg-btn" data-bs="group">Team</button>
-                </div>
+          <div class="hero-actions">
+            <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
+            <button class="hero-write-btn" id="hero-btn-secondary" type="button"><svg class="hero-write-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg><span class="hero-write-text">Write to Sophie…</span><svg class="hero-write-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+          </div>
+          <div class="hero-mode-bar" id="heroModeBar">
+            <div class="bs-pill-wrap">
+              <button class="hero-mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
+              <div class="bs-seg" id="bsSeg" style="display:none">
+                <button class="bs-seg-btn active" data-bs="solo">Solo</button>
+                <button class="bs-seg-btn" data-bs="group">Team</button>
               </div>
-              <button class="hero-mode-pill" data-mode="meeting">◉ Meeting</button>
-              <button class="hero-mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
             </div>
-            <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
-            <div class="hub-line-bottom-wrap">
-              <svg viewBox="0 0 280 36" fill="none"><line x1="140" y1="0" x2="35" y2="36"/><line x1="140" y1="0" x2="105" y2="36"/><line x1="140" y1="0" x2="175" y2="36"/><line x1="140" y1="0" x2="245" y2="36"/></svg>
-            </div>
-            <div class="hub-providers">
-              <span class="hub-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z"/></svg>OpenAI</span>
-              <span class="hub-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><rect x="2" y="2" width="5" height="5"/><rect x="17" y="2" width="5" height="5"/><rect x="2" y="7" width="5" height="5"/><rect x="7" y="7" width="5" height="5"/><rect x="12" y="7" width="5" height="5"/><rect x="17" y="7" width="5" height="5"/><rect x="2" y="12" width="5" height="5"/><rect x="17" y="12" width="5" height="5"/><rect x="2" y="17" width="5" height="5"/><rect x="17" y="17" width="5" height="5"/></svg>Mistral</span>
-              <span class="hub-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>Gemini</span>
-              <span class="hub-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M17.304 2.002h-4.108l6.144 19.996h4.108zM6.696 2.002.552 21.998h4.108l1.26-4.248h6.16l1.26 4.248h4.108L11.304 2.002zm-.18 12.248L8.86 7.054l2.344 7.196z"/></svg>Claude</span>
-            </div>
+            <button class="hero-mode-pill" data-mode="meeting">◉ Meeting</button>
+            <button class="hero-mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
           </div>
           <p class="mobile-feature-hint" id="mobile-feature-hint">You can also send Sophie messages during a conversation.</p>
+          <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
           <p id="chat-opening"></p>
         </div>
 
@@ -3292,17 +3080,6 @@
       const cl = chatLabels[lang] || chatLabels.en;
       document.documentElement.style.setProperty("--chat-header-label", `"${cl.header}"`);
       document.documentElement.style.setProperty("--chat-send-label", `"${cl.send}"`);
-      // Swap demo modal content to match language
-      if (window.DEMO_MODALS) {
-        const dm = window.DEMO_MODALS[lang] || window.DEMO_MODALS.de;
-        for (let i = 1; i <= 5; i++) {
-          const modal = document.getElementById("exampleModal" + i);
-          if (modal && dm["modal" + i]) {
-            const inner = modal.querySelector(".example-modal-inner");
-            if (inner) inner.innerHTML = dm["modal" + i];
-          }
-        }
-      }
     }
     function detectLanguage() {
       const saved = localStorage.getItem("preferredLanguage");
