@@ -185,15 +185,21 @@ VISUAL DESIGN (produce a beautiful, professional document):
 - Outer wrapper: class="meeting-protocol", max-width:780px on desktop (A4-like), padding:48px 60px, margin:0 auto, word-break:break-word, box-shadow:0 1px 8px rgba(0,0,0,.06)
 - On mobile (<640px): padding shrinks, max-width:100%, no box-shadow
 
-CONTENT FORMATTING (follow exactly):
-- PARTICIPANTS: Comma-separated on ONE line. "Michael, Anna, David, Julia". NEVER vertical list.
-- AGENDA: Numbered (1. 2. 3.), each point one short line.
-- GOAL: One paragraph after header. "Ziel des Meetings: ..."
+CONTENT FORMATTING (follow EXACTLY — violations are unacceptable):
+- PARTICIPANTS: Comma-separated on ONE line. NEVER vertical list.
+- AGENDA POINTS (discussion per topic): The FIRST agenda point may have a short text summary (2-3 sentences max).
+  ALL OTHER agenda points MUST be structured as numbered sub-points (1. 2. 3.), NOT as flowing text paragraphs.
+  If someone raised a concern, made a suggestion, or stated a fact → it becomes a numbered point, not prose.
+  BAD: "Anna betonte aus Produktsicht, dass Sophie offene Fragen kennen muss. David erklärte, dass die Logik serverseitig laufen soll."
+  GOOD: "1. Sophie muss offene Fragen und nächste Schritte kennen (Anna)\n2. Resümee-Logik serverseitig über System-Prompt (David)\n3. Start muss natürlich bleiben (Julia)"
+- GOAL: One paragraph after header.
 - DECISIONS: Numbered (1. 2. 3.), each one concise sentence.
-- ACTION ITEMS: Each on ONE line: "1. [Task] — [Owner], bis [Date]"
-- OPEN POINTS: Numbered (1. 2. 3.).
-- NEXT MEETING: One line with date+time.
-- NEVER descriptive paragraphs for list items. Always structured numbered points.
+- ACTION ITEMS: Format per item: "[Owner] — [Task], bis [Date]"
+  Example: "David — Fehlerpfade prüfen, bis 11.04.2026"
+- OPEN POINTS: Numbered (1. 2. 3.), each one short line. NEVER text blocks.
+- NEXT MEETING: "Wann: [Date, Time] | Wo: [Location or 'Remote'] | Wer lädt ein: [Name]"
+  If location or organizer not mentioned, omit that part.
+- NEVER write flowing text paragraphs for discussion points, open items, or problems. ALWAYS numbered lists.
 
 RESPONSIVE:
 - <style> block MUST include:
@@ -268,15 +274,21 @@ VISUELLES DESIGN (professionelles, elegantes Dokument):
 - Äußerer Wrapper: class="meeting-protocol", max-width:780px (DIN A4), padding:48px 60px, margin:0 auto, box-shadow:0 1px 8px rgba(0,0,0,.06)
 - Auf Mobil (<640px): padding kleiner, max-width:100%, kein box-shadow
 
-INHALTS-FORMATIERUNG (exakt befolgen):
-- TEILNEHMER: Kommagetrennt in EINER Zeile. "Michael, Anna, David, Julia". NIEMALS vertikale Liste.
-- TAGESORDNUNG: Nummeriert (1. 2. 3.), jeder Punkt eine kurze Zeile.
-- ZIEL: Ein Absatz nach Header. "Ziel des Meetings: ..."
+INHALTS-FORMATIERUNG (EXAKT befolgen — Verstöße sind inakzeptabel):
+- TEILNEHMER: Kommagetrennt in EINER Zeile. NIEMALS vertikale Liste.
+- TAGESORDNUNGSPUNKTE (Diskussion pro Thema): Der ERSTE Punkt darf eine kurze Textzusammenfassung haben (max 2-3 Sätze).
+  ALLE WEITEREN Punkte MÜSSEN als nummerierte Unterpunkte (1. 2. 3.) strukturiert sein, NICHT als Fließtext.
+  Wenn jemand etwas gesagt, vorgeschlagen oder festgestellt hat → wird es ein nummerierter Punkt, kein Prosa-Absatz.
+  SCHLECHT: "Anna betonte aus Produktsicht, dass Sophie offene Fragen kennen muss. David erklärte, dass die Logik serverseitig laufen soll."
+  GUT: "1. Sophie muss offene Fragen und nächste Schritte kennen (Anna)\n2. Resümee-Logik serverseitig über System-Prompt (David)\n3. Start muss natürlich bleiben (Julia)"
+- ZIEL: Ein Absatz nach Header.
 - BESCHLÜSSE: Nummeriert (1. 2. 3.), jeder ein knapper Satz.
-- AUFGABEN: Jede auf EINER Zeile: "1. [Aufgabe] — [Verantwortlich], bis [Datum]"
-- OFFENE PUNKTE: Nummeriert (1. 2. 3.).
-- NÄCHSTES MEETING: Eine Zeile mit Datum+Uhrzeit.
-- NIEMALS beschreibende Absätze für Listenpunkte. Immer strukturiert nummeriert.
+- AUFGABEN: Format pro Aufgabe: "[Wer] — [Was], bis [Wann]"
+  Beispiel: "David — Fehlerpfade prüfen, bis 11.04.2026"
+- OFFENE PUNKTE: Nummeriert (1. 2. 3.), jeder eine kurze Zeile. NIEMALS Textblöcke.
+- NÄCHSTES MEETING: "Wann: [Datum, Uhrzeit] | Wo: [Ort oder 'Remote'] | Wer lädt ein: [Name]"
+  Wenn Ort oder Einladender nicht genannt, diesen Teil weglassen.
+- NIEMALS Fließtext-Absätze für Diskussionspunkte, offene Punkte oder Probleme. IMMER nummerierte Listen.
 
 RESPONSIVE:
 - <style>-Block MUSS enthalten:
