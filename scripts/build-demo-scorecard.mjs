@@ -6,7 +6,7 @@ import { renderScorecardReport } from '../lib/report-templates.js';
 
 const demo = {
   title: 'Pitch-Scorecard',
-  situation: 'Gründer pitcht seine AI-Meeting-Software vor einem potenziellen Angel-Investor',
+  situation: 'Gründer pitcht seine AI-Meeting-Software vor einem potenziellen Investor',
   goal: 'Klarer, relevanter und überzeugender auftreten',
   mainProblem: 'Der Pitch klingt zu breit und erklärt zu viel auf einmal',
   overallScore: 72,
