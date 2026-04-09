@@ -2,7 +2,7 @@
 // Uses system templates as defaults, user templates override.
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
-import { DEFAULT_TEMPLATES } from '../../lib/report-templates.js';
+import { DEFAULT_TEMPLATES, getDefaultTemplates } from '../../lib/report-templates.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 
 function trackAdapterCost(response, userId, routingReason) {
