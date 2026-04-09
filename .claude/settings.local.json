@@ -56,7 +56,9 @@
       "Bash(node scripts/build-demo-decision.mjs)",
       "Bash(git merge feature/export-harmonize --no-ff -m ':*)",
       "Bash(git stash:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)"
     ]
   },
   "hooks": {
