@@ -630,14 +630,16 @@ Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der ve
   // ── GET: All templates overview (system + user) ──
   if (action === 'templates' && req.method === 'GET') {
     // Import system defaults dynamically
-    const { DEFAULT_TEMPLATES } = await import('../lib/report-templates.js');
+    const { getDefaultTemplates } = await import('../lib/report-templates.js');
 
     const { data } = await supabase
       .from('user_profile')
-      .select('report_templates')
+      .select('report_templates, preferred_language')
       .eq('user_id', user.id)
       .maybeSingle();
 
+    const userLang = data?.preferred_language || 'en';
+    const DEFAULT_TEMPLATES = getDefaultTemplates(userLang);
     const userTemplates = data?.report_templates || {};
     const allModes = new Set([...Object.keys(DEFAULT_TEMPLATES), ...Object.keys(userTemplates)]);
 
