@@ -816,7 +816,8 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
 
     // Fall back to system template if no user template
     if (!savedTemplate) {
-      savedTemplate = DEFAULT_TEMPLATES[mode] || DEFAULT_TEMPLATES['default'] || null;
+      const localizedDefaults = getDefaultTemplates(reportLang || 'de');
+      savedTemplate = localizedDefaults[mode] || localizedDefaults['default'] || null;
       if (savedTemplate) templateSource = 'system';
     }
 
