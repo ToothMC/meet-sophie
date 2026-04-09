@@ -1867,17 +1867,17 @@ async function transitionPhase(newPhase, source = "unknown") {
       const segments = await stopAudioRecording();
       cleanupMicStream();
 
-      // 2. Use live transcript from meeting_segments if available
-      //    Only batch-transcribe if live transcription produced nothing
-      const liveText = Object.values(liveTranscriptChunks).filter(Boolean).join(" ");
-      if (liveText) {
-        speechTranscript.push(liveText);
-        console.log(`[meeting-post] Using live transcript: ${liveText.length} chars`);
+      // 2. Build canonical transcript (Server + IDB + Memory merged)
+      //    This is the single source of truth — NOT liveTranscriptChunks alone
+      const canonicalInput = await prepareSummaryInput(meetingId);
+      if (canonicalInput.hasContent) {
+        speechTranscript.push(canonicalInput.transcriptText);
+        console.log(`[meeting-post] Canonical transcript: ${canonicalInput.transcriptText.length} chars`);
       } else if (segments && segments.length > 0) {
-        // Fallback: batch transcribe via MEETING path (not old voice-rate path)
+        // Fallback: batch transcribe remaining untranscribed segments
         appendSystemMsg(lang === "de"
-          ? "🔄 Live-Transkript nicht verfügbar — transkribiere Audio..."
-          : "🔄 Live transcript unavailable — transcribing audio...");
+          ? "🔄 Transkribiere Audio..."
+          : "🔄 Transcribing audio...");
         const whisperText = await transcribeMeetingBatch(segments);
         if (whisperText) speechTranscript.push(whisperText);
       }
