@@ -238,7 +238,8 @@
       "Bash(grep -r \"update_meeting\\\\|update.*title\\\\|edit.*title\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/api --include=*.js)",
       "Bash(grep -l \"meeting_create_with_token_gate\\\\|CREATE TABLE meetings\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -l \"meeting_create_with_token_gate\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "Bash(grep -A 10 \"CREATE TABLE.*conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(grep -A 10 \"CREATE TABLE.*conversation_outputs\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(curl -s \"https://www.meet-sophie.com/api/ai/report-status?session_id=2157e5e7-09f0-4e0d-82b8-35168f6a1ad1\")"
     ]
   },
   "hooks": {

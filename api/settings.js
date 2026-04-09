@@ -171,7 +171,10 @@ export default async function handler(req, res) {
         // Use session_type from user_sessions for accurate grouping
         const st = r.user_sessions?.session_type || r.user_sessions?.session_mode || 'talk';
         const sourceMap = { brainstorm: 'brainstorm', sales_pitch: 'salespitch', salespitch: 'salespitch', meeting: 'meeting' };
-        const source = sourceMap[st] || 'talk';
+        // Also check session_mode as fallback (legacy sessions may have session_type='talk' but session_mode='meeting')
+        const sm = r.user_sessions?.session_mode || '';
+        const sourceFromMode = sourceMap[sm] || null;
+        const source = sourceMap[st] || sourceFromMode || 'talk';
         talkReports.push({ session_id: r.session_id, title: r.title, report_status: r.report_status, report_style: r.report_style || source, created_at: r.created_at, source, id: r.session_id });
       }
     }
