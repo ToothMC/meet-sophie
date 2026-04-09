@@ -876,6 +876,23 @@ async function buildCanonicalTranscript(mid) {
 async function prepareSummaryInput(mid) {
   const { segments, voiceText } = await buildCanonicalTranscript(mid);
   const parts = [];
+
+  // Include meeting context (participants, agenda, goal) from DB
+  try {
+    await refreshAccessToken();
+    const { data: ctx } = await supabase
+      .from("meeting_context")
+      .select("context_type, content")
+      .eq("meeting_id", mid);
+    if (ctx?.length) {
+      const contextLines = ctx.map(c => `[${c.context_type.toUpperCase()}] ${c.content}`).join("\n");
+      parts.push(`[Meeting-Kontext]\n${contextLines}`);
+    }
+  } catch (_) {}
+
+  // Include meeting title if available
+  if (meetingData?.title) parts.push(`[Meeting-Titel] ${meetingData.title}`);
+
   const segText = segments.map(s => s.text).join(" ");
   if (segText.trim()) parts.push(`[Aufnahme — Gesprächsinhalt]\n${segText}`);
   if (voiceText.trim()) parts.push(`[Sophie Voice Session]\n${voiceText}`);
