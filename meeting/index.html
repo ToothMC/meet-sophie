@@ -486,13 +486,18 @@ body{
       <div class="report-export-title">Export</div>
       <div class="export-row">
         <button class="export-btn" id="reportCopyBtn"><span>Kopieren</span></button>
-        <button class="export-btn" id="reportPrintBtn"><span>PDF</span></button>
+        <button class="export-btn" id="reportShareBtn"><span>Teilen</span></button>
+        <button class="export-btn" id="reportPrintBtn"><span>Drucken / PDF</span></button>
         <button class="export-btn primary" id="reportDownloadFullBtn"><span>Herunterladen</span></button>
       </div>
 
       <div class="report-export-title">Layout</div>
       <div class="export-row">
         <button class="export-btn" id="reportTemplateBtn"><span>Als Vorlage</span></button>
+      </div>
+
+      <div class="export-row" style="margin-top:8px;">
+        <button class="export-btn" id="reportContinueBtn" style="background:#f0ebe4;border-color:#c4b69c;color:#5c4a2a;font-weight:600;"><span>▶️ Fortführen</span></button>
       </div>
     </div>
   </div>
@@ -508,6 +513,7 @@ body{
   <div id="historyList"></div>
 </div>
 
+<script src="/lib/sophie-export.js"></script>
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SophieTabManager } from "/lib/sophie-tab-manager.js";
@@ -1342,12 +1348,19 @@ async function initAuth() {
   // Check URL for meeting_id and test mode
   const params = new URLSearchParams(window.location.search);
   const urlMeetingId = params.get("id");
+  const urlParentId = params.get("parentMeetingId");
   if (params.has("test")) window.__testMode = true;
 
   authLoading.classList.add("hidden");
 
   if (urlMeetingId) {
     await loadMeeting(urlMeetingId);
+  } else if (urlParentId) {
+    // Fortführen: neues Meeting basierend auf Parent
+    selectedParentId = urlParentId;
+    await showSetup();
+    // Offene Punkte + Action Items des Parents laden und Agenda vorbefüllen
+    _prefillFromParent(urlParentId, authSession?.access_token);
   } else {
     // Check for incomplete meetings (global recovery)
     if (MeetingStore.isAvailable()) {
@@ -1426,6 +1439,57 @@ async function showHistory() {
 // ---------------------------------------------------------------------------
 let selectedMeetingType = "team";
 let selectedParentId = null;
+
+// Fortführen: offene Punkte + Action Items vom Parent-Meeting laden und Agenda vorbefüllen
+async function _prefillFromParent(parentId, accessToken) {
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
+    const res = await fetch(`/api/meeting?action=detail&meeting_id=${encodeURIComponent(parentId)}`, { headers });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const agendaItems = [];
+
+    // Offene Punkte aus meeting_summary
+    if (data.summary?.open_points?.length) {
+      agendaItems.push("--- Offene Punkte ---");
+      data.summary.open_points.forEach(p => {
+        agendaItems.push(typeof p === "string" ? p : p.text || p.title || JSON.stringify(p));
+      });
+    }
+
+    // Nicht-erledigte Action Items
+    if (data.summary?.action_items?.length) {
+      const pending = data.summary.action_items.filter(a =>
+        !a.done && !a.completed && a.status !== "done" && a.status !== "completed"
+      );
+      if (pending.length) {
+        agendaItems.push("--- Offene Action Items ---");
+        pending.forEach(a => {
+          const who = a.assignee || a.who || "";
+          const what = a.text || a.title || a.description || "";
+          agendaItems.push(who ? `${who}: ${what}` : what);
+        });
+      }
+    }
+
+    // Agenda-Feld vorbefüllen wenn vorhanden
+    const agendaField = $("meetingAgenda") || $("agendaInput");
+    if (agendaField && agendaItems.length) {
+      agendaField.value = agendaItems.join("\n");
+    }
+
+    // Titel vorbefüllen: "Fortführung: [Original-Titel]"
+    const titleField = $("meetingTitle");
+    if (titleField && data.meeting?.title) {
+      const prefix = lang === "de" ? "Fortführung" : "Follow-up";
+      titleField.value = `${prefix}: ${data.meeting.title}`;
+    }
+  } catch (e) {
+    console.warn("[prefill-parent]", e?.message);
+  }
+}
 
 async function showSetup() {
   historyScreen.classList.add("hidden");
@@ -2472,7 +2536,9 @@ function showMeetingReport(html) {
     const blob = new Blob([content], { type: "text/html;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `meeting-${suffix}-${new Date().toISOString().slice(0,10)}.html`;
+    a.download = window.SophieExport
+      ? SophieExport.buildFilename({ type: "meeting", title: suffix, createdAt: new Date() })
+      : `meeting-${suffix}-${new Date().toISOString().slice(0,10)}.html`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -2569,6 +2635,40 @@ function showMeetingReport(html) {
       console.error("Save template error:", e);
     }
   };
+
+  // Teilen — Share-Sheet + Clipboard
+  const _shareBtn = $("reportShareBtn");
+  if (_shareBtn) {
+    _shareBtn.onclick = async () => {
+      const cleanHtml = getExportHtml();
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = cleanHtml;
+      const plainText = tempDiv.innerText || tempDiv.textContent || "";
+      if (window.SophieExport) {
+        const result = await SophieExport.shareReport(cleanHtml, plainText, "Meeting Protokoll");
+        if (result.method === "clipboard") {
+          _shareBtn.textContent = "✓ Kopiert";
+          setTimeout(() => { _shareBtn.textContent = "📤 Teilen"; }, 2000);
+        }
+      }
+    };
+  }
+
+  // Fortführen — neues Meeting mit parent_meeting_id
+  const _continueBtn = $("reportContinueBtn");
+  if (_continueBtn) {
+    _continueBtn.onclick = () => {
+      if (window.SophieExport) {
+        SophieExport.writeContinuePayload({
+          sourceType: "meeting",
+          sourceId: meetingId,
+          resumeSessionId: meetingReportSessionId,
+          targetMode: "meeting",
+        });
+      }
+      window.location.href = `/meeting/?parentMeetingId=${encodeURIComponent(meetingId)}`;
+    };
+  }
 
   // "Aktualisieren" — re-render report with current toggle options (no AI call)
   // Always re-filter from the ORIGINAL HTML, then re-render
