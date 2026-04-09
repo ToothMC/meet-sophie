@@ -645,14 +645,53 @@ export default async function handler(req, res) {
               .select("title, short_summary, key_insights, action_plan, open_questions, structured_summary")
               .eq("session_id", resumeSessionId)
               .maybeSingle();
-            resumeContext = buildResumeBlock(sType, {
+
+            let resumeData = {
               title: output?.title || resumeSession.title,
               summary: output?.short_summary || resumeSession.short_summary,
               key_insights: output?.key_insights,
               action_plan: output?.action_plan,
               open_questions: output?.open_questions,
               structured_summary: output?.structured_summary,
-            }, sLang);
+            };
+
+            // Sales Pitch: enrich from sophie_pitch_memory (always has real scores)
+            if (sType === "sales_pitch" || sType === "salespitch") {
+              try {
+                const { data: pitchMem } = await supabase
+                  .from("sophie_pitch_memory")
+                  .select("topic, target_audience, pitch_type, score, strengths, weaknesses, scores_content, scores_delivery")
+                  .eq("conversation_id", resumeSessionId)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (pitchMem) {
+                  resumeData.structured_summary = {
+                    ...(resumeData.structured_summary || {}),
+                    audience_type: pitchMem.target_audience || "",
+                    overall_score: pitchMem.score || 0,
+                    scores_content: pitchMem.scores_content || {},
+                    strongest_elements: pitchMem.strengths || [],
+                    main_weaknesses: pitchMem.weaknesses || [],
+                  };
+                  // Fallback: use pitch memory data if conversation_outputs is empty
+                  if (!resumeData.key_insights?.length && pitchMem.strengths?.length) {
+                    resumeData.key_insights = pitchMem.strengths;
+                  }
+                  if (!resumeData.open_questions?.length && pitchMem.weaknesses?.length) {
+                    resumeData.open_questions = pitchMem.weaknesses;
+                  }
+                  if (!resumeData.title && pitchMem.topic) {
+                    resumeData.title = pitchMem.topic;
+                  }
+                  console.log("[session] enriched pitch resume from sophie_pitch_memory:", pitchMem.topic, "score:", pitchMem.score);
+                }
+              } catch (pitchErr) {
+                console.warn("[session] pitch memory lookup failed (non-critical):", pitchErr?.message);
+              }
+            }
+
+            resumeContext = buildResumeBlock(sType, resumeData, sLang);
           }
 
           if (resumeContext) {
