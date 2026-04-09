@@ -3692,6 +3692,7 @@
         } else if (mode === "brainstorm") {
           brainstormChatConfig = null;
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
           setFunnelMode("brainstorm");
           applyHeroMode("brainstorm");
           showBsSeg();
