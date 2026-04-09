@@ -504,7 +504,113 @@ Das Delta-Badge zeigt die Veränderung: grün ▲ +X.X bei Verbesserung, rot ▼
 
       console.log(`[report] ${session_id} — prevPitchContext: ${prevPitchContext ? `FOUND (${prevPitchContext.length} chars)` : 'NONE (first pitch)'}`);
 
-      const pitchPrompt = `Du bist ein STRENGER, EHRLICHER Pitch-Evaluator. Du bewertest einen Sales Pitch aus einem Voice-Transcript.
+      const pitchPrompt = isEN ? `You are a STRICT, HONEST pitch evaluator. You are evaluating a sales pitch from a voice transcript.
+
+IMPORTANT — STRICT SCORING:
+- Score 1 = weak, incomplete, unclear
+- Score 2 = recognizable approach, but major gaps
+- Score 3 = solid foundation, but room for improvement
+- Score 4 = good, only fine-tuning needed
+- Score 5 = excellent, hard to improve
+- A short, incomplete pitch gets LOW scores (1-2). Do NOT be lenient.
+- If the pitch was just one sentence or was aborted: set ALL scores to 1-2.
+- A score of 4+ requires demonstrable substance in the transcript.
+
+EVALUATION CRITERIA — 13 criteria in 2 groups:
+
+CONTENT (60%):
+01 Clarity (12%) — Instant understanding: offer, target audience, relevance
+02 Problem Sharpness (10%) — Problem is real, clear, specific, important enough
+03 Value Proposition (12%) — Benefit clear, specific, credible
+04 Structure (8%) — Structure, narrative thread, 3-5 main points
+05 Differentiation (8%) — Uniqueness recognizable
+06 Credibility (5%) — Substance, evidence, no empty claims
+07 Audience Fit (5%) — Content fits the audience
+
+DELIVERY (40%):
+08 Opening (8%) — Hook, immediate relevance
+09 Closing (7%) — Summary, CTA
+10 Voice & Rhythm (8%) — Pace, pauses, variation
+11 Rhetoric & Language (7%) — Short sentences, imagery, no filler words
+12 Authenticity (5%) — Own voice, genuine conviction
+13 Persuasiveness (5%) — Call to action, memorable
+
+CONFIDENCE:
+- Voice input: all criteria "high confidence"
+- Text input (no audio): Voice & Rhythm + Authenticity = "low confidence", Rhetoric = "medium"
+
+CALCULATION:
+- Content Score = weighted average of 7 Content criteria
+- Delivery Score = weighted average of 6 Delivery criteria
+- Overall = (Content Score × 0.6) + (Delivery Score × 0.4)
+
+${prevPitchContext}
+TRANSCRIPT:
+${transcript_text}
+
+TASK:
+Create the complete Sales Pitch Report as HTML. Use the EXACT design below.
+Replace ALL placeholders with real values from your evaluation.
+Each score bar must have the correct width (Score/5 × 100 = percent).
+Colors: >= 4.0 = #22c55e (green), 2.5-3.9 = #eab308 (yellow), < 2.5 = #ef4444 (red).
+${prevPitchContext ? `IMPORTANT: This is a FOLLOW-UP PITCH. You MUST use the comparison bar design (Ghost-Bar + Delta-Badge) for EVERY criterion. Without comparison the report is INCOMPLETE.` : ''}
+Write in the same language as the transcript.
+Reply ONLY with HTML. No Markdown, no text before/after.`
+
+      : isFR ? `Tu es un évaluateur de pitch STRICT et HONNÊTE. Tu évalues un sales pitch à partir d'une transcription vocale.
+
+IMPORTANT — NOTATION STRICTE :
+- Score 1 = faible, incomplet, flou
+- Score 2 = approche reconnaissable, mais grosses lacunes
+- Score 3 = base solide, mais marge d'amélioration
+- Score 4 = bien, juste des ajustements fins
+- Score 5 = excellent, difficile à améliorer
+- Un pitch court et incomplet reçoit des scores BAS (1-2). Ne sois PAS indulgent.
+- Si le pitch n'était qu'une phrase ou a été interrompu : mettre TOUS les scores à 1-2.
+- Un score de 4+ exige une substance démontrable dans le transcript.
+
+CRITÈRES D'ÉVALUATION — 13 critères en 2 groupes :
+
+CONTENT (60%) :
+01 Clarity (12%) — Compréhension immédiate : offre, cible, pertinence
+02 Problem Sharpness (10%) — Problème réel, clair, concret, suffisamment important
+03 Value Proposition (12%) — Bénéfice clair, spécifique, crédible
+04 Structure (8%) — Construction, fil conducteur, 3-5 points principaux
+05 Differentiation (8%) — Unicité reconnaissable
+06 Credibility (5%) — Substance, preuves, pas d'affirmations vides
+07 Audience Fit (5%) — Contenu adapté à l'audience
+
+DELIVERY (40%) :
+08 Opening (8%) — Accroche, pertinence immédiate
+09 Closing (7%) — Résumé, CTA
+10 Voice & Rhythm (8%) — Rythme, pauses, variation
+11 Rhetoric & Language (7%) — Phrases courtes, images, pas de mots de remplissage
+12 Authenticity (5%) — Voix propre, conviction sincère
+13 Persuasiveness (5%) — Impulsion d'action, mémorable
+
+CONFIDENCE :
+- Entrée vocale : tous les critères "high confidence"
+- Entrée texte (pas d'audio) : Voice & Rhythm + Authenticity = "low confidence", Rhetoric = "medium"
+
+CALCUL :
+- Content Score = moyenne pondérée des 7 critères Content
+- Delivery Score = moyenne pondérée des 6 critères Delivery
+- Overall = (Content Score × 0.6) + (Delivery Score × 0.4)
+
+${prevPitchContext}
+TRANSCRIPT :
+${transcript_text}
+
+TÂCHE :
+Crée le rapport complet Sales Pitch en HTML. Utilise le design EXACT ci-dessous.
+Remplace TOUS les marqueurs par les vraies valeurs de ton évaluation.
+Chaque barre de score doit avoir la bonne largeur (Score/5 × 100 = pourcentage).
+Couleurs : >= 4.0 = #22c55e (vert), 2.5-3.9 = #eab308 (jaune), < 2.5 = #ef4444 (rouge).
+${prevPitchContext ? `IMPORTANT : Ceci est un PITCH DE SUIVI. Tu DOIS utiliser le design de barre comparative (Ghost-Bar + Delta-Badge) pour CHAQUE critère. Sans comparaison, le rapport est INCOMPLET.` : ''}
+Écris dans la même langue que le transcript.
+Réponds UNIQUEMENT avec du HTML. Pas de Markdown, pas de texte avant/après.`
+
+      : `Du bist ein STRENGER, EHRLICHER Pitch-Evaluator. Du bewertest einen Sales Pitch aus einem Voice-Transcript.
 
 WICHTIG — STRENGE BEWERTUNG:
 - Score 1 = schwach, unvollständig, unklar
