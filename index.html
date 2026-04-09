@@ -478,9 +478,17 @@
     .hub-line-top,
     .hub-line-bottom-wrap,
     .hub-providers{display:none}
-    @keyframes hubPulse{
-      0%,100%{box-shadow:0 0 20px 3px rgba(63,140,255,.10),0 0 48px 6px rgba(63,140,255,.05)}
-      50%{box-shadow:0 0 28px 5px rgba(63,140,255,.18),0 0 56px 10px rgba(63,140,255,.08)}
+    @keyframes hubGlow{
+      0%,100%{opacity:.7;transform:scale(1)}
+      50%{opacity:1;transform:scale(1.02)}
+    }
+    @keyframes hubBeamFlow{
+      0%{background-position:0 0}
+      100%{background-position:0 40px}
+    }
+    @keyframes hubRingSpin{
+      0%{transform:rotate(0deg)}
+      100%{transform:rotate(360deg)}
     }
     .hero-visual{
       position:relative;
