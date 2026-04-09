@@ -2468,11 +2468,17 @@ function showMeetingReport(html) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styleBlock}</head><body>${tmp.innerHTML}</body></html>`;
   }
 
-  function downloadHtmlFile(content, suffix) {
+  function buildReportFilename(docType, ext = "html") {
+    const title = (meetingData?.title || "Meeting").replace(/[^a-zA-Z0-9äöüÄÖÜß\-_ ]/g, "").replace(/\s+/g, "-");
+    const date = new Date().toISOString().slice(0, 10);
+    return `${date}_${docType}_${title}.${ext}`;
+  }
+
+  function downloadHtmlFile(content, docType) {
     const blob = new Blob([content], { type: "text/html;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `meeting-${suffix}-${new Date().toISOString().slice(0,10)}.html`;
+    a.download = buildReportFilename(docType);
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -2506,7 +2512,7 @@ function showMeetingReport(html) {
           const blob = new Blob([cleanHtml], { type: "text/html;charset=utf-8" });
           const a = document.createElement("a");
           a.href = URL.createObjectURL(blob);
-          a.download = `protokoll-${new Date().toISOString().slice(0,10)}.html`;
+          a.download = buildReportFilename("Sitzungsprotokoll");
           a.click();
           URL.revokeObjectURL(a.href);
           alert(lang === "de"
@@ -2527,7 +2533,7 @@ function showMeetingReport(html) {
 
   // Download — respects toggle options
   $("reportDownloadFullBtn").onclick = () => {
-    downloadHtmlFile(getExportHtml(), "protokoll");
+    downloadHtmlFile(getExportHtml(), "Sitzungsprotokoll");
   };
 
   $("reportCopyBtn").onclick = async () => {
@@ -3924,8 +3930,7 @@ function downloadProtocol() {
 
   // If we have an AI-generated HTML report, download official version (no transcript)
   if (meetingReportHtml) {
-    const title = meetingData.title || meetingData.meeting_type || "meeting";
-    const filename = `${getDatePrefix()}_sophie-protokoll_${slugify(title)}.html`;
+    const filename = buildReportFilename("Sitzungsprotokoll");
     const blob = new Blob([stripTranscriptGlobal(meetingReportHtml)], { type: "text/html;charset=utf-8" });
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
       || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -4070,7 +4075,7 @@ function downloadProtocol() {
 </body>
 </html>`;
 
-  const filename = `${getDatePrefix()}_sophie-meeting-protokoll_${slugify(title)}.html`;
+  const filename = buildReportFilename("Sitzungsprotokoll");
   const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
 
   // iOS fallback
