@@ -676,8 +676,8 @@ ${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : i
     <div style="text-align:center;margin-bottom:24px;">
       <div style="font-size:48px;font-weight:800;color:#111;letter-spacing:-0.03em;">[OVERALL]</div>
       <div style="font-size:12px;color:#888;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;">Overall Score</div>
-      <!-- WENN Vergleich: zeige Delta unter Overall Score -->
-      <!-- <div style="font-size:14px;font-weight:600;margin-top:4px;color:[grün/rot];">▲ +0.4 vs. v[N-1]</div> -->
+      <!-- ${isEN ? 'IF comparison: show delta below Overall Score' : isFR ? 'SI comparaison : afficher delta sous Overall Score' : 'WENN Vergleich: zeige Delta unter Overall Score'} -->
+      <!-- <div style="font-size:14px;font-weight:600;margin-top:4px;color:[${isEN ? 'green/red' : isFR ? 'vert/rouge' : 'grün/rot'}];">▲ +0.4 vs. v[N-1]</div> -->
     </div>
     <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#888;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e5e5;">Content (60%)</div>
     <!-- FÜR JEDES Content-Kriterium — WENN kein Vergleich (erster Pitch): -->
