@@ -171,36 +171,36 @@ RULES:
     - Sections: page-break-inside: avoid
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
-DESIGN RULES (IMPORTANT):
-- Font: system-ui, -apple-system, sans-serif. Color: #2a2420 (text), #c4a882 (accent).
-- Outer container: max-width:100%; padding:16px; NO fixed widths. word-break:break-word;
-- Title: 20px. Section headings: uppercase, 11px, letter-spacing, color #a09080. Body: 14px, line-height:1.6.
-- No emojis. Elegant, professional, compact.
+VISUAL DESIGN (produce a beautiful, professional document):
+- Font: system-ui, -apple-system, sans-serif
+- Colors: #2a2420 (text), #c4a882 (accent lines, heading decoration), #a09080 (section labels)
+- Background: #fff. Sections with fine border (#ede8e2) or subtle background (#faf9f6)
+- Header: title 20px font-weight:300, border-bottom 1px solid #c4a882, date right-aligned
+- Section labels: uppercase, 9px, letter-spacing:0.2em, color:#a09080, margin-bottom:12px
+- Body text: 13px, line-height:1.6, color:#333
+- Separator lines: 1px solid #ede8e2 between sections
+- Action items: each item with subtle bottom border, font-size:13px
+- Overall: elegant, generous whitespace, like a premium consultancy document. NOT plain text.
+- No emojis. Every section must have styled HTML with inline CSS.
+- Outer wrapper: class="meeting-protocol", max-width:780px on desktop (A4-like), padding:48px 60px, margin:0 auto, word-break:break-word, box-shadow:0 1px 8px rgba(0,0,0,.06)
+- On mobile (<640px): padding shrinks, max-width:100%, no box-shadow
 
-FORMATTING RULES (CRITICAL — follow exactly):
-- PARTICIPANTS: Always comma-separated on ONE line. Example: "Michael, Anna, David, Julia". NEVER as vertical list.
-- AGENDA: Numbered list (1. 2. 3.). Each point as one short line.
-- GOAL: One paragraph directly after header. Label: "Ziel des Meetings:" or "Objective:".
-- DECISIONS: Numbered list (1. 2. 3.). Each decision as one concise sentence.
-- ACTION ITEMS: Compact table or structured list. Each item on ONE line with format:
-  "1. [Task] — [Owner], bis [Date]"
-  Example: "1. Fehlerpfade prüfen — David, bis 11.04.2026"
-  Do NOT use multi-line cards, grids, or separate rows for task/owner/date.
-- OPEN POINTS: Numbered list (1. 2. 3.).
-- NEXT MEETING: One line. Example: "Nächstes Meeting: Dienstag, 15.04.2026, 10:00 Uhr"
-- NEVER use grid layouts or multi-column for action items/decisions. Always simple vertical list.
-- NEVER list items as descriptive paragraphs. Always structured numbered points.
+CONTENT FORMATTING (follow exactly):
+- PARTICIPANTS: Comma-separated on ONE line. "Michael, Anna, David, Julia". NEVER vertical list.
+- AGENDA: Numbered (1. 2. 3.), each point one short line.
+- GOAL: One paragraph after header. "Ziel des Meetings: ..."
+- DECISIONS: Numbered (1. 2. 3.), each one concise sentence.
+- ACTION ITEMS: Each on ONE line: "1. [Task] — [Owner], bis [Date]"
+- OPEN POINTS: Numbered (1. 2. 3.).
+- NEXT MEETING: One line with date+time.
+- NEVER descriptive paragraphs for list items. Always structured numbered points.
 
-MOBILE / PWA (CRITICAL):
-- Must be readable on 320px-428px screens.
-- The <style> block MUST include:
-  * { box-sizing: border-box; }
-  .meeting-protocol { max-width: 100%; padding: 16px; }
-  @media (max-width: 640px) {
-    .meeting-protocol { padding: 12px !important; }
-    h1 { font-size: 20px !important; }
-  }
-- PRINT remains A4 (@page + @media print unchanged).
+RESPONSIVE:
+- <style> block MUST include:
+  * { box-sizing:border-box; }
+  .meeting-protocol { max-width:780px; margin:0 auto; padding:48px 60px; }
+  @media(max-width:640px){ .meeting-protocol{max-width:100%!important;padding:14px!important;box-shadow:none!important;} }
+  @media print { @page{size:A4;margin:20mm 18mm;} .meeting-protocol{max-width:100%!important;padding:0!important;box-shadow:none!important;} }
 
 ${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
 
@@ -254,36 +254,36 @@ REGELN:
     - Sektionen: page-break-inside: avoid
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
-DESIGN-REGELN (WICHTIG):
-- Font: system-ui, -apple-system, sans-serif. Farbe: #2a2420 (Text), #c4a882 (Akzent).
-- Äußerer Container: max-width:100%; padding:16px; KEINE festen Breiten. word-break:break-word;
-- Titel: 20px. Sektionsüberschriften: uppercase, 11px, letter-spacing, Farbe #a09080. Body: 14px, line-height:1.6.
-- Keine Emojis. Elegant, professionell, kompakt.
+VISUELLES DESIGN (professionelles, elegantes Dokument):
+- Font: system-ui, -apple-system, sans-serif
+- Farben: #2a2420 (Text), #c4a882 (Akzentlinien, Überschriften-Deko), #a09080 (Sektionslabels)
+- Hintergrund: #fff. Sektionen mit feinem Border (#ede8e2) oder dezenter Hintergrund (#faf9f6)
+- Header: Titel 20px font-weight:300, border-bottom 1px solid #c4a882, Datum rechts
+- Sektionslabels: uppercase, 9px, letter-spacing:0.2em, color:#a09080, margin-bottom:12px
+- Body: 13px, line-height:1.6, color:#333
+- Trennlinien: 1px solid #ede8e2 zwischen Sektionen
+- Aufgaben: jede mit dezenter Unterlinie, font-size:13px
+- Gesamteindruck: elegant, viel Weißraum, wie Premium-Beratung. KEIN reiner Text.
+- Keine Emojis. Jede Sektion muss gestyltes HTML mit inline CSS haben.
+- Äußerer Wrapper: class="meeting-protocol", max-width:780px (DIN A4), padding:48px 60px, margin:0 auto, box-shadow:0 1px 8px rgba(0,0,0,.06)
+- Auf Mobil (<640px): padding kleiner, max-width:100%, kein box-shadow
 
-FORMAT-REGELN (KRITISCH — exakt befolgen):
-- TEILNEHMER: Immer kommagetrennt in EINER Zeile. Beispiel: "Michael, Anna, David, Julia". NIEMALS als vertikale Liste.
-- TAGESORDNUNG: Nummerierte Liste (1. 2. 3.). Jeder Punkt als eine kurze Zeile.
-- ZIEL: Ein Absatz direkt nach dem Header. Label: "Ziel des Meetings:".
-- BESCHLÜSSE: Nummerierte Liste (1. 2. 3.). Jeder Beschluss als ein knapper Satz.
-- AUFGABEN: Kompakte Liste. Jede Aufgabe auf EINER Zeile im Format:
-  "1. [Aufgabe] — [Verantwortlich], bis [Datum]"
-  Beispiel: "1. Fehlerpfade prüfen — David, bis 11.04.2026"
-  KEINE mehrzeiligen Karten, Grids oder separate Zeilen für Aufgabe/Person/Datum.
-- OFFENE PUNKTE: Nummerierte Liste (1. 2. 3.).
-- NÄCHSTES MEETING: Eine Zeile. Beispiel: "Nächstes Meeting: Dienstag, 15.04.2026, 10:00 Uhr"
-- NIEMALS Grid-Layouts oder Mehrspalten für Aufgaben/Beschlüsse. Immer einfache vertikale Liste.
-- NIEMALS Punkte als beschreibende Absätze. Immer strukturierte nummerierte Punkte.
+INHALTS-FORMATIERUNG (exakt befolgen):
+- TEILNEHMER: Kommagetrennt in EINER Zeile. "Michael, Anna, David, Julia". NIEMALS vertikale Liste.
+- TAGESORDNUNG: Nummeriert (1. 2. 3.), jeder Punkt eine kurze Zeile.
+- ZIEL: Ein Absatz nach Header. "Ziel des Meetings: ..."
+- BESCHLÜSSE: Nummeriert (1. 2. 3.), jeder ein knapper Satz.
+- AUFGABEN: Jede auf EINER Zeile: "1. [Aufgabe] — [Verantwortlich], bis [Datum]"
+- OFFENE PUNKTE: Nummeriert (1. 2. 3.).
+- NÄCHSTES MEETING: Eine Zeile mit Datum+Uhrzeit.
+- NIEMALS beschreibende Absätze für Listenpunkte. Immer strukturiert nummeriert.
 
-MOBILE / PWA (KRITISCH):
-- Muss auf 320px-428px Bildschirmen lesbar sein.
-- Der <style>-Block MUSS enthalten:
-  * { box-sizing: border-box; }
-  .meeting-protocol { max-width: 100%; padding: 16px; }
-  @media (max-width: 640px) {
-    .meeting-protocol { padding: 12px !important; }
-    h1 { font-size: 20px !important; }
-  }
-- PRINT bleibt DIN A4 (@page + @media print unverändert).
+RESPONSIVE:
+- <style>-Block MUSS enthalten:
+  * { box-sizing:border-box; }
+  .meeting-protocol { max-width:780px; margin:0 auto; padding:48px 60px; }
+  @media(max-width:640px){ .meeting-protocol{max-width:100%!important;padding:14px!important;box-shadow:none!important;} }
+  @media print { @page{size:A4;margin:20mm 18mm;} .meeting-protocol{max-width:100%!important;padding:0!important;box-shadow:none!important;} }
 
 ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
