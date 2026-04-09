@@ -3484,20 +3484,23 @@
       function scrollToLandingTarget(mode) {
         const target = heroScrollTargets[mode];
         if (!target) return;
-        if (target.type === 'card') {
-          const section = document.getElementById('use-cases');
-          if (section) {
-            // Use setTimeout to escape any event-handler scroll locks
-            setTimeout(() => {
-              section.scrollIntoView({behavior:'smooth', block:'start'});
-              if (window._msScrollToCard) window._msScrollToCard(target.index);
-              if (window._msUpdateCards) window._msUpdateCards(target.index);
-            }, 0);
+        setTimeout(() => {
+          if (target.type === 'card') {
+            const section = document.getElementById('use-cases');
+            if (section) {
+              const y = section.getBoundingClientRect().top + window.scrollY;
+              window.scrollTo({top: y, behavior: 'smooth'});
+            }
+            if (window._msScrollToCard) window._msScrollToCard(target.index);
+            if (window._msUpdateCards) window._msUpdateCards(target.index);
+          } else {
+            const el = document.getElementById(target.id);
+            if (el) {
+              const y = el.getBoundingClientRect().top + window.scrollY;
+              window.scrollTo({top: y, behavior: 'smooth'});
+            }
           }
-        } else {
-          const el = document.getElementById(target.id);
-          if (el) setTimeout(() => el.scrollIntoView({behavior:'smooth', block:'start'}), 0);
-        }
+        }, 10);
       }
 
       heroCta.addEventListener("click", (e) => {
