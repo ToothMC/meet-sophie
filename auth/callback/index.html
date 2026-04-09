@@ -79,7 +79,7 @@
       if (done) return;
       done = true;
 
-      const defaultTarget = detectedMode ? "/talk" : "/";
+      const defaultTarget = detectedMode ? "/talk" : "/app";
       const target = buildTarget(defaultTarget);
 
       // Broadcast AUTH_COMPLETED to all same-partition tabs

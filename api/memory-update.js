@@ -397,7 +397,9 @@ async function generateConversationOutput({
     "Also generate a short session_title with max 4 words. " +
     "The title must name the main topic only, not a sentence. " +
     "Avoid generic titles like Conversation, Session, Discussion. " +
-    "IMPORTANT: Write the entire output in the SAME language as the transcript.";
+    "CRITICAL LANGUAGE RULE: Write the ENTIRE output (session_title, short_summary, key_insights, action_plan, open_questions) " +
+    "in the SAME language as the transcript. German transcript → German output. French transcript → French output. " +
+    "NEVER write English output for a non-English transcript.";
 
   const userMsg = `
 Fallback summary from session memory:
@@ -1133,8 +1135,15 @@ export default async function handler(req, res) {
       .map((t) => `${t.role.toUpperCase()}: ${t.text.slice(0, 2000)}`)
       .join("\n");
 
+    // Map session_mode to session_type (unified model)
+    const SESSION_TYPE_MAP = { brainstorm: "brainstorm", salespitch: "sales_pitch", meeting: "meeting" };
+    const sessionType = SESSION_TYPE_MAP[sessionMode] || "talk";
+
     const baseSession = {
       user_id: user.id,
+      session_mode: sessionMode || "voice", // backward-compat
+      session_type: sessionType,
+      primary_modality: "voice",
       session_date: sessionEndedAt || nowIso,
       started_at: sessionStartedAt,
       ended_at: sessionEndedAt || nowIso,
@@ -1144,20 +1153,8 @@ export default async function handler(req, res) {
     };
 
     if (!transcriptText || transcriptText.trim().length < 10) {
-      const { data: emptySession, error: sessErr } = await supabase
-        .from("user_sessions")
-        .insert({
-          ...baseSession,
-          emotional_tone: "unknown",
-          stress_level: null,
-          closeness_level: null,
-          short_summary: `No transcript captured. duration=${secondsUsed}s`.slice(0, 300),
-          title: "Conversation",
-        })
-        .select("id, session_date, short_summary, title")
-        .single();
-
-      if (sessErr) console.error("user_sessions insert failed:", sessErr);
+      // No meaningful transcript — don't create a session without report
+      console.log("[memory-update] skipping session creation — no transcript", { user: user.id.slice(0, 8), duration: secondsUsed });
 
       return res.status(200).json({
         ok: true,
@@ -1349,6 +1346,10 @@ export default async function handler(req, res) {
     // ---------------------------
     const system =
       "You extract structured memory from the transcript. " +
+      "LANGUAGE RULE: Write ALL output fields (session_title, short_summary, session_summary, " +
+      "last_interaction_summary, open_topics, pending_decisions, next_steps, significant_developments) " +
+      "in the SAME language as the transcript. If the transcript is in German, write German. " +
+      "If in French, write French. Never default to English unless the transcript is in English. " +
       "Assistant statements are untrusted for durable USER facts. " +
       "PROFILE: Only store durable facts/preferences explicitly stated BY THE USER in USER messages. " +
       "Never guess or infer PROFILE fields. If unsure, return empty strings/empty arrays/null. " +
@@ -1366,7 +1367,10 @@ export default async function handler(req, res) {
       "significant_developments: Major life events worth remembering long-term. " +
       "session_summary: 1-2 sentence summary of THIS session. " +
       "open_topics/pending_decisions/next_steps: Unresolved items from this session. " +
-      "importance_score: 0.0–1.0, how significant this session was (casual chat=0.2, major decision=0.9).";
+      "importance_score: 0.0–1.0, how significant this session was (casual chat=0.2, major decision=0.9). " +
+      "SESSION: session_title must be a short (max 4 words) topic-based title for this session. " +
+      "Write it in the same language as the transcript. " +
+      "Name the main topic, not a generic label like 'Conversation' or 'Session'.";
 
     const userMsg = `
 CURRENT structured profile (existing DB values):
@@ -1397,6 +1401,9 @@ significant_developments: ${(existingLtm?.significant_developments || []).join("
 
 NEW transcript (includes USER + ASSISTANT; remember: only USER messages count):
 ${transcriptText}
+
+MANDATORY OUTPUT LANGUAGE: ${existing.preferred_language === "de" ? "German (Deutsch)" : existing.preferred_language === "fr" ? "French (Français)" : "English"}
+You MUST write session_title, short_summary, session_summary, last_interaction_summary, open_topics, pending_decisions, next_steps, and significant_developments in ${existing.preferred_language === "de" ? "GERMAN" : existing.preferred_language === "fr" ? "FRENCH" : "ENGLISH"}.
 `.trim();
 
     const schema = {
@@ -1446,12 +1453,13 @@ ${transcriptText}
           type: "object",
           additionalProperties: false,
           properties: {
+            session_title: { type: "string" },
             emotional_tone: { type: "string" },
             stress_level: { type: "integer", minimum: 0, maximum: 10 },
             closeness_level: { type: "integer", minimum: 0, maximum: 10 },
             short_summary: { type: "string" },
           },
-          required: ["emotional_tone", "stress_level", "closeness_level", "short_summary"],
+          required: ["session_title", "emotional_tone", "stress_level", "closeness_level", "short_summary"],
         },
         structured_memory: {
           type: "object",
@@ -1818,44 +1826,90 @@ ${transcriptText}
 
     const sessSummary = sanitizeSummary(clean(ss.short_summary) || deterministicSummary || fallbackSummary);
 
-    const finalSessionTitle = clean(profileRow.preferred_name || profileRow.first_name)
-      ? `Conversation with ${clean(profileRow.preferred_name || profileRow.first_name)}`
-      : "Conversation";
+    // Use AI-generated title from session analysis, fallback to generic
+    const aiTitle = clean(ss.session_title || "").slice(0, 120);
+    const finalSessionTitle = aiTitle || sessSummary.slice(0, 80) || "Session";
 
-    const { data: insertedSession, error: sessErr } = await supabase
-      .from("user_sessions")
-      .insert({
-        ...baseSession,
-        title: finalSessionTitle.slice(0, 120),
-        emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
-        stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
-        closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-        short_summary: sessSummary.slice(0, 300),
-        has_transcript: transcriptArr.length > 0,
-        has_output: false,
-      })
-      .select("id, user_id, session_date, short_summary, title")
-      .single();
+    // Check if session already exists in user_sessions (chat sessions created by /api/chat handleStart)
+    const existingSessionId = body.session_id || null;
+    let insertedSession;
 
-    if (sessErr || !insertedSession?.id) {
-      console.error("user_sessions insert failed:", sessErr);
-      return res.status(500).json({
-        error: "user_sessions insert failed",
-        detail: sessErr?.message || "Missing session id",
-      });
+    if (existingSessionId) {
+      const { data: existing } = await supabase
+        .from("user_sessions")
+        .select("id, user_id")
+        .eq("id", existingSessionId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        // UPDATE existing session (chat path) — messages already persisted per-turn via RPC
+        const { error: updErr } = await supabase
+          .from("user_sessions")
+          .update({
+            title: finalSessionTitle.slice(0, 120),
+            emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+            stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+            closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+            short_summary: sessSummary.slice(0, 300),
+            status: "completed",
+            ended_at: sessionEndedAt || nowIso,
+            duration_seconds: secondsUsed || null,
+            has_transcript: true,
+            has_output: false,
+          })
+          .eq("id", existingSessionId);
+
+        if (updErr) {
+          console.error("user_sessions update failed:", updErr);
+          return res.status(500).json({ error: "user_sessions update failed", detail: updErr.message });
+        }
+
+        insertedSession = { id: existingSessionId, user_id: user.id, session_date: nowIso, short_summary: sessSummary.slice(0, 300), title: finalSessionTitle.slice(0, 120) };
+        console.log("[memory-update] updated existing session:", existingSessionId.slice(0, 8));
+        // Skip conversation_messages insert — already persisted per-turn
+      }
     }
 
-    const messageRows = transcriptArr.map((t, idx) => ({
-      session_id: insertedSession.id,
-      seq: idx,
-      role: t.role || "other",
-      text: clean(t.text),
-    }));
+    if (!insertedSession) {
+      // INSERT new session (voice path — no prior user_sessions row exists)
+      const { data: newSession, error: sessErr } = await supabase
+        .from("user_sessions")
+        .insert({
+          ...baseSession,
+          title: finalSessionTitle.slice(0, 120),
+          emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+          stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+          closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+          short_summary: sessSummary.slice(0, 300),
+          has_transcript: transcriptArr.length > 0,
+          has_output: false,
+        })
+        .select("id, user_id, session_date, short_summary, title")
+        .single();
 
-    if (messageRows.length) {
-      const { error: msgErr } = await supabase.from("conversation_messages").insert(messageRows);
-      if (msgErr) {
-        console.error("conversation_messages insert failed:", msgErr);
+      if (sessErr || !newSession?.id) {
+        console.error("user_sessions insert failed:", sessErr);
+        return res.status(500).json({
+          error: "user_sessions insert failed",
+          detail: sessErr?.message || "Missing session id",
+        });
+      }
+      insertedSession = newSession;
+
+      // Insert conversation messages (voice sessions — not persisted per-turn)
+      const messageRows = transcriptArr.map((t, idx) => ({
+        session_id: insertedSession.id,
+        seq: idx,
+        role: t.role || "other",
+        text: clean(t.text),
+      }));
+
+      if (messageRows.length) {
+        const { error: msgErr } = await supabase.from("conversation_messages").insert(messageRows);
+        if (msgErr) {
+          console.error("conversation_messages insert failed:", msgErr);
+        }
       }
     }
 

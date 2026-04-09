@@ -1121,7 +1121,7 @@ body{
 <div class="overlay" id="overlay"></div>
 
 <div class="topbar">
-  <a href="/" id="backToLandingBtn">← Back</a>
+  <a href="/app" id="backToLandingBtn">← Back</a>
   <a href="/settings/" id="settingsBtn" style="color:rgba(255,255,255,.6);font-size:18px;text-decoration:none;padding:6px;border-radius:8px;display:flex;align-items:center" title="Einstellungen">&#9881;</a>
   <button id="logoutBtn" type="button">Log out</button>
 </div>
@@ -1557,6 +1557,7 @@ let pausedElapsedMs = 0;        // elapsed session time before pause
 
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
+let _voiceSessionData = null; // session API response, shared with dc.onopen callback
 
 // ── Brainstorm segmented control logic ─────────────────────
 let _bsMode = "solo";
@@ -1675,11 +1676,11 @@ document.querySelectorAll("#modeBar .mode-pill").forEach(btn => {
     window.location.href = "/meeting/";
     return;
   }
-  // Brainstorm excluded — config is transient and lost on page reload
-  if (stored && ["salespitch"].includes(stored)) {
+  if (stored && ["salespitch", "brainstorm"].includes(stored)) {
     selectedVoiceMode = stored;
     const pill = document.querySelector(`#modeBar .mode-pill[data-mode="${stored}"]`);
     if (pill) pill.classList.add("active");
+    if (stored === "brainstorm") showBsSeg(localStorage.getItem("sophie_brainstorm_type") || "solo");
   }
   // Hide report toggle for modes where report is mandatory
   if (selectedVoiceMode === "salespitch" || selectedVoiceMode === "brainstorm") {
@@ -1723,6 +1724,10 @@ const voiceChatEl = document.getElementById("voiceChat");
 const voiceChatMessages = document.getElementById("voiceChatMessages");
 const voiceChatInput = document.getElementById("voiceChatInput");
 const voiceChatSendBtn = document.getElementById("voiceChatSend");
+
+// ── Resume from Verlauf: session ID for server-side context loading ──
+const _resumeSessionId = sessionStorage.getItem("sophie_resume_session_id");
+if (_resumeSessionId) sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── Voice Chat File Upload ──
 const vcUploadBtn = document.getElementById("vcUploadBtn");
@@ -2097,6 +2102,9 @@ function clearHandover() {
 }
 
 const voiceHandover = loadHandover();
+
+// Clear any stale resume state
+sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── i18n: UI translations ──────────────────────────────────
 const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
@@ -2925,7 +2933,7 @@ function startFakeReportLoader() {
 
 function resetPostCallUI() {
   // Report was disabled — go back to landing page
-  window.location.href = "/";
+  window.location.href = "/app";
 }
 
 function stopFakeReportLoader(hideBar = true) {
@@ -2985,7 +2993,7 @@ function resetClosingState() {
 function configurePostCallCta(triggeredByLimit = false) {
   postCallCta.style.display = "block";
 
-  function goHome() { window.location.href = "/"; }
+  function goHome() { window.location.href = "/app"; }
 
   // Remove any previously added demo button
   const oldDemo = document.getElementById("postCallDemoBtn");
@@ -4618,8 +4626,8 @@ function attachChannel(ch) {
     } else if (!isFirstSession) {
       // ── Mode-specific kickoffs for returning users ──
       // Single source of truth: exactly ONE opening turn per mode, triggered here.
-      const userName = data?.preferred_name || data?.user_name || "";
-      const greetLang = data?.preferred_language || _uiLang || "en";
+      const userName = _voiceSessionData?.preferred_name || _voiceSessionData?.user_name || "";
+      const greetLang = _voiceSessionData?.preferred_language || _uiLang || "en";
       const isDE = greetLang === "de";
       const nameStr = userName ? ` ${userName}` : "";
 
@@ -5512,6 +5520,7 @@ async function startVoice(){
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
         ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
+        ...(_resumeSessionId ? { "X-Sophie-Resume-Session": _resumeSessionId } : {}),
         ...((function() {
           // Build brainstorm config on-the-fly from toggle if not already set
           if (selectedVoiceMode === "brainstorm" && !brainstormVoiceConfig && window._getBrainstormConfig) {
@@ -5525,6 +5534,7 @@ async function startVoice(){
     });
 
     const data = await safeJson(tokenRes);
+    _voiceSessionData = data; // store for dc.onopen callback
 
     if (tokenRes.status === 402) {
       _startVoiceLock = false;
@@ -5578,14 +5588,14 @@ async function startVoice(){
     if (tokenRes.status === 429) {
       _startVoiceLock = false;
       track("talk_start_failed", { http_status: 429, message: data?.error || "busy" });
-      window.location.href = "/";
+      window.location.href = "/app";
       return;
     }
 
     if (!tokenRes.ok) {
       _startVoiceLock = false;
       track("talk_start_failed", { http_status: tokenRes.status, message: data?.message || "" });
-      window.location.href = "/";
+      window.location.href = "/app";
       return;
     }
 
@@ -5761,7 +5771,7 @@ async function startVoice(){
       message: String(err?.message || err).slice(0, 180),
       http_status: status || null,
     });
-    window.location.href = "/";
+    window.location.href = "/app";
   }
 }
 
@@ -5817,7 +5827,7 @@ async function stopVoicePitchClean() {
 
   if (!hasRealConversation) {
     stopFakeReportLoader();
-    window.location.href = "/";
+    window.location.href = "/app";
     return;
   }
 
@@ -5972,7 +5982,7 @@ if (!hasRealConversation) {
   hasUserSpoken = false;
 
   // No real conversation — go back to landing page
-  window.location.href = "/";
+  window.location.href = "/app";
   return;
 }
     
@@ -6115,7 +6125,7 @@ if (!hasRealConversation) {
     // If report was shown, stay on page (report has its own navigation).
     // Otherwise go back to landing page.
     if (!reportEnabled || !sessionId) {
-      window.location.href = "/";
+      window.location.href = "/app";
     }
     resetClosingState();
 
@@ -6211,7 +6221,7 @@ endBtn.addEventListener("click", () => stopVoice(false));
 document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
   e.preventDefault();
   sessionStorage.setItem("FORCE_NEW_CHAT", "1");
-  window.location.href = "/";
+  window.location.href = "/app";
 });
 
 // On mobile, getUserMedia requires a user gesture (tap/click) for first-time

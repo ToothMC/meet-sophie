@@ -162,13 +162,20 @@ export default async function handler(req, res) {
     {
       const { data } = await supabase
         .from('conversation_outputs')
-        .select('session_id, title, report_status, report_style, created_at, user_sessions!inner(user_id)')
+        .select('session_id, title, report_status, report_style, created_at, user_sessions!inner(user_id, session_type, session_mode)')
         .eq('user_sessions.user_id', user.id)
         .not('report_html', 'is', null)
         .order('created_at', { ascending: false })
         .limit(100);
       for (const r of (data || [])) {
-        talkReports.push({ session_id: r.session_id, title: r.title, report_status: r.report_status, report_style: r.report_style, created_at: r.created_at, source: 'talk', id: r.session_id });
+        // Use session_type from user_sessions for accurate grouping
+        const st = r.user_sessions?.session_type || r.user_sessions?.session_mode || 'talk';
+        const sourceMap = { brainstorm: 'brainstorm', sales_pitch: 'salespitch', salespitch: 'salespitch', meeting: 'meeting' };
+        // Also check session_mode as fallback (legacy sessions may have session_type='talk' but session_mode='meeting')
+        const sm = r.user_sessions?.session_mode || '';
+        const sourceFromMode = sourceMap[sm] || null;
+        const source = sourceMap[st] || sourceFromMode || 'talk';
+        talkReports.push({ session_id: r.session_id, title: r.title, report_status: r.report_status, report_style: r.report_style || source, created_at: r.created_at, source, id: r.session_id });
       }
     }
 

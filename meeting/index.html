@@ -399,7 +399,7 @@ body{
 <div id="meetingArea" class="meeting-area">
   <!-- Topbar -->
   <div class="topbar">
-    <a href="/talk/" class="back" id="backBtn">&larr;</a>
+    <a href="/app" class="back" id="backBtn">&larr;</a>
     <span class="title" id="meetingTitleDisplay">Meeting</span>
     <button class="mute-toggle" id="muteToggle"><span class="mute-icon"></span> Sophie</button>
     <button class="mute-toggle" id="meetingPauseBtn" style="display:none">⏸ Pause</button>
@@ -876,6 +876,23 @@ async function buildCanonicalTranscript(mid) {
 async function prepareSummaryInput(mid) {
   const { segments, voiceText } = await buildCanonicalTranscript(mid);
   const parts = [];
+
+  // Include meeting context (participants, agenda, goal) from DB
+  try {
+    await refreshAccessToken();
+    const { data: ctx } = await supabase
+      .from("meeting_context")
+      .select("context_type, content")
+      .eq("meeting_id", mid);
+    if (ctx?.length) {
+      const contextLines = ctx.map(c => `[${c.context_type.toUpperCase()}] ${c.content}`).join("\n");
+      parts.push(`[Meeting-Kontext]\n${contextLines}`);
+    }
+  } catch (_) {}
+
+  // Include meeting title if available
+  if (meetingData?.title) parts.push(`[Meeting-Titel] ${meetingData.title}`);
+
   const segText = segments.map(s => s.text).join(" ");
   if (segText.trim()) parts.push(`[Aufnahme — Gesprächsinhalt]\n${segText}`);
   if (voiceText.trim()) parts.push(`[Sophie Voice Session]\n${voiceText}`);
@@ -1867,17 +1884,17 @@ async function transitionPhase(newPhase, source = "unknown") {
       const segments = await stopAudioRecording();
       cleanupMicStream();
 
-      // 2. Use live transcript from meeting_segments if available
-      //    Only batch-transcribe if live transcription produced nothing
-      const liveText = Object.values(liveTranscriptChunks).filter(Boolean).join(" ");
-      if (liveText) {
-        speechTranscript.push(liveText);
-        console.log(`[meeting-post] Using live transcript: ${liveText.length} chars`);
+      // 2. Build canonical transcript (Server + IDB + Memory merged)
+      //    This is the single source of truth — NOT liveTranscriptChunks alone
+      const canonicalInput = await prepareSummaryInput(meetingId);
+      if (canonicalInput.hasContent) {
+        speechTranscript.push(canonicalInput.transcriptText);
+        console.log(`[meeting-post] Canonical transcript: ${canonicalInput.transcriptText.length} chars`);
       } else if (segments && segments.length > 0) {
-        // Fallback: batch transcribe via MEETING path (not old voice-rate path)
+        // Fallback: batch transcribe remaining untranscribed segments
         appendSystemMsg(lang === "de"
-          ? "🔄 Live-Transkript nicht verfügbar — transkribiere Audio..."
-          : "🔄 Live transcript unavailable — transcribing audio...");
+          ? "🔄 Transkribiere Audio..."
+          : "🔄 Transcribing audio...");
         const whisperText = await transcribeMeetingBatch(segments);
         if (whisperText) speechTranscript.push(whisperText);
       }
@@ -2916,7 +2933,24 @@ async function transcribeLiveSegment(blob, segIdx, isRetry = false) {
     }
 
     const data = await resp.json();
-    const text = (data.text || "").trim();
+    let text = (data.text || "").trim();
+    // Filter known Whisper end-of-audio hallucination artifacts
+    const WHISPER_ARTIFACTS = [
+      "Untertitel der Amara.org-Community",
+      "Untertitel von der Amara.org-Community",
+      "Vielen Dank fürs Zuschauen",
+      "Vielen Dank für's Zuschauen",
+      "Thanks for watching",
+      "Thank you for watching",
+      "Sous-titres réalisés par la communauté d'Amara.org",
+      "Merci d'avoir regardé",
+    ];
+    for (const artifact of WHISPER_ARTIFACTS) {
+      if (text.endsWith(artifact)) {
+        console.log(`[meeting-live] Whisper artifact removed: "${artifact}"`);
+        text = text.slice(0, -artifact.length).trim();
+      }
+    }
     if (text) {
       liveTranscriptChunks[segIdx] = text;
       console.log(`[meeting-live] Seg ${segIdx}: "${text.slice(0, 80)}..."`);
@@ -3078,11 +3112,24 @@ function stopAudioRecording() {
       return;
     }
     const recorder = mediaRecorder;
-    recorder.onstop = () => {
-      // Save final segment
+    recorder.onstop = async () => {
+      // Save final segment — MUST persist and transcribe (was lost before!)
       if (audioChunks.length > 0) {
         const blob = new Blob(audioChunks, { type: recorder.mimeType || currentMimeType });
-        if (blob.size > 500) audioSegments.push(blob);
+        if (blob.size > 500) {
+          const finalIdx = liveSegmentIndex++;
+          audioSegments.push(blob);
+          // Persist to IDB so gap-filling can find it
+          try {
+            await MeetingStore.saveSegment(meetingId, finalIdx, blob, currentMimeType);
+            console.log(`[meeting-audio] Final segment ${finalIdx} saved to IDB (${(blob.size/1024).toFixed(0)}KB)`);
+          } catch (e) { console.warn("[meeting-audio] Final segment IDB save failed:", e?.message); }
+          // Live-transcribe the final segment
+          try {
+            await transcribeLiveSegment(blob, finalIdx);
+            console.log(`[meeting-audio] Final segment ${finalIdx} transcribed`);
+          } catch (e) { console.warn("[meeting-audio] Final segment transcription failed:", e?.message); }
+        }
         audioChunks = [];
       }
       const totalKB = audioSegments.reduce((s, b) => s + b.size, 0) / 1024;
@@ -4154,7 +4201,7 @@ ctaPost.addEventListener("click", async () => {
 ctaClose.addEventListener("click", async () => {
   await transitionPhase("closed", "user_click");
   // Navigate back to home after closing
-  window.location.href = "/";
+  window.location.href = "/app";
 });
 
 $("saveContextBtn").addEventListener("click", saveContext);
