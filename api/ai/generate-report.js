@@ -123,88 +123,86 @@ export default async function handler(req, res) {
         : isEN ? 'Write the ENTIRE report in English.'
         : isFR ? 'Rédige le rapport ENTIER en français.'
         : 'Schreibe das gesamte Protokoll auf Deutsch.';
-      const meetingPrompt = isEN ? `You are creating a meeting protocol from a voice transcript.
+      const meetingPrompt = (isEN || isFR) ? `${isEN ? 'You are creating a meeting protocol from a voice transcript.' : 'Tu crées un compte rendu de réunion à partir d\'une transcription vocale.'}
 ${langInstruction}
 ${dateInstruction}
 
-TRANSCRIPT FORMAT NOTES:
-- "[user]: [chat] ..." = Text messages typed by the user DURING the meeting. Often contain important facts, links or corrections — treat equally.
-- "[assistant]: [chat note] ..." = Notes Sophie displayed in the chat panel.
+${isEN ? 'TRANSCRIPT FORMAT NOTES' : 'NOTES SUR LE FORMAT DU TRANSCRIPT'}:
+- "[user]: [chat] ..." = ${isEN ? 'Text messages typed by the user DURING the meeting. Often contain important facts, links or corrections — treat equally.' : 'Messages texte tapés par l\'utilisateur PENDANT la réunion. Contiennent souvent des faits importants, liens ou corrections — traiter également.'}
+- "[assistant]: [chat note] ..." = ${isEN ? 'Notes Sophie displayed in the chat panel.' : 'Notes que Sophie a affichées dans le panneau de chat.'}
 
-${meetingTemplate ? `TEMPLATE (keep design, replace text content only):
+${meetingTemplate ? `TEMPLATE (${isEN ? 'keep design, replace text content only' : 'garder le design, remplacer uniquement le contenu textuel'}):
 ${meetingTemplate.slice(0, 8000)}
 
 ` : ''}TRANSCRIPT:
 ${transcript_text}
 
-RULES:
-1. Protocol/Created by: ALWAYS "Sophie"
-2. ONLY use information that is LITERALLY in the transcript
-   EXCEPTION — Correct common speech recognition errors: "Lead Check" → "Lean Check", "Meet Sofie" → "MeetSophie"
-3. CLEARLY DISTINGUISH:
-   - Metadata of THIS meeting (date, location, time) — only if explicitly stated about THIS meeting
-   - Info about FUTURE appointments → belongs in Action Items or "Next Meeting" section, NOT in header
-4. If info is not in the transcript → REMOVE section entirely (not "[Name]" or "—")
-5. Participants: ONLY those named in [PARTICIPANTS] or transcript. Unknown → remove section
-6. Time: ONLY if stated for THIS meeting. Otherwise remove.
-7. Location: ONLY if stated for THIS meeting. Otherwise remove.
-8. NEVER invent: no names, times, locations, roles, deadlines
-9. Empty sections (no decisions, no action items) → REMOVE COMPLETELY
-9b. AGENDA: If [AGENDA] is in the transcript, include it as a numbered section near the top of the protocol, BEFORE the discussion content.
-9c. GOAL/OBJECTIVE: If [GOAL] is in the transcript, include it as a short section after the header (e.g. "Ziel des Meetings: ...").
-9d. NEXT MEETING: If a next meeting date/time is mentioned, include it as a clearly labeled section (e.g. "Nächstes Meeting: Dienstag, 14.04.2026, 10:00 Uhr").
-10. LEAN CHECK — ALWAYS generate as last content section, wrapped in <div data-section="lean-check">:
-    Analyze the conversation and create a Lean analysis with these categories:
-    - FACTS: What was stated as proven/validated fact?
-    - ASSUMPTIONS: What was treated as fact but is actually an untested assumption?
-    - HYPOTHESES: What "if-then" hypotheses were proposed?
-    - TESTS: What tests/experiments were decided to verify hypotheses?
-    - SIGNAL: What criteria were defined to continue / stop / pivot?
-    - Only include categories that have actual content. Omit empty ones.
-    - If the meeting has no relevant Lean aspects (e.g. pure status update): omit Lean Check entirely.
-    - Design: subtle box with border-left 3px solid #c4a882, background #faf9f6, professional.
-    - No emojis in the Lean analysis.
-11. FULL TRANSCRIPT — ALWAYS as the very last section, wrapped in <div data-section="full-transcript">:
-    - Verbatim transcript from input, formatted as flowing text.
-    - CSS: display:none as default (frontend shows on demand).
-12. The HTML MUST contain a <style> block with @media print CSS for A4 PDF export:
+${isEN ? 'RULES' : 'RÈGLES'}:
+1. ${isEN ? 'Protocol/Created by: ALWAYS "Sophie"' : 'Protocole/Créé par : TOUJOURS "Sophie"'}
+2. ${isEN ? 'ONLY use information that is LITERALLY in the transcript' : 'Utiliser UNIQUEMENT les informations qui sont LITTÉRALEMENT dans le transcript'}
+   ${isEN ? 'EXCEPTION — Correct common speech recognition errors: "Lead Check" → "Lean Check", "Meet Sofie" → "MeetSophie"' : 'EXCEPTION — Corriger les erreurs courantes de reconnaissance vocale : "Lead Check" → "Lean Check", "Meet Sofie" → "MeetSophie"'}
+3. ${isEN ? 'CLEARLY DISTINGUISH' : 'DISTINGUER CLAIREMENT'}:
+   - ${isEN ? 'Metadata of THIS meeting (date, location, time) — only if explicitly stated about THIS meeting' : 'Métadonnées de CETTE réunion (date, lieu, heure) — uniquement si explicitement mentionnées pour CETTE réunion'}
+   - ${isEN ? 'Info about FUTURE appointments → belongs in Action Items or "Next Meeting" section, NOT in header' : 'Infos sur les rendez-vous FUTURS → appartiennent aux Actions ou section "Prochaine réunion", PAS dans l\'en-tête'}
+4. ${isEN ? 'If info is not in the transcript → REMOVE section entirely (not "[Name]" or "—")' : 'Si une info n\'est pas dans le transcript → SUPPRIMER la section entièrement (pas "[Nom]" ou "—")'}
+5. ${isEN ? 'Participants: ONLY those named in [PARTICIPANTS] or transcript. Unknown → remove section' : 'Participants : UNIQUEMENT ceux nommés dans [PARTICIPANTS] ou le transcript. Inconnus → supprimer la section'}
+6. ${isEN ? 'Time: ONLY if stated for THIS meeting. Otherwise remove.' : 'Heure : UNIQUEMENT si mentionnée pour CETTE réunion. Sinon supprimer.'}
+7. ${isEN ? 'Location: ONLY if stated for THIS meeting. Otherwise remove.' : 'Lieu : UNIQUEMENT si mentionné pour CETTE réunion. Sinon supprimer.'}
+8. ${isEN ? 'NEVER invent: no names, times, locations, roles, deadlines' : 'NE JAMAIS inventer : pas de noms, heures, lieux, rôles, échéances'}
+9. ${isEN ? 'Empty sections (no decisions, no action items) → REMOVE COMPLETELY' : 'Sections vides (pas de décisions, pas d\'actions) → SUPPRIMER COMPLÈTEMENT'}
+9b. ${isEN ? 'AGENDA: If [AGENDA] is in the transcript, include it as a numbered section near the top of the protocol, BEFORE the discussion content.' : 'ORDRE DU JOUR : Si [AGENDA] est dans le transcript, l\'inclure comme section numérotée près du début du protocole, AVANT le contenu de discussion.'}
+9c. ${isEN ? 'GOAL/OBJECTIVE: If [GOAL] is in the transcript, include it as a short section after the header (e.g. "Meeting objective: ...").' : 'OBJECTIF : Si [GOAL] est dans le transcript, l\'inclure comme section courte après l\'en-tête (ex : "Objectif de la réunion : ...").'}
+9d. ${isEN ? 'NEXT MEETING: If a next meeting date/time is mentioned, include it as a clearly labeled section (e.g. "Next meeting: Tuesday, 14.04.2026, 10:00 AM").' : 'PROCHAINE RÉUNION : Si une prochaine réunion est mentionnée, l\'inclure comme section clairement étiquetée (ex : "Prochaine réunion : mardi 14/04/2026, 10h00").'}
+10. ${isEN ? 'LEAN CHECK — ALWAYS generate as last content section, wrapped in <div data-section="lean-check">' : 'LEAN CHECK — TOUJOURS générer comme dernière section de contenu, dans <div data-section="lean-check">'}:
+    ${isEN ? 'Analyze the conversation and create a Lean analysis with these categories' : 'Analyser la conversation et créer une analyse Lean avec ces catégories'}:
+    - ${isEN ? 'FACTS: What was stated as proven/validated fact?' : 'FAITS : Qu\'est-ce qui a été affirmé comme fait prouvé/validé ?'}
+    - ${isEN ? 'ASSUMPTIONS: What was treated as fact but is actually an untested assumption?' : 'HYPOTHÈSES NON VÉRIFIÉES : Qu\'est-ce qui a été traité comme un fait mais est en réalité une hypothèse non testée ?'}
+    - ${isEN ? 'HYPOTHESES: What "if-then" hypotheses were proposed?' : 'HYPOTHÈSES : Quelles hypothèses "si-alors" ont été proposées ?'}
+    - ${isEN ? 'TESTS: What tests/experiments were decided to verify hypotheses?' : 'TESTS : Quels tests/expériences ont été décidés pour vérifier les hypothèses ?'}
+    - ${isEN ? 'SIGNAL: What criteria were defined to continue / stop / pivot?' : 'SIGNAL : Quels critères ont été définis pour continuer / arrêter / pivoter ?'}
+    - ${isEN ? 'Only include categories that have actual content. Omit empty ones.' : 'N\'inclure que les catégories ayant du contenu réel. Omettre les vides.'}
+    - ${isEN ? 'If the meeting has no relevant Lean aspects (e.g. pure status update): omit Lean Check entirely.' : 'Si la réunion n\'a pas d\'aspects Lean pertinents (ex : simple mise à jour) : omettre le Lean Check entièrement.'}
+    - ${isEN ? 'Design: subtle box with border-left 3px solid #c4a882, background #faf9f6, professional.' : 'Design : boîte subtile avec border-left 3px solid #c4a882, background #faf9f6, professionnel.'}
+    - ${isEN ? 'No emojis in the Lean analysis.' : 'Pas d\'émojis dans l\'analyse Lean.'}
+11. ${isEN ? 'FULL TRANSCRIPT — ALWAYS as the very last section, wrapped in <div data-section="full-transcript">' : 'TRANSCRIPT COMPLET — TOUJOURS comme toute dernière section, dans <div data-section="full-transcript">'}:
+    - ${isEN ? 'Verbatim transcript from input, formatted as flowing text.' : 'Transcript verbatim de l\'entrée, formaté comme texte continu.'}
+    - CSS: display:none ${isEN ? 'as default (frontend shows on demand).' : 'par défaut (le frontend l\'affiche à la demande).'}
+12. ${isEN ? 'The HTML MUST contain a <style> block with @media print CSS for A4 PDF export' : 'Le HTML DOIT contenir un bloc <style> avec @media print CSS pour export PDF A4'}:
     - @page { size: A4; margin: 20mm 18mm; }
-    - Sections: page-break-inside: avoid
+    - ${isEN ? 'Sections' : 'Sections'}: page-break-inside: avoid
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
-VISUAL DESIGN (produce a beautiful, professional document):
+${isEN ? 'VISUAL DESIGN (produce a beautiful, professional document)' : 'DESIGN VISUEL (produire un document beau et professionnel)'}:
 - Font: system-ui, -apple-system, sans-serif
-- Colors: #2a2420 (text), #c4a882 (accent lines, heading decoration), #a09080 (section labels)
-- Background: #fff. Sections with fine border (#ede8e2) or subtle background (#faf9f6)
-- Header: title 20px font-weight:300, border-bottom 1px solid #c4a882, date right-aligned
-- Section labels: uppercase, 9px, letter-spacing:0.2em, color:#a09080, margin-bottom:12px
-- Body text: 13px, line-height:1.6, color:#333
-- Separator lines: 1px solid #ede8e2 between sections
-- Action items: each item with subtle bottom border, font-size:13px
-- Overall: elegant, generous whitespace, like a premium consultancy document. NOT plain text.
-- No emojis. Every section must have styled HTML with inline CSS.
-- Outer wrapper: class="meeting-protocol", max-width:780px on desktop (A4-like), padding:48px 60px, margin:0 auto, word-break:break-word, box-shadow:0 1px 8px rgba(0,0,0,.06)
-- On mobile (<640px): padding shrinks, max-width:100%, no box-shadow
+- ${isEN ? 'Colors' : 'Couleurs'}: #2a2420 (${isEN ? 'text' : 'texte'}), #c4a882 (${isEN ? 'accent lines, heading decoration' : 'lignes d\'accent, décoration titres'}), #a09080 (${isEN ? 'section labels' : 'étiquettes sections'})
+- ${isEN ? 'Background' : 'Fond'}: #fff. ${isEN ? 'Sections with fine border (#ede8e2) or subtle background (#faf9f6)' : 'Sections avec bordure fine (#ede8e2) ou fond subtil (#faf9f6)'}
+- Header: ${isEN ? 'title' : 'titre'} 20px font-weight:300, border-bottom 1px solid #c4a882, ${isEN ? 'date right-aligned' : 'date alignée à droite'}
+- ${isEN ? 'Section labels' : 'Étiquettes sections'}: uppercase, 9px, letter-spacing:0.2em, color:#a09080, margin-bottom:12px
+- ${isEN ? 'Body text' : 'Corps texte'}: 13px, line-height:1.6, color:#333
+- ${isEN ? 'Separator lines' : 'Lignes séparatrices'}: 1px solid #ede8e2 ${isEN ? 'between sections' : 'entre sections'}
+- Action items: ${isEN ? 'each item with subtle bottom border' : 'chaque élément avec bordure basse subtile'}, font-size:13px
+- ${isEN ? 'Overall: elegant, generous whitespace, like a premium consultancy document. NOT plain text.' : 'Global : élégant, espaces généreux, comme un document de conseil premium. PAS du texte brut.'}
+- ${isEN ? 'No emojis. Every section must have styled HTML with inline CSS.' : 'Pas d\'émojis. Chaque section doit avoir du HTML stylé avec CSS inline.'}
+- ${isEN ? 'Outer wrapper' : 'Wrapper externe'}: class="meeting-protocol", max-width:780px ${isEN ? 'on desktop (A4-like)' : 'sur desktop (style A4)'}, padding:48px 60px, margin:0 auto, word-break:break-word, box-shadow:0 1px 8px rgba(0,0,0,.06)
+- ${isEN ? 'On mobile (<640px): padding shrinks, max-width:100%, no box-shadow' : 'Sur mobile (<640px) : padding réduit, max-width:100%, pas de box-shadow'}
 
-CONTENT FORMATTING (follow EXACTLY — violations are unacceptable):
-- PARTICIPANTS: Comma-separated on ONE line. NEVER vertical list.
-- AGENDA POINTS (discussion per topic): The FIRST agenda point may have a short text summary (2-3 sentences max).
-  ALL OTHER agenda points MUST be structured as numbered sub-points (1. 2. 3.), NOT as flowing text paragraphs.
-  If someone raised a concern, made a suggestion, or stated a fact → it becomes a numbered point, not prose.
-  BAD: "Anna betonte aus Produktsicht, dass Sophie offene Fragen kennen muss. David erklärte, dass die Logik serverseitig laufen soll."
-  GOOD: "1. Sophie muss offene Fragen und nächste Schritte kennen (Anna)\n2. Resümee-Logik serverseitig über System-Prompt (David)\n3. Start muss natürlich bleiben (Julia)"
-- GOAL: One paragraph after header.
-- DECISIONS: Numbered (1. 2. 3.), each one concise sentence.
-- ACTION ITEMS: NEVER use <table>. Use a simple <div> list. Each item as ONE line:
-  "<div style='padding:6px 0;border-bottom:1px solid #ede8e2;font-size:13px'>David — Fehlerpfade prüfen, bis 11.04.2026</div>"
-  Format: "[Owner] — [Task], bis [Date]"
-- OPEN POINTS: Numbered (1. 2. 3.), each one short line. NEVER text blocks.
-- NEXT MEETING: One line: "Wann: [Date, Time] | Wo: [Location] | Wer lädt ein: [Name]"
-- ABSOLUTELY FORBIDDEN: <table>, <tr>, <td>, <th> tags anywhere in the report. Use <div> lists instead.
-- NEVER write flowing text paragraphs for discussion points. ALWAYS numbered lists.
+${isEN ? 'CONTENT FORMATTING (follow EXACTLY — violations are unacceptable)' : 'FORMATAGE DU CONTENU (suivre EXACTEMENT — les violations sont inacceptables)'}:
+- ${isEN ? 'PARTICIPANTS: Comma-separated on ONE line. NEVER vertical list.' : 'PARTICIPANTS : Séparés par virgule sur UNE ligne. JAMAIS de liste verticale.'}
+- ${isEN ? 'AGENDA POINTS (discussion per topic): The FIRST agenda point may have a short text summary (2-3 sentences max).' : 'POINTS DE L\'ORDRE DU JOUR (discussion par sujet) : Le PREMIER point peut avoir un résumé textuel court (2-3 phrases max).'}
+  ${isEN ? 'ALL OTHER agenda points MUST be structured as numbered sub-points (1. 2. 3.), NOT as flowing text paragraphs.' : 'TOUS LES AUTRES points DOIVENT être structurés en sous-points numérotés (1. 2. 3.), PAS en paragraphes de texte.'}
+  ${isEN ? 'If someone raised a concern, made a suggestion, or stated a fact → it becomes a numbered point, not prose.' : 'Si quelqu\'un a soulevé une préoccupation, fait une suggestion ou énoncé un fait → cela devient un point numéroté, pas de la prose.'}
+- ${isEN ? 'GOAL: One paragraph after header.' : 'OBJECTIF : Un paragraphe après l\'en-tête.'}
+- ${isEN ? 'DECISIONS: Numbered (1. 2. 3.), each one concise sentence.' : 'DÉCISIONS : Numérotées (1. 2. 3.), chacune une phrase concise.'}
+- ${isEN ? 'ACTION ITEMS: NEVER use <table>. Use a simple <div> list. Each item as ONE line' : 'ACTIONS : JAMAIS utiliser <table>. Utiliser une simple liste <div>. Chaque élément sur UNE ligne'}:
+  "${isEN ? '<div style=\'padding:6px 0;border-bottom:1px solid #ede8e2;font-size:13px\'>David — Review error paths, by 11.04.2026</div>' : '<div style=\'padding:6px 0;border-bottom:1px solid #ede8e2;font-size:13px\'>David — Vérifier les cas d\'erreur, avant le 11/04/2026</div>'}"
+  Format: "[${isEN ? 'Owner' : 'Responsable'}] — [${isEN ? 'Task' : 'Tâche'}], ${isEN ? 'by' : 'avant le'} [Date]"
+- ${isEN ? 'OPEN POINTS: Numbered (1. 2. 3.), each one short line. NEVER text blocks.' : 'POINTS OUVERTS : Numérotés (1. 2. 3.), chacun une ligne courte. JAMAIS de blocs de texte.'}
+- ${isEN ? 'NEXT MEETING: One line: "When: [Date, Time] | Where: [Location] | Who invites: [Name]"' : 'PROCHAINE RÉUNION : Une ligne : "Quand : [Date, Heure] | Où : [Lieu] | Qui invite : [Nom]"'}
+- ${isEN ? 'ABSOLUTELY FORBIDDEN: <table>, <tr>, <td>, <th> tags anywhere in the report. Use <div> lists instead.' : 'ABSOLUMENT INTERDIT : balises <table>, <tr>, <td>, <th> partout dans le rapport. Utiliser des listes <div> à la place.'}
+- ${isEN ? 'NEVER write flowing text paragraphs for discussion points. ALWAYS numbered lists.' : 'JAMAIS écrire de paragraphes de texte pour les points de discussion. TOUJOURS des listes numérotées.'}
 
 RESPONSIVE:
-- <style> block MUST include:
+- <style> ${isEN ? 'block MUST include' : 'bloc DOIT contenir'}:
   * { box-sizing:border-box; }
   .meeting-protocol { max-width:780px; margin:0 auto; padding:48px 60px; }
   @media(max-width:640px){ .meeting-protocol{max-width:100%!important;padding:14px!important;box-shadow:none!important;} }
@@ -215,7 +213,7 @@ RESPONSIVE:
     h1{font-size:18px!important;}
   }
 
-${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
+${meetingTemplate ? (isEN ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Répondre UNIQUEMENT avec le HTML rempli. Garder le design exact.') : (isEN ? 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.' : 'Répondre UNIQUEMENT avec du HTML propre (CSS inline). Pas de Markdown, pas de blocs de code.')}`
 
       : `Du erstellst ein Meeting-Protokoll aus einem Voice-Transcript.
 ${langInstruction}
