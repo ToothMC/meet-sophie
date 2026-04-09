@@ -142,13 +142,16 @@ RULES:
    EXCEPTION — Correct common speech recognition errors: "Lead Check" → "Lean Check", "Meet Sofie" → "MeetSophie"
 3. CLEARLY DISTINGUISH:
    - Metadata of THIS meeting (date, location, time) — only if explicitly stated about THIS meeting
-   - Info about FUTURE appointments → belongs in Action Items or "Next Meeting", NOT in header
+   - Info about FUTURE appointments → belongs in Action Items or "Next Meeting" section, NOT in header
 4. If info is not in the transcript → REMOVE section entirely (not "[Name]" or "—")
-5. Participants: ONLY those named. Unknown → remove section
+5. Participants: ONLY those named in [PARTICIPANTS] or transcript. Unknown → remove section
 6. Time: ONLY if stated for THIS meeting. Otherwise remove.
 7. Location: ONLY if stated for THIS meeting. Otherwise remove.
 8. NEVER invent: no names, times, locations, roles, deadlines
 9. Empty sections (no decisions, no action items) → REMOVE COMPLETELY
+9b. AGENDA: If [AGENDA] is in the transcript, include it as a numbered section near the top of the protocol, BEFORE the discussion content.
+9c. GOAL/OBJECTIVE: If [GOAL] is in the transcript, include it as a short section after the header (e.g. "Ziel des Meetings: ...").
+9d. NEXT MEETING: If a next meeting date/time is mentioned, include it as a clearly labeled section (e.g. "Nächstes Meeting: Dienstag, 14.04.2026, 10:00 Uhr").
 10. LEAN CHECK — ALWAYS generate as last content section, wrapped in <div data-section="lean-check">:
     Analyze the conversation and create a Lean analysis with these categories:
     - FACTS: What was stated as proven/validated fact?
@@ -169,15 +172,35 @@ RULES:
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
 DESIGN RULES (IMPORTANT):
-- Font: system-ui, -apple-system, sans-serif
-- Main color: #2a2420 (text), #c4a882 (accent, lines, heading decoration)
-- Background: #fff, sections with fine border (#ede8e2) or subtle background (#faf9f6)
-- Header: title large (24px), metadata (date, protocol) small below, no heavy border
-- Sections: clear headings (uppercase, 11px, letter-spacing, color #a09080), content 14px
-- Agenda items: numbered, clear separation, ample whitespace
-- Action Items: with responsible person and deadline if mentioned
-- Overall impression: elegant, professional, generous whitespace. Like a document from a premium consultancy — not an auto-generated form.
-- No emojis in the final report.
+- Font: system-ui, -apple-system, sans-serif. Color: #2a2420 (text), #c4a882 (accent).
+- Outer container: max-width:100%; padding:16px; NO fixed widths. word-break:break-word;
+- Title: 20px. Section headings: uppercase, 11px, letter-spacing, color #a09080. Body: 14px, line-height:1.6.
+- No emojis. Elegant, professional, compact.
+
+FORMATTING RULES (CRITICAL — follow exactly):
+- PARTICIPANTS: Always comma-separated on ONE line. Example: "Michael, Anna, David, Julia". NEVER as vertical list.
+- AGENDA: Numbered list (1. 2. 3.). Each point as one short line.
+- GOAL: One paragraph directly after header. Label: "Ziel des Meetings:" or "Objective:".
+- DECISIONS: Numbered list (1. 2. 3.). Each decision as one concise sentence.
+- ACTION ITEMS: Compact table or structured list. Each item on ONE line with format:
+  "1. [Task] — [Owner], bis [Date]"
+  Example: "1. Fehlerpfade prüfen — David, bis 11.04.2026"
+  Do NOT use multi-line cards, grids, or separate rows for task/owner/date.
+- OPEN POINTS: Numbered list (1. 2. 3.).
+- NEXT MEETING: One line. Example: "Nächstes Meeting: Dienstag, 15.04.2026, 10:00 Uhr"
+- NEVER use grid layouts or multi-column for action items/decisions. Always simple vertical list.
+- NEVER list items as descriptive paragraphs. Always structured numbered points.
+
+MOBILE / PWA (CRITICAL):
+- Must be readable on 320px-428px screens.
+- The <style> block MUST include:
+  * { box-sizing: border-box; }
+  .meeting-protocol { max-width: 100%; padding: 16px; }
+  @media (max-width: 640px) {
+    .meeting-protocol { padding: 12px !important; }
+    h1 { font-size: 20px !important; }
+  }
+- PRINT remains A4 (@page + @media print unchanged).
 
 ${meetingTemplate ? 'Reply ONLY with the filled HTML. Keep the exact design.' : 'Reply ONLY with clean HTML (inline CSS). No Markdown, no code fences.'}`
 
@@ -209,6 +232,9 @@ REGELN:
 7. Ort: NUR wenn für DIESES Meeting genannt. Sonst entfernen.
 8. NIEMALS erfinden: keine Namen, Uhrzeiten, Orte, Rollen, Fristen
 9. Leere Sektionen (keine Beschlüsse, keine Action Items) → KOMPLETT ENTFERNEN
+9b. TAGESORDNUNG: Wenn [AGENDA] im Transcript steht, als nummerierte Sektion nahe am Anfang des Protokolls einfügen, VOR dem Gesprächsinhalt.
+9c. ZIEL: Wenn [GOAL] im Transcript steht, als kurze Sektion nach dem Header einfügen (z.B. "Ziel des Meetings: ...").
+9d. NÄCHSTER TERMIN: Wenn ein Folgetermin mit Datum/Uhrzeit genannt wird, als eigene Sektion einfügen (z.B. "Nächstes Meeting: Dienstag, 14.04.2026, 10:00 Uhr").
 10. LEAN CHECK — IMMER als letzte inhaltliche Sektion generieren, eingewickelt in <div data-section="lean-check">:
     Analysiere das Gespräch und erstelle eine Lean-Analyse mit diesen Kategorien:
     - FAKTEN: Was wurde als bewiesene/validierte Tatsache genannt?
@@ -229,15 +255,35 @@ REGELN:
     - -webkit-print-color-adjust: exact; print-color-adjust: exact
 
 DESIGN-REGELN (WICHTIG):
-- Font: system-ui, -apple-system, sans-serif
-- Hauptfarbe: #2a2420 (Text), #c4a882 (Akzent, Linien, Überschriften-Deko)
-- Hintergrund: #fff, Sektionen mit feinem Border (#ede8e2) oder dezenter Hintergrund (#faf9f6)
-- Header: Titel groß (24px), Metadaten (Datum, Protokoll) klein darunter, kein fetter Rahmen
-- Sektionen: klare Überschriften (uppercase, 11px, letter-spacing, Farbe #a09080), Inhalt 14px
-- Tagesordnungspunkte: nummeriert, klare Trennung, genug Whitespace
-- Action Items: mit Verantwortlichem und Frist falls genannt
-- Gesamteindruck: elegant, professionell, viel Weißraum. Wie ein Dokument von einer Premium-Beratung — nicht wie ein automatisch generiertes Formular.
-- Keine Emojis im finalen Report.
+- Font: system-ui, -apple-system, sans-serif. Farbe: #2a2420 (Text), #c4a882 (Akzent).
+- Äußerer Container: max-width:100%; padding:16px; KEINE festen Breiten. word-break:break-word;
+- Titel: 20px. Sektionsüberschriften: uppercase, 11px, letter-spacing, Farbe #a09080. Body: 14px, line-height:1.6.
+- Keine Emojis. Elegant, professionell, kompakt.
+
+FORMAT-REGELN (KRITISCH — exakt befolgen):
+- TEILNEHMER: Immer kommagetrennt in EINER Zeile. Beispiel: "Michael, Anna, David, Julia". NIEMALS als vertikale Liste.
+- TAGESORDNUNG: Nummerierte Liste (1. 2. 3.). Jeder Punkt als eine kurze Zeile.
+- ZIEL: Ein Absatz direkt nach dem Header. Label: "Ziel des Meetings:".
+- BESCHLÜSSE: Nummerierte Liste (1. 2. 3.). Jeder Beschluss als ein knapper Satz.
+- AUFGABEN: Kompakte Liste. Jede Aufgabe auf EINER Zeile im Format:
+  "1. [Aufgabe] — [Verantwortlich], bis [Datum]"
+  Beispiel: "1. Fehlerpfade prüfen — David, bis 11.04.2026"
+  KEINE mehrzeiligen Karten, Grids oder separate Zeilen für Aufgabe/Person/Datum.
+- OFFENE PUNKTE: Nummerierte Liste (1. 2. 3.).
+- NÄCHSTES MEETING: Eine Zeile. Beispiel: "Nächstes Meeting: Dienstag, 15.04.2026, 10:00 Uhr"
+- NIEMALS Grid-Layouts oder Mehrspalten für Aufgaben/Beschlüsse. Immer einfache vertikale Liste.
+- NIEMALS Punkte als beschreibende Absätze. Immer strukturierte nummerierte Punkte.
+
+MOBILE / PWA (KRITISCH):
+- Muss auf 320px-428px Bildschirmen lesbar sein.
+- Der <style>-Block MUSS enthalten:
+  * { box-sizing: border-box; }
+  .meeting-protocol { max-width: 100%; padding: 16px; }
+  @media (max-width: 640px) {
+    .meeting-protocol { padding: 12px !important; }
+    h1 { font-size: 20px !important; }
+  }
+- PRINT bleibt DIN A4 (@page + @media print unverändert).
 
 ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte Design bei.' : 'Antworte NUR mit sauberem HTML (inline CSS). Kein Markdown, kein Codezaun.'}`;
 
@@ -324,6 +370,7 @@ Antworte NUR mit JSON in exakt diesem Format:
   "decisions": [{"text": "...", "owner": "..."}],
   "action_items": [{"text": "...", "owner": "...", "due": "...", "status": "open"}],
   "open_points": [{"text": "..."}],
+  "next_meeting": "Nächster Termin wie im Transkript genannt, z.B. 'Dienstag, 15.04.2026, 10:00 Uhr' — oder null wenn nicht genannt",
   "lean_check": {
     "facts": ["Was als validierte Tatsache genannt wurde"],
     "assumptions": ["Was als Fakt behandelt wurde aber ungeprüft ist"],
@@ -339,6 +386,7 @@ REGELN:
 - "due" nur wenn Datum/Frist genannt, sonst ""
 - Wenn eine Kategorie leer ist: leeres Array []
 - status ist immer "open" (wird später aktualisiert)
+- next_meeting: Datum, Uhrzeit und ggf. Ort wenn im Transkript genannt. Relative Angaben ("nächsten Dienstag") in absolute Daten umrechnen wenn möglich. null wenn kein Termin genannt.
 - lean_check: nur Kategorien mit Inhalt. Wenn das Meeting keine Lean-Aspekte hat, lean_check weglassen` }],
             model: 'gpt-4o-mini', maxTokens: 1500, temperature: 0.1,
           });
@@ -359,15 +407,19 @@ REGELN:
               risks: [],
             };
             if (structured.lean_check) upsertData.lean_check = structured.lean_check;
+            if (structured.next_meeting) upsertData.next_meeting = structured.next_meeting;
 
             const { error: sumErr } = await supabase.from('meeting_summary').upsert(upsertData, { onConflict: 'meeting_id' });
             if (sumErr) console.error(`[report] structured data save failed:`, sumErr.message);
             else console.log(`[report] Structured data saved: ${(structured.decisions||[]).length} decisions, ${(structured.action_items||[]).length} actions, ${(structured.open_points||[]).length} open, lean=${!!structured.lean_check}`);
 
-            // Also update meeting title if empty
+            // Set AI-generated title ONLY if user never provided one
+            // User-title is canonical — AI title goes in conversation_outputs.title only
             const { data: mtg } = await supabase.from('meetings').select('title').eq('id', meetingRow.id).maybeSingle();
             if (mtg && !mtg.title && structured.short_summary) {
+              // No user title → use AI summary as fallback
               await supabase.from('meetings').update({ title: structured.short_summary.slice(0, 60) }).eq('id', meetingRow.id);
+              console.log(`[report] Meeting title set (was empty): "${structured.short_summary.slice(0, 60)}"`);
             }
           }
         } catch (extractErr) {
