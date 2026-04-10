@@ -2258,6 +2258,58 @@ let lastActivityAt = 0;             // Timestamp of last speech/response event
 const INACTIVITY_WARNING_MS = 30 * 1000; // 30s silence → ask if still there
 const INACTIVITY_END_MS     = 30 * 1000; // 30s more → end session (60s total)
 
+// ══════════════════════════════════════════════════════════
+// SESSION STATE MACHINE — single source of truth
+// ══════════════════════════════════════════════════════════
+const S = { IDLE: 'idle', STARTING: 'starting', CONNECTING: 'connecting',
+  ACTIVE: 'active', STOPPING: 'stopping', FAILED: 'failed' };
+
+const ALLOWED_TRANSITIONS = {
+  [S.IDLE]:       [S.STARTING],
+  [S.STARTING]:   [S.CONNECTING, S.FAILED, S.IDLE],
+  [S.CONNECTING]: [S.ACTIVE, S.FAILED, S.IDLE],
+  [S.ACTIVE]:     [S.STOPPING, S.FAILED],
+  [S.STOPPING]:   [S.IDLE, S.FAILED],
+  [S.FAILED]:     [S.IDLE],
+};
+
+let _sessionRunId = 0;
+
+function createSession() {
+  return {
+    runId: ++_sessionRunId,
+    state: S.IDLE,
+    sessionId: null,
+    stopGuard: false,
+    memoryUpdateSent: false,
+    reportTriggered: false,
+    startedAt: null,
+    finalSnapshot: null,
+    metrics: {
+      userAudioDetected: false,
+      userTranscriptReceived: false,
+      assistantResponseStarted: false,
+      assistantResponseCompleted: false,
+      turnCount: 0,
+    },
+  };
+}
+
+let cs = createSession(); // cs = currentSession
+
+function setState(newState) {
+  if (!ALLOWED_TRANSITIONS[cs.state]?.includes(newState)) {
+    console.error(`[state] ILLEGAL: ${cs.state} → ${newState}`);
+    track("session_lifecycle", { phase: "illegal_transition", from: cs.state, to: newState, runId: cs.runId });
+    return false;
+  }
+  console.log(`[state] ${cs.state} → ${newState}`);
+  cs.state = newState;
+  return true;
+}
+
+// Legacy globals that are still needed by other parts of the code
+// TODO: migrate these into cs over time
 let hasUserSpoken = false;
 
 let talkStartedAt = null;
