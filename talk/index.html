@@ -4833,6 +4833,20 @@ If a name is known, use it once naturally.
 Then continue directly from the handover topic.
 Ask only one question and stop.`;
 
+    } else if (!isFirstSession) {
+      // RETURNING USER TALK: brief greeting so user knows Sophie is ready
+      console.log(`[${runId}] [startmode] returning user talk greeting`);
+      genericKickoff = `You are Sophie.
+
+${langLock}
+
+RETURNING USER GREETING:
+Greet the user briefly — a simple "Hi" is enough.
+Natural, short, warm. One sentence max.
+Then wait for the user to speak.
+Do NOT ask a question. Do NOT introduce yourself.
+Just signal that you're here.`;
+
     } else {
       // FIRST SESSION: onboarding start-mode
       genericKickoff = `You are Sophie.
