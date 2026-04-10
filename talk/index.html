@@ -2419,9 +2419,44 @@ const _i18n = {
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
 function resetStartBtnStyle() { startBtn.style.background = ""; startBtn.style.color = ""; }
 
-// Central reset — returns talk page to ready-to-start state after any session end/error
-function resetToReadyState(headlineKey) {
-  _startVoiceLock = false;
+// ══════════════════════════════════════════════════════════
+// CLEANUP REGISTRY — two-tier: timers/abort + media/WebRTC
+// ══════════════════════════════════════════════════════════
+const _cleanup = { timeouts: new Set(), intervals: new Set(), abortControllers: new Set() };
+
+function sessionTimeout(fn, ms) {
+  const id = setTimeout(() => { _cleanup.timeouts.delete(id); fn(); }, ms);
+  _cleanup.timeouts.add(id);
+  return id;
+}
+function sessionInterval(fn, ms) {
+  const id = setInterval(fn, ms);
+  _cleanup.intervals.add(id);
+  return id;
+}
+function cleanupTimersAndAbort() {
+  _cleanup.timeouts.forEach(clearTimeout);
+  _cleanup.intervals.forEach(clearInterval);
+  _cleanup.abortControllers.forEach(ac => { try { ac.abort(); } catch(_){} });
+  _cleanup.timeouts.clear();
+  _cleanup.intervals.clear();
+  _cleanup.abortControllers.clear();
+}
+function cleanupMediaResources() {
+  if (dc) { try { dc.close(); } catch(_){} dc = null; }
+  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(_){} stream = null; }
+  if (pc) { try { pc.close(); } catch(_){} pc = null; }
+  if (audioEl) { try { audioEl.srcObject = null; audioEl.remove(); } catch(_){} audioEl = null; }
+  if (_hyperAudioCtx) { try { _hyperAudioCtx.close(); } catch(_){} _hyperAudioCtx = null; }
+  _hyperAnalyser = null; _hyperDataArray = null; _hyperAnalyserWorks = false; _hyperSophieSpeaking = false;
+}
+
+// ══════════════════════════════════════════════════════════
+// DIFFERENTIATED RESET — three tiers
+// ══════════════════════════════════════════════════════════
+
+// Pure UI reset — no state logic, used by all reset tiers
+function resetUI(message) {
   startBtn.disabled = false;
   startBtn.style.display = "";
   startBtn.textContent = t("start");
@@ -2430,13 +2465,43 @@ function resetToReadyState(headlineKey) {
   endBtn.disabled = true;
   endBtn.style.display = "none";
   logoutBtn.disabled = false;
-  headline.textContent = headlineKey ? (typeof headlineKey === "string" ? headlineKey : t("ready")) : t("ready");
+  headline.textContent = message || t("ready");
   setStatus("");
   setSoftHint("");
   document.querySelector(".wrap")?.classList.remove("session-active");
   showLiveBadge(false);
   showSessionBar(false);
+}
+
+// Pre-start failure (auth, lock, mic — no WebRTC built yet)
+function resetPreStartFailure(message) {
+  cs.state = S.IDLE;
+  cleanupTimersAndAbort();
+  resetUI(message);
+  track("session_lifecycle", { phase: "failed", reason: "pre_start", runId: cs.runId });
+}
+
+// Terminal session end (normal end or error during active session)
+function terminateSession(message) {
+  cs.state = S.IDLE;
+  cleanupMediaResources();
+  cleanupTimersAndAbort();
   stopHyperWave();
+  resetUI(message);
+  track("session_lifecycle", { phase: "ready_restored", runId: cs.runId });
+}
+
+// Cancel during STARTING/CONNECTING
+function cancelSessionStart() {
+  cleanupMediaResources();
+  cleanupTimersAndAbort();
+  resetPreStartFailure(t("ready"));
+}
+
+// Legacy wrapper — maps to terminateSession for backward compatibility
+function resetToReadyState(headlineKey) {
+  const msg = headlineKey ? (typeof headlineKey === "string" ? headlineKey : t("ready")) : t("ready");
+  terminateSession(msg);
 }
 
 // Patch static HTML elements that were rendered with defaults
