@@ -2739,19 +2739,24 @@
             const c1x = px, c1y = py - 28, c2x = bx + (px - bx) * .25, c2y = by + 35;
             const path = _svg('path', { d: `M${px},${py} C${c1x},${c1y} ${c2x},${c2y} ${bx},${by}`, fill: 'none', stroke: col, 'stroke-width': '.8', 'stroke-dasharray': '5 9' }, scSvg);
             path.style.animation = `flash-h ${2 + i * .4}s ease-in-out infinite ${i * .3}s`;
-            // Animated traveling dots
+            // Animated traveling dots (pause when hero not visible)
             for (let k = 0; k < 2; k++) {
               const dot = _svg('circle', { r: '2', fill: col.replace('.35', '.8') }, scSvg);
               const dur = 2400 + i * 600 + k * 800;
               let start = null;
-              (function step(ts) {
+              let rafId = 0;
+              function step(ts) {
+                if (!window.__heroVisible) { rafId = 0; return; }
                 if (!start) start = ts;
                 const t = ((ts - start) % dur) / dur;
                 dot.setAttribute('cx', cubicPt(t, px, c1x, c2x, bx));
                 dot.setAttribute('cy', cubicPt(t, py, c1y, c2y, by));
                 dot.setAttribute('opacity', t < .1 ? t * 10 : t > .85 ? (1 - t) * 6.67 : 1);
-                requestAnimationFrame(step);
-              })(performance.now());
+                rafId = requestAnimationFrame(step);
+              }
+              window.__heroDotStarters = window.__heroDotStarters || [];
+              window.__heroDotStarters.push(() => { if (!rafId) { start = null; rafId = requestAnimationFrame(step); } });
+              rafId = requestAnimationFrame(step);
             }
           }
         }
@@ -2769,6 +2774,26 @@
             p.style.cssText = `width:${s}px;height:${s}px;left:${5 + Math.random() * 90}%;top:${5 + Math.random() * 90}%;background:${cols[i % 4]};animation:flash-h ${(1.5 + Math.random() * 3).toFixed(1)}s ease-in-out infinite ${(Math.random() * 3).toFixed(2)}s;`;
             hero.appendChild(p);
           }
+        }
+
+        // ── IntersectionObserver: pause ALL hero animations when not visible ──
+        window.__heroVisible = true;
+        const heroEl = document.querySelector('.hero');
+        if (heroEl && 'IntersectionObserver' in window) {
+          const obs = new IntersectionObserver(([entry]) => {
+            const vis = entry.isIntersecting;
+            window.__heroVisible = vis;
+            // Pause/resume all CSS animations inside hero
+            heroEl.style.animationPlayState = vis ? 'running' : 'paused';
+            heroEl.querySelectorAll('*').forEach(el => {
+              el.style.animationPlayState = vis ? 'running' : 'paused';
+            });
+            // Restart rAF dot loops when hero becomes visible again
+            if (vis && window.__heroDotStarters) {
+              window.__heroDotStarters.forEach(fn => fn());
+            }
+          }, { threshold: 0.05 });
+          obs.observe(heroEl);
         }
       })();
 
