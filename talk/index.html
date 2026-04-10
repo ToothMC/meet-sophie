@@ -5438,15 +5438,20 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
             },
           }, 5000);
           kickoffSent = true;
-          console.log(`[${runId}] [kickoff] response.create sent`);
+          console.log(`[${runId}] [kickoff] response.create sent — waiting for response.done before enabling auto-responses`);
+          // Do NOT call setAutoResponses here — the session.update interrupts the greeting.
+          // Auto-responses will be enabled when this response completes (response.done handler).
+          kickoffInProgress = true;
         } catch(e) {
           console.log(`[${runId}] [kickoff] failed`, e);
           kickoffSent = false;
+          await setAutoResponses(true);
         }
+      } else {
+        // Meeting mode or no kickoff: enable auto-responses immediately
+        await setAutoResponses(true);
       }
-      // Meeting mode: no kickoff sent, just enable auto-responses for user speech
       kickoffSent = true; // mark as ready even for silent-start modes
-      await setAutoResponses(true);
     }
   });
 
