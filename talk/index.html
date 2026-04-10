@@ -2598,23 +2598,14 @@ function _drawFrame(now) {
   if (now - _lastFrameTime < 33) { requestAnimationFrame(_drawFrame); return; }
   _lastFrameTime = now;
 
-  // Auto-fade: if silent for 10s, fade out canvas and stop rendering (0 CPU)
+  // Auto-fade: ALWAYS fade out after 10s — stops rendering entirely (0 CPU).
+  // User must tap the wave-card to reactivate.
   const _hasAudio = _amp > 0.08;
-  if (_hasAudio) { _waveStartTime = Date.now(); }
-  if (!_hasAudio && !_waveFaded && (Date.now() - _waveStartTime > _WAVE_FADE_MS)) {
+  if (!_waveFaded && (Date.now() - _waveStartTime > _WAVE_FADE_MS)) {
     _waveFaded = true;
     const wc = document.querySelector('.wave-card');
-    if (wc) wc.style.opacity = '0.15';
-  }
-  if (_waveFaded && !_hasAudio) {
-    // Minimal idle: check every 500ms if audio returns
-    setTimeout(() => requestAnimationFrame(_drawFrame), 500);
-    return;
-  }
-  if (_waveFaded && _hasAudio) {
-    _waveFaded = false;
-    const wc = document.querySelector('.wave-card');
-    if (wc) wc.style.opacity = '1';
+    if (wc) { wc.style.opacity = '0'; wc.style.pointerEvents = 'auto'; }
+    return; // stop rendering completely — 0 CPU
   }
   const cfg = _hasAudio ? _MODES.sophie : _MODES.silent;
   _waveT += 0.015;
