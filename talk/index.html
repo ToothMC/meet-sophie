@@ -6792,79 +6792,95 @@ if (!hasRealConversation) {
       if (audioEl) { try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
     }
 
-    // Take transcript AFTER summary (includes summary text in convoLog)
-    const transcriptSnapshot = [...convoLog];
+    // ══════════════════════════════════════════════════════════
+    // IMMUTABLE SNAPSHOT — single source of truth for Memory + Report
+    // From here: convoLog is DEAD. Only finalSnapshot matters.
+    // ══════════════════════════════════════════════════════════
+    const finalA = (partialAssistant || "").trim();
+    if (finalA) convoLog.push({ role: "assistant", text: finalA });
 
-    console.log(`[${runId}] [stopVoice] pre-memory: convoLog=${convoLog.length}, reportEnabled=${reportEnabled}, duration=${durationSeconds}`);
-    const memoryResult = await sendMemoryUpdate(durationSeconds);
-    console.log(`[${runId}] [stopVoice] post-memory: ok=${memoryResult?.ok}, sessionId=${memoryResult?.session?.id}, skipped=${memoryResult?.skipped}`);
+    cs.finalSnapshot = Object.freeze(
+      convoLog.filter(t => t?.text?.trim()).map(t => Object.freeze({ role: t.role, text: t.text.trim() }))
+    );
+    track("session_lifecycle", { phase: "snapshot_taken", runId: cs.runId, turns: cs.finalSnapshot.length });
 
-    // Start async report polling with progress bar (skip if user disabled report)
-    const sessionId = memoryResult?.session?.id;
-    if (reportEnabled && sessionId) {
-      console.log(`[${runId}] [stopVoice] → pollReportProgress(${sessionId})`);
-      await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
-    } else if (reportEnabled) {
-      console.log(`[${runId}] [stopVoice] → NO sessionId, showing no_summary. memoryResult=`, JSON.stringify(memoryResult)?.slice(0, 300));
-      stopFakeReportLoader();
-      showPostCallResults({
-        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
-      }, transcriptSnapshot, { triggeredByLimit });
-    } else {
-      console.log(`[${runId}] [stopVoice] → report disabled`);
-      // Report disabled — skip report, just reset UI
-      stopFakeReportLoader();
-      resetPostCallUI();
+    // ── FIRE-AND-FORGET: Memory update (no await, no response parsing) ──
+    if (!cs.memoryUpdateSent) {
+      cs.memoryUpdateSent = true;
+      const memPayload = [...cs.finalSnapshot].slice(-80);
+      const startedAtIso = talkStartedAt ? new Date(talkStartedAt).toISOString() : null;
+      const endedAtIso = new Date().toISOString();
+      try {
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        if (authSess?.access_token) {
+          fetch("/api/memory-update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
+            body: JSON.stringify({
+              transcript: memPayload,
+              seconds_used: durationSeconds,
+              session_started_at: startedAtIso,
+              session_ended_at: endedAtIso,
+              session_id: sessionId,
+              session_mode: selectedVoiceMode || null,
+              realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
+            }),
+            keepalive: true,
+          }).catch(e => console.error("[memory] fire-and-forget failed:", e?.message));
+          track("session_lifecycle", { phase: "memory_fired", runId: cs.runId });
+        }
+      } catch (_) {}
     }
 
+    // ── Cleanup media resources ──
+    cleanupMediaResources();
+
+    // ── Track talk_ended IMMEDIATELY (before report polling) ──
     track("talk_ended", {
       duration_seconds: durationSeconds || null,
       is_premium: isPremium,
       plan: plan || null,
       remaining_seconds_at_end: remainingSeconds,
-      triggered_by_limit: !!triggeredByLimit
+      triggered_by_limit: !!triggeredByLimit,
     });
 
     talkStartedAt = null;
-  remainingAtSessionStart = 0;
-
-    if (dc) {
-      try { dc.close(); } catch(e){}
-      dc = null;
-    }
-
-    if (stream) {
-      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-      stream = null;
-    }
-
-    if (pc) {
-      try { pc.close(); } catch(e){}
-      pc = null;
-    }
-
-    if (audioEl) {
-      try { audioEl.srcObject = null; } catch(e){}
-      audioEl = null;
-    }
-
+    remainingAtSessionStart = 0;
     convoLog = [];
     partialAssistant = "";
     lastAssistantFinal = "";
     userTranscriptBuffer.clear();
     hasUserSpoken = false;
-
-    // If report was shown, stay on page (report has its own navigation).
-    // If report disabled, reset to ready state.
-    if (!reportEnabled) {
-      resetToReadyState(t("see_you_soon"));
-    }
     resetClosingState();
+
+    // ── UI → Ready (user can start new session immediately) ──
+    if (!reportEnabled) {
+      stopFakeReportLoader();
+      terminateSession(t("see_you_soon"));
+      cs.stopGuard = false;
+      return;
+    }
+
+    // ── Report: use GLOBAL sessionId (from /api/session), NOT memory response ──
+    if (!cs.reportTriggered && sessionId) {
+      cs.reportTriggered = true;
+      track("session_lifecycle", { phase: "report_triggered", runId: cs.runId });
+      // Keep session-active for report display, reset after report
+      await pollReportProgress(sessionId, [...cs.finalSnapshot], { triggeredByLimit });
+    } else {
+      stopFakeReportLoader();
+      showPostCallResults({
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+      }, [...cs.finalSnapshot], { triggeredByLimit });
+    }
+
+    cs.stopGuard = false;
 
   } catch (e) {
     stopFakeReportLoader();
     console.error(e);
-    resetToReadyState(t("report_failed"));
+    terminateSession(t("report_failed"));
+    cs.stopGuard = false;
   }
 }
 
