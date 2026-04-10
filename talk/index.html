@@ -3018,22 +3018,16 @@ function stopSvTimer() {
 
 // ══════════════════════════════════════════════════════════
 
-// iOS Safari: play the ready sound immediately on user tap (within gesture context).
-// Then replay it when DC opens. Safari only allows play() during a user gesture —
-// by the time DC opens (~2s later) the gesture context is gone.
-let _readyAudio = null;
+// Ready sound is played after mic permission grant (the only reliable user gesture on iOS)
 function preloadReadySound() {
-  try {
-    if (_readyAudio) { _readyAudio.currentTime = 0; }
-    else { _readyAudio = new Audio("/audio/ready.mp3"); }
-    _readyAudio.volume = 0.28;
-    // Play immediately during user gesture — this IS the ready sound
-    _readyAudio.play().catch(() => {});
-  } catch(_) {}
+  // no-op — sound is triggered in startVoice after getUserMedia resolves
 }
 function playReadySound(){
-  // Sound already played in preloadReadySound during user tap.
-  // This is now a no-op — kept for backward compatibility.
+  try {
+    const audio = new Audio("/audio/ready.mp3");
+    audio.volume = 0.28;
+    audio.play().catch(() => {});
+  } catch(_) {}
 }
 
 function escapeHtml(value = "") {
@@ -6371,6 +6365,9 @@ async function startVoice(){
       setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
     stream = await Promise.race([micPromise, micTimeout]);
     track("mic_permission_granted");
+    // Play ready sound HERE — "Allow" mic tap is a user gesture on THIS page
+    // This is the only reliable moment for iOS Safari audio unlock
+    playReadySound();
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     // Single audio path: <audio> element for playback + browser AEC.
