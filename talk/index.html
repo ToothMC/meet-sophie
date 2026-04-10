@@ -2258,6 +2258,58 @@ let lastActivityAt = 0;             // Timestamp of last speech/response event
 const INACTIVITY_WARNING_MS = 30 * 1000; // 30s silence → ask if still there
 const INACTIVITY_END_MS     = 30 * 1000; // 30s more → end session (60s total)
 
+// ══════════════════════════════════════════════════════════
+// SESSION STATE MACHINE — single source of truth
+// ══════════════════════════════════════════════════════════
+const S = { IDLE: 'idle', STARTING: 'starting', CONNECTING: 'connecting',
+  ACTIVE: 'active', STOPPING: 'stopping', FAILED: 'failed' };
+
+const ALLOWED_TRANSITIONS = {
+  [S.IDLE]:       [S.STARTING],
+  [S.STARTING]:   [S.CONNECTING, S.FAILED, S.IDLE],
+  [S.CONNECTING]: [S.ACTIVE, S.FAILED, S.IDLE],
+  [S.ACTIVE]:     [S.STOPPING, S.FAILED],
+  [S.STOPPING]:   [S.IDLE, S.FAILED],
+  [S.FAILED]:     [S.IDLE],
+};
+
+let _sessionRunId = 0;
+
+function createSession() {
+  return {
+    runId: ++_sessionRunId,
+    state: S.IDLE,
+    sessionId: null,
+    stopGuard: false,
+    memoryUpdateSent: false,
+    reportTriggered: false,
+    startedAt: null,
+    finalSnapshot: null,
+    metrics: {
+      userAudioDetected: false,
+      userTranscriptReceived: false,
+      assistantResponseStarted: false,
+      assistantResponseCompleted: false,
+      turnCount: 0,
+    },
+  };
+}
+
+let cs = createSession(); // cs = currentSession
+
+function setState(newState) {
+  if (!ALLOWED_TRANSITIONS[cs.state]?.includes(newState)) {
+    console.error(`[state] ILLEGAL: ${cs.state} → ${newState}`);
+    track("session_lifecycle", { phase: "illegal_transition", from: cs.state, to: newState, runId: cs.runId });
+    return false;
+  }
+  console.log(`[state] ${cs.state} → ${newState}`);
+  cs.state = newState;
+  return true;
+}
+
+// Legacy globals that are still needed by other parts of the code
+// TODO: migrate these into cs over time
 let hasUserSpoken = false;
 
 let talkStartedAt = null;
@@ -2367,9 +2419,44 @@ const _i18n = {
 function t(key) { return _i18n[key]?.[_uiLang] || _i18n[key]?.en || key; }
 function resetStartBtnStyle() { startBtn.style.background = ""; startBtn.style.color = ""; }
 
-// Central reset — returns talk page to ready-to-start state after any session end/error
-function resetToReadyState(headlineKey) {
-  _startVoiceLock = false;
+// ══════════════════════════════════════════════════════════
+// CLEANUP REGISTRY — two-tier: timers/abort + media/WebRTC
+// ══════════════════════════════════════════════════════════
+const _cleanup = { timeouts: new Set(), intervals: new Set(), abortControllers: new Set() };
+
+function sessionTimeout(fn, ms) {
+  const id = setTimeout(() => { _cleanup.timeouts.delete(id); fn(); }, ms);
+  _cleanup.timeouts.add(id);
+  return id;
+}
+function sessionInterval(fn, ms) {
+  const id = setInterval(fn, ms);
+  _cleanup.intervals.add(id);
+  return id;
+}
+function cleanupTimersAndAbort() {
+  _cleanup.timeouts.forEach(clearTimeout);
+  _cleanup.intervals.forEach(clearInterval);
+  _cleanup.abortControllers.forEach(ac => { try { ac.abort(); } catch(_){} });
+  _cleanup.timeouts.clear();
+  _cleanup.intervals.clear();
+  _cleanup.abortControllers.clear();
+}
+function cleanupMediaResources() {
+  if (dc) { try { dc.close(); } catch(_){} dc = null; }
+  if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(_){} stream = null; }
+  if (pc) { try { pc.close(); } catch(_){} pc = null; }
+  if (audioEl) { try { audioEl.srcObject = null; audioEl.remove(); } catch(_){} audioEl = null; }
+  if (_hyperAudioCtx) { try { _hyperAudioCtx.close(); } catch(_){} _hyperAudioCtx = null; }
+  _hyperAnalyser = null; _hyperDataArray = null; _hyperAnalyserWorks = false; _hyperSophieSpeaking = false;
+}
+
+// ══════════════════════════════════════════════════════════
+// DIFFERENTIATED RESET — three tiers
+// ══════════════════════════════════════════════════════════
+
+// Pure UI reset — no state logic, used by all reset tiers
+function resetUI(message) {
   startBtn.disabled = false;
   startBtn.style.display = "";
   startBtn.textContent = t("start");
@@ -2378,13 +2465,43 @@ function resetToReadyState(headlineKey) {
   endBtn.disabled = true;
   endBtn.style.display = "none";
   logoutBtn.disabled = false;
-  headline.textContent = headlineKey ? (typeof headlineKey === "string" ? headlineKey : t("ready")) : t("ready");
+  headline.textContent = message || t("ready");
   setStatus("");
   setSoftHint("");
   document.querySelector(".wrap")?.classList.remove("session-active");
   showLiveBadge(false);
   showSessionBar(false);
+}
+
+// Pre-start failure (auth, lock, mic — no WebRTC built yet)
+function resetPreStartFailure(message) {
+  cs.state = S.IDLE;
+  cleanupTimersAndAbort();
+  resetUI(message);
+  track("session_lifecycle", { phase: "failed", reason: "pre_start", runId: cs.runId });
+}
+
+// Terminal session end (normal end or error during active session)
+function terminateSession(message) {
+  cs.state = S.IDLE;
+  cleanupMediaResources();
+  cleanupTimersAndAbort();
   stopHyperWave();
+  resetUI(message);
+  track("session_lifecycle", { phase: "ready_restored", runId: cs.runId });
+}
+
+// Cancel during STARTING/CONNECTING
+function cancelSessionStart() {
+  cleanupMediaResources();
+  cleanupTimersAndAbort();
+  resetPreStartFailure(t("ready"));
+}
+
+// Legacy wrapper — maps to terminateSession for backward compatibility
+function resetToReadyState(headlineKey) {
+  const msg = headlineKey ? (typeof headlineKey === "string" ? headlineKey : t("ready")) : t("ready");
+  terminateSession(msg);
 }
 
 // Patch static HTML elements that were rendered with defaults
@@ -5001,7 +5118,10 @@ function attachChannel(ch) {
   dc = ch;
 
   dc.addEventListener("open", async () => {
-    console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}`);
+    const myRunId = cs.runId; // capture for stale-check
+    console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}, runId=${myRunId}`);
+    setState(S.ACTIVE);
+    track("session_lifecycle", { phase: "peer_connected", runId: myRunId });
 
     try {
       const sessionUpdate = {
@@ -5328,6 +5448,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
+        cs.metrics.userAudioDetected = true;
         // Fade out Sophie's voice when user starts speaking
         if (audioEl) audioEl.volume = 0;
         // User is speaking — reset inactivity (including warning flag if grace period active)
@@ -5358,6 +5479,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+        cs.metrics.assistantResponseStarted = true;
         if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
         // Restore volume for Sophie's new response
         if (audioEl) audioEl.volume = 1;
@@ -5414,6 +5536,8 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
         if (text) {
           hasUserSpoken = true;
+          cs.metrics.userTranscriptReceived = true;
+          cs.metrics.turnCount++;
           convoLog.push({ role: "user", text });
         }
         return;
@@ -5726,6 +5850,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
       if (msg?.type === "response.done") {
+        cs.metrics.assistantResponseCompleted = true;
         // ── Accumulate real token usage from OpenAI ──
         const _usage = msg?.response?.usage;
         if (_usage) {
@@ -6004,17 +6129,20 @@ async function finalizeSessionAfterSummary() {
   }
 }
 
-let _startVoiceLock = false;
 async function startVoice(){
 
   // Pre-load ready sound during user gesture context (iOS Safari requires this)
   preloadReadySound();
 
-  // prevent double session
-  if (pc || stream || _startVoiceLock) {
-    console.log("Session already running or starting → ignore");
+  // Session state guard — only start from IDLE or FAILED
+  if (cs.state !== S.IDLE && cs.state !== S.FAILED) {
+    console.log(`[state] startVoice blocked — state=${cs.state}`);
     return;
   }
+
+  // Create fresh session object — old session data becomes irrelevant
+  cs = createSession();
+  if (!setState(S.STARTING)) return;
 
   // Acquire realtime lock (primary must be held first — enforced by tab manager)
   if (!sophieTabManager.isPrimary) {
@@ -6029,7 +6157,7 @@ async function startVoice(){
     return;
   }
 
-  _startVoiceLock = true;
+  // (state guard handled by cs.state = STARTING above)
   
   await preloadLimitVideo();
 
@@ -6073,8 +6201,7 @@ async function startVoice(){
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      _startVoiceLock = false;
-      window.location.href = "/login";
+      resetPreStartFailure(_uiLang === "de" ? "Sitzung abgelaufen. Bitte erneut anmelden." : "Session expired. Please log in again.");
       return;
     }
 
@@ -6116,7 +6243,7 @@ async function startVoice(){
     _voiceSessionData = data; // store for dc.onopen callback
 
     if (tokenRes.status === 402) {
-      _startVoiceLock = false;
+      cs.state = S.IDLE; // reset state for 402 handling
       const reason = data?.reason || "";
       const premiumActive = !!data?.is_premium;
 
@@ -6238,9 +6365,13 @@ async function startVoice(){
     };
 
     track("mic_permission_requested");
-    stream = await navigator.mediaDevices.getUserMedia({
+    track("session_lifecycle", { phase: "mic_requesting", runId: cs.runId });
+    const micPromise = navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
+    const micTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
+    stream = await Promise.race([micPromise, micTimeout]);
     track("mic_permission_granted");
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
@@ -6281,7 +6412,9 @@ async function startVoice(){
 
     setStatus(_uiLang === "de" ? "Sophie wird verbunden …" : _uiLang === "fr" ? "Connexion à Sophie …" : "Connecting to Sophie …");
 
+    setState(S.CONNECTING);
     track("voice_connect_started");
+    track("session_lifecycle", { phase: "connecting", runId: cs.runId });
     const _connectT0 = Date.now();
     const answerSdp = await fetchRealtimeAnswerSdp({
       offerSdp: offer.sdp,
@@ -6348,10 +6481,9 @@ async function startVoice(){
 
     startCountdown();
 
-    _startVoiceLock = false;
+    // Session fully connected — state is ACTIVE (set earlier in dc.onopen)
 
   } catch(err){
-    _startVoiceLock = false;
     console.error(err);
     cleanupLiveSession();
 
@@ -6466,11 +6598,30 @@ async function stopVoicePitchClean() {
 }
 
 async function stopVoice(triggeredByLimit = false){
+  // Idempotent stop guard — prevent double execution
+  if (cs.stopGuard) { console.log(`[state] stopVoice blocked — already stopping`); return; }
+
+  // Allow stop from ACTIVE, STARTING, CONNECTING
+  if (![S.ACTIVE, S.STARTING, S.CONNECTING].includes(cs.state)) {
+    console.log(`[state] stopVoice blocked — state=${cs.state}`);
+    return;
+  }
+
+  cs.stopGuard = true;
+  const wasActive = cs.state === S.ACTIVE;
+  setState(S.STOPPING);
+  track("session_lifecycle", { phase: "stop_requested", runId: cs.runId, reason: triggeredByLimit ? "time_limit" : "user_click" });
+
+  // If not yet active (starting/connecting), just cancel
+  if (!wasActive) {
+    cancelSessionStart();
+    cs.stopGuard = false;
+    return;
+  }
+
   void releaseVoiceWakeLock();
-  // Hide pause button + session bar, reset pause state on any session end
   pauseBtn.style.display = "none";
   showSessionBar(false);
-  document.querySelector(".wrap")?.classList.remove("session-active");
   isPaused = false;
 
   // Stop hyper visualizer
@@ -6550,46 +6701,24 @@ const durationSeconds = triggeredByLimit
   ? Math.max(wallclockSeconds, remainingAtSessionStart)
   : wallclockSeconds;
 
+// Explicit metrics instead of heuristic — was there a real conversation?
 const hasRealConversation =
-  hasUserSpoken &&
-  durationSeconds >= 10 &&
-  convoLog.some(item => String(item?.text || "").trim());
+  cs.metrics.turnCount > 0 ||
+  cs.metrics.userTranscriptReceived ||
+  (cs.metrics.userAudioDetected && durationSeconds >= 5) ||
+  (hasUserSpoken && convoLog.some(item => String(item?.text || "").trim()));
 
 if (!hasRealConversation) {
   stopFakeReportLoader();
-
-  talkStartedAt = null;
-  remainingAtSessionStart = 0;
-  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; gainNode = null; audioSource = null; }
-
-  if (dc) {
-    try { dc.close(); } catch(e){}
-    dc = null;
-  }
-
-  if (stream) {
-    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-    stream = null;
-  }
-
-  if (pc) {
-    try { pc.close(); } catch(e){}
-    pc = null;
-  }
-
-  if (audioEl) {
-    try { audioEl.srcObject = null; } catch(e){}
-    audioEl = null;
-  }
-
   convoLog = [];
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
   hasUserSpoken = false;
-
-  stopFakeReportLoader();
-  resetToReadyState();
+  talkStartedAt = null;
+  remainingAtSessionStart = 0;
+  terminateSession(t("ready"));
+  cs.stopGuard = false;
   return;
 }
     
@@ -6672,79 +6801,95 @@ if (!hasRealConversation) {
       if (audioEl) { try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
     }
 
-    // Take transcript AFTER summary (includes summary text in convoLog)
-    const transcriptSnapshot = [...convoLog];
+    // ══════════════════════════════════════════════════════════
+    // IMMUTABLE SNAPSHOT — single source of truth for Memory + Report
+    // From here: convoLog is DEAD. Only finalSnapshot matters.
+    // ══════════════════════════════════════════════════════════
+    const finalA = (partialAssistant || "").trim();
+    if (finalA) convoLog.push({ role: "assistant", text: finalA });
 
-    console.log(`[${runId}] [stopVoice] pre-memory: convoLog=${convoLog.length}, reportEnabled=${reportEnabled}, duration=${durationSeconds}`);
-    const memoryResult = await sendMemoryUpdate(durationSeconds);
-    console.log(`[${runId}] [stopVoice] post-memory: ok=${memoryResult?.ok}, sessionId=${memoryResult?.session?.id}, skipped=${memoryResult?.skipped}`);
+    cs.finalSnapshot = Object.freeze(
+      convoLog.filter(t => t?.text?.trim()).map(t => Object.freeze({ role: t.role, text: t.text.trim() }))
+    );
+    track("session_lifecycle", { phase: "snapshot_taken", runId: cs.runId, turns: cs.finalSnapshot.length });
 
-    // Start async report polling with progress bar (skip if user disabled report)
-    const sessionId = memoryResult?.session?.id;
-    if (reportEnabled && sessionId) {
-      console.log(`[${runId}] [stopVoice] → pollReportProgress(${sessionId})`);
-      await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
-    } else if (reportEnabled) {
-      console.log(`[${runId}] [stopVoice] → NO sessionId, showing no_summary. memoryResult=`, JSON.stringify(memoryResult)?.slice(0, 300));
-      stopFakeReportLoader();
-      showPostCallResults({
-        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
-      }, transcriptSnapshot, { triggeredByLimit });
-    } else {
-      console.log(`[${runId}] [stopVoice] → report disabled`);
-      // Report disabled — skip report, just reset UI
-      stopFakeReportLoader();
-      resetPostCallUI();
+    // ── FIRE-AND-FORGET: Memory update (no await, no response parsing) ──
+    if (!cs.memoryUpdateSent) {
+      cs.memoryUpdateSent = true;
+      const memPayload = [...cs.finalSnapshot].slice(-80);
+      const startedAtIso = talkStartedAt ? new Date(talkStartedAt).toISOString() : null;
+      const endedAtIso = new Date().toISOString();
+      try {
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        if (authSess?.access_token) {
+          fetch("/api/memory-update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
+            body: JSON.stringify({
+              transcript: memPayload,
+              seconds_used: durationSeconds,
+              session_started_at: startedAtIso,
+              session_ended_at: endedAtIso,
+              session_id: sessionId,
+              session_mode: selectedVoiceMode || null,
+              realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
+            }),
+            keepalive: true,
+          }).catch(e => console.error("[memory] fire-and-forget failed:", e?.message));
+          track("session_lifecycle", { phase: "memory_fired", runId: cs.runId });
+        }
+      } catch (_) {}
     }
 
+    // ── Cleanup media resources ──
+    cleanupMediaResources();
+
+    // ── Track talk_ended IMMEDIATELY (before report polling) ──
     track("talk_ended", {
       duration_seconds: durationSeconds || null,
       is_premium: isPremium,
       plan: plan || null,
       remaining_seconds_at_end: remainingSeconds,
-      triggered_by_limit: !!triggeredByLimit
+      triggered_by_limit: !!triggeredByLimit,
     });
 
     talkStartedAt = null;
-  remainingAtSessionStart = 0;
-
-    if (dc) {
-      try { dc.close(); } catch(e){}
-      dc = null;
-    }
-
-    if (stream) {
-      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-      stream = null;
-    }
-
-    if (pc) {
-      try { pc.close(); } catch(e){}
-      pc = null;
-    }
-
-    if (audioEl) {
-      try { audioEl.srcObject = null; } catch(e){}
-      audioEl = null;
-    }
-
+    remainingAtSessionStart = 0;
     convoLog = [];
     partialAssistant = "";
     lastAssistantFinal = "";
     userTranscriptBuffer.clear();
     hasUserSpoken = false;
-
-    // If report was shown, stay on page (report has its own navigation).
-    // If report disabled, reset to ready state.
-    if (!reportEnabled) {
-      resetToReadyState(t("see_you_soon"));
-    }
     resetClosingState();
+
+    // ── UI → Ready (user can start new session immediately) ──
+    if (!reportEnabled) {
+      stopFakeReportLoader();
+      terminateSession(t("see_you_soon"));
+      cs.stopGuard = false;
+      return;
+    }
+
+    // ── Report: use GLOBAL sessionId (from /api/session), NOT memory response ──
+    if (!cs.reportTriggered && sessionId) {
+      cs.reportTriggered = true;
+      track("session_lifecycle", { phase: "report_triggered", runId: cs.runId });
+      // Keep session-active for report display, reset after report
+      await pollReportProgress(sessionId, [...cs.finalSnapshot], { triggeredByLimit });
+    } else {
+      stopFakeReportLoader();
+      showPostCallResults({
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+      }, [...cs.finalSnapshot], { triggeredByLimit });
+    }
+
+    cs.stopGuard = false;
 
   } catch (e) {
     stopFakeReportLoader();
     console.error(e);
-    resetToReadyState(t("report_failed"));
+    terminateSession(t("report_failed"));
+    cs.stopGuard = false;
   }
 }
 
