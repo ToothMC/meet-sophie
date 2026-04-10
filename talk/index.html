@@ -5196,7 +5196,7 @@ function attachChannel(ch) {
         sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       }
-      dcSend(sessionUpdate);
+      try { dcSend(sessionUpdate); } catch (e) { console.error(`[${runId}] [dc] dcSend session.update failed:`, e); }
       console.log(`[${runId}] [dc] session.update sent — waiting for confirmation`);
       const updatedSession = await waitForSessionUpdated(3000);
       if (updatedSession?.turn_detection?.create_response === false) {
@@ -6068,6 +6068,7 @@ async function startVoice(){
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
+      _startVoiceLock = false;
       window.location.href = "/login";
       return;
     }
@@ -6161,14 +6162,20 @@ async function startVoice(){
     if (tokenRes.status === 429) {
       _startVoiceLock = false;
       track("talk_start_failed", { http_status: 429, message: data?.error || "busy" });
-      window.location.href = "/app";
+      startBtn.disabled = false;
+      startBtn.textContent = t("start");
+      logoutBtn.disabled = false;
+      headline.textContent = _uiLang === "de" ? "Sophie ist gerade beschäftigt. Versuche es gleich nochmal." : "Sophie is busy. Try again in a moment.";
       return;
     }
 
     if (!tokenRes.ok) {
       _startVoiceLock = false;
       track("talk_start_failed", { http_status: tokenRes.status, message: data?.message || "" });
-      window.location.href = "/app";
+      startBtn.disabled = false;
+      startBtn.textContent = t("start");
+      logoutBtn.disabled = false;
+      headline.textContent = _uiLang === "de" ? "Verbindungsfehler. Versuche es nochmal." : "Connection error. Try again.";
       return;
     }
 
@@ -6364,7 +6371,12 @@ async function startVoice(){
       message: String(err?.message || err).slice(0, 180),
       http_status: status || null,
     });
-    window.location.href = "/app";
+    // Stay on talk page — show error + re-enable start button for retry
+    startBtn.disabled = false;
+    startBtn.textContent = t("start");
+    logoutBtn.disabled = false;
+    headline.textContent = _uiLang === "de" ? "Verbindung fehlgeschlagen. Versuche es nochmal." : "Connection failed. Try again.";
+    setStatus("");
   }
 }
 
@@ -6420,7 +6432,13 @@ async function stopVoicePitchClean() {
 
   if (!hasRealConversation) {
     stopFakeReportLoader();
-    window.location.href = "/app";
+    startBtn.disabled = false;
+    startBtn.style.display = "";
+    startBtn.textContent = t("start");
+    endBtn.style.display = "none";
+    logoutBtn.disabled = false;
+    headline.textContent = t("ready");
+    document.querySelector(".wrap")?.classList.remove("session-active");
     return;
   }
 
