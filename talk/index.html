@@ -5422,10 +5422,10 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         // TALK (default): brief greeting so user knows Sophie is ready
         console.log(`[${runId}] [kickoff_talk] sending greeting kickoff`);
         kickoffInstruction = isDE
-          ? `Begrüße den User kurz damit er weiß dass du da bist. Ein einfaches "Hi${nameStr}" oder ähnlich — natürlich, kurz, warm. Maximal ein Satz. Dann warte bis der User spricht. Stelle KEINE Frage. Stell dich NICHT vor. Zeig nur dass du bereit bist. Sprich DEUTSCH.`
+          ? `Begrüße den User kurz — ein einfaches "Hi" reicht. Natürlich, kurz, warm. Maximal ein Satz. Dann warte bis der User spricht. Stelle KEINE Frage. Stell dich NICHT vor. Sprich DEUTSCH.`
           : greetLang === "fr"
-          ? `Salue l'utilisateur brièvement pour signaler que tu es prête. Un simple "Hi${nameStr}" ou similaire — naturel, court, chaleureux. Une phrase max. Puis attends que l'utilisateur parle. Ne pose PAS de question. Ne te présente PAS. Montre juste que tu es là. Parle FRANÇAIS.`
-          : `Greet the user briefly to signal you're ready. A simple "Hi${nameStr}" or similar — keep it natural, short, warm. One sentence max. Then wait for the user to speak. Do NOT ask a question. Do NOT introduce yourself. Just signal that you're here. Speak ENGLISH.`;
+          ? `Salue l'utilisateur brièvement — un simple "Hi" suffit. Naturel, court, chaleureux. Une phrase max. Puis attends. Ne pose PAS de question. Ne te présente PAS. Parle FRANÇAIS.`
+          : `Greet the user briefly — a simple "Hi" is enough. Natural, short, warm. One sentence max. Then wait. Do NOT ask a question. Do NOT introduce yourself. Speak ENGLISH.`;
       }
 
       if (kickoffInstruction) {
