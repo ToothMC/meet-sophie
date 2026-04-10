@@ -6235,7 +6235,7 @@ async function startVoice(){
     _voiceSessionData = data; // store for dc.onopen callback
 
     if (tokenRes.status === 402) {
-      _startVoiceLock = false;
+      cs.state = S.IDLE; // reset state for 402 handling
       const reason = data?.reason || "";
       const premiumActive = !!data?.is_premium;
 
