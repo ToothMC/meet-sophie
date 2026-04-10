@@ -2745,15 +2745,23 @@ function setHyperVoiceMode(m) {
 }
 
 // ── Start/stop wave rendering ──
+let _waveStartTime = 0;
+let _waveFaded = false;
+const _WAVE_FADE_MS = 10000; // fade out after 10s of silence
+
 function startHyperWave() {
   if (_waveRunning) return;
   _waveRunning = true;
+  _waveStartTime = Date.now();
+  _waveFaded = false;
+  const wc = document.querySelector('.wave-card');
+  if (wc) { wc.style.opacity = '1'; wc.style.transition = 'opacity 1s ease'; }
   _drawFrame();
-  _animateEq();
 }
 
 function stopHyperWave() {
   _waveRunning = false;
+  _waveFaded = false;
 }
 
 // ── Sync sv-timer with existing timer ──
