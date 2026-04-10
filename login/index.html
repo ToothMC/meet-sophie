@@ -264,12 +264,16 @@
       await ensureUserRelationshipRow(user.id);
 
       // Check if user has an active subscription
-      const { data: sub } = await supabase
-        .from("user_subscriptions")
-        .select("is_active")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const hasActiveSub = !!sub?.is_active;
+      // On failure (RLS timing, network), default to /app — the overlay handles gating there
+      let hasActiveSub = true; // safe default: let /app handle gating
+      try {
+        const { data: sub, error: subErr } = await supabase
+          .from("user_subscriptions")
+          .select("is_active")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!subErr) hasActiveSub = !!sub?.is_active;
+      } catch (_) {}
 
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");

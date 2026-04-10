@@ -1633,12 +1633,13 @@ document.querySelector(".wrap").style.display = "";
 
 // ── Subscription gate (locked overlay) ──────────────
 {
-  const { data: sub } = await supabase
+  const { data: sub, error: subErr } = await supabase
     .from("user_subscriptions")
     .select("is_active")
     .eq("user_id", session.user.id)
     .maybeSingle();
-  if (!sub?.is_active) {
+  // Only show overlay if we successfully queried and user has no active sub
+  if (!subErr && !sub?.is_active) {
     const overlay = document.getElementById("lockedOverlay");
     if (overlay) {
       const lang = localStorage.getItem("preferredLanguage") || "en";

@@ -937,12 +937,14 @@
 
     // ── Subscription gate (locked overlay) ──────────────
     {
-      const { data: sub } = await supabase
+      const { data: sub, error: subErr } = await supabase
         .from("user_subscriptions")
         .select("is_active")
         .eq("user_id", session.user.id)
         .maybeSingle();
-      if (!sub?.is_active) {
+      // Only show overlay if we successfully queried and user has no active sub
+      // On error (RLS timing etc), don't block — let session API handle gating
+      if (!subErr && !sub?.is_active) {
         const overlay = document.getElementById("lockedOverlay");
         if (overlay) {
           // i18n for locked overlay
