@@ -6185,7 +6185,9 @@ async function startVoice(){
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
   hasUserSpoken = false;
-  sessionId = null;
+  // Generate sessionId client-side so report can fire without waiting for memory-update response
+  sessionId = crypto.randomUUID();
+  cs.sessionId = sessionId;
   hidePostCallResults();
 
   limitTriggered = false;

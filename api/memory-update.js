@@ -1883,18 +1883,22 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
 
     if (!insertedSession) {
       // INSERT new session (voice path — no prior user_sessions row exists)
+      // If client sent a pre-generated session_id, use it as primary key
+      const insertRow = {
+        ...baseSession,
+        title: finalSessionTitle.slice(0, 120),
+        emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+        stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+        closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+        short_summary: sessSummary.slice(0, 300),
+        has_transcript: transcriptArr.length > 0,
+        has_output: false,
+      };
+      if (existingSessionId) insertRow.id = existingSessionId;
+
       const { data: newSession, error: sessErr } = await supabase
         .from("user_sessions")
-        .insert({
-          ...baseSession,
-          title: finalSessionTitle.slice(0, 120),
-          emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
-          stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
-          closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-          short_summary: sessSummary.slice(0, 300),
-          has_transcript: transcriptArr.length > 0,
-          has_output: false,
-        })
+        .insert(insertRow)
         .select("id, user_id, session_date, short_summary, title")
         .single();
 
