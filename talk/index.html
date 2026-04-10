@@ -2637,10 +2637,7 @@ function _drawFrame(now) {
       // After 180 zero frames (~3s), analyser is not providing data
       if (_hyperZeroRmsCount > 180) _hyperAnalyserWorks = false;
     }
-    // Debug: log every ~2s
-    if (Math.floor(_waveT * 66) % 120 === 0) {
-      console.log("[hyper] RMS:", rms.toFixed(4), "amp:", _amp.toFixed(3), "real:", _hyperAnalyserWorks, "speaking:", _hyperSophieSpeaking, "ctx:", _hyperAudioCtx?.state);
-    }
+    // (debug logging removed for performance)
   }
   // Fallback: event-driven synthetic amplitude (when analyser fails or absent)
   if (!_useRealAudio) {
