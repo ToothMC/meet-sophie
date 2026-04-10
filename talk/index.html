@@ -1597,8 +1597,25 @@ document.getElementById("authLoading").style.display = "none";
 document.querySelector(".wrap").style.display = "";
 
 // Session Watch (Logout / Session verloren)
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_OUT" || !session?.user) {
+// CRITICAL: Do NOT redirect during active voice session — token refresh
+// can temporarily fire with null session on mobile. Only redirect on
+// explicit SIGNED_OUT or if session is still null after retry.
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "SIGNED_OUT") {
+    window.location.href = "/login";
+    return;
+  }
+  if (!session?.user) {
+    // Don't kill an active voice session over a transient auth hiccup
+    if (pc || dc || talkStartedAt) {
+      console.warn("[auth] token refresh failed during active session — ignoring");
+      return;
+    }
+    // Not in a session — retry once before redirecting
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) return; // recovered
+    } catch (_) {}
     window.location.href = "/login";
   }
 });
