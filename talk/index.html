@@ -5367,8 +5367,9 @@ function attachChannel(ch) {
       console.log(`[${runId}] [handover] triggering contextual kickoff`);
       kickoffSent = true;
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [handover] kickoff error`, e); }
-    } else if (isFirstSession && !startModeTriggered) {
-      console.log(`[${runId}] [startmode] triggering kickoff on dc.open`);
+    } else if ((isFirstSession || !selectedVoiceMode) && !startModeTriggered) {
+      // First session OR returning user in default talk mode (no special mode selected)
+      console.log(`[${runId}] [startmode] triggering kickoff on dc.open (isFirstSession=${isFirstSession}, mode=${selectedVoiceMode})`);
       kickoffSent = true;
       try { await triggerStartModeKickoff(); } catch(e) { console.log(`[${runId}] [startmode] error`, e); }
     } else if (!isFirstSession) {
