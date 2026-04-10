@@ -4533,6 +4533,28 @@ function muteMic() {
   } catch (_) {}
 }
 
+// ── Audio fade to avoid click/pop artifacts from instant volume jumps ──
+let _fadeInterval = null;
+function fadeAudioVolume(target, durationMs = 150) {
+  if (!audioEl) return;
+  if (_fadeInterval) { clearInterval(_fadeInterval); _fadeInterval = null; }
+  const start = audioEl.volume;
+  if (start === target) return;
+  const steps = Math.max(1, Math.round(durationMs / 16));
+  const delta = (target - start) / steps;
+  let step = 0;
+  _fadeInterval = setInterval(() => {
+    step++;
+    if (step >= steps) {
+      audioEl.volume = target;
+      clearInterval(_fadeInterval);
+      _fadeInterval = null;
+    } else {
+      audioEl.volume = Math.max(0, Math.min(1, start + delta * step));
+    }
+  }, 16);
+}
+
 // Sensitivity modes for turn detection:
 // "normal"  — default conversation (threshold 0.5, responsive to normal speech)
 // "guarded" — Sophie says something important (threshold 0.85, only deliberate loud interruption)
@@ -5482,8 +5504,8 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         hideReadyStatus();
         userIsSpeaking = true;
         cs.metrics.userAudioDetected = true;
-        // Fade out Sophie's voice when user starts speaking
-        if (audioEl) audioEl.volume = 0;
+        // Fade out Sophie's voice when user starts speaking (smooth to avoid click/pop)
+        fadeAudioVolume(0, 150);
         // User is speaking — reset inactivity (including warning flag if grace period active)
         inactivityWarningFired = false;
         touchActivity();
@@ -5514,15 +5536,16 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         hideReadyStatus();
         cs.metrics.assistantResponseStarted = true;
         if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
-        // Restore volume for Sophie's new response
-        if (audioEl) audioEl.volume = 1;
+        // Restore volume for Sophie's new response (smooth fade-in to avoid pop)
+        fadeAudioVolume(1, 100);
 
         // ── AIRBAG: cancel any response that fires BEFORE our kickoff was sent ──
         // This catches race conditions where the model auto-responds despite create_response:false
         if (!kickoffSent && !hasUserSpoken) {
           console.log(`[${runId}] [airbag] unexpected response.created before kickoff — cancelling`);
           try { dcSend({ type: "response.cancel" }); } catch(_) {}
-          try { dcSend({ type: "output_audio_buffer.clear" }); } catch(_) {}
+          // Delay buffer clear so current audio frame finishes cleanly (avoids mid-sample pop)
+          setTimeout(() => { try { dcSend({ type: "output_audio_buffer.clear" }); } catch(_) {} }, 300);
           return;
         }
 
@@ -5901,7 +5924,9 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         }
 
         sophieIsResponding = false;
-        setHyperVoiceMode('silent');
+        // Delay visualizer switch: response.done fires before WebRTC buffer finishes playing.
+        // Keep "sophie" mode for 1.5s so the last words don't look/feel cut off.
+        setTimeout(() => { if (!sophieIsResponding) setHyperVoiceMode('silent'); }, 1500);
         // Sophie finished speaking — reset inactivity timestamp (but not during grace period)
         if (!inactivityWarningFired) touchActivity();
         // NO inactivity timer on response.done — user may pause mid-pitch to think.
@@ -6807,7 +6832,12 @@ if (!hasRealConversation) {
       // Wait for Sophie to finish speaking
       await summaryDone;
       // Allow remaining audio buffer to drain (response.done fires before audio finishes playing)
-      await new Promise(r => setTimeout(r, 5000));
+      // 10s covers typical WebRTC jitter + longer closing sentences
+      await new Promise(r => setTimeout(r, 10000));
+
+      // Fade out before closing to avoid pop on disconnect
+      fadeAudioVolume(0, 300);
+      await new Promise(r => setTimeout(r, 350));
 
       // Close data channel (summary done)
       if (dc) {
@@ -6815,15 +6845,16 @@ if (!hasRealConversation) {
         dc = null;
       }
 
-      // Keep audio output alive so last audio plays through completely
+      // Keep audio output alive — defer cleanup so last audio packets play through.
+      // Don't null the refs until cleanup actually runs to avoid race conditions.
       const _pc = pc;
       const _audioEl = audioEl;
-      pc = null;
-      audioEl = null;
       setTimeout(() => {
         try { if (_pc) _pc.close(); } catch(e){}
         try { if (_audioEl) _audioEl.srcObject = null; } catch(e){}
-      }, 8000);
+        if (pc === _pc) pc = null;
+        if (audioEl === _audioEl) audioEl = null;
+      }, 10000);
 
       // Wait for parallel API calls
       await usageDone;
