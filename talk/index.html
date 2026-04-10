@@ -5850,6 +5850,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
       if (msg?.type === "response.done") {
+        cs.metrics.assistantResponseCompleted = true;
         // ── Accumulate real token usage from OpenAI ──
         const _usage = msg?.response?.usage;
         if (_usage) {
