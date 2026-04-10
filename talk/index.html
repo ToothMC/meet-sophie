@@ -5535,6 +5535,8 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
         if (text) {
           hasUserSpoken = true;
+          cs.metrics.userTranscriptReceived = true;
+          cs.metrics.turnCount++;
           convoLog.push({ role: "user", text });
         }
         return;
