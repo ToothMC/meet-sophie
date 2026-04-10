@@ -75,7 +75,8 @@
       "WebSearch",
       "WebFetch(domain:resend-status.com)",
       "WebFetch(domain:status.resend.com)",
-      "Bash(grep -r \"talk.*mode\\\\|voice.*mode\\\\|realtime\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
+      "Bash(grep -r \"talk.*mode\\\\|voice.*mode\\\\|realtime\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(npx vercel:*)"
     ]
   },
   "hooks": {
