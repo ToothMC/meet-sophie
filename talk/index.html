@@ -5419,9 +5419,9 @@ Say all three in one continuous turn. Then STOP. Wait for the answer.
 No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       } else {
-        // TALK (default): no scripted greeting — Sophie speaks from system prompt
-        // System prompt has correct language, name, and personality.
-        console.log(`[${runId}] [kickoff_talk] no scripted greeting — system prompt handles it`);
+        // TALK (default): brief greeting so user knows Sophie is ready
+        console.log(`[${runId}] [kickoff_talk] sending greeting kickoff`);
+        kickoffInstruction = `Greet the user briefly to signal you're ready. A simple "Hi${nameStr}" or similar — keep it natural, short, warm. One sentence max. Then wait for the user to speak. Do NOT ask a question. Do NOT introduce yourself. Just signal that you're here.`;
       }
 
       if (kickoffInstruction) {
