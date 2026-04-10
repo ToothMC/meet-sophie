@@ -4630,7 +4630,11 @@ ${(voiceHandover.recentMessages || [])
     : "";
 
   try {
-    await cancelAnyOngoingResponse();
+    // Only cancel if there might be an ongoing response (handover/reconnect scenarios).
+    // On fresh DC open there's nothing to cancel, and the cancel can race with the subsequent create.
+    if (voiceHandover) {
+      await cancelAnyOngoingResponse();
+    }
 
     // Sales Pitch: start Phase A with handover context + correct language
     if (selectedVoiceMode === "salespitch") {
