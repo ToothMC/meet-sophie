@@ -3018,24 +3018,32 @@ function stopSvTimer() {
 
 // ══════════════════════════════════════════════════════════
 
-// Pre-load ready sound during user gesture so iOS Safari allows playback later
+// iOS Safari requires a REAL play() during user gesture to unlock audio.
+// Just .load() is not enough. We play at volume 0 to unlock, then replay at full volume later.
 let _readyAudio = null;
+let _audioUnlocked = false;
 function preloadReadySound() {
   try {
+    if (_readyAudio) return; // already created
     _readyAudio = new Audio("/audio/ready.mp3");
-    _readyAudio.volume = 0.28;
-    _readyAudio.load();
+    _readyAudio.volume = 0.001; // near-silent unlock play
+    _readyAudio.play().then(() => {
+      _audioUnlocked = true;
+      _readyAudio.pause();
+      _readyAudio.currentTime = 0;
+      _readyAudio.volume = 0.28;
+    }).catch(() => {
+      // Autoplay blocked — will retry on next user gesture
+      _readyAudio.volume = 0.28;
+    });
   } catch(_) {}
 }
 function playReadySound(){
   try{
     if (_readyAudio) {
       _readyAudio.currentTime = 0;
+      _readyAudio.volume = 0.28;
       _readyAudio.play().catch(() => {});
-    } else {
-      const audio = new Audio("/audio/ready.mp3");
-      audio.volume = 0.28;
-      audio.play().catch(() => {});
     }
   } catch(_) {}
 }
