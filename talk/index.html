@@ -3510,8 +3510,14 @@ function startFakeReportLoader() {
 }
 
 function resetPostCallUI() {
-  // Report was disabled — go back to landing page
-  window.location.href = "/app";
+  // Report was disabled — stay on talk page, re-enable start
+  startBtn.disabled = false;
+  startBtn.style.display = "";
+  startBtn.textContent = t("start");
+  endBtn.style.display = "none";
+  logoutBtn.disabled = false;
+  headline.textContent = t("ready");
+  document.querySelector(".wrap")?.classList.remove("session-active");
 }
 
 function stopFakeReportLoader(hideBar = true) {
@@ -6578,8 +6584,16 @@ if (!hasRealConversation) {
   userTranscriptBuffer.clear();
   hasUserSpoken = false;
 
-  // No real conversation — go back to landing page
-  window.location.href = "/app";
+  // No real conversation — stay on talk page, re-enable start button
+  stopFakeReportLoader();
+  startBtn.disabled = false;
+  startBtn.style.display = "";
+  startBtn.textContent = t("start");
+  endBtn.style.display = "none";
+  logoutBtn.disabled = false;
+  headline.textContent = t("ready");
+  setStatus("");
+  document.querySelector(".wrap")?.classList.remove("session-active");
   return;
 }
     
