@@ -634,15 +634,12 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
 .inlineReportProgressBar{
   width:0%;
   height:100%;
-  background:linear-gradient(90deg,#c4a882,#e0c9a6);
+  background:linear-gradient(90deg,#3f8cff,#6aadff);
   border-radius:999px;
-  transition:width .4s ease;
+  transition:width 1.5s ease-out;
 }
 .inlineReportPercent{
-  font-size:13px;
-  font-weight:600;
-  color:rgba(255,255,255,.7);
-  letter-spacing:.03em;
+  display:none;
 }
 
 #postCallPanel{
@@ -3321,18 +3318,10 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
         inlineReportProgressBar.style.width = realProgress + "%";
       }
 
-      if (percentEl && data.detail) percentEl.textContent = data.detail;
-
-      if (softHint && data.detail) {
-        softHint.textContent = data.detail;
-        softHint.style.display = "block";
-      }
-
       if (data.status === "done" && data.report_html) {
         // Smooth finish: stop fake loader, animate to 100%, brief pause, then show report
         stopFakeReportLoader(false);
         inlineReportProgressBar.style.width = "100%";
-        if (percentEl) percentEl.textContent = "Report fertig!";
         if (softHint) { softHint.textContent = ""; softHint.style.display = "none"; }
 
         // Brief pause at 100% so user sees completion before report slides in
@@ -3378,37 +3367,23 @@ function startFakeReportLoader() {
   inlineReportProgressBar.style.width = "0%";
   const percentEl = document.getElementById("inlineReportPercent");
 
-  const stages = [
-    { at: 0, text: "Transcript wird analysiert..." },
-    { at: 25, text: "Kriterien werden bewertet..." },
-    { at: 50, text: "Scorecard wird erstellt..." },
-    { at: 75, text: "Report wird finalisiert..." },
-    { at: 90, text: "Fast fertig..." },
-  ];
-
-  let progress = 8;
+  let progress = 5;
   inlineReportProgressBar.style.width = progress + "%";
-  if (percentEl) percentEl.textContent = stages[0].text;
 
+  // Smooth steady progress — only goes forward, slows down as it approaches 92%
   window.__sophieLoaderInterval = setInterval(() => {
-    if (progress < 35) {
-      progress += Math.random() * 8;
-    } else if (progress < 62) {
-      progress += Math.random() * 5;
-    } else if (progress < 84) {
-      progress += Math.random() * 3;
+    if (progress < 30) {
+      progress += 1.2 + Math.random() * 0.8;
+    } else if (progress < 60) {
+      progress += 0.6 + Math.random() * 0.5;
+    } else if (progress < 80) {
+      progress += 0.3 + Math.random() * 0.3;
     } else if (progress < 92) {
-      progress += Math.random() * 1;
+      progress += 0.1 + Math.random() * 0.15;
     }
-
     if (progress > 92) progress = 92;
     inlineReportProgressBar.style.width = progress + "%";
-
-    if (percentEl) {
-      const stage = [...stages].reverse().find(s => progress >= s.at);
-      if (stage) percentEl.textContent = stage.text;
-    }
-  }, 500);
+  }, 800);
 }
 
 function resetPostCallUI() {
