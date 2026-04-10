@@ -5118,7 +5118,10 @@ function attachChannel(ch) {
   dc = ch;
 
   dc.addEventListener("open", async () => {
-    console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}`);
+    const myRunId = cs.runId; // capture for stale-check
+    console.log(`[${runId}] [dc] open. isFirstSession=${isFirstSession}, runId=${myRunId}`);
+    setState(S.ACTIVE);
+    track("session_lifecycle", { phase: "peer_connected", runId: myRunId });
 
     try {
       const sessionUpdate = {
