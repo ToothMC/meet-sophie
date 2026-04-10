@@ -60,6 +60,7 @@ body::after{
 /* ── Minimal Animations (performance-safe) ── */
 @keyframes fade-label  { 0%,100%{opacity:.4} 50%{opacity:.85} }
 @keyframes riPulse { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:1;transform:scale(1.15)} }
+@keyframes globePulse { 0%,100%{opacity:.85;transform:scale(1)} 50%{opacity:1;transform:scale(1.06)} }
 
 /* ── Globe (appears when Sophie accesses realtime APIs) ── */
 .globe-center{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
@@ -75,7 +76,7 @@ body::after{
   color:rgba(160,220,255,.95);opacity:.4;transition:opacity .5s ease;
   white-space:nowrap;
 }
-.globe-wrap.searching{opacity:1;filter:brightness(1.4) drop-shadow(0 0 10px rgba(80,200,255,.6))}
+.globe-wrap.searching{opacity:1;filter:brightness(1.4) drop-shadow(0 0 10px rgba(80,200,255,.6));animation:globePulse 2.5s ease-in-out infinite}
 .globe-wrap.searching .globe-inet{opacity:1}
 .v-conn{
   width:1.5px;height:18px;
@@ -2165,8 +2166,10 @@ const reopenReportBtn = document.getElementById("reopenReportBtn");
 
 function closePostCallPanel() {
   postCallPanel.style.transform = "translateY(100%)";
-  setTimeout(() => { postCallPanel.style.display = "none"; }, 350);
-  reopenReportBtn.style.display = "block";
+  setTimeout(() => {
+    postCallPanel.style.display = "none";
+    window.location.href = "/app";
+  }, 350);
 }
 
 document.getElementById("postCallCloseX").onclick = closePostCallPanel;
@@ -2289,7 +2292,8 @@ const voiceHandover = loadHandover();
 sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── i18n: UI translations ──────────────────────────────────
-const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || "en";
+const _browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
+const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || (_browserLang === "de" || _browserLang === "fr" ? _browserLang : "en");
 document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
 // Set voice chat send button label
 const _vcSendLabels = { en: "Send", de: "Senden", fr: "Envoyer" };
@@ -2521,8 +2525,12 @@ function showResearchIndicator() {
   if (gw) gw.classList.add("searching");
 }
 function hideResearchIndicator() {
-  const gw = document.getElementById("globeWrap");
-  if (gw) gw.classList.remove("searching");
+  // Keep globe visible for 3s after tool completes, then fade out
+  clearTimeout(window.__globeHideTimeout);
+  window.__globeHideTimeout = setTimeout(() => {
+    const gw = document.getElementById("globeWrap");
+    if (gw) gw.classList.remove("searching");
+  }, 3000);
 }
 
 function showReadyStatus() {
@@ -3337,7 +3345,8 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   const percentEl = document.getElementById("inlineReportPercent");
 
   // Track minimum progress — bar only goes UP, never backwards
-  let minProgress = parseFloat(inlineReportProgressBar.style.width) || 5;
+  // Use shared global so fake loader and real progress never conflict
+  window.__reportMinProgress = Math.max(window.__reportMinProgress || 0, parseFloat(inlineReportProgressBar.style.width) || 5);
 
   // Skip firing generate-report if already started in background (parallel pitch flow)
   if (!opts.skipGenerate) {
@@ -3378,8 +3387,8 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
 
       // Only update bar if real progress is HIGHER than current position
       const realProgress = Math.max(5, Math.min(98, data.progress || 0));
-      if (realProgress > minProgress) {
-        minProgress = realProgress;
+      if (realProgress > (window.__reportMinProgress || 0)) {
+        window.__reportMinProgress = realProgress;
         inlineReportProgressBar.style.width = realProgress + "%";
       }
 
@@ -3440,22 +3449,24 @@ function startFakeReportLoader() {
     });
   }
 
-  let progress = 5;
-  inlineReportProgressBar.style.width = progress + "%";
+  window.__reportMinProgress = 5;
+  inlineReportProgressBar.style.width = "5%";
 
-  // Smooth steady progress — only goes forward, slows down as it approaches 92%
+  // Smooth steady progress — only goes forward, never back
   window.__sophieLoaderInterval = setInterval(() => {
-    if (progress < 30) {
-      progress += 1.2 + Math.random() * 0.8;
-    } else if (progress < 60) {
-      progress += 0.6 + Math.random() * 0.5;
-    } else if (progress < 80) {
-      progress += 0.3 + Math.random() * 0.3;
-    } else if (progress < 92) {
-      progress += 0.1 + Math.random() * 0.15;
+    let p = window.__reportMinProgress || 5;
+    if (p < 30) {
+      p += 1.2 + Math.random() * 0.8;
+    } else if (p < 60) {
+      p += 0.6 + Math.random() * 0.5;
+    } else if (p < 80) {
+      p += 0.3 + Math.random() * 0.3;
+    } else if (p < 92) {
+      p += 0.1 + Math.random() * 0.15;
     }
-    if (progress > 92) progress = 92;
-    inlineReportProgressBar.style.width = progress + "%";
+    if (p > 92) p = 92;
+    window.__reportMinProgress = p;
+    inlineReportProgressBar.style.width = p + "%";
   }, 800);
 }
 
@@ -4946,7 +4957,7 @@ function attachChannel(ch) {
       const sessionUpdate = {
         type: "session.update",
         session: {
-          input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
+          input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: _uiLang || "en" },
           turn_detection: {
             type: "server_vad",
             // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
