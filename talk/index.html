@@ -5419,39 +5419,26 @@ Say all three in one continuous turn. Then STOP. Wait for the answer.
 No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       } else {
-        // TALK (default): brief greeting so user knows Sophie is ready
-        console.log(`[${runId}] [kickoff_talk] sending greeting kickoff`);
-        kickoffInstruction = isDE
-          ? `Begrüße den User kurz — ein einfaches "Hi" reicht. Natürlich, kurz, warm. Maximal ein Satz. Dann warte bis der User spricht. Stelle KEINE Frage. Stell dich NICHT vor. Sprich DEUTSCH.`
-          : greetLang === "fr"
-          ? `Salue l'utilisateur brièvement — un simple "Hi" suffit. Naturel, court, chaleureux. Une phrase max. Puis attends. Ne pose PAS de question. Ne te présente PAS. Parle FRANÇAIS.`
-          : `Greet the user briefly — a simple "Hi" is enough. Natural, short, warm. One sentence max. Then wait. Do NOT ask a question. Do NOT introduce yourself. Speak ENGLISH.`;
+        // TALK (default): no scripted greeting — Sophie speaks from system prompt
+        console.log(`[${runId}] [kickoff_talk] no scripted greeting — system prompt handles it`);
       }
 
       if (kickoffInstruction) {
+        kickoffSent = true;
         try {
-          await sendWhenChannelOpen({
+          await cancelAnyOngoingResponse();
+          dcSend({
             type: "response.create",
             response: {
               modalities: ["audio", "text"],
               instructions: kickoffInstruction,
             },
-          }, 5000);
-          kickoffSent = true;
-          console.log(`[${runId}] [kickoff] response.create sent — waiting for response.done before enabling auto-responses`);
-          // Do NOT call setAutoResponses here — the session.update interrupts the greeting.
-          // Auto-responses will be enabled when this response completes (response.done handler).
-          kickoffInProgress = true;
-        } catch(e) {
-          console.log(`[${runId}] [kickoff] failed`, e);
-          kickoffSent = false;
-          await setAutoResponses(true);
-        }
-      } else {
-        // Meeting mode or no kickoff: enable auto-responses immediately
-        await setAutoResponses(true);
+          });
+        } catch(e) { console.log(`[${runId}] [kickoff] failed`, e); }
       }
+      // Meeting mode: no kickoff sent, just enable auto-responses for user speech
       kickoffSent = true; // mark as ready even for silent-start modes
+      await setAutoResponses(true);
     }
   });
 
