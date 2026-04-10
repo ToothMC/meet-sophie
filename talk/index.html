@@ -6149,7 +6149,7 @@ async function startVoice(){
     return;
   }
 
-  _startVoiceLock = true;
+  // (state guard handled by cs.state = STARTING above)
   
   await preloadLimitVideo();
 
