@@ -2751,7 +2751,7 @@ function setHyperVoiceMode(m) {
 // ── Start/stop wave rendering ──
 let _waveStartTime = 0;
 let _waveFaded = false;
-const _WAVE_FADE_MS = 10000; // fade out after 10s of silence
+const _WAVE_FADE_MS = 10000; // always fade out after 10s
 
 function startHyperWave() {
   if (_waveRunning) return;
