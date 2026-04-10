@@ -5448,6 +5448,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
         userIsSpeaking = true;
+        cs.metrics.userAudioDetected = true;
         // Fade out Sophie's voice when user starts speaking
         if (audioEl) audioEl.volume = 0;
         // User is speaking — reset inactivity (including warning flag if grace period active)
