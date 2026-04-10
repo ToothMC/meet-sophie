@@ -6121,17 +6121,20 @@ async function finalizeSessionAfterSummary() {
   }
 }
 
-let _startVoiceLock = false;
 async function startVoice(){
 
   // Pre-load ready sound during user gesture context (iOS Safari requires this)
   preloadReadySound();
 
-  // prevent double session
-  if (pc || stream || _startVoiceLock) {
-    console.log("Session already running or starting → ignore");
+  // Session state guard — only start from IDLE or FAILED
+  if (cs.state !== S.IDLE && cs.state !== S.FAILED) {
+    console.log(`[state] startVoice blocked — state=${cs.state}`);
     return;
   }
+
+  // Create fresh session object — old session data becomes irrelevant
+  cs = createSession();
+  if (!setState(S.STARTING)) return;
 
   // Acquire realtime lock (primary must be held first — enforced by tab manager)
   if (!sophieTabManager.isPrimary) {
