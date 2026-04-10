@@ -1606,16 +1606,26 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
 
     // ---------------------------
     // PROFILE: merge + hard gates + deterministic name fallback
+    // AI-extracted names have priority over regex fallback.
+    // Voice transcripts are unreliable (Whisper can garble names),
+    // so we do NOT require AI-extracted names to appear in the transcript.
+    // Only regex-fallback names must pass appearsInUserTextExact.
     // ---------------------------
     let firstNameNew = clean(p.first_name);
     let preferredNameNew = clean(p.preferred_name);
 
-    const extracted = extractNameFromUserText(userOnlyJoined);
-    if (!firstNameNew && extracted.first) firstNameNew = extracted.first;
-    if (!preferredNameNew && extracted.nick) preferredNameNew = extracted.nick;
+    // AI-extracted: only ban-check, no transcript-match required
+    if (isBannedName(firstNameNew)) firstNameNew = "";
+    if (isBannedName(preferredNameNew)) preferredNameNew = "";
 
-    if (isBannedName(firstNameNew) || !appearsInUserTextExact(firstNameNew)) firstNameNew = "";
-    if (isBannedName(preferredNameNew) || !appearsInUserTextExact(preferredNameNew)) preferredNameNew = "";
+    // Regex fallback: only if AI didn't extract, AND must appear in transcript
+    const extracted = extractNameFromUserText(userOnlyJoined);
+    if (!firstNameNew && extracted.first && !isBannedName(extracted.first) && appearsInUserTextExact(extracted.first)) {
+      firstNameNew = extracted.first;
+    }
+    if (!preferredNameNew && extracted.nick && !isBannedName(extracted.nick) && appearsInUserTextExact(extracted.nick)) {
+      preferredNameNew = extracted.nick;
+    }
 
     const addressingNew = clean(p.preferred_addressing).toLowerCase();
     const pronounNew = clean(p.preferred_pronoun);
