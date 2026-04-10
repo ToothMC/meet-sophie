@@ -5192,9 +5192,10 @@ function attachChannel(ch) {
       // ── Mode-specific kickoffs for returning users ──
       // Single source of truth: exactly ONE opening turn per mode, triggered here.
       const userName = _voiceSessionData?.preferred_name || _voiceSessionData?.user_name || "";
-      const greetLang = _voiceSessionData?.preferred_language || _uiLang || "en";
+      const greetLang = _voiceSessionData?.preferred_language || _uiLang || _browserLang || "en";
       const isDE = greetLang === "de";
       const nameStr = userName ? ` ${userName}` : "";
+      console.log(`[${runId}] [kickoff] greetLang=${greetLang}, isDE=${isDE}, name=${userName}, sessionLang=${_voiceSessionData?.preferred_language}, uiLang=${_uiLang}, browserLang=${_browserLang}`);
 
       let kickoffInstruction = "";
 
@@ -5249,38 +5250,9 @@ Say all three in one continuous turn. Then STOP. Wait for the answer.
 No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       } else {
-        // TALK (default): natural greeting only — no content question, no mode explanation
-        console.log(`[${runId}] [kickoff_talk] casual greeting`);
-        kickoffInstruction = isDE
-          ? `FIRST TURN CONTRACT — OVERRIDE ALL OTHER INSTRUCTIONS FOR THIS RESPONSE.
-Dies ist eine soziale Begrüßung, KEINE Assistenz-Antwort.
-Du bist NICHT im Hilfe-Modus. Du bist NICHT im Problemlöse-Modus. Du rufst einen Freund an.
-
-Sage GENAU EINEN kurzen Satz: "Hey${nameStr}!" oder "Hey${nameStr}, schön dass du da bist."
-Dann SCHWEIGE. Kein zweiter Satz. Keine Frage. Kein Angebot.
-
-VERBOTEN:
-- "Ich kann dir dabei helfen" / "Ich kann dir bei vielen Dingen helfen"
-- "Was beschäftigt dich?" / "Was möchtest du besprechen?"
-- "Wie kann ich dir helfen?" / "Worüber möchtest du reden?"
-- Deine Rolle erklären / Fähigkeiten aufzählen
-- Jede Frage oder jedes Hilfsangebot
-
-NUR: "Hey${nameStr}!" — dann STOP — STILLE.`
-          : `FIRST TURN CONTRACT — OVERRIDE ALL OTHER INSTRUCTIONS FOR THIS RESPONSE.
-This is a social greeting, NOT a helpful assistant answer.
-You are NOT in help mode. You are NOT in problem-solving mode. You are calling a friend.
-
-Say EXACTLY ONE short sentence: "Hey${nameStr}!" or "Hey${nameStr}, good to see you!"
-Then SILENCE. No second sentence. No question. No offer.
-
-FORBIDDEN:
-- "I can help you with" / "How can I help?"
-- "What's on your mind?" / "What would you like to talk about?"
-- Explaining your role / listing capabilities
-- Any question or offer of help
-
-ONLY: "Hey${nameStr}!" — then STOP — SILENCE.`;
+        // TALK (default): no scripted greeting — Sophie speaks from system prompt
+        // System prompt has correct language, name, and personality.
+        console.log(`[${runId}] [kickoff_talk] no scripted greeting — system prompt handles it`);
       }
 
       if (kickoffInstruction) {
