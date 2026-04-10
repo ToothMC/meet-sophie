@@ -5429,17 +5429,20 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       }
 
       if (kickoffInstruction) {
-        kickoffSent = true;
         try {
-          await cancelAnyOngoingResponse();
-          dcSend({
+          await sendWhenChannelOpen({
             type: "response.create",
             response: {
               modalities: ["audio", "text"],
               instructions: kickoffInstruction,
             },
-          });
-        } catch(e) { console.log(`[${runId}] [kickoff] failed`, e); }
+          }, 5000);
+          kickoffSent = true;
+          console.log(`[${runId}] [kickoff] response.create sent`);
+        } catch(e) {
+          console.log(`[${runId}] [kickoff] failed`, e);
+          kickoffSent = false;
+        }
       }
       // Meeting mode: no kickoff sent, just enable auto-responses for user speech
       kickoffSent = true; // mark as ready even for silent-start modes
@@ -6743,6 +6746,7 @@ if (!hasRealConversation) {
   remainingAtSessionStart = 0;
   terminateSession(t("ready"));
   cs.stopGuard = false;
+  window.location.href = "/app";
   return;
 }
     
@@ -6901,16 +6905,21 @@ if (!hasRealConversation) {
     let memoryOk = false;
     if (!cs.memoryUpdateSent && memoryBody) {
       cs.memoryUpdateSent = true;
+      const memAbort = new AbortController();
+      const memTimeout = setTimeout(() => memAbort.abort(), 30000);
       try {
         const memRes = await fetch("/api/memory-update", {
           method: "POST",
           headers: memoryBody.headers,
           body: JSON.stringify(memoryBody.payload),
+          signal: memAbort.signal,
         });
+        clearTimeout(memTimeout);
         memoryOk = memRes.ok;
         track("session_lifecycle", { phase: "memory_done", runId: cs.runId, ok: memoryOk });
       } catch (e) {
-        console.error("[memory] failed:", e?.message);
+        clearTimeout(memTimeout);
+        console.error("[memory] failed/timeout:", e?.message);
       }
     }
 
