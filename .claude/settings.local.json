@@ -65,7 +65,8 @@
       "Bash(node -c lib/sophie-report-overlay.js)",
       "Bash(node -c /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/landing-demo-i18n.js)",
       "Bash(ls -d /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*/)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_logs"
     ]
   },
   "hooks": {

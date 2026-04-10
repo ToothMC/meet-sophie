@@ -57,23 +57,8 @@ body::after{
   background-size:32px 32px;
 }
 
-/* ── Hyper Animations ── */
-@keyframes pulse-ring  { 0%{transform:scale(.88);opacity:.85} 50%{transform:scale(1.08);opacity:.18} 100%{transform:scale(.88);opacity:.85} }
-@keyframes pulse-ring2 { 0%{transform:scale(.75);opacity:.55} 50%{transform:scale(1.16);opacity:.04} 100%{transform:scale(.75);opacity:.55} }
-@keyframes pulse-ring3 { 0%{transform:scale(.62);opacity:.35} 50%{transform:scale(1.28);opacity:0}   100%{transform:scale(.62);opacity:.35} }
-@keyframes rot-cw      { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
-@keyframes rot-ccw     { from{transform:rotate(0)}   to{transform:rotate(-360deg)} }
-@keyframes breathe     { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-@keyframes flash-hyper { 0%,100%{opacity:.12} 50%{opacity:1} }
-@keyframes core-glow-sm {
-  0%,100% { box-shadow:0 0 16px 5px rgba(120,80,255,.5), inset 0 0 12px rgba(255,255,255,.07); }
-  50%     { box-shadow:0 0 30px 10px rgba(140,90,255,.8), inset 0 0 20px rgba(255,255,255,.15); }
-}
-@keyframes globe-pulse { 0%,100%{opacity:.2} 50%{opacity:.6} }
-@keyframes text-pulse  { 0%,100%{opacity:.7;text-shadow:0 0 10px rgba(120,200,255,.4)} 50%{opacity:1;text-shadow:0 0 20px rgba(120,200,255,.95)} }
-@keyframes scan-h      { 0%{left:-4%;opacity:0} 5%{opacity:.6} 95%{opacity:.6} 100%{left:100%;opacity:0} }
+/* ── Minimal Animations (performance-safe) ── */
 @keyframes fade-label  { 0%,100%{opacity:.4} 50%{opacity:.85} }
-@keyframes status-blink { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
 
 /* ── Corner decorations ── */
 .cdeco{position:absolute;width:28px;height:28px;pointer-events:none;opacity:.28;z-index:3}
