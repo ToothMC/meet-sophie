@@ -6711,9 +6711,13 @@ if (!hasRealConversation) {
     hasUserSpoken = false;
 
     // If report was shown, stay on page (report has its own navigation).
-    // Otherwise go back to landing page.
-    if (!reportEnabled || !sessionId) {
-      window.location.href = "/app";
+    // If report disabled, stay on talk page and re-enable start button.
+    if (!reportEnabled) {
+      startBtn.disabled = false;
+      startBtn.style.display = "";
+      endBtn.style.display = "none";
+      logoutBtn.disabled = false;
+      headline.textContent = t("see_you_soon");
     }
     resetClosingState();
 
