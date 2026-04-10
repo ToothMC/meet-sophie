@@ -3018,16 +3018,42 @@ function stopSvTimer() {
 
 // ══════════════════════════════════════════════════════════
 
-// Ready sound is played after mic permission grant (the only reliable user gesture on iOS)
-function preloadReadySound() {
-  // no-op — sound is triggered in startVoice after getUserMedia resolves
-}
-function playReadySound(){
+// Ready sound via Web Audio API — uses the WebRTC-unlocked AudioContext
+// This bypasses iOS Safari's autoplay restriction because the AudioContext
+// is unlocked by the WebRTC audio stream (which has an iOS exemption).
+let _readySoundBuffer = null;
+
+async function decodeReadySound() {
+  if (_readySoundBuffer || !_hyperAudioCtx) return;
   try {
+    const resp = await fetch('/audio/ready.mp3');
+    const buf = await resp.arrayBuffer();
+    _readySoundBuffer = await _hyperAudioCtx.decodeAudioData(buf);
+  } catch(_) {}
+}
+
+function playReadySound() {
+  try {
+    // Primary: Web Audio through WebRTC-unlocked AudioContext
+    if (_hyperAudioCtx && _readySoundBuffer) {
+      if (_hyperAudioCtx.state === 'suspended') _hyperAudioCtx.resume();
+      const source = _hyperAudioCtx.createBufferSource();
+      source.buffer = _readySoundBuffer;
+      const gain = _hyperAudioCtx.createGain();
+      gain.gain.value = 0.28;
+      source.connect(gain).connect(_hyperAudioCtx.destination);
+      source.start(0);
+      return;
+    }
+    // Fallback: HTML Audio (works on desktop, blocked on iOS without gesture)
     const audio = new Audio("/audio/ready.mp3");
     audio.volume = 0.28;
     audio.play().catch(() => {});
   } catch(_) {}
+}
+
+function preloadReadySound() {
+  // no-op — sound decoded after AudioContext created in pc.ontrack
 }
 
 function escapeHtml(value = "") {
@@ -6365,9 +6391,6 @@ async function startVoice(){
       setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
     stream = await Promise.race([micPromise, micTimeout]);
     track("mic_permission_granted");
-    // Play ready sound HERE — "Allow" mic tap is a user gesture on THIS page
-    // This is the only reliable moment for iOS Safari audio unlock
-    playReadySound();
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     // Single audio path: <audio> element for playback + browser AEC.
@@ -6397,6 +6420,8 @@ async function startVoice(){
         // Do NOT connect to destination — audioEl handles playback
         _hyperDataArray = new Float32Array(_hyperAnalyser.fftSize);
         console.log("[hyper] Analyser connected to remote stream, AudioContext state:", _hyperAudioCtx.state);
+        // Pre-decode ready sound now that AudioContext exists
+        decodeReadySound();
       } catch (err) {
         console.warn("[hyper] Could not create audio analyser:", err);
       }
@@ -6811,7 +6836,10 @@ if (!hasRealConversation) {
     // ── Cleanup media resources FIRST (free mic, WebRTC) ──
     cleanupMediaResources();
 
-    // ── Memory update: await with 8s timeout (report needs session row in DB) ──
+    // ── Memory update: await fully (report needs session+output rows in DB) ──
+    // No timeout — memory-update takes 5-15s due to AI extraction.
+    // Fake report loader is already running so user sees progress.
+    // No keepalive — page stays open, normal fetch is reliable.
     let memoryOk = false;
     if (!cs.memoryUpdateSent) {
       cs.memoryUpdateSent = true;
@@ -6821,7 +6849,7 @@ if (!hasRealConversation) {
       try {
         const { data: { session: authSess } } = await supabase.auth.getSession();
         if (authSess?.access_token) {
-          const memPromise = fetch("/api/memory-update", {
+          const memRes = await fetch("/api/memory-update", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
             body: JSON.stringify({
@@ -6833,11 +6861,8 @@ if (!hasRealConversation) {
               session_mode: selectedVoiceMode || null,
               realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
             }),
-            keepalive: true,
           });
-          const memTimeout = new Promise(r => setTimeout(() => r(null), 8000));
-          const memRes = await Promise.race([memPromise, memTimeout]);
-          memoryOk = memRes && memRes.ok;
+          memoryOk = memRes.ok;
           track("session_lifecycle", { phase: "memory_done", runId: cs.runId, ok: memoryOk });
         }
       } catch (e) {
