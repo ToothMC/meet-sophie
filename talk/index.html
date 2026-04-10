@@ -6400,7 +6400,9 @@ async function startVoice(){
 
     setStatus(_uiLang === "de" ? "Sophie wird verbunden …" : _uiLang === "fr" ? "Connexion à Sophie …" : "Connecting to Sophie …");
 
+    setState(S.CONNECTING);
     track("voice_connect_started");
+    track("session_lifecycle", { phase: "connecting", runId: cs.runId });
     const _connectT0 = Date.now();
     const answerSdp = await fetchRealtimeAnswerSdp({
       offerSdp: offer.sdp,
