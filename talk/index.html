@@ -6865,11 +6865,11 @@ if (!hasRealConversation) {
     hasUserSpoken = false;
     resetClosingState();
 
-    // ── UI → Ready (user can start new session immediately) ──
+    // ── No report: session done → back to app ──
     if (!reportEnabled) {
       stopFakeReportLoader();
-      terminateSession(t("see_you_soon"));
       cs.stopGuard = false;
+      window.location.href = "/app";
       return;
     }
 
