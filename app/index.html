@@ -66,6 +66,32 @@
     }
     body.ready { visibility: visible; }
 
+    /* ── Locked-State Overlay (no active subscription) ──── */
+    .locked-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      justify-content: center; align-items: center;
+      padding: 24px;
+    }
+    .locked-overlay.active { display: flex; }
+    .locked-card {
+      background: #fff; border-radius: 20px; padding: 40px 32px;
+      max-width: 420px; width: 100%; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .locked-card .locked-avatar { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; }
+    .locked-card h2 { font-size: 22px; margin: 0 0 12px; color: #1a1a2e; }
+    .locked-card p { font-size: 15px; color: #555; margin: 0 0 24px; line-height: 1.5; }
+    .locked-card .locked-cta {
+      display: inline-block; background: #7c3aed; color: #fff;
+      padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;
+      text-decoration: none; transition: background .2s;
+    }
+    .locked-card .locked-cta:hover { background: #6d28d9; }
+    .locked-card .locked-sub { display: block; margin-top: 12px; font-size: 13px; color: #888; }
+
     a { color: inherit; text-decoration: none; }
 
     .wrap { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
@@ -706,6 +732,17 @@
 </head>
 <body>
 
+  <!-- ── Locked-State Overlay (no active subscription) ──── -->
+  <div class="locked-overlay" id="lockedOverlay">
+    <div class="locked-card">
+      <img class="locked-avatar" src="/app/sophie-favicon-32x32.png" alt="Sophie" />
+      <h2 id="lockedTitle">Sophie wartet auf dich</h2>
+      <p id="lockedText">Starte dein kostenloses Probemonat und entdecke alle Funktionen von Sophie. 300 Tokens inklusive, jederzeit kündbar.</p>
+      <a class="locked-cta" href="/pricing" id="lockedCta">1 Monat gratis starten</a>
+      <span class="locked-sub" id="lockedSub">Dann 9,90 €/Monat · Jederzeit kündbar</span>
+    </div>
+  </div>
+
   <!-- ── Header ──────────────────────────────────────────── -->
   <header class="app-header">
     <div class="wrap">
@@ -897,6 +934,28 @@
     if (!session) { location.replace("/"); throw new Error("no session"); }
     // Auth confirmed — show the app
     document.body.classList.add("ready");
+
+    // ── Subscription gate (locked overlay) ──────────────
+    {
+      const { data: sub } = await supabase
+        .from("user_subscriptions")
+        .select("is_active")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (!sub?.is_active) {
+        const overlay = document.getElementById("lockedOverlay");
+        if (overlay) {
+          // i18n for locked overlay
+          if (currentLang === "en") {
+            document.getElementById("lockedTitle").textContent = "Sophie is waiting for you";
+            document.getElementById("lockedText").textContent = "Start your free trial month and discover all of Sophie\u2019s features. 300 tokens included, cancel anytime.";
+            document.getElementById("lockedCta").textContent = "Start 1 month free";
+            document.getElementById("lockedSub").textContent = "Then \u20AC9.90/month \u00B7 Cancel anytime";
+          }
+          overlay.classList.add("active");
+        }
+      }
+    }
 
     // ── Profile button ───────────────────────────────────
     const profileBtn = document.getElementById("profileBtn");

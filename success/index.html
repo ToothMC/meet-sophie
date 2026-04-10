@@ -152,8 +152,13 @@
     <p class="message" id="tMessage"></p>
     <p class="sub" id="tSub"></p>
 
+    <!-- Trial info block (shown after successful trial checkout) -->
+    <div id="trialInfo" style="display:none;background:rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;margin:0 0 20px;text-align:left;font-size:14px;line-height:1.6;color:rgba(255,255,255,.7);">
+      <div id="trialInfoContent"></div>
+    </div>
+
     <p class="status" id="tStatus"></p>
-    <a id="go" class="btn" href="/talk/" style="display:none;" id="tBtn"></a>
+    <a id="go" class="btn" href="/talk/" style="display:none;"></a>
   </div>
 
   <div class="footer">
@@ -178,20 +183,30 @@
     de: {
       message: "Danke. Ich freue mich, dass du da bist.",
       sub: "Dein Zugang wird gerade aktiviert — ich warte schon auf unser nächstes Gespräch.",
+      subTrial: "Dein kostenloses Probemonat ist aktiv — ich warte schon auf unser erstes Gespräch.",
       status: "Einen Moment … wird geprüft.",
       ready: "Bereit.",
       btn: "Weiter zu Sophie",
       manage: "Abo verwalten",
       error: "Die Aktivierung konnte nicht bestätigt werden. Bitte versuche es gleich noch einmal.",
+      trialActive: "Trial aktiv bis",
+      firstCharge: "Erste Abbuchung am",
+      cancelAnytime: "Jederzeit kündbar über dein Abo-Portal",
+      tokens: "300 Tokens sofort verfügbar",
     },
     en: {
       message: "Thank you. I'm glad you're here.",
       sub: "Your access is being activated — I'm already looking forward to our next conversation.",
+      subTrial: "Your free trial month is active — I'm already looking forward to our first conversation.",
       status: "One moment… verifying.",
       ready: "Ready.",
       btn: "Continue with Sophie",
       manage: "Manage subscription",
       error: "Activation could not be confirmed yet. Please try again in a moment.",
+      trialActive: "Trial active until",
+      firstCharge: "First charge on",
+      cancelAnytime: "Cancel anytime via your subscription portal",
+      tokens: "300 tokens available now",
     }
   };
 
@@ -238,7 +253,26 @@
       }
 
       document.getElementById("tStatus").textContent = TEXT[lang].ready;
-      window.location.href = "/talk/?paid=1";
+
+      // If this was a trial subscription (Start plan), show trial info before redirect
+      if (json?.plan === "start") {
+        const t = TEXT[lang];
+        document.getElementById("tSub").textContent = t.subTrial;
+        // Calculate trial end date (30 days from now)
+        const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const fmt = trialEnd.toLocaleDateString(lang === "de" ? "de-DE" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+        document.getElementById("trialInfoContent").innerHTML =
+          `<div style="margin-bottom:6px">\u2705 ${t.tokens}</div>` +
+          `<div style="margin-bottom:6px">\u{1F4C5} ${t.trialActive}: <strong style="color:#fff">${fmt}</strong></div>` +
+          `<div style="margin-bottom:6px">\u{1F4B3} ${t.firstCharge}: <strong style="color:#fff">${fmt}</strong></div>` +
+          `<div>\u2714\uFE0F ${t.cancelAnytime}</div>`;
+        document.getElementById("trialInfo").style.display = "block";
+        document.getElementById("go").style.display = "inline-block";
+        document.getElementById("go").textContent = TEXT[lang].btn;
+        // Don't auto-redirect — let user read the trial info
+      } else {
+        window.location.href = "/talk/?paid=1";
+      }
     } catch (err) {
       console.error("confirm-checkout error:", err);
       document.getElementById("tStatus").textContent = TEXT[lang].error;

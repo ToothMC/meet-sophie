@@ -76,7 +76,12 @@
       "WebFetch(domain:resend-status.com)",
       "WebFetch(domain:status.resend.com)",
       "Bash(grep -r \"talk.*mode\\\\|voice.*mode\\\\|realtime\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(grep -l \"user_subscriptions\\\\|user_usage\\\\|deduct_tokens\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -r \"CREATE OR REPLACE FUNCTION\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase -name \"*.sql\" -exec grep -l \"deduct_tokens\" {} \\\\;)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_tables",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration"
     ]
   },
   "hooks": {

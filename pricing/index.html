@@ -41,7 +41,7 @@ body{
 .header p{margin:0;font-size:13px;color:#7a6a5a;}
 
 /* Plans grid — all buttons identical */
-.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px;}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px;}
 .plan{
   border-radius:14px;padding:14px 10px 12px;text-align:center;
   display:flex;flex-direction:column;align-items:center;
@@ -141,22 +141,13 @@ body{
 
   <!-- Plans -->
   <div class="plans">
-    <div class="plan" id="planFree">
-      <div class="current-badge" id="badgeFree"></div>
-      <div class="plan-name">Free</div>
-      <div class="plan-price">&euro;0</div>
-      <div class="plan-per"></div>
-      <div class="plan-tokens" id="tFreeTokens"></div>
-      <div class="plan-spacer"></div>
-      <button class="plan-btn" id="btnFree" disabled></button>
-    </div>
-
     <div class="plan" id="planStart">
       <div class="current-badge" id="badgeStart"></div>
       <div class="plan-name">Start</div>
       <div class="plan-price">&euro;9,90</div>
       <div class="plan-per" id="tStartPer"></div>
       <div class="plan-tokens">300 Tokens</div>
+      <div class="plan-trial" id="tStartTrial" style="font-size:13px;color:#7c3aed;font-weight:600;margin-top:4px"></div>
       <div class="plan-spacer"></div>
       <button class="plan-btn" id="btnStart" disabled></button>
     </div>
@@ -225,7 +216,7 @@ const L={
   de:{
     h1:"Mach weiter mit Sophie.",
     lead:"Wähle deinen Plan:",
-    freeTokens:"50 Tokens zum Start",
+    startTrial:"1. Monat gratis · jederzeit kündbar",
     bestStar:"★ Beste Wahl",
     startPer:"/ Monat",plusPer:"/ Monat",premiumPer:"/ Monat",
     selectPlan:"Plan wählen",
@@ -240,7 +231,7 @@ const L={
   en:{
     h1:"Keep going with Sophie.",
     lead:"Choose your plan:",
-    freeTokens:"50 tokens to start",
+    startTrial:"1st month free · cancel anytime",
     bestStar:"★ Best Value",
     startPer:"/ month",plusPer:"/ month",premiumPer:"/ month",
     selectPlan:"Select Plan",
@@ -283,7 +274,7 @@ track("pricing_viewed", { referrer_page: document.referrer || null });
 
 const $ = id => document.getElementById(id);
 const c1=$("c1"),c2=$("c2"),msg=$("msg");
-const btnFree=$("btnFree"),btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
+const btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
 const btnTu5=$("btnTu5"),btnTu10=$("btnTu10"),btnTu20=$("btnTu20");
 const allBtns=[btnStart,btnPlus,btnPremium,btnTu5,btnTu10,btnTu20];
 let lang="en";
@@ -295,13 +286,12 @@ function setLang(l){
   $("langEN").classList.toggle("active",l==="en");
   const t=L[l];
   $("tH1").textContent=t.h1;$("tLead").textContent=t.lead;
-  $("tFreeTokens").textContent=t.freeTokens;
+  $("tStartTrial").textContent=t.startTrial;
   $("tBestStar").textContent=t.bestStar;
   $("tStartPer").textContent=t.startPer;
   $("tPlusPer").textContent=t.plusPer;
   $("tPremiumPer").textContent=t.premiumPer;
   // All plan buttons say the same thing
-  btnFree.textContent=t.selectPlan;
   btnStart.textContent=t.selectPlan;
   btnPlus.textContent=t.selectPlan;
   btnPremium.textContent=t.selectPlan;
@@ -311,7 +301,7 @@ function setLang(l){
   $("tPrivacy").textContent=l==="de"?"Datenschutz":"Privacy";
   $("tLoginHint").textContent=t.loginHint;$("btnLogin").textContent=t.loginLink;
   $("backBtn").innerHTML=l==="de"?"&#8592; Zurück":"&#8592; Back";
-  ["badgeFree","badgeStart","badgePlus","badgePremium"].forEach(id=>{
+  ["badgeStart","badgePlus","badgePremium"].forEach(id=>{
     const el=$(id);if(el)el.textContent=t.currentBadge;
   });
   updateEnabled();
@@ -320,7 +310,7 @@ $("langDE").onclick=()=>setLang("de");
 $("langEN").onclick=()=>setLang("en");
 $("backBtn").addEventListener("click",e=>{e.preventDefault();history.length>1?history.back():location.href="/";});
 
-function updateEnabled(){allBtns.forEach(b=>b.disabled=false);btnFree.disabled=false;}
+function updateEnabled(){allBtns.forEach(b=>b.disabled=false);}
 function highlightCheckboxes(){
   const labels=document.querySelectorAll(".legal label");
   labels.forEach(l=>{l.classList.remove("highlight");void l.offsetWidth;l.classList.add("highlight");});
@@ -343,7 +333,7 @@ function dis(v){allBtns.forEach(b=>b.disabled=v);}
 async function checkout(plan){
   msg.textContent="";
   if(!(c1.checked&&c2.checked)){msg.textContent=L[lang].legal;highlightCheckboxes();return;}
-  const PRICES={free:0,start:9.90,plus:19.90,premium:39.90};
+  const PRICES={start:9.90,plus:19.90,premium:39.90};
   track("pricing_plan_clicked", { plan, price: PRICES[plan] || 0 });
   dis(true);
   try{
@@ -371,13 +361,12 @@ async function topup(pack){
   finally{msg.textContent="";updateEnabled();}
 }
 
-btnFree.onclick=()=>checkout("free");
 btnStart.onclick=()=>checkout("start");
 btnPlus.onclick=()=>checkout("plus");
 btnPremium.onclick=()=>checkout("premium");
 btnTu5.onclick=()=>topup(5);btnTu10.onclick=()=>topup(10);btnTu20.onclick=()=>topup(20);
 
-const PLAN_MAP={free:"planFree",start:"planStart",plus:"planPlus",premium:"planPremium"};
+const PLAN_MAP={start:"planStart",plus:"planPlus",premium:"planPremium"};
 
 (async function(){
   setLang(lang);
@@ -386,8 +375,9 @@ const PLAN_MAP={free:"planFree",start:"planStart",plus:"planPlus",premium:"planP
   try{
     const{data:sub}=await supabase.from("user_subscriptions").select("plan,is_active,status").eq("user_id",session.user.id).maybeSingle();
     const active=!!(sub?.is_active||sub?.status==="active");
-    const key=active?(sub?.plan||"free"):"free";
-    const el=$(PLAN_MAP[key]||"planFree");
+    if(!active) return;
+    const key=sub?.plan||"start";
+    const el=$(PLAN_MAP[key]);
     if(el){
       el.classList.add("current");
       const btn=el.querySelector(".plan-btn");

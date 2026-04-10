@@ -159,6 +159,10 @@ async function handleCheckout(req, res) {
     stripeBody.append("subscription_data[metadata][terms_version]", TERMS_VERSION);
     stripeBody.append("subscription_data[metadata][privacy_version]", PRIVACY_VERSION);
     stripeBody.append("subscription_data[metadata][waiver_version]", WAIVER_VERSION);
+    // Start plan: 30-day free trial (card collected upfront, first charge after 30 days)
+    if (p === "start") {
+      stripeBody.append("subscription_data[trial_period_days]", "30");
+    }
     if (user?.email) stripeBody.append("customer_email", user.email);
 
     const stripeResp = await fetch("https://api.stripe.com/v1/checkout/sessions", {

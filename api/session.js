@@ -183,8 +183,8 @@ export default async function handler(req, res) {
     const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
     const [subResult, usageResult, lockResult] = await Promise.all([
-      supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
-      supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
       supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
     ]);
 
@@ -282,6 +282,47 @@ export default async function handler(req, res) {
           error: "busy",
           message: "Sophie has too many calls right now. Please try later.",
         });
+      }
+    }
+
+    // ---------------------------
+    // TRIAL ANALYTICS: first_session + day_X tracking (fire-and-forget)
+    // ---------------------------
+    {
+      const trialStartedAt = subResult.data?.trial_started_at;
+      const firstTracked = usage?.first_session_tracked;
+
+      // first_session_start: track once per user
+      if (!firstTracked) {
+        supabase.from("analytics_events").insert({
+          user_id: user.id, event_name: "first_session_start",
+          meta: { plan },
+        }).then(() => {
+          // Mark as tracked
+          supabase.from("user_usage").update({ first_session_tracked: true }).eq("user_id", user.id);
+        }).catch(() => {});
+      }
+
+      // day_3_active / day_7_active: track once each
+      if (trialStartedAt) {
+        const daysSinceTrial = (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24);
+        const trackDayEvent = async (eventName, minDays) => {
+          if (daysSinceTrial < minDays) return;
+          const { data: existing } = await supabase
+            .from("analytics_events")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("event_name", eventName)
+            .limit(1);
+          if (!existing?.length) {
+            await supabase.from("analytics_events").insert({
+              user_id: user.id, event_name: eventName,
+              meta: { days_since_trial: Math.round(daysSinceTrial), plan },
+            });
+          }
+        };
+        trackDayEvent("day_3_active", 3).catch(() => {});
+        trackDayEvent("day_7_active", 7).catch(() => {});
       }
     }
 
