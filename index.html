@@ -828,14 +828,7 @@
         min-height:auto;
         padding:42px 0 28px;
       }
-      .hero::before{
-        background:
-          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.54) 30%, rgba(8,10,16,.28) 58%, rgba(8,10,16,.48) 100%),
-          url("hero-opt.jpg") 68% center / cover no-repeat;
-        background:
-          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.54) 30%, rgba(8,10,16,.28) 58%, rgba(8,10,16,.48) 100%),
-          image-set(url("hero-480w.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 68% center / cover no-repeat;
-      }
+      /* hero::before now uses hyper gradients, not background image */
       .hero-grid{
         grid-template-columns:minmax(0,1fr);
         gap:28px;
@@ -880,16 +873,7 @@
         padding:0;
         overflow:visible !important;
       }
-      .hero::before{
-        background:
-          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
-          linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
-          url("hero-opt.jpg") 63% center / cover no-repeat;
-        background:
-          linear-gradient(180deg, rgba(8,10,16,.78) 0%, rgba(8,10,16,.40) 18%, rgba(8,10,16,.34) 42%, rgba(8,10,16,.58) 72%, rgba(8,10,16,.82) 100%),
-          linear-gradient(90deg, rgba(8,10,16,.46) 0%, rgba(8,10,16,.14) 38%, rgba(8,10,16,.12) 100%),
-          image-set(url("hero-768w.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 63% center / cover no-repeat;
-      }
+      /* hero::before now uses hyper gradients, not background image */
       .hero-grid{
         display:block;
         position:static;
