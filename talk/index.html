@@ -6692,46 +6692,24 @@ const durationSeconds = triggeredByLimit
   ? Math.max(wallclockSeconds, remainingAtSessionStart)
   : wallclockSeconds;
 
+// Explicit metrics instead of heuristic — was there a real conversation?
 const hasRealConversation =
-  hasUserSpoken &&
-  durationSeconds >= 10 &&
-  convoLog.some(item => String(item?.text || "").trim());
+  cs.metrics.turnCount > 0 ||
+  cs.metrics.userTranscriptReceived ||
+  (cs.metrics.userAudioDetected && durationSeconds >= 5) ||
+  (hasUserSpoken && convoLog.some(item => String(item?.text || "").trim()));
 
 if (!hasRealConversation) {
   stopFakeReportLoader();
-
-  talkStartedAt = null;
-  remainingAtSessionStart = 0;
-  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; gainNode = null; audioSource = null; }
-
-  if (dc) {
-    try { dc.close(); } catch(e){}
-    dc = null;
-  }
-
-  if (stream) {
-    try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-    stream = null;
-  }
-
-  if (pc) {
-    try { pc.close(); } catch(e){}
-    pc = null;
-  }
-
-  if (audioEl) {
-    try { audioEl.srcObject = null; } catch(e){}
-    audioEl = null;
-  }
-
   convoLog = [];
   partialAssistant = "";
   lastAssistantFinal = "";
   userTranscriptBuffer.clear();
   hasUserSpoken = false;
-
-  stopFakeReportLoader();
-  resetToReadyState();
+  talkStartedAt = null;
+  remainingAtSessionStart = 0;
+  terminateSession(t("ready"));
+  cs.stopGuard = false;
   return;
 }
     
