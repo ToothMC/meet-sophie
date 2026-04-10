@@ -2185,7 +2185,15 @@ function closePostCallPanel() {
   postCallPanel.style.transform = "translateY(100%)";
   setTimeout(() => {
     postCallPanel.style.display = "none";
-    window.location.href = "/app";
+    // Stay on talk page — re-enable start button so user can start a new session
+    // without page reload (preserves mic permission + avoids re-auth)
+    startBtn.disabled = false;
+    startBtn.style.display = "";
+    startBtn.textContent = t("start");
+    endBtn.style.display = "none";
+    logoutBtn.disabled = false;
+    headline.textContent = t("ready");
+    document.querySelector(".wrap")?.classList.remove("session-active");
   }, 350);
 }
 
@@ -2881,11 +2889,25 @@ function stopSvTimer() {
 
 // ══════════════════════════════════════════════════════════
 
+// Pre-load ready sound during user gesture so iOS Safari allows playback later
+let _readyAudio = null;
+function preloadReadySound() {
+  try {
+    _readyAudio = new Audio("/audio/ready.mp3");
+    _readyAudio.volume = 0.28;
+    _readyAudio.load();
+  } catch(_) {}
+}
 function playReadySound(){
   try{
-    const audio = new Audio("/audio/ready.mp3");
-    audio.volume = 0.28;
-    audio.play().catch(() => {});
+    if (_readyAudio) {
+      _readyAudio.currentTime = 0;
+      _readyAudio.play().catch(() => {});
+    } else {
+      const audio = new Audio("/audio/ready.mp3");
+      audio.volume = 0.28;
+      audio.play().catch(() => {});
+    }
   } catch(_) {}
 }
 
@@ -5973,6 +5995,9 @@ async function finalizeSessionAfterSummary() {
 
 let _startVoiceLock = false;
 async function startVoice(){
+
+  // Pre-load ready sound during user gesture context (iOS Safari requires this)
+  preloadReadySound();
 
   // prevent double session
   if (pc || stream || _startVoiceLock) {
