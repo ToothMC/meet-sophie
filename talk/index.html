@@ -2592,10 +2592,32 @@ function _strokeWave(pts) {
   _waveCtx.stroke();
 }
 
-function _drawFrame() {
+let _lastFrameTime = 0;
+function _drawFrame(now) {
   if (!_waveRunning || !_waveCtx) return;
-  // Use sophie mode colors when audio amplitude is above threshold, silent otherwise
+
+  // Throttle to ~30fps (33ms between frames) — halves CPU vs 60fps
+  if (now - _lastFrameTime < 33) { requestAnimationFrame(_drawFrame); return; }
+  _lastFrameTime = now;
+
+  // Auto-fade: if silent for 10s, fade out canvas and stop rendering (0 CPU)
   const _hasAudio = _amp > 0.08;
+  if (_hasAudio) { _waveStartTime = Date.now(); }
+  if (!_hasAudio && !_waveFaded && (Date.now() - _waveStartTime > _WAVE_FADE_MS)) {
+    _waveFaded = true;
+    const wc = document.querySelector('.wave-card');
+    if (wc) wc.style.opacity = '0.15';
+  }
+  if (_waveFaded && !_hasAudio) {
+    // Minimal idle: check every 500ms if audio returns
+    setTimeout(() => requestAnimationFrame(_drawFrame), 500);
+    return;
+  }
+  if (_waveFaded && _hasAudio) {
+    _waveFaded = false;
+    const wc = document.querySelector('.wave-card');
+    if (wc) wc.style.opacity = '1';
+  }
   const cfg = _hasAudio ? _MODES.sophie : _MODES.silent;
   _waveT += 0.015;
 
