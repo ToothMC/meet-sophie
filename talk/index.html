@@ -6467,10 +6467,9 @@ async function startVoice(){
 
     startCountdown();
 
-    _startVoiceLock = false;
+    // Session fully connected — state is ACTIVE (set earlier in dc.onopen)
 
   } catch(err){
-    _startVoiceLock = false;
     console.error(err);
     cleanupLiveSession();
 
