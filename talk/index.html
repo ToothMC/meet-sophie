@@ -7029,13 +7029,7 @@ const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 if (session?.user) {
-  if (isMobileDevice) {
-    // Mobile: require tap on Start button (iOS needs gesture on THIS page for audio)
-    startBtn.onclick = startVoice;
-  } else {
-    // Desktop: auto-start (gesture from /app carries over)
-    startVoice();
-  }
+  startVoice();
 }
 </script>
 
