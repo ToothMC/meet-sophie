@@ -3018,34 +3018,22 @@ function stopSvTimer() {
 
 // ══════════════════════════════════════════════════════════
 
-// iOS Safari requires a REAL play() during user gesture to unlock audio.
-// Just .load() is not enough. We play at volume 0 to unlock, then replay at full volume later.
+// iOS Safari: play the ready sound immediately on user tap (within gesture context).
+// Then replay it when DC opens. Safari only allows play() during a user gesture —
+// by the time DC opens (~2s later) the gesture context is gone.
 let _readyAudio = null;
-let _audioUnlocked = false;
 function preloadReadySound() {
   try {
-    if (_readyAudio) return; // already created
-    _readyAudio = new Audio("/audio/ready.mp3");
-    _readyAudio.volume = 0.001; // near-silent unlock play
-    _readyAudio.play().then(() => {
-      _audioUnlocked = true;
-      _readyAudio.pause();
-      _readyAudio.currentTime = 0;
-      _readyAudio.volume = 0.28;
-    }).catch(() => {
-      // Autoplay blocked — will retry on next user gesture
-      _readyAudio.volume = 0.28;
-    });
+    if (_readyAudio) { _readyAudio.currentTime = 0; }
+    else { _readyAudio = new Audio("/audio/ready.mp3"); }
+    _readyAudio.volume = 0.28;
+    // Play immediately during user gesture — this IS the ready sound
+    _readyAudio.play().catch(() => {});
   } catch(_) {}
 }
 function playReadySound(){
-  try{
-    if (_readyAudio) {
-      _readyAudio.currentTime = 0;
-      _readyAudio.volume = 0.28;
-      _readyAudio.play().catch(() => {});
-    }
-  } catch(_) {}
+  // Sound already played in preloadReadySound during user tap.
+  // This is now a no-op — kept for backward compatibility.
 }
 
 function escapeHtml(value = "") {
@@ -6823,7 +6811,11 @@ if (!hasRealConversation) {
     );
     track("session_lifecycle", { phase: "snapshot_taken", runId: cs.runId, turns: cs.finalSnapshot.length });
 
-    // ── FIRE-AND-FORGET: Memory update (no await, no response parsing) ──
+    // ── Cleanup media resources FIRST (free mic, WebRTC) ──
+    cleanupMediaResources();
+
+    // ── Memory update: await with 8s timeout (report needs session row in DB) ──
+    let memoryOk = false;
     if (!cs.memoryUpdateSent) {
       cs.memoryUpdateSent = true;
       const memPayload = [...cs.finalSnapshot].slice(-80);
@@ -6832,7 +6824,7 @@ if (!hasRealConversation) {
       try {
         const { data: { session: authSess } } = await supabase.auth.getSession();
         if (authSess?.access_token) {
-          fetch("/api/memory-update", {
+          const memPromise = fetch("/api/memory-update", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
             body: JSON.stringify({
@@ -6845,16 +6837,17 @@ if (!hasRealConversation) {
               realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
             }),
             keepalive: true,
-          }).catch(e => console.error("[memory] fire-and-forget failed:", e?.message));
-          track("session_lifecycle", { phase: "memory_fired", runId: cs.runId });
+          });
+          const memTimeout = new Promise(r => setTimeout(() => r(null), 8000));
+          const memRes = await Promise.race([memPromise, memTimeout]);
+          memoryOk = memRes && memRes.ok;
+          track("session_lifecycle", { phase: "memory_done", runId: cs.runId, ok: memoryOk });
         }
-      } catch (_) {}
+      } catch (e) {
+        console.error("[memory] failed:", e?.message);
+      }
     }
 
-    // ── Cleanup media resources ──
-    cleanupMediaResources();
-
-    // ── Track talk_ended IMMEDIATELY (before report polling) ──
     track("talk_ended", {
       duration_seconds: durationSeconds || null,
       is_premium: isPremium,
@@ -6880,17 +6873,23 @@ if (!hasRealConversation) {
       return;
     }
 
-    // ── Report: use GLOBAL sessionId (from /api/session), NOT memory response ──
-    if (!cs.reportTriggered && sessionId) {
+    // ── Report: only trigger if memory succeeded (session row exists in DB) ──
+    if (!cs.reportTriggered && sessionId && memoryOk) {
       cs.reportTriggered = true;
       track("session_lifecycle", { phase: "report_triggered", runId: cs.runId });
-      // Keep session-active for report display, reset after report
       await pollReportProgress(sessionId, [...cs.finalSnapshot], { triggeredByLimit });
     } else {
       stopFakeReportLoader();
-      showPostCallResults({
-        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
-      }, [...cs.finalSnapshot], { triggeredByLimit });
+      if (!memoryOk) {
+        // Memory failed/timed out — show simple summary instead of empty report
+        showPostCallResults({
+          output: { short_summary: cs.finalSnapshot.length > 0 ? t("no_summary") : t("no_summary"), key_insights: [], action_plan: [] }
+        }, [...cs.finalSnapshot], { triggeredByLimit });
+      } else {
+        showPostCallResults({
+          output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+        }, [...cs.finalSnapshot], { triggeredByLimit });
+      }
     }
 
     cs.stopGuard = false;
