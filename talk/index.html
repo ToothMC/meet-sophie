@@ -6587,18 +6587,23 @@ if (!hasRealConversation) {
     // Take transcript AFTER summary (includes summary text in convoLog)
     const transcriptSnapshot = [...convoLog];
 
+    console.log(`[${runId}] [stopVoice] pre-memory: convoLog=${convoLog.length}, reportEnabled=${reportEnabled}, duration=${durationSeconds}`);
     const memoryResult = await sendMemoryUpdate(durationSeconds);
+    console.log(`[${runId}] [stopVoice] post-memory: ok=${memoryResult?.ok}, sessionId=${memoryResult?.session?.id}, skipped=${memoryResult?.skipped}`);
 
     // Start async report polling with progress bar (skip if user disabled report)
     const sessionId = memoryResult?.session?.id;
     if (reportEnabled && sessionId) {
+      console.log(`[${runId}] [stopVoice] → pollReportProgress(${sessionId})`);
       await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
     } else if (reportEnabled) {
+      console.log(`[${runId}] [stopVoice] → NO sessionId, showing no_summary. memoryResult=`, JSON.stringify(memoryResult)?.slice(0, 300));
       stopFakeReportLoader();
       showPostCallResults({
         output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
       }, transcriptSnapshot, { triggeredByLimit });
     } else {
+      console.log(`[${runId}] [stopVoice] → report disabled`);
       // Report disabled — skip report, just reset UI
       stopFakeReportLoader();
       resetPostCallUI();
