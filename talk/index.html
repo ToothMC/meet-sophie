@@ -60,15 +60,7 @@ body::after{
 /* ── Minimal Animations (performance-safe) ── */
 @keyframes fade-label  { 0%,100%{opacity:.4} 50%{opacity:.85} }
 
-/* ── Corner decorations ── */
-.cdeco{position:absolute;width:28px;height:28px;pointer-events:none;opacity:.28;z-index:3}
-.cdeco.tl{top:14px;left:14px;border-top:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:3px 0 0 0}
-.cdeco.tr{top:14px;right:14px;border-top:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 3px 0 0}
-.cdeco.bl{bottom:14px;left:14px;border-bottom:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:0 0 0 3px}
-.cdeco.br{bottom:14px;right:14px;border-bottom:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 0 3px 0}
-
-/* ── Scatter particles ── */
-.hyper-particle{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
+/* (corner decorations + particles removed — CPU savings) */
 
 /* ── Voice Visualizer Header ── */
 .sv-header{
