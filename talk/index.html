@@ -6193,8 +6193,7 @@ async function startVoice(){
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      _startVoiceLock = false;
-      window.location.href = "/login";
+      resetPreStartFailure(_uiLang === "de" ? "Sitzung abgelaufen. Bitte erneut anmelden." : "Session expired. Please log in again.");
       return;
     }
 
