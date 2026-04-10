@@ -59,8 +59,47 @@ body::after{
 
 /* ── Minimal Animations (performance-safe) ── */
 @keyframes fade-label  { 0%,100%{opacity:.4} 50%{opacity:.85} }
+@keyframes riPulse { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:1;transform:scale(1.15)} }
 
-/* (corner decorations + particles removed — CPU savings) */
+/* ── Globe (appears when Sophie accesses realtime APIs) ── */
+.globe-center{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
+.globe-wrap{
+  position:relative;width:64px;height:64px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0.12;transition:opacity .5s ease,filter .5s ease;
+}
+.globe-wrap svg{position:absolute;inset:0;width:100%;height:100%}
+.globe-inet{
+  position:relative;z-index:2;font-size:7px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(160,220,255,.95);opacity:.4;transition:opacity .5s ease;
+  white-space:nowrap;
+}
+.globe-wrap.searching{opacity:1;filter:brightness(1.4) drop-shadow(0 0 10px rgba(80,200,255,.6))}
+.globe-wrap.searching .globe-inet{opacity:1}
+.v-conn{
+  width:1.5px;height:18px;
+  background:linear-gradient(to bottom,rgba(80,160,255,.25),rgba(120,80,255,.15));
+  opacity:0.2;transition:opacity .5s ease,background .5s ease;
+}
+.globe-wrap.searching ~ .v-conn{
+  opacity:1;
+  background:linear-gradient(to bottom,rgba(80,220,255,.7),rgba(120,180,255,.8));
+  box-shadow:0 0 6px rgba(80,200,255,.4);
+}
+
+/* ── Report Provider Icons (shown during report generation) ── */
+.report-providers{
+  display:flex;gap:8px;align-items:center;justify-content:center;
+  margin-bottom:10px;opacity:0;transition:opacity .4s ease;
+}
+.report-providers.visible{opacity:1}
+.report-providers .rp-icon{
+  width:16px;height:16px;opacity:.3;transition:opacity .3s ease;
+}
+.report-providers .rp-icon.active{
+  opacity:1;animation:riPulse .8s ease-in-out infinite;
+}
 
 /* ── Voice Visualizer Header ── */
 .sv-header{
@@ -1197,15 +1236,7 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
   <h2 id="headline"></h2>
   <div class="status" id="status"></div>
   <div class="mode-indicator" id="modeIndicator" aria-hidden="true"></div>
-  <div class="research-indicator" id="researchIndicator" aria-hidden="true">
-    <div class="ri-icons">
-      <img class="ri-icon" id="riOpenai" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z'/%3E%3C/svg%3E" alt="GPT">
-      <img class="ri-icon" id="riAnthropic" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.304 2.002h-4.108l6.144 19.996h4.108zM6.696 2.002.552 21.998h4.108l1.26-4.248h6.16l1.26 4.248h4.108L11.304 2.002zm-.18 12.248L8.86 7.054l2.344 7.196z'/%3E%3C/svg%3E" alt="Claude">
-      <img class="ri-icon" id="riGoogle" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E" alt="Gemini">
-      <img class="ri-icon" id="riMistral" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Crect x='2' y='2' width='5' height='5'/%3E%3Crect x='17' y='2' width='5' height='5'/%3E%3Crect x='2' y='7' width='5' height='5'/%3E%3Crect x='7' y='7' width='5' height='5'/%3E%3Crect x='12' y='7' width='5' height='5'/%3E%3Crect x='17' y='7' width='5' height='5'/%3E%3Crect x='2' y='12' width='5' height='5'/%3E%3Crect x='17' y='12' width='5' height='5'/%3E%3C/svg%3E" alt="Mistral">
-    </div>
-    <span class="ri-label">Recherche</span>
-  </div>
+  <!-- Research indicator removed — Globe is the visual indicator now -->
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
     <span class="live-text">LIVE</span>
@@ -1216,8 +1247,8 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
   <!-- ══════════════════════════════════════════
        HYPER VOICE VISUALIZER (shown during session)
   ══════════════════════════════════════════ -->
-  <div id="hyperVisualizer">
-    <!-- Header: Avatar + Status (minimal, no globe/rings/particles) -->
+  <div id="hyperVisualizer" style="margin-top:24px">
+    <!-- Header: Avatar + Status -->
     <div class="sv-header">
       <div class="avatar-wrap">
         <div class="avatar">
@@ -1234,6 +1265,15 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
       <div class="sv-timer" id="svTimer">0:00</div>
     </div>
 
+    <!-- Globe: lights up when Sophie accesses realtime APIs -->
+    <div class="globe-center">
+      <div class="globe-wrap" id="globeWrap">
+        <svg id="globeSvgMini" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"></svg>
+        <span class="globe-inet">NET</span>
+      </div>
+      <div class="v-conn" id="vConn"></div>
+    </div>
+
     <!-- Waveform Canvas -->
     <div class="wave-card">
       <div class="wave-meta">
@@ -1244,7 +1284,14 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
     </div>
   </div>
 
+  <!-- Report generation progress -->
   <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
+    <div class="report-providers" id="reportProviders">
+      <img class="rp-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z'/%3E%3C/svg%3E" alt="GPT">
+      <img class="rp-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M17.304 2.002h-4.108l6.144 19.996h4.108zM6.696 2.002.552 21.998h4.108l1.26-4.248h6.16l1.26 4.248h4.108L11.304 2.002zm-.18 12.248L8.86 7.054l2.344 7.196z'/%3E%3C/svg%3E" alt="Claude">
+      <img class="rp-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E" alt="Gemini">
+      <img class="rp-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Crect x='2' y='2' width='5' height='5'/%3E%3Crect x='17' y='2' width='5' height='5'/%3E%3Crect x='2' y='7' width='5' height='5'/%3E%3Crect x='7' y='7' width='5' height='5'/%3E%3Crect x='12' y='7' width='5' height='5'/%3E%3Crect x='17' y='7' width='5' height='5'/%3E%3Crect x='2' y='12' width='5' height='5'/%3E%3Crect x='17' y='12' width='5' height='5'/%3E%3C/svg%3E" alt="Mistral">
+    </div>
     <div class="inlineReportProgressTrack">
       <div id="inlineReportProgressBar" class="inlineReportProgressBar"></div>
     </div>
@@ -2469,27 +2516,13 @@ function showImportToast() {
 }
 
 function showResearchIndicator() {
-  if (!researchEl) return;
-  researchEl.classList.add("visible");
-  const icons = researchEl.querySelectorAll(".ri-icon");
-  icons.forEach((icon, i) => {
-    setTimeout(() => icon.classList.add("active"), i * 200);
-  });
-  // Activate globe NET indicator
+  // Globe lights up when Sophie accesses realtime APIs
   const gw = document.getElementById("globeWrap");
-  const vc = document.getElementById("vConn");
   if (gw) gw.classList.add("searching");
-  if (vc) vc.classList.add("searching");
 }
 function hideResearchIndicator() {
-  if (!researchEl) return;
-  researchEl.classList.remove("visible");
-  researchEl.querySelectorAll(".ri-icon").forEach(icon => icon.classList.remove("active"));
-  // Deactivate globe NET indicator
   const gw = document.getElementById("globeWrap");
-  const vc = document.getElementById("vConn");
   if (gw) gw.classList.remove("searching");
-  if (vc) vc.classList.remove("searching");
 }
 
 function showReadyStatus() {
@@ -2511,7 +2544,39 @@ function showLiveBadge(on){
 // HYPER VOICE VISUALIZER ENGINE
 // ══════════════════════════════════════════════════════════
 
-// (Globe builder + scatter particles removed — CPU savings)
+// ── Globe builder (static — no CSS animations, lights up via .searching class) ──
+function _svgEl(tag, attrs, parent) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+function _buildGlobe(svgEl_, size, R) {
+  const cx = size / 2, cy = size / 2;
+  _svgEl('circle', { cx, cy, r: R, fill: 'rgba(10,20,60,.55)', stroke: 'rgba(80,120,255,.28)', 'stroke-width': '1' }, svgEl_);
+  for (let i = 1; i < 6; i++) {
+    const lat = (i / 6) * Math.PI - Math.PI / 2;
+    const ry = Math.abs(Math.cos(lat)) * R, py = cy - Math.sin(lat) * R;
+    if (ry > 2) _svgEl('ellipse', { cx, cy: py, rx: ry, ry: ry * .28, fill: 'none', stroke: 'rgba(60,140,255,.22)', 'stroke-width': '.6' }, svgEl_);
+  }
+  for (let j = 0; j < 9; j++) {
+    const lon = (j / 9) * 2 * Math.PI, pts = [];
+    for (let k = 0; k <= 24; k++) {
+      const lat2 = (k / 24) * Math.PI - Math.PI / 2;
+      pts.push(`${cx + Math.cos(lat2) * Math.sin(lon) * R},${cy - Math.sin(lat2) * R}`);
+    }
+    _svgEl('polyline', { points: pts.join(' '), fill: 'none', stroke: 'rgba(60,140,255,.15)', 'stroke-width': '.5' }, svgEl_);
+  }
+  [{ lat: .5, lon: -.4 }, { lat: -.4, lon: 1.1 }, { lat: .3, lon: 2.6 }, { lat: .7, lon: 1.7 }, { lat: -.2, lon: -.7 }].forEach(h => {
+    const x = cx + Math.cos(h.lat) * Math.sin(h.lon) * R, y = cy - Math.sin(h.lat) * R;
+    _svgEl('circle', { cx: x, cy: y, r: 2, fill: 'rgba(120,200,255,.7)' }, svgEl_);
+  });
+  _svgEl('circle', { cx, cy, r: R, fill: 'none', stroke: 'rgba(100,160,255,.38)', 'stroke-width': '1.2' }, svgEl_);
+}
+
+const _globeSvgMini = document.getElementById('globeSvgMini');
+if (_globeSvgMini) _buildGlobe(_globeSvgMini, 64, 27);
 
 // ── Waveform + EQ Engine ──
 const _waveCanvas = document.getElementById('waveCanvas');
@@ -3365,7 +3430,15 @@ function startFakeReportLoader() {
 
   inlineReportProgress.style.display = "block";
   inlineReportProgressBar.style.width = "0%";
-  const percentEl = document.getElementById("inlineReportPercent");
+
+  // Show pulsing provider icons during report generation
+  const rpEl = document.getElementById("reportProviders");
+  if (rpEl) {
+    rpEl.classList.add("visible");
+    rpEl.querySelectorAll(".rp-icon").forEach((icon, i) => {
+      setTimeout(() => icon.classList.add("active"), i * 200);
+    });
+  }
 
   let progress = 5;
   inlineReportProgressBar.style.width = progress + "%";
@@ -3402,12 +3475,17 @@ function stopFakeReportLoader(hideBar = true) {
     window.__sophieLoaderHideTimeout = null;
   }
 
+  // Hide provider icons
+  const rpEl = document.getElementById("reportProviders");
+  if (rpEl) {
+    rpEl.classList.remove("visible");
+    rpEl.querySelectorAll(".rp-icon").forEach(icon => icon.classList.remove("active"));
+  }
+
   if (!inlineReportProgress || !inlineReportProgressBar) return;
 
   if (hideBar) {
     inlineReportProgressBar.style.width = "100%";
-    const percentEl = document.getElementById("inlineReportPercent");
-    if (percentEl) percentEl.textContent = "";
     window.__sophieLoaderHideTimeout = setTimeout(() => {
       inlineReportProgress.style.display = "none";
       inlineReportProgressBar.style.width = "0%";
