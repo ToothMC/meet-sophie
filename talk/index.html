@@ -6365,9 +6365,13 @@ async function startVoice(){
     };
 
     track("mic_permission_requested");
-    stream = await navigator.mediaDevices.getUserMedia({
+    track("session_lifecycle", { phase: "mic_requesting", runId: cs.runId });
+    const micPromise = navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
+    const micTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
+    stream = await Promise.race([micPromise, micTimeout]);
     track("mic_permission_granted");
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
