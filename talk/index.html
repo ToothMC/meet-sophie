@@ -2738,19 +2738,6 @@ function _drawFrame(now) {
     }
   }
 
-  // Hz readout + status sync (driven by real amplitude)
-  const hz = _hasAudio ? Math.round(160 + _amp * 240) + ' Hz' : '—';
-  const hzEl = document.getElementById('waveHz');
-  if (hzEl) hzEl.textContent = hz;
-  // Auto-update status text
-  const _stEl = document.getElementById('svStatusText');
-  if (_stEl) _stEl.textContent = _hasAudio ? 'spricht gerade' : 'wartet';
-  const _sdEl = document.getElementById('svStatusDot');
-  if (_sdEl) {
-    _sdEl.style.background = _hasAudio ? '#7df9aa' : 'rgba(140,120,200,.5)';
-    _sdEl.style.boxShadow = _hasAudio ? '0 0 6px 2px rgba(125,249,170,.6)' : 'none';
-  }
-
   requestAnimationFrame(_drawFrame);
 }
 
