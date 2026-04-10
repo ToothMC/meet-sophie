@@ -6836,39 +6836,28 @@ if (!hasRealConversation) {
     // ── Cleanup media resources FIRST (free mic, WebRTC) ──
     cleanupMediaResources();
 
-    // ── Memory update: await fully (report needs session+output rows in DB) ──
-    // No timeout — memory-update takes 5-15s due to AI extraction.
-    // Fake report loader is already running so user sees progress.
-    // No keepalive — page stays open, normal fetch is reliable.
-    let memoryOk = false;
-    if (!cs.memoryUpdateSent) {
-      cs.memoryUpdateSent = true;
-      const memPayload = [...cs.finalSnapshot].slice(-80);
-      const startedAtIso = talkStartedAt ? new Date(talkStartedAt).toISOString() : null;
-      const endedAtIso = new Date().toISOString();
-      try {
-        const { data: { session: authSess } } = await supabase.auth.getSession();
-        if (authSess?.access_token) {
-          const memRes = await fetch("/api/memory-update", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
-            body: JSON.stringify({
-              transcript: memPayload,
-              seconds_used: durationSeconds,
-              session_started_at: startedAtIso,
-              session_ended_at: endedAtIso,
-              session_id: sessionId,
-              session_mode: selectedVoiceMode || null,
-              realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
-            }),
-          });
-          memoryOk = memRes.ok;
-          track("session_lifecycle", { phase: "memory_done", runId: cs.runId, ok: memoryOk });
-        }
-      } catch (e) {
-        console.error("[memory] failed:", e?.message);
+    // ── Build memory payload once ──
+    const memPayload = [...cs.finalSnapshot].slice(-80);
+    const startedAtIso = talkStartedAt ? new Date(talkStartedAt).toISOString() : null;
+    const endedAtIso = new Date().toISOString();
+    let memoryBody = null;
+    try {
+      const { data: { session: authSess } } = await supabase.auth.getSession();
+      if (authSess?.access_token) {
+        memoryBody = {
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
+          payload: {
+            transcript: memPayload,
+            seconds_used: durationSeconds,
+            session_started_at: startedAtIso,
+            session_ended_at: endedAtIso,
+            session_id: sessionId,
+            session_mode: selectedVoiceMode || null,
+            realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
+          },
+        };
       }
-    }
+    } catch (_) {}
 
     track("talk_ended", {
       duration_seconds: durationSeconds || null,
@@ -6887,12 +6876,38 @@ if (!hasRealConversation) {
     hasUserSpoken = false;
     resetClosingState();
 
-    // ── No report: session done → back to app ──
+    // ── No report: fire memory in background → immediately back to app ──
     if (!reportEnabled) {
       stopFakeReportLoader();
+      if (!cs.memoryUpdateSent && memoryBody) {
+        cs.memoryUpdateSent = true;
+        fetch("/api/memory-update", {
+          method: "POST",
+          headers: memoryBody.headers,
+          body: JSON.stringify(memoryBody.payload),
+          keepalive: true, // complete even after navigation
+        }).catch(() => {});
+      }
       cs.stopGuard = false;
       window.location.href = "/app";
       return;
+    }
+
+    // ── Report ON: await memory (need session+output rows in DB) ──
+    let memoryOk = false;
+    if (!cs.memoryUpdateSent && memoryBody) {
+      cs.memoryUpdateSent = true;
+      try {
+        const memRes = await fetch("/api/memory-update", {
+          method: "POST",
+          headers: memoryBody.headers,
+          body: JSON.stringify(memoryBody.payload),
+        });
+        memoryOk = memRes.ok;
+        track("session_lifecycle", { phase: "memory_done", runId: cs.runId, ok: memoryOk });
+      } catch (e) {
+        console.error("[memory] failed:", e?.message);
+      }
     }
 
     // ── Report: only trigger if memory succeeded (session row exists in DB) ──
