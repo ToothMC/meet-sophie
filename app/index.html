@@ -904,8 +904,16 @@
     profileBtn.textContent = userEmail.split("@")[0] || "Account";
 
     // ── Listen for auth changes ──────────────────────────
-    supabase.auth.onAuthStateChange((event, sess) => {
-      if (!sess?.access_token) { location.replace("/"); }
+    supabase.auth.onAuthStateChange(async (event, sess) => {
+      if (event === "SIGNED_OUT") { location.replace("/"); return; }
+      if (!sess?.access_token) {
+        // Token refresh can transiently fire with null — retry before redirecting
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.access_token) return; // recovered
+        } catch (_) {}
+        location.replace("/");
+      }
     });
 
     // ── Language dropdown ────────────────────────────────
