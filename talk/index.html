@@ -67,49 +67,15 @@ body::after{
   display:flex;align-items:center;gap:14px;
   margin-bottom:18px;position:relative;z-index:10;
 }
-.globe-wrap{
-  position:relative;width:52px;height:52px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  transition:filter .4s ease;
-}
-.globe-wrap svg{position:absolute;inset:0;width:100%;height:100%}
-.globe-inet{
-  position:relative;z-index:2;font-size:7px;font-weight:700;
-  letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(160,220,255,.95);animation:text-pulse 2.5s ease-in-out infinite;
-  white-space:nowrap;
-}
-.globe-wrap.searching{filter:brightness(1.8) drop-shadow(0 0 8px rgba(80,200,255,.7))}
-.globe-wrap.searching .globe-inet{animation:text-pulse .8s ease-in-out infinite}
-.v-conn{
-  width:1.5px;height:20px;flex-shrink:0;align-self:stretch;margin:auto 0;max-height:20px;
-  background:linear-gradient(to bottom,rgba(80,160,255,.4),rgba(120,80,255,.7));
-  animation:flash-hyper 2s ease-in-out infinite;
-  transition:background .3s,box-shadow .3s;
-}
-.v-conn.searching{
-  background:linear-gradient(to bottom,rgba(80,220,255,.8),rgba(120,180,255,.9));
-  box-shadow:0 0 8px rgba(80,200,255,.6);
-}
 .avatar-wrap{position:relative;flex-shrink:0}
 .avatar{
   width:48px;height:48px;border-radius:50%;
   background:radial-gradient(ellipse at 35% 30%,rgba(180,140,255,.88),rgba(100,60,220,.94) 50%,rgba(35,15,110,1));
-  animation:core-glow-sm 2.8s ease-in-out infinite,breathe 4s ease-in-out infinite;
+  box-shadow:0 0 16px 5px rgba(120,80,255,.5);
   display:flex;align-items:center;justify-content:center;
   overflow:hidden;position:relative;
 }
 .avatar-letter{font-size:18px;font-weight:700;color:rgba(240,230,255,.97);position:relative;z-index:2;text-shadow:0 0 12px rgba(200,170,255,.8)}
-.avatar-scan{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,transparent,rgba(200,180,255,.8),transparent);animation:scan-h 3.2s linear infinite;pointer-events:none}
-.avatar-facet{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0%,rgba(255,255,255,.05) 15%,transparent 30%,rgba(255,255,255,.07) 50%,transparent 65%,transparent 100%);animation:rot-cw 10s linear infinite;pointer-events:none}
-.avatar-ring{position:absolute;border-radius:50%;pointer-events:none}
-.ar1{inset:-10px;border:1px solid rgba(120,80,255,.55);animation:pulse-ring 2.8s ease-in-out infinite}
-.ar2{inset:-18px;border:.5px solid rgba(80,160,255,.3);animation:pulse-ring2 2.8s ease-in-out infinite .7s}
-.ar3{inset:-27px;border:.5px solid rgba(180,100,255,.15);animation:pulse-ring3 2.8s ease-in-out infinite 1.4s}
-.avatar-orb{position:absolute;border-radius:50%;pointer-events:none}
-.ao1{inset:-22px;border:1px dashed rgba(100,200,255,.18);animation:rot-cw 12s linear infinite}
-.ao2{inset:-34px;border:.5px dashed rgba(180,80,255,.12);animation:rot-ccw 18s linear infinite}
-.avatar-dot{position:absolute;border-radius:50%;pointer-events:none}
 .sv-header-info{flex:1;min-width:0;text-align:left}
 .sv-name{font-size:15px;font-weight:700;letter-spacing:.04em;color:rgba(230,220,255,.95)}
 .sv-status{display:flex;align-items:center;gap:6px;margin-top:3px}
