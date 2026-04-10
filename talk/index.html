@@ -57,89 +57,31 @@ body::after{
   background-size:32px 32px;
 }
 
-/* ── Hyper Animations ── */
-@keyframes pulse-ring  { 0%{transform:scale(.88);opacity:.85} 50%{transform:scale(1.08);opacity:.18} 100%{transform:scale(.88);opacity:.85} }
-@keyframes pulse-ring2 { 0%{transform:scale(.75);opacity:.55} 50%{transform:scale(1.16);opacity:.04} 100%{transform:scale(.75);opacity:.55} }
-@keyframes pulse-ring3 { 0%{transform:scale(.62);opacity:.35} 50%{transform:scale(1.28);opacity:0}   100%{transform:scale(.62);opacity:.35} }
-@keyframes rot-cw      { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
-@keyframes rot-ccw     { from{transform:rotate(0)}   to{transform:rotate(-360deg)} }
-@keyframes breathe     { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-@keyframes flash-hyper { 0%,100%{opacity:.12} 50%{opacity:1} }
-@keyframes core-glow-sm {
-  0%,100% { box-shadow:0 0 16px 5px rgba(120,80,255,.5), inset 0 0 12px rgba(255,255,255,.07); }
-  50%     { box-shadow:0 0 30px 10px rgba(140,90,255,.8), inset 0 0 20px rgba(255,255,255,.15); }
-}
-@keyframes globe-pulse { 0%,100%{opacity:.2} 50%{opacity:.6} }
-@keyframes text-pulse  { 0%,100%{opacity:.7;text-shadow:0 0 10px rgba(120,200,255,.4)} 50%{opacity:1;text-shadow:0 0 20px rgba(120,200,255,.95)} }
-@keyframes scan-h      { 0%{left:-4%;opacity:0} 5%{opacity:.6} 95%{opacity:.6} 100%{left:100%;opacity:0} }
+/* ── Minimal Animations (performance-safe) ── */
 @keyframes fade-label  { 0%,100%{opacity:.4} 50%{opacity:.85} }
-@keyframes status-blink { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
 
-/* ── Corner decorations ── */
-.cdeco{position:absolute;width:28px;height:28px;pointer-events:none;opacity:.28;z-index:3}
-.cdeco.tl{top:14px;left:14px;border-top:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:3px 0 0 0}
-.cdeco.tr{top:14px;right:14px;border-top:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 3px 0 0}
-.cdeco.bl{bottom:14px;left:14px;border-bottom:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:0 0 0 3px}
-.cdeco.br{bottom:14px;right:14px;border-bottom:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 0 3px 0}
-
-/* ── Scatter particles ── */
-.hyper-particle{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
+/* (corner decorations + particles removed — CPU savings) */
 
 /* ── Voice Visualizer Header ── */
 .sv-header{
   display:flex;align-items:center;gap:14px;
   margin-bottom:18px;position:relative;z-index:10;
 }
-.globe-wrap{
-  position:relative;width:52px;height:52px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  transition:filter .4s ease;
-}
-.globe-wrap svg{position:absolute;inset:0;width:100%;height:100%}
-.globe-inet{
-  position:relative;z-index:2;font-size:7px;font-weight:700;
-  letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(160,220,255,.95);animation:text-pulse 2.5s ease-in-out infinite;
-  white-space:nowrap;
-}
-.globe-wrap.searching{filter:brightness(1.8) drop-shadow(0 0 8px rgba(80,200,255,.7))}
-.globe-wrap.searching .globe-inet{animation:text-pulse .8s ease-in-out infinite}
-.v-conn{
-  width:1.5px;height:20px;flex-shrink:0;align-self:stretch;margin:auto 0;max-height:20px;
-  background:linear-gradient(to bottom,rgba(80,160,255,.4),rgba(120,80,255,.7));
-  animation:flash-hyper 2s ease-in-out infinite;
-  transition:background .3s,box-shadow .3s;
-}
-.v-conn.searching{
-  background:linear-gradient(to bottom,rgba(80,220,255,.8),rgba(120,180,255,.9));
-  box-shadow:0 0 8px rgba(80,200,255,.6);
-}
 .avatar-wrap{position:relative;flex-shrink:0}
 .avatar{
   width:48px;height:48px;border-radius:50%;
   background:radial-gradient(ellipse at 35% 30%,rgba(180,140,255,.88),rgba(100,60,220,.94) 50%,rgba(35,15,110,1));
-  animation:core-glow-sm 2.8s ease-in-out infinite,breathe 4s ease-in-out infinite;
+  box-shadow:0 0 16px 5px rgba(120,80,255,.5);
   display:flex;align-items:center;justify-content:center;
   overflow:hidden;position:relative;
 }
 .avatar-letter{font-size:18px;font-weight:700;color:rgba(240,230,255,.97);position:relative;z-index:2;text-shadow:0 0 12px rgba(200,170,255,.8)}
-.avatar-scan{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,transparent,rgba(200,180,255,.8),transparent);animation:scan-h 3.2s linear infinite;pointer-events:none}
-.avatar-facet{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0%,rgba(255,255,255,.05) 15%,transparent 30%,rgba(255,255,255,.07) 50%,transparent 65%,transparent 100%);animation:rot-cw 10s linear infinite;pointer-events:none}
-.avatar-ring{position:absolute;border-radius:50%;pointer-events:none}
-.ar1{inset:-10px;border:1px solid rgba(120,80,255,.55);animation:pulse-ring 2.8s ease-in-out infinite}
-.ar2{inset:-18px;border:.5px solid rgba(80,160,255,.3);animation:pulse-ring2 2.8s ease-in-out infinite .7s}
-.ar3{inset:-27px;border:.5px solid rgba(180,100,255,.15);animation:pulse-ring3 2.8s ease-in-out infinite 1.4s}
-.avatar-orb{position:absolute;border-radius:50%;pointer-events:none}
-.ao1{inset:-22px;border:1px dashed rgba(100,200,255,.18);animation:rot-cw 12s linear infinite}
-.ao2{inset:-34px;border:.5px dashed rgba(180,80,255,.12);animation:rot-ccw 18s linear infinite}
-.avatar-dot{position:absolute;border-radius:50%;pointer-events:none}
 .sv-header-info{flex:1;min-width:0;text-align:left}
 .sv-name{font-size:15px;font-weight:700;letter-spacing:.04em;color:rgba(230,220,255,.95)}
 .sv-status{display:flex;align-items:center;gap:6px;margin-top:3px}
 .sv-status-dot{
   width:6px;height:6px;border-radius:50%;flex-shrink:0;
   background:rgba(125,249,170,1);box-shadow:0 0 6px 2px rgba(125,249,170,.6);
-  animation:status-blink 1.5s ease-in-out infinite;
 }
 .sv-status-text{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(125,249,170,.8);font-weight:500}
 .sv-timer{font-size:12px;color:rgba(140,120,200,.55);font-variant-numeric:tabular-nums;font-weight:500}
@@ -160,12 +102,7 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
 .wave-label{font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(140,120,255,.6);animation:fade-label 3s ease-in-out infinite}
 .wave-hz{font-size:10px;color:rgba(120,200,255,.55);font-family:'SF Mono','Fira Code',monospace;font-weight:500}
 
-/* ── EQ Bars ── */
-.eq-wrap{
-  display:flex;align-items:flex-end;gap:2.5px;justify-content:center;
-  height:28px;margin-bottom:18px;position:relative;z-index:10;
-}
-.eq-bar{border-radius:2px 2px 0 0;width:3.5px;transition:height .06s ease}
+/* (EQ bars removed — CPU savings) */
 
 /* ── Hyper Visualizer Section (shown during session) ── */
 #hyperVisualizer{display:none}
@@ -1248,8 +1185,6 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
 <div class="overlay" id="overlay"></div>
 
 <!-- Hyper corner decorations -->
-<div class="cdeco tl"></div><div class="cdeco tr"></div>
-<div class="cdeco bl"></div><div class="cdeco br"></div>
 
 <div class="topbar">
   <a href="/app" id="backToLandingBtn">← Back</a>
@@ -1285,24 +1220,10 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
        HYPER VOICE VISUALIZER (shown during session)
   ══════════════════════════════════════════ -->
   <div id="hyperVisualizer">
-    <!-- Header: Globe + Avatar + Status -->
+    <!-- Header: Avatar + Status (minimal, no globe/rings/particles) -->
     <div class="sv-header">
-      <div class="globe-wrap" id="globeWrap">
-        <svg id="globeSvgMini" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"></svg>
-        <span class="globe-inet">NET</span>
-      </div>
-      <div class="v-conn" id="vConn"></div>
       <div class="avatar-wrap">
-        <div class="avatar-ring ar3"></div>
-        <div class="avatar-ring ar2"></div>
-        <div class="avatar-ring ar1"></div>
-        <div class="avatar-orb ao2"></div>
-        <div class="avatar-orb ao1"></div>
-        <div class="avatar-dot" style="top:-2px;right:2px;width:5px;height:5px;background:#7df9aa;box-shadow:0 0 6px 2px rgba(125,249,170,.55);animation:flash-hyper 1.6s ease-in-out infinite"></div>
-        <div class="avatar-dot" style="bottom:0;left:0;width:4px;height:4px;background:#7bd4ff;box-shadow:0 0 5px 1px rgba(123,212,255,.5);animation:flash-hyper 2s ease-in-out infinite .7s"></div>
         <div class="avatar">
-          <div class="avatar-scan"></div>
-          <div class="avatar-facet"></div>
           <span class="avatar-letter">S</span>
         </div>
       </div>
@@ -1324,9 +1245,6 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
       </div>
       <canvas id="waveCanvas"></canvas>
     </div>
-
-    <!-- EQ Bars -->
-    <div class="eq-wrap" id="eqWrap"></div>
   </div>
 
   <div id="inlineReportProgress" class="inlineReportProgress" aria-hidden="true">
@@ -2596,62 +2514,7 @@ function showLiveBadge(on){
 // HYPER VOICE VISUALIZER ENGINE
 // ══════════════════════════════════════════════════════════
 
-// ── SVG helper ──
-function _svgEl(tag, attrs, parent) {
-  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
-  if (parent) parent.appendChild(e);
-  return e;
-}
-
-// ── Globe builder ──
-function _buildGlobe(svgEl_, size, R) {
-  const cx = size / 2, cy = size / 2;
-  _svgEl('circle', { cx, cy, r: R, fill: 'rgba(10,20,60,.55)', stroke: 'rgba(80,120,255,.28)', 'stroke-width': '1' }, svgEl_);
-  for (let i = 1; i < 6; i++) {
-    const lat = (i / 6) * Math.PI - Math.PI / 2;
-    const ry = Math.abs(Math.cos(lat)) * R, py = cy - Math.sin(lat) * R;
-    if (ry > 2) {
-      const e = _svgEl('ellipse', { cx, cy: py, rx: ry, ry: ry * .28, fill: 'none', stroke: 'rgba(60,140,255,.18)', 'stroke-width': '.6' }, svgEl_);
-      e.style.animation = `globe-pulse ${2 + i * .22}s ease-in-out infinite ${i * .15}s`;
-    }
-  }
-  for (let j = 0; j < 9; j++) {
-    const lon = (j / 9) * 2 * Math.PI, pts = [];
-    for (let k = 0; k <= 24; k++) {
-      const lat2 = (k / 24) * Math.PI - Math.PI / 2;
-      pts.push(`${cx + Math.cos(lat2) * Math.sin(lon) * R},${cy - Math.sin(lat2) * R}`);
-    }
-    const l = _svgEl('polyline', { points: pts.join(' '), fill: 'none', stroke: 'rgba(60,140,255,.13)', 'stroke-width': '.5' }, svgEl_);
-    l.style.animation = `globe-pulse ${1.8 + j * .2}s ease-in-out infinite ${j * .13}s`;
-  }
-  [{ lat: .5, lon: -.4 }, { lat: -.4, lon: 1.1 }, { lat: .3, lon: 2.6 }, { lat: .7, lon: 1.7 }, { lat: -.2, lon: -.7 }].forEach((h, i) => {
-    const x = cx + Math.cos(h.lat) * Math.sin(h.lon) * R, y = cy - Math.sin(h.lat) * R;
-    const c = _svgEl('circle', { cx: x, cy: y, r: 2, fill: 'rgba(120,200,255,.9)' }, svgEl_);
-    c.style.animation = `flash-hyper ${1.4 + i * .35}s ease-in-out infinite ${i * .2}s`;
-  });
-  _svgEl('circle', { cx, cy, r: R, fill: 'none', stroke: 'rgba(100,160,255,.38)', 'stroke-width': '1.2' }, svgEl_);
-  const sc = _svgEl('ellipse', { cx, cy, rx: R * .75, ry: R * .75 * .28, fill: 'none', stroke: 'rgba(120,200,255,.5)', 'stroke-width': '.8', 'stroke-dasharray': '5 4' }, svgEl_);
-  sc.style.animation = 'rot-cw 8s linear infinite';
-}
-
-// Build globe on page load
-const _globeSvgMini = document.getElementById('globeSvgMini');
-if (_globeSvgMini) _buildGlobe(_globeSvgMini, 52, 22);
-
-// ── Scatter particles ──
-(function() {
-  const root = document.querySelector('.wrap');
-  if (!root) return;
-  const cols = ['rgba(120,80,255,.6)', 'rgba(80,160,255,.5)', 'rgba(200,120,255,.45)', 'rgba(100,210,200,.45)'];
-  for (let i = 0; i < 16; i++) {
-    const p = document.createElement('div');
-    p.className = 'hyper-particle';
-    const s = 0.8 + Math.random() * 2;
-    p.style.cssText = `width:${s}px;height:${s}px;left:${5 + Math.random() * 90}%;top:${5 + Math.random() * 90}%;background:${cols[i % 4]};animation:flash-hyper ${(1.5 + Math.random() * 3).toFixed(1)}s ease-in-out infinite ${(Math.random() * 3).toFixed(2)}s;`;
-    root.appendChild(p);
-  }
-})();
+// (Globe builder + scatter particles removed — CPU savings)
 
 // ── Waveform + EQ Engine ──
 const _waveCanvas = document.getElementById('waveCanvas');
@@ -2727,10 +2590,23 @@ function _strokeWave(pts) {
   _waveCtx.stroke();
 }
 
-function _drawFrame() {
+let _lastFrameTime = 0;
+function _drawFrame(now) {
   if (!_waveRunning || !_waveCtx) return;
-  // Use sophie mode colors when audio amplitude is above threshold, silent otherwise
+
+  // Throttle to ~30fps (33ms between frames) — halves CPU vs 60fps
+  if (now - _lastFrameTime < 33) { requestAnimationFrame(_drawFrame); return; }
+  _lastFrameTime = now;
+
+  // Auto-fade: ALWAYS fade out after 10s — stops rendering entirely (0 CPU).
+  // User must tap the wave-card to reactivate.
   const _hasAudio = _amp > 0.08;
+  if (!_waveFaded && (Date.now() - _waveStartTime > _WAVE_FADE_MS)) {
+    _waveFaded = true;
+    const wc = document.querySelector('.wave-card');
+    if (wc) { wc.style.opacity = '0'; wc.style.pointerEvents = 'auto'; }
+    return; // stop rendering completely — 0 CPU
+  }
   const cfg = _hasAudio ? _MODES.sophie : _MODES.silent;
   _waveT += 0.015;
 
@@ -2750,10 +2626,7 @@ function _drawFrame() {
       // After 180 zero frames (~3s), analyser is not providing data
       if (_hyperZeroRmsCount > 180) _hyperAnalyserWorks = false;
     }
-    // Debug: log every ~2s
-    if (Math.floor(_waveT * 66) % 120 === 0) {
-      console.log("[hyper] RMS:", rms.toFixed(4), "amp:", _amp.toFixed(3), "real:", _hyperAnalyserWorks, "speaking:", _hyperSophieSpeaking, "ctx:", _hyperAudioCtx?.state);
-    }
+    // (debug logging removed for performance)
   }
   // Fallback: event-driven synthetic amplitude (when analyser fails or absent)
   if (!_useRealAudio) {
@@ -2854,51 +2727,10 @@ function _drawFrame() {
     }
   }
 
-  // Hz readout + status sync (driven by real amplitude)
-  const hz = _hasAudio ? Math.round(160 + _amp * 240) + ' Hz' : '—';
-  const hzEl = document.getElementById('waveHz');
-  if (hzEl) hzEl.textContent = hz;
-  // Auto-update status text
-  const _stEl = document.getElementById('svStatusText');
-  if (_stEl) _stEl.textContent = _hasAudio ? 'spricht gerade' : 'wartet';
-  const _sdEl = document.getElementById('svStatusDot');
-  if (_sdEl) {
-    _sdEl.style.background = _hasAudio ? '#7df9aa' : 'rgba(140,120,200,.5)';
-    _sdEl.style.boxShadow = _hasAudio ? '0 0 6px 2px rgba(125,249,170,.6)' : 'none';
-  }
-
   requestAnimationFrame(_drawFrame);
 }
 
-// ── EQ Bars ──
-const _eqWrap = document.getElementById('eqWrap');
-const _N_BARS = 32;
-const _eqBars = [];
-let _eqT = 0;
-if (_eqWrap) {
-  for (let i = 0; i < _N_BARS; i++) {
-    const b = document.createElement('div');
-    b.className = 'eq-bar';
-    b.style.background = `hsl(${255 + i * 2.8},65%,65%)`;
-    _eqWrap.appendChild(b);
-    _eqBars.push(b);
-  }
-}
-
-function _animateEq() {
-  if (!_waveRunning) return;
-  _eqT += 0.038;
-  _eqBars.forEach((b, i) => {
-    const n = i / _N_BARS;
-    const bell = Math.sin(n * Math.PI);
-    const w1 = 0.5 + 0.5 * Math.sin(_eqT * (1.4 + n * 1.8) + i * 0.42 + n * 3.2);
-    const w2 = 0.5 + 0.5 * Math.sin(_eqT * 2.1 + i * 0.65);
-    const h = Math.max(1.5, (w1 * 0.58 + w2 * 0.42) * bell * _amp * 24);
-    b.style.height = h + 'px';
-    b.style.opacity = _amp < 0.08 ? '0.12' : (0.35 + bell * 0.55).toFixed(2);
-  });
-  requestAnimationFrame(_animateEq);
-}
+// (EQ bars removed — CPU savings)
 
 // ── Voice mode switch (called from DataChannel events) ──
 function setHyperVoiceMode(m) {
@@ -2908,15 +2740,36 @@ function setHyperVoiceMode(m) {
 }
 
 // ── Start/stop wave rendering ──
+let _waveStartTime = 0;
+let _waveFaded = false;
+const _WAVE_FADE_MS = 10000; // always fade out after 10s
+
 function startHyperWave() {
   if (_waveRunning) return;
   _waveRunning = true;
+  _waveStartTime = Date.now();
+  _waveFaded = false;
+  const wc = document.querySelector('.wave-card');
+  if (wc) { wc.style.opacity = '1'; wc.style.transition = 'opacity 1s ease'; }
   _drawFrame();
-  _animateEq();
+}
+
+// User tap to reactivate waveform after auto-fade
+const _waveCard = document.querySelector('.wave-card');
+if (_waveCard) {
+  _waveCard.addEventListener('click', () => {
+    if (!_waveRunning || !_waveFaded) return;
+    _waveFaded = false;
+    _waveStartTime = Date.now();
+    _waveCard.style.opacity = '1';
+    _waveCard.style.pointerEvents = '';
+    _drawFrame();
+  });
 }
 
 function stopHyperWave() {
   _waveRunning = false;
+  _waveFaded = false;
 }
 
 // ── Sync sv-timer with existing timer ──
@@ -6734,18 +6587,23 @@ if (!hasRealConversation) {
     // Take transcript AFTER summary (includes summary text in convoLog)
     const transcriptSnapshot = [...convoLog];
 
+    console.log(`[${runId}] [stopVoice] pre-memory: convoLog=${convoLog.length}, reportEnabled=${reportEnabled}, duration=${durationSeconds}`);
     const memoryResult = await sendMemoryUpdate(durationSeconds);
+    console.log(`[${runId}] [stopVoice] post-memory: ok=${memoryResult?.ok}, sessionId=${memoryResult?.session?.id}, skipped=${memoryResult?.skipped}`);
 
     // Start async report polling with progress bar (skip if user disabled report)
     const sessionId = memoryResult?.session?.id;
     if (reportEnabled && sessionId) {
+      console.log(`[${runId}] [stopVoice] → pollReportProgress(${sessionId})`);
       await pollReportProgress(sessionId, transcriptSnapshot, { triggeredByLimit });
     } else if (reportEnabled) {
+      console.log(`[${runId}] [stopVoice] → NO sessionId, showing no_summary. memoryResult=`, JSON.stringify(memoryResult)?.slice(0, 300));
       stopFakeReportLoader();
       showPostCallResults({
         output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
       }, transcriptSnapshot, { triggeredByLimit });
     } else {
+      console.log(`[${runId}] [stopVoice] → report disabled`);
       // Report disabled — skip report, just reset UI
       stopFakeReportLoader();
       resetPostCallUI();
