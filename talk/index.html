@@ -2735,35 +2735,7 @@ function _drawFrame() {
   requestAnimationFrame(_drawFrame);
 }
 
-// ── EQ Bars ──
-const _eqWrap = document.getElementById('eqWrap');
-const _N_BARS = 32;
-const _eqBars = [];
-let _eqT = 0;
-if (_eqWrap) {
-  for (let i = 0; i < _N_BARS; i++) {
-    const b = document.createElement('div');
-    b.className = 'eq-bar';
-    b.style.background = `hsl(${255 + i * 2.8},65%,65%)`;
-    _eqWrap.appendChild(b);
-    _eqBars.push(b);
-  }
-}
-
-function _animateEq() {
-  if (!_waveRunning) return;
-  _eqT += 0.038;
-  _eqBars.forEach((b, i) => {
-    const n = i / _N_BARS;
-    const bell = Math.sin(n * Math.PI);
-    const w1 = 0.5 + 0.5 * Math.sin(_eqT * (1.4 + n * 1.8) + i * 0.42 + n * 3.2);
-    const w2 = 0.5 + 0.5 * Math.sin(_eqT * 2.1 + i * 0.65);
-    const h = Math.max(1.5, (w1 * 0.58 + w2 * 0.42) * bell * _amp * 24);
-    b.style.height = h + 'px';
-    b.style.opacity = _amp < 0.08 ? '0.12' : (0.35 + bell * 0.55).toFixed(2);
-  });
-  requestAnimationFrame(_animateEq);
-}
+// (EQ bars removed — CPU savings)
 
 // ── Voice mode switch (called from DataChannel events) ──
 function setHyperVoiceMode(m) {
