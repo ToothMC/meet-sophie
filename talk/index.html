@@ -7029,11 +7029,13 @@ const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 if (session?.user) {
-  // Auto-start for all devices. The talk page is only reached via user gesture
-  // (tap on landing page), so getUserMedia permission dialog will work.
-  // iOS Safari doesn't support navigator.permissions.query for microphone,
-  // so the old check always fell through to the fallback on iOS.
-  startVoice();
+  if (isMobileDevice) {
+    // Mobile: require tap on Start button (iOS needs gesture on THIS page for audio)
+    startBtn.onclick = startVoice;
+  } else {
+    // Desktop: auto-start (gesture from /app carries over)
+    startVoice();
+  }
 }
 </script>
 
