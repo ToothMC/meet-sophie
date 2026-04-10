@@ -5479,6 +5479,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       if (msg?.type === "response.created") {
         hideReadyStatus();
+        cs.metrics.assistantResponseStarted = true;
         if (!inactivityWarningFired) touchActivity(); // Don't reset during inactivity grace period
         // Restore volume for Sophie's new response
         if (audioEl) audioEl.volume = 1;
