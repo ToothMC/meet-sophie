@@ -2754,6 +2754,19 @@ function startHyperWave() {
   _drawFrame();
 }
 
+// User tap to reactivate waveform after auto-fade
+const _waveCard = document.querySelector('.wave-card');
+if (_waveCard) {
+  _waveCard.addEventListener('click', () => {
+    if (!_waveRunning || !_waveFaded) return;
+    _waveFaded = false;
+    _waveStartTime = Date.now();
+    _waveCard.style.opacity = '1';
+    _waveCard.style.pointerEvents = '';
+    _drawFrame();
+  });
+}
+
 function stopHyperWave() {
   _waveRunning = false;
   _waveFaded = false;
