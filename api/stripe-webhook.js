@@ -210,6 +210,8 @@ export default async function handler(req, res) {
           const { error: uUpdErr } = await supabase
             .from("user_usage")
             .update({
+              free_tokens_total: 0,
+              free_tokens_used: 0,
               paid_tokens_total: includedTokens,
               paid_tokens_used: 0,
               topup_tokens_balance: newTopupBalance,
@@ -273,7 +275,7 @@ export default async function handler(req, res) {
           const newBal = (usage.topup_tokens_balance || 0) + addTokens;
           const { error: uUpdErr } = await supabase
             .from("user_usage")
-            .update({ topup_tokens_balance: newBal })
+            .update({ free_tokens_total: 0, free_tokens_used: 0, topup_tokens_balance: newBal })
             .eq("user_id", userId);
 
           if (uUpdErr) return res.status(500).send("Supabase write failed (user_usage update)");
