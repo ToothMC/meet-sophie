@@ -6589,11 +6589,30 @@ async function stopVoicePitchClean() {
 }
 
 async function stopVoice(triggeredByLimit = false){
+  // Idempotent stop guard — prevent double execution
+  if (cs.stopGuard) { console.log(`[state] stopVoice blocked — already stopping`); return; }
+
+  // Allow stop from ACTIVE, STARTING, CONNECTING
+  if (![S.ACTIVE, S.STARTING, S.CONNECTING].includes(cs.state)) {
+    console.log(`[state] stopVoice blocked — state=${cs.state}`);
+    return;
+  }
+
+  cs.stopGuard = true;
+  const wasActive = cs.state === S.ACTIVE;
+  setState(S.STOPPING);
+  track("session_lifecycle", { phase: "stop_requested", runId: cs.runId, reason: triggeredByLimit ? "time_limit" : "user_click" });
+
+  // If not yet active (starting/connecting), just cancel
+  if (!wasActive) {
+    cancelSessionStart();
+    cs.stopGuard = false;
+    return;
+  }
+
   void releaseVoiceWakeLock();
-  // Hide pause button + session bar, reset pause state on any session end
   pauseBtn.style.display = "none";
   showSessionBar(false);
-  document.querySelector(".wrap")?.classList.remove("session-active");
   isPaused = false;
 
   // Stop hyper visualizer
