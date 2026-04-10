@@ -2185,7 +2185,7 @@ function closePostCallPanel() {
   postCallPanel.style.transform = "translateY(100%)";
   setTimeout(() => {
     postCallPanel.style.display = "none";
-    resetToReadyState();
+    window.location.href = "/app";
   }, 350);
 }
 
