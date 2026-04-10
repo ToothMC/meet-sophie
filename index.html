@@ -90,8 +90,8 @@
   </script>
   <style>
     :root{
-      --bg:#06070b;
-      --bg-soft:#0d1018;
+      --bg:#04040a;
+      --bg-soft:#0a0c14;
       --card:rgba(255,255,255,.06);
       --card-strong:rgba(255,255,255,.09);
       --text:#f6f7fb;
@@ -107,16 +107,36 @@
     body{
       margin:0;
       padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;
-      background:
-        radial-gradient(circle at top right, rgba(132,148,255,.14), transparent 28%),
-        radial-gradient(circle at top left, rgba(255,199,146,.10), transparent 24%),
-        linear-gradient(180deg, #090b11 0%, #06070b 42%, #090b11 100%);
+      font-family:'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif;
+      background:#04040a;
       color:var(--text);
       line-height:1.5;
       -webkit-font-smoothing:antialiased;
       text-rendering:optimizeLegibility;
     }
+    /* Hyper grid + glow — scoped to hero only (not over content sections) */
+    /* ── Hyper animations ── */
+    @keyframes pulse-ring  { 0%{transform:scale(.88);opacity:.85} 50%{transform:scale(1.08);opacity:.18} 100%{transform:scale(.88);opacity:.85} }
+    @keyframes pulse-ring2 { 0%{transform:scale(.75);opacity:.55} 50%{transform:scale(1.16);opacity:.04} 100%{transform:scale(.75);opacity:.55} }
+    @keyframes pulse-ring3 { 0%{transform:scale(.62);opacity:.35} 50%{transform:scale(1.28);opacity:0}   100%{transform:scale(.62);opacity:.35} }
+    @keyframes rot-cw      { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
+    @keyframes rot-ccw     { from{transform:rotate(0)}   to{transform:rotate(-360deg)} }
+    @keyframes breathe-h   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+    @keyframes flash-h     { 0%,100%{opacity:.12} 50%{opacity:1} }
+    @keyframes core-glow-h {
+      0%,100% { box-shadow:0 0 20px 6px rgba(120,80,255,.3),0 0 50px 12px rgba(80,180,255,.08),inset 0 0 14px rgba(255,255,255,.05); }
+      50%     { box-shadow:0 0 44px 14px rgba(140,90,255,.65),0 0 90px 35px rgba(80,180,255,.22),inset 0 0 28px rgba(255,255,255,.13); }
+    }
+    @keyframes scan-h-h    { 0%{left:-4%;opacity:0} 5%{opacity:.6} 95%{opacity:.6} 100%{left:100%;opacity:0} }
+    @keyframes text-pulse-h { 0%,100%{opacity:.7;text-shadow:0 0 10px rgba(120,200,255,.4)} 50%{opacity:1;text-shadow:0 0 18px rgba(120,200,255,.9)} }
+    @keyframes globe-pulse-h { 0%,100%{opacity:.2} 50%{opacity:.6} }
+    /* Corner decorations */
+    .cdeco{position:absolute;width:28px;height:28px;pointer-events:none;opacity:.28;z-index:3}
+    .cdeco.tl{top:14px;left:14px;border-top:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:3px 0 0 0}
+    .cdeco.tr{top:14px;right:14px;border-top:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 3px 0 0}
+    .cdeco.bl{bottom:14px;left:14px;border-bottom:1px solid rgba(100,80,255,.7);border-left:1px solid rgba(100,80,255,.7);border-radius:0 0 0 3px}
+    .cdeco.br{bottom:14px;right:14px;border-bottom:1px solid rgba(100,80,255,.7);border-right:1px solid rgba(100,80,255,.7);border-radius:0 0 3px 0}
+    .hyper-particle{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
     img{max-width:100%;display:block}
     a{color:inherit}
     .wrap{width:min(calc(100% - 32px), var(--max)); margin:0 auto}
@@ -232,84 +252,126 @@
     .hero{
       position:relative;
       overflow:hidden;
-      min-height:860px;
-      padding:56px 0 42px;
+      min-height:100vh;
+      min-height:100dvh;
+      padding:32px 0 42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
     .hero::before{
-      content:"";
-      position:absolute;
-      inset:0;
+      content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
       background:
-        linear-gradient(90deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.58) 28%, rgba(8,10,16,.22) 48%, rgba(8,10,16,.06) 62%, rgba(8,10,16,.18) 100%),
-        linear-gradient(180deg, rgba(7,9,14,.18) 0%, rgba(7,9,14,.06) 20%, rgba(7,9,14,.14) 60%, rgba(7,9,14,.44) 100%),
-        url("hero-opt.jpg") 72% center / cover no-repeat;
-      background:
-        linear-gradient(90deg, rgba(8,10,16,.82) 0%, rgba(8,10,16,.58) 28%, rgba(8,10,16,.22) 48%, rgba(8,10,16,.06) 62%, rgba(8,10,16,.18) 100%),
-        linear-gradient(180deg, rgba(7,9,14,.18) 0%, rgba(7,9,14,.06) 20%, rgba(7,9,14,.14) 60%, rgba(7,9,14,.44) 100%),
-        image-set(url("hero.webp") type("image/webp"), url("hero-opt.jpg") type("image/jpeg")) 72% center / cover no-repeat;
-      pointer-events:none;
-      z-index:0;
+        radial-gradient(ellipse 80% 50% at 50% 20%, rgba(80,40,200,.16) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(40,100,200,.08) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 80% 20%, rgba(140,60,200,.08) 0%, transparent 55%);
     }
     .hero::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:
-        radial-gradient(circle at 63% 42%, rgba(255,173,92,.20), transparent 18%),
-        radial-gradient(circle at 56% 52%, rgba(255,188,124,.10), transparent 26%),
-        radial-gradient(circle at 18% 18%, rgba(101,129,226,.10), transparent 24%);
-      pointer-events:none;
-      z-index:0;
+      content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(80,60,200,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(80,60,200,.03) 1px, transparent 1px);
+      background-size:32px 32px;
     }
     .hero-grid{
       position:relative;
       z-index:1;
-      display:grid;
-      grid-template-columns:520px 1fr;
-      gap:64px;
-      align-items:start;
-      min-height:720px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      text-align:center;
+      gap:0;
+      max-width:420px;
+      margin:0 auto;
     }
     .hero-copy-col{
-      padding-top:54px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
     }
     .eyebrow{
       display:inline-flex;
       align-items:center;
       padding:0 18px;
-      height:42px;
-      border:1px solid rgba(255,255,255,.10);
+      height:36px;
+      border:.5px solid rgba(100,80,200,.25);
       border-radius:999px;
-      background:rgba(86,108,182,.16);
-      color:rgba(246,247,251,.88);
-      font-size:13px;
-      margin-bottom:22px;
+      background:rgba(80,60,200,.1);
+      color:rgba(200,180,255,.85);
+      font-size:11px;
+      letter-spacing:.08em;
+      margin-bottom:18px;
     }
-    .eyebrow::before{
-      display:none;
-    }
+    .eyebrow::before{ display:none; }
     h1{
       margin:0;
-      max-width:520px;
-      font-size:84px;
-      line-height:.93;
-      letter-spacing:-.055em;
-      font-weight:650;
+      font-size:42px;
+      line-height:1.05;
+      letter-spacing:-.02em;
+      font-weight:700;
       text-transform:uppercase;
+      color:rgba(230,220,255,.95);
     }
     .hero-copy{
-      margin:28px 0 0;
-      max-width:430px;
-      font-size:22px;
-      line-height:1.55;
-      color:rgba(246,247,251,.76);
+      margin:14px 0 0;
+      max-width:360px;
+      font-size:16px;
+      line-height:1.5;
+      color:rgba(160,140,210,.7);
     }
     .hero-actions{
       display:flex;
-      gap:14px;
-      flex-wrap:wrap;
-      margin-top:30px;
+      flex-direction:column;
+      align-items:center;
+      gap:0;
+      margin-top:24px;
+      width:100%;
     }
+    /* ── Globe top ── */
+    .hero-globe-wrap{
+      position:relative;width:80px;height:80px;
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:0;
+    }
+    .hero-globe-wrap svg{position:absolute;inset:0;width:100%;height:100%}
+    .hero-globe-label{
+      position:relative;z-index:2;font-size:8px;font-weight:700;
+      letter-spacing:.2em;text-transform:uppercase;
+      color:rgba(160,220,255,.95);animation:text-pulse-h 2.5s ease-in-out infinite;
+      white-space:nowrap;
+    }
+    .hero-v-line{width:1.5px;height:28px;background:linear-gradient(to bottom,rgba(80,160,255,.4),rgba(120,80,255,.7));animation:flash-h 2s ease-in-out infinite}
+    .hero-v-line.down{background:linear-gradient(to bottom,rgba(120,80,255,.7),rgba(80,140,255,.3));animation-delay:.4s}
+    /* ── CTA Aura system ── */
+    .hero-cta-wrap{
+      position:relative;display:flex;align-items:center;justify-content:center;
+      width:100%;padding:8px 0;
+    }
+    .hero-cta-ring{position:absolute;border-radius:20px;pointer-events:none}
+    .hcr1{inset:-10px;border:1.5px solid rgba(120,80,255,.6);border-radius:24px;animation:pulse-ring 2.8s ease-in-out infinite;transition:border-color .6s ease}
+    .hcr2{inset:-20px;border:1px solid rgba(80,160,255,.35);border-radius:28px;animation:pulse-ring2 2.8s ease-in-out infinite .7s;transition:border-color .6s ease}
+    .hcr3{inset:-32px;border:.5px solid rgba(180,100,255,.18);border-radius:34px;animation:pulse-ring3 2.8s ease-in-out infinite 1.4s;transition:border-color .6s ease}
+    .hero-cta-orb{position:absolute;border-radius:50%;pointer-events:none}
+    .hco1{width:calc(100% + 80px);height:80px;border-radius:40px;border:1px dashed rgba(100,200,255,.15);left:-40px;animation:rot-cw 16s linear infinite}
+    .hco2{width:calc(100% + 110px);height:100px;border-radius:50px;border:.5px dashed rgba(180,80,255,.1);left:-55px;animation:rot-ccw 22s linear infinite}
+    .hero-cta-sdot{position:absolute;border-radius:50%;pointer-events:none}
+    /* ── Provider row ── */
+    .hero-providers{
+      display:flex;flex-direction:column;align-items:center;gap:10px;
+      margin-top:8px;position:relative;z-index:10;
+    }
+    .hero-prov-label{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(100,80,180,.4);font-weight:500}
+    .hero-prov-row{display:flex;gap:10px;align-items:center;justify-content:center}
+    .hero-provider{
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      padding:8px 10px 7px;border-radius:10px;
+      background:rgba(255,255,255,.018);border:.5px solid rgba(80,60,160,.18);
+      min-width:54px;cursor:default;transition:border-color .3s;
+    }
+    .hero-provider:hover{border-color:rgba(120,90,220,.35)}
+    .hero-prov-logo{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;opacity:.65}
+    .hero-prov-name{font-size:8px;letter-spacing:.07em;text-transform:uppercase;color:rgba(120,100,170,.5);font-weight:500}
+    .hero-prov-dot{width:3px;height:3px;border-radius:50%;animation:flash-h ease-in-out infinite;opacity:.65}
     .btn{
       display:inline-flex;
       align-items:center;
@@ -328,23 +390,60 @@
     }
     .btn:hover{transform:translateY(-2px)}
     .btn-primary{
-      background:linear-gradient(180deg, #3f8cff 0%, #2167db 100%);
-      color:#ffffff;
+      background:radial-gradient(ellipse 80% 120% at 30% 30%,rgba(180,140,255,.88) 0%,rgba(100,60,220,.94) 45%,rgba(35,15,110,1) 100%);
+      color:rgba(240,230,255,.97);
+      border:1px solid rgba(200,170,255,.22);
+      text-shadow:0 0 22px rgba(180,140,255,.75);
     }
     #hero-btn-primary{
-      min-width:200px;
+      width:100%;max-width:280px;min-height:62px;border-radius:16px;
+      position:relative;overflow:hidden;
+      animation:core-glow-h 3.5s ease-in-out infinite;
+      transition:none;
+      font-size:18px;z-index:20;
     }
+    #hero-btn-primary .btn-scan-h{position:absolute;top:0;bottom:0;width:3px;background:linear-gradient(to bottom,transparent,rgba(200,180,255,.8),transparent);animation:scan-h-h 3.2s linear infinite;pointer-events:none}
+    #hero-btn-primary .btn-facet-h{position:absolute;inset:0;border-radius:16px;background:conic-gradient(from 0deg,transparent 0%,rgba(255,255,255,.04) 15%,transparent 30%,rgba(255,255,255,.06) 50%,transparent 65%,transparent 100%);animation:rot-cw 12s linear infinite;pointer-events:none}
+    #hero-btn-primary .btn-border-h{position:absolute;inset:0;border-radius:16px;border:1px solid rgba(200,170,255,.22);pointer-events:none}
+    #hero-btn-primary:hover{filter:brightness(1.15)}
+    #hero-btn-primary:active{transform:scale(.97)}
     #hero-btn-primary.mode-meeting{
-      background:linear-gradient(180deg, #34c47a 0%, #1e9957 100%);
+      background:radial-gradient(ellipse 80% 120% at 30% 30%,rgba(100,220,160,.88) 0%,rgba(30,153,87,.94) 45%,rgba(10,60,30,1) 100%);
+      color:#ffffff;text-shadow:0 0 22px rgba(100,220,160,.75);
+      animation:core-glow-meeting 3.5s ease-in-out infinite;
+    }
+    @keyframes core-glow-meeting{
+      0%,100%{box-shadow:0 0 20px 6px rgba(52,196,122,.3),0 0 50px 12px rgba(52,196,122,.08)}
+      50%{box-shadow:0 0 44px 14px rgba(52,196,122,.65),0 0 90px 35px rgba(52,196,122,.22)}
     }
     #hero-btn-primary.mode-brainstorm{
-      background:linear-gradient(180deg, #f5c842 0%, #d4a017 100%);
-      color:#1a1200;
+      background:radial-gradient(ellipse 80% 120% at 30% 30%,rgba(255,220,100,.88) 0%,rgba(212,160,23,.94) 45%,rgba(80,50,0,1) 100%);
+      color:#1a1200;text-shadow:0 0 22px rgba(245,200,66,.5);
+      animation:core-glow-brainstorm 3.5s ease-in-out infinite;
+    }
+    @keyframes core-glow-brainstorm{
+      0%,100%{box-shadow:0 0 20px 6px rgba(245,200,66,.3),0 0 50px 12px rgba(245,200,66,.08)}
+      50%{box-shadow:0 0 44px 14px rgba(245,200,66,.65),0 0 90px 35px rgba(245,200,66,.22)}
     }
     #hero-btn-primary.mode-salespitch{
-      background:linear-gradient(180deg, #ff5252 0%, #c62828 100%);
-      color:#ffffff;
+      background:radial-gradient(ellipse 80% 120% at 30% 30%,rgba(255,120,120,.88) 0%,rgba(198,40,40,.94) 45%,rgba(80,10,10,1) 100%);
+      color:#ffffff;text-shadow:0 0 22px rgba(255,90,90,.75);
+      animation:core-glow-salespitch 3.5s ease-in-out infinite;
     }
+    @keyframes core-glow-salespitch{
+      0%,100%{box-shadow:0 0 20px 6px rgba(255,82,82,.3),0 0 50px 12px rgba(255,82,82,.08)}
+      50%{box-shadow:0 0 44px 14px rgba(255,82,82,.65),0 0 90px 35px rgba(255,82,82,.22)}
+    }
+    /* ── Aura rings match mode colors ── */
+    .hero-cta-wrap.mode-meeting .hcr1{border-color:rgba(52,196,122,.6)}
+    .hero-cta-wrap.mode-meeting .hcr2{border-color:rgba(52,196,122,.35)}
+    .hero-cta-wrap.mode-meeting .hcr3{border-color:rgba(52,196,122,.18)}
+    .hero-cta-wrap.mode-brainstorm .hcr1{border-color:rgba(245,200,66,.6)}
+    .hero-cta-wrap.mode-brainstorm .hcr2{border-color:rgba(245,200,66,.35)}
+    .hero-cta-wrap.mode-brainstorm .hcr3{border-color:rgba(245,200,66,.18)}
+    .hero-cta-wrap.mode-salespitch .hcr1{border-color:rgba(255,82,82,.6)}
+    .hero-cta-wrap.mode-salespitch .hcr2{border-color:rgba(255,82,82,.35)}
+    .hero-cta-wrap.mode-salespitch .hcr3{border-color:rgba(255,82,82,.18)}
     .hero-pitch-hook{
       font-size:12px;color:rgba(246,247,251,.5);
       margin-top:8px;font-style:italic;letter-spacing:.01em;
@@ -356,60 +455,17 @@
       border:1px solid var(--line);
       box-shadow:none;
     }
-    /* ── Pulse animations: 3-Stufen ─────────────────────── */
-    @keyframes pulseSoft{
-      0%   { box-shadow:0 0 4px rgba(255,255,255,0.0); }
-      50%  { box-shadow:0 0 16px rgba(255,255,255,0.45); }
-      100% { box-shadow:0 0 4px rgba(255,255,255,0.0); }
-    }
-    @keyframes pulseStrong{
-      0%   { box-shadow:0 0 0 0 rgba(0,200,255,0.5); transform:translateY(-2px) scale(1); }
-      50%  { box-shadow:0 0 0 14px rgba(0,200,255,0); transform:translateY(-2px) scale(1.04); }
-      100% { box-shadow:0 0 0 0 rgba(0,200,255,0); transform:translateY(-2px) scale(1); }
-    }
-    @keyframes pulseNudge{
-      0%   { box-shadow:0 0 0 0 rgba(255,90,90,0.7); transform:translateY(-2px) scale(1); }
-      40%  { box-shadow:0 0 0 18px rgba(255,90,90,0); transform:translateY(-2px) scale(1.06); }
-      100% { box-shadow:0 0 0 0 rgba(255,90,90,0); transform:translateY(-2px) scale(1); }
-    }
-    @keyframes voiceRipple{
-      0%   { transform:scale(1);   opacity:0.7; }
-      70%  { transform:scale(1.6); opacity:0;   }
-      100% { opacity:0; }
-    }
-    /* Stufe 1: dezentes Pulsieren – Voice existiert */
-    .voice-btn.pulse-soft{
-      animation:pulseSoft 2.5s ease-in-out infinite;
-    }
-    /* Stufe 2: starkes Pulsieren – Sophie hat Voice angeboten */
-    .voice-btn.pulse-strong{
-      position:relative;
-      z-index:1;
-      animation:pulseStrong 1.6s ease-in-out infinite;
-      box-shadow:0 0 20px rgba(0,200,255,0.8),0 0 40px rgba(0,200,255,0.6);
-    }
-    .voice-btn.pulse-strong::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      border-radius:inherit;
-      border:2px solid rgba(0,200,255,0.6);
-      animation:voiceRipple 1.6s infinite;
-    }
-    /* Stufe 3: Nudge – maximale Aufmerksamkeit */
+    /* ── Pulse animations: disabled for hero CTA (hyper animations replace them) ── */
+    /* The hero button uses core-glow-h + breathe-h instead.
+       pulse-soft/strong/nudge classes are still toggled by JS but have no visual effect. */
+    .voice-btn.pulse-soft,
+    .voice-btn.pulse-strong,
     .voice-btn.pulse-nudge{
-      position:relative;
-      z-index:1;
-      animation:pulseNudge 1.2s ease-in-out infinite;
-      box-shadow:0 0 20px rgba(255,90,90,0.8),0 0 40px rgba(255,90,90,0.6);
+      /* Do not override animation — let core-glow-h + breathe-h run */
     }
+    .voice-btn.pulse-strong::after,
     .voice-btn.pulse-nudge::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      border-radius:inherit;
-      border:2px solid rgba(255,90,90,0.6);
-      animation:voiceRipple 1.2s infinite;
+      display:none;
     }
     #chat-opening{
       display:none;
@@ -422,9 +478,9 @@
     }
     .trust-line{
       margin-top:14px;
-      color:rgba(246,247,251,.55);
-      font-size:12.5px;
-      letter-spacing:.2px;
+      color:rgba(120,100,180,.4);
+      font-size:11px;
+      letter-spacing:.1em;
     }
     .hero-write-btn{
       display:none;
@@ -459,23 +515,26 @@
     .hero-mode-bar{
       display:flex;gap:8px;margin-top:12px;
     }
+    .hero-mode-bar{
+      display:flex;gap:8px;margin-top:14px;justify-content:center;
+    }
     .hero-mode-pill{
-      font-size:12px;font-weight:500;padding:5px 13px;
-      border-radius:20px;border:1px solid rgba(255,255,255,.15);
-      background:transparent;color:rgba(246,247,251,.45);
-      cursor:pointer;transition:all .15s;letter-spacing:.01em;
-      font-family:inherit;
+      font-size:11px;font-weight:600;padding:6px 14px;
+      border-radius:20px;border:.5px solid rgba(80,60,160,.25);
+      background:rgba(255,255,255,.03);color:rgba(120,100,180,.5);
+      cursor:pointer;transition:all .2s;letter-spacing:.08em;
+      text-transform:uppercase;font-family:inherit;
     }
     .hero-mode-pill:hover{
-      border-color:rgba(255,255,255,.3);color:rgba(246,247,251,.75);
+      border-color:rgba(120,90,220,.4);color:rgba(200,180,255,.75);
+      background:rgba(255,255,255,.06);
     }
     .hero-mode-pill.active{
-      background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.35);
-      color:rgba(246,247,251,.95);
+      background:rgba(120,80,255,.2);border-color:rgba(120,80,255,.45);
+      color:rgba(200,180,255,.95);
     }
     .hero-visual{
-      position:relative;
-      min-height:720px;
+      display:none;
     }
     .hero-card{
       position:relative;
@@ -2273,34 +2332,75 @@
   </header>
   <main>
     <section class="hero">
+      <!-- Corner decorations -->
+      <div class="cdeco tl"></div><div class="cdeco tr"></div>
+      <div class="cdeco bl"></div><div class="cdeco br"></div>
+      <!-- Scene SVG for provider data streams -->
+      <svg id="heroSceneSvg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;overflow:visible" xmlns="http://www.w3.org/2000/svg"></svg>
+
       <div class="wrap hero-grid">
         <div class="hero-copy-col">
           <div class="eyebrow" id="hero-eyebrow">Clarity begins in conversation</div>
           <h1 id="hero-title">THINK FIRST.<br>THEN ACT.</h1>
           <p class="hero-copy" id="hero-copy">Your AI thinking partner for the moments that matter.</p>
+
           <div class="hero-actions">
-            <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">Talk to Sophie</button>
-            <button class="hero-write-btn" id="hero-btn-secondary" type="button"><svg class="hero-write-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg><span class="hero-write-text">Write to Sophie…</span><svg class="hero-write-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+            <!-- Globe top -->
+            <div class="hero-globe-wrap">
+              <svg id="heroGlobeSvg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"></svg>
+              <span class="hero-globe-label">INTERNET</span>
+            </div>
+            <div class="hero-v-line"></div>
+
+            <!-- CTA Button with full aura system -->
+            <div class="hero-cta-wrap" id="heroCtaWrap">
+              <div class="hero-cta-ring hcr1"></div>
+              <div class="hero-cta-ring hcr2"></div>
+              <div class="hero-cta-ring hcr3"></div>
+              <div class="hero-cta-orb hco1"></div>
+              <div class="hero-cta-orb hco2"></div>
+              <div class="hero-cta-sdot" style="top:-14px;right:30px;width:5px;height:5px;background:#7df9aa;box-shadow:0 0 6px 2px rgba(125,249,170,.6);animation:flash-h 1.6s ease-in-out infinite"></div>
+              <div class="hero-cta-sdot" style="bottom:-14px;left:34px;width:4px;height:4px;background:#7bd4ff;box-shadow:0 0 5px 2px rgba(123,212,255,.5);animation:flash-h 2s ease-in-out infinite .6s"></div>
+              <div class="hero-cta-sdot" style="top:50%;left:-14px;width:3px;height:3px;background:rgba(200,160,255,.8);animation:flash-h 1.3s ease-in-out infinite 1.1s;transform:translateY(-50%)"></div>
+              <div class="hero-cta-sdot" style="top:50%;right:-14px;width:3px;height:3px;background:rgba(255,180,100,.7);animation:flash-h 1.8s ease-in-out infinite .3s;transform:translateY(-50%)"></div>
+              <svg id="heroSynSvg" style="position:absolute;inset:-50px;width:calc(100% + 100px);height:calc(100% + 100px);pointer-events:none;z-index:5;overflow:visible" xmlns="http://www.w3.org/2000/svg"></svg>
+              <button class="btn btn-primary voice-btn" id="hero-btn-primary" type="button">
+                <div class="btn-scan-h"></div>
+                <div class="btn-facet-h"></div>
+                <div class="btn-border-h"></div>
+                <span id="heroBtnLabel">Talk to Sophie</span>
+              </button>
+            </div>
+
+            <div class="hero-v-line down"></div>
+
+            <!-- Provider row -->
+            <div class="hero-providers">
+              <div class="hero-prov-label">Powered by</div>
+              <div class="hero-prov-row" id="heroProviderRow"></div>
+            </div>
           </div>
+
           <div class="hero-mode-bar" id="heroModeBar">
             <div class="bs-pill-wrap">
-              <button class="hero-mode-pill" data-mode="brainstorm" id="bsPillMain">✦ Brainstorm</button>
+              <button class="hero-mode-pill" data-mode="brainstorm" id="bsPillMain">Brainstorm</button>
               <div class="bs-seg" id="bsSeg" style="display:none">
                 <button class="bs-seg-btn active" data-bs="solo">Solo</button>
                 <button class="bs-seg-btn" data-bs="group">Team</button>
               </div>
             </div>
-            <button class="hero-mode-pill" data-mode="meeting">◉ Meeting</button>
-            <button class="hero-mode-pill" data-mode="salespitch">▲ Sales Pitch</button>
+            <button class="hero-mode-pill" data-mode="meeting">Meeting</button>
+            <button class="hero-mode-pill" data-mode="salespitch">Sales Pitch</button>
           </div>
           <p class="mobile-feature-hint" id="mobile-feature-hint">You can also send Sophie messages during a conversation.</p>
           <p class="trust-line" id="hero-trust-line">No signup · Start instantly</p>
           <p id="chat-opening"></p>
+          <!-- Secondary write button moved here but hidden by default -->
+          <button class="hero-write-btn" id="hero-btn-secondary" type="button" style="display:none"><svg class="hero-write-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg><span class="hero-write-text">Write to Sophie…</span><svg class="hero-write-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
         </div>
 
         <div class="hero-visual">
           <div class="hero-card">
-            <!-- Chat card — integrated into hero visual -->
             <div class="chat-card" id="sophieChat">
               <div class="chat-card-header">
                 <button class="chat-back-btn" aria-label="Back">‹</button>
@@ -2585,6 +2685,137 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+      /* ══════════════════════════════════════════
+         HYPER HERO: Globe, Synaptics, Providers, Particles
+      ══════════════════════════════════════════ */
+      (function initHyperHero() {
+        function _svg(tag, attrs, parent) {
+          const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+          for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+          if (parent) parent.appendChild(e);
+          return e;
+        }
+
+        // ── Globe builder ──
+        function buildGlobe(el, size, R) {
+          const cx = size / 2, cy = size / 2;
+          _svg('circle', { cx, cy, r: R, fill: 'rgba(10,20,60,.55)', stroke: 'rgba(80,120,255,.28)', 'stroke-width': '1' }, el);
+          for (let i = 1; i < 6; i++) {
+            const lat = (i / 6) * Math.PI - Math.PI / 2;
+            const ry = Math.abs(Math.cos(lat)) * R, py = cy - Math.sin(lat) * R;
+            if (ry > 2) { const e = _svg('ellipse', { cx, cy: py, rx: ry, ry: ry * .28, fill: 'none', stroke: 'rgba(60,140,255,.18)', 'stroke-width': '.6' }, el); e.style.animation = `globe-pulse-h ${2 + i * .22}s ease-in-out infinite ${i * .15}s`; }
+          }
+          for (let j = 0; j < 9; j++) {
+            const lon = (j / 9) * 2 * Math.PI, pts = [];
+            for (let k = 0; k <= 24; k++) { const lat2 = (k / 24) * Math.PI - Math.PI / 2; pts.push(`${cx + Math.cos(lat2) * Math.sin(lon) * R},${cy - Math.sin(lat2) * R}`); }
+            const l = _svg('polyline', { points: pts.join(' '), fill: 'none', stroke: 'rgba(60,140,255,.13)', 'stroke-width': '.5' }, el);
+            l.style.animation = `globe-pulse-h ${1.8 + j * .2}s ease-in-out infinite ${j * .13}s`;
+          }
+          [{ lat: .5, lon: -.4 }, { lat: -.4, lon: 1.1 }, { lat: .3, lon: 2.6 }, { lat: .7, lon: 1.7 }, { lat: -.2, lon: -.7 }].forEach((h, i) => {
+            const x = cx + Math.cos(h.lat) * Math.sin(h.lon) * R, y = cy - Math.sin(h.lat) * R;
+            const c = _svg('circle', { cx: x, cy: y, r: 2, fill: 'rgba(120,200,255,.9)' }, el);
+            c.style.animation = `flash-h ${1.4 + i * .35}s ease-in-out infinite ${i * .2}s`;
+          });
+          _svg('circle', { cx, cy, r: R, fill: 'none', stroke: 'rgba(100,160,255,.38)', 'stroke-width': '1.2' }, el);
+          const sc = _svg('ellipse', { cx, cy, rx: R * .75, ry: R * .75 * .28, fill: 'none', stroke: 'rgba(120,200,255,.5)', 'stroke-width': '.8', 'stroke-dasharray': '5 4' }, el);
+          sc.style.animation = 'rot-cw 8s linear infinite';
+        }
+        const globeEl = document.getElementById('heroGlobeSvg');
+        if (globeEl) buildGlobe(globeEl, 80, 35);
+
+        // ── Synaptic lines around CTA ──
+        const synSvg = document.getElementById('heroSynSvg');
+        if (synSvg) {
+          const nodes = [
+            { x: 20, y: 20 }, { x: 280, y: 18 }, { x: 295, y: 70 }, { x: 270, y: 130 },
+            { x: 20, y: 132 }, { x: 5, y: 70 }, { x: 100, y: 8 }, { x: 220, y: 10 },
+            { x: 55, y: 140 }, { x: 245, y: 142 }, { x: 298, y: 35 }, { x: 4, y: 38 }
+          ];
+          nodes.forEach((n, i) => {
+            const ang = Math.atan2(n.y - 75, n.x - 150);
+            const ef = Math.min(Math.min(110 / Math.abs(Math.cos(ang) || .01), 30 / Math.abs(Math.sin(ang) || .01)), 60);
+            const ex = 150 + ef * Math.cos(ang), ey = 75 + ef * Math.sin(ang);
+            const col = i % 3 === 0 ? 'rgba(120,80,255,.45)' : i % 3 === 1 ? 'rgba(80,160,255,.35)' : 'rgba(200,100,255,.3)';
+            const dur = 1.8 + (i % 3) * .7;
+            const ln = _svg('line', { x1: ex, y1: ey, x2: n.x, y2: n.y, stroke: col, 'stroke-width': '.7', 'stroke-dasharray': '5 7' }, synSvg);
+            ln.style.animation = `flash-h ${dur}s ease-in-out infinite ${i * .28}s`;
+            const dot = _svg('circle', { cx: n.x, cy: n.y, r: i % 4 === 0 ? 2.8 : 1.8, fill: i % 3 === 0 ? 'rgba(160,120,255,.8)' : i % 3 === 1 ? 'rgba(100,180,255,.8)' : 'rgba(220,140,255,.8)' }, synSvg);
+            dot.style.animation = `flash-h ${dur}s ease-in-out infinite ${i * .28 + .2}s`;
+          });
+        }
+
+        // ── Provider row ──
+        const provRow = document.getElementById('heroProviderRow');
+        if (provRow) {
+          const providers = [
+            { name: 'OpenAI', dot: '#7df9aa', dur: 1.8, del: 0, fill: 'rgba(255,255,255,.7)', icon: '<path d="M22.28 9.82a5.98 5.98 0 0 0-.52-4.91 6.05 6.05 0 0 0-6.51-2.9A6.07 6.07 0 0 0 4.98 4.18a5.98 5.98 0 0 0-4 2.9 6.05 6.05 0 0 0 .74 7.1 5.98 5.98 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.51 2.9A5.98 5.98 0 0 0 13.26 24a6.06 6.06 0 0 0 5.77-4.2 5.99 5.99 0 0 0 4-2.9 6.06 6.06 0 0 0-.75-7.08z"/>' },
+            { name: 'Claude', dot: '#ff9a7a', dur: 2.1, del: .3, fill: 'rgba(200,95,60,.7)', icon: '<path d="M13.83 3.52h3.6L24 20.48h-3.6l-6.57-16.96zm-7.26 0h3.77L16.91 20.48h-3.67l-1.34-3.46H5.02l-1.34 3.46H0L6.57 3.52zm4.13 10.46L8.45 7.69 6.2 13.97h4.5z"/>' },
+            { name: 'Gemini', dot: '#7bc8ff', dur: 1.5, del: .6, fill: null, icon: '<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.07 5.07 0 0 1-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09a6.97 6.97 0 0 1 0-4.18V7.07H2.18A11.96 11.96 0 0 0 1 12c0 1.93.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.83 10.83 0 0 0 12 1C7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>' },
+            { name: 'Mistral', dot: '#ffb347', dur: 2.3, del: .9, fill: 'rgba(255,140,0,.65)', icon: '<rect x="2" y="2" width="4" height="4" rx=".5"/><rect x="10" y="2" width="4" height="4" rx=".5"/><rect x="18" y="2" width="4" height="4" rx=".5"/><rect x="2" y="10" width="4" height="4" rx=".5" opacity=".7"/><rect x="10" y="10" width="4" height="4" rx=".5"/><rect x="18" y="10" width="4" height="4" rx=".5" opacity=".7"/><rect x="2" y="18" width="4" height="4" rx=".5" opacity=".4"/><rect x="10" y="18" width="4" height="4" rx=".5" opacity=".6"/><rect x="18" y="18" width="4" height="4" rx=".5"/>' },
+          ];
+          providers.forEach((p, i) => {
+            const svgFill = p.fill ? `fill="${p.fill}"` : 'fill="none"';
+            provRow.innerHTML += `<div class="hero-provider" id="heroProv${i}"><div class="hero-prov-logo"><svg width="16" height="16" viewBox="0 0 24 24" ${svgFill}>${p.icon}</svg></div><div class="hero-prov-name">${p.name}</div><div class="hero-prov-dot" style="background:${p.dot};animation-duration:${p.dur}s;animation-delay:${p.del}s"></div></div>`;
+          });
+        }
+
+        // ── Provider data stream lines ──
+        function cubicPt(t, p0, p1, p2, p3) { const m = 1 - t; return m*m*m*p0 + 3*m*m*t*p1 + 3*m*t*t*p2 + t*t*t*p3; }
+
+        function drawProviderStreams() {
+          const scSvg = document.getElementById('heroSceneSvg');
+          const heroEl = document.querySelector('.hero');
+          const btnEl = document.getElementById('hero-btn-primary');
+          if (!scSvg || !heroEl || !btnEl) return;
+          scSvg.innerHTML = '';
+          const hRect = heroEl.getBoundingClientRect();
+          const bRect = btnEl.getBoundingClientRect();
+          const bx = bRect.left + bRect.width / 2 - hRect.left;
+          const by = bRect.top + bRect.height / 2 - hRect.top;
+          const colors = ['rgba(80,200,160,.35)', 'rgba(200,100,60,.35)', 'rgba(80,160,255,.35)', 'rgba(255,160,60,.35)'];
+          for (let i = 0; i < 4; i++) {
+            const pEl = document.getElementById('heroProv' + i);
+            if (!pEl) continue;
+            const pRect = pEl.getBoundingClientRect();
+            const px = pRect.left + pRect.width / 2 - hRect.left;
+            const py = pRect.top - hRect.top;
+            const col = colors[i];
+            const c1x = px, c1y = py - 28, c2x = bx + (px - bx) * .25, c2y = by + 35;
+            const path = _svg('path', { d: `M${px},${py} C${c1x},${c1y} ${c2x},${c2y} ${bx},${by}`, fill: 'none', stroke: col, 'stroke-width': '.8', 'stroke-dasharray': '5 9' }, scSvg);
+            path.style.animation = `flash-h ${2 + i * .4}s ease-in-out infinite ${i * .3}s`;
+            // Animated traveling dots
+            for (let k = 0; k < 2; k++) {
+              const dot = _svg('circle', { r: '2', fill: col.replace('.35', '.8') }, scSvg);
+              const dur = 2400 + i * 600 + k * 800;
+              let start = null;
+              (function step(ts) {
+                if (!start) start = ts;
+                const t = ((ts - start) % dur) / dur;
+                dot.setAttribute('cx', cubicPt(t, px, c1x, c2x, bx));
+                dot.setAttribute('cy', cubicPt(t, py, c1y, c2y, by));
+                dot.setAttribute('opacity', t < .1 ? t * 10 : t > .85 ? (1 - t) * 6.67 : 1);
+                requestAnimationFrame(step);
+              })(performance.now());
+            }
+          }
+        }
+        setTimeout(drawProviderStreams, 300);
+        window.addEventListener('resize', () => { clearTimeout(window._hpResize); window._hpResize = setTimeout(drawProviderStreams, 200); });
+
+        // ── Scatter particles ──
+        const hero = document.querySelector('.hero');
+        if (hero) {
+          const cols = ['rgba(120,80,255,.5)', 'rgba(80,160,255,.4)', 'rgba(200,120,255,.35)', 'rgba(100,210,200,.35)'];
+          for (let i = 0; i < 20; i++) {
+            const p = document.createElement('div');
+            p.className = 'hyper-particle';
+            const s = 0.8 + Math.random() * 2;
+            p.style.cssText = `width:${s}px;height:${s}px;left:${5 + Math.random() * 90}%;top:${5 + Math.random() * 90}%;background:${cols[i % 4]};animation:flash-h ${(1.5 + Math.random() * 3).toFixed(1)}s ease-in-out infinite ${(Math.random() * 3).toFixed(2)}s;`;
+            hero.appendChild(p);
+          }
+        }
+      })();
 
       /* ── Swipeable use-case cards ── */
       const track = document.getElementById('msTrack');
@@ -3029,6 +3260,9 @@
         if (id === "hero-btn-secondary") {
           const span = el.querySelector(".hero-write-text");
           if (span) span.textContent = value; else el.textContent = value;
+        } else if (id === "hero-btn-primary") {
+          const lbl = document.getElementById("heroBtnLabel");
+          if (lbl) lbl.textContent = value; else el.textContent = value;
         } else {
           el.textContent = value;
         }
@@ -3405,12 +3639,34 @@
       }
     }
 
+    let _heroModeResetTimer = null;
     function applyHeroMode(mode) {
       if (heroCta) {
         heroCta.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
         if (mode) heroCta.classList.add("mode-" + mode);
         const labels = HERO_MODE_LABELS[currentLang] || HERO_MODE_LABELS.en;
-        heroCta.textContent = mode ? (labels[mode] || getHeroCtaDefault()) : getHeroCtaDefault();
+        const labelEl = document.getElementById('heroBtnLabel');
+        const txt = mode ? (labels[mode] || getHeroCtaDefault()) : getHeroCtaDefault();
+        if (labelEl) labelEl.textContent = txt; else heroCta.textContent = txt;
+      }
+      // Sync mode class on CTA wrap (for aura ring colors)
+      const ctaWrap = document.getElementById('heroCtaWrap');
+      if (ctaWrap) {
+        ctaWrap.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
+        if (mode) ctaWrap.classList.add("mode-" + mode);
+      }
+      // Auto-reset to default (blue) after 5s when a mode is selected
+      clearTimeout(_heroModeResetTimer);
+      if (mode) {
+        _heroModeResetTimer = setTimeout(() => {
+          applyHeroMode(null);
+          // Deselect all mode pills
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+          const _bsSegEl = document.getElementById("bsSeg");
+          if (_bsSegEl) _bsSegEl.style.display = "none";
+          selectedChatMode = null;
+          localStorage.removeItem("sophie_session_mode");
+        }, 5000);
       }
     }
 
