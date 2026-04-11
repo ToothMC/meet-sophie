@@ -4024,16 +4024,28 @@
     const VIDEOS_READY = { talk: true, brainstorm: true, meeting: true, salespitch: true };
 
     // Preload videos via fetch() so browser caches them — videoEl.src then hits cache
+    // Sequential loading with low priority to not block page navigation
     const _videoBlobs = {};
     setTimeout(() => {
-      const srcs = { talk: "/videos/demo-talk.mp4", brainstorm: "/videos/demo-brainstorm.mp4", meeting: "/videos/demo-meeting.mp4", salespitch: "/videos/demo-salespitch.mp4" };
-      Object.entries(VIDEOS_READY).forEach(([mode, ready]) => {
-        if (!ready || !srcs[mode]) return;
-        fetch(srcs[mode]).then(r => r.blob()).then(blob => {
+      const srcs = [
+        ["talk", "/videos/demo-talk.mp4"],
+        ["brainstorm", "/videos/demo-brainstorm.mp4"],
+        ["meeting", "/videos/demo-meeting.mp4"],
+        ["salespitch", "/videos/demo-salespitch.mp4"],
+      ].filter(([mode]) => VIDEOS_READY[mode]);
+
+      // Load one at a time so navigation stays fast
+      (async function loadNext(i) {
+        if (i >= srcs.length) return;
+        const [mode, src] = srcs[i];
+        try {
+          const r = await fetch(src, { priority: "low" });
+          const blob = await r.blob();
           _videoBlobs[mode] = URL.createObjectURL(blob);
-        }).catch(() => {});
-      });
-    }, 1500);
+        } catch {}
+        loadNext(i + 1);
+      })(0);
+    }, 4000); // Wait 4s so initial page render + navigation is unblocked
 
     const MODE_VIDEOS = {
       talk: {
