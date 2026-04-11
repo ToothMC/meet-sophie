@@ -545,7 +545,7 @@
     .video-card{
       position:relative;z-index:1;
       background:#12121e;border:1px solid rgba(255,255,255,.08);
-      border-radius:20px;max-width:640px;width:100%;
+      border-radius:20px;max-width:400px;width:100%;
       overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);
     }
     .video-close{
@@ -557,12 +557,12 @@
     }
     .video-close:hover{background:rgba(0,0,0,.8)}
     .video-player{
-      width:100%;aspect-ratio:16/9;
+      width:100%;aspect-ratio:9/16;max-height:70vh;
       background:linear-gradient(135deg,#1e1e3a 0%,#2a1a4a 50%,#1a2a3a 100%);
       display:flex;align-items:center;justify-content:center;
       flex-direction:column;gap:12px;position:relative;
     }
-    .video-player video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .video-player video{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
     .video-placeholder-icon{font-size:48px;opacity:.4}
     .video-placeholder-text{font-size:14px;color:rgba(255,255,255,.35)}
     .video-body{padding:24px}
@@ -4023,6 +4023,22 @@
     // ── Video Demo Modal ─────────────────────────────────
     const VIDEOS_READY = { talk: true, brainstorm: false, meeting: false, salespitch: false };
 
+    // Preload videos in background so they play instantly when modal opens
+    const _preloadedVideos = {};
+    setTimeout(() => {
+      Object.entries(VIDEOS_READY).forEach(([mode, ready]) => {
+        if (!ready) return;
+        const src = { talk: "/videos/demo-talk.mp4", brainstorm: "/videos/demo-brainstorm.mp4", meeting: "/videos/demo-meeting.mp4", salespitch: "/videos/demo-salespitch.mp4" }[mode];
+        if (!src) return;
+        const vid = document.createElement("video");
+        vid.preload = "auto";
+        vid.muted = true;
+        vid.src = src;
+        vid.load();
+        _preloadedVideos[mode] = vid;
+      });
+    }, 2000); // Start preload 2s after page load to not block critical resources
+
     const MODE_VIDEOS = {
       talk: {
         src: "/videos/demo-talk.mp4",
@@ -4168,9 +4184,27 @@
     // Action 2: "Use Case" → scroll to relevant section/card
     videoActionUseCase.addEventListener("click", (e) => {
       e.preventDefault();
-      const mode = videoCurrentMode;
+      const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
       closeVideoModal();
-      scrollToLandingTarget(mode || "talk");
+      requestAnimationFrame(() => {
+        if (links.useCase.type === "card") {
+          const section = document.getElementById("use-cases");
+          if (section) {
+            const y = section.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+          setTimeout(() => {
+            if (window._msUpdateCards) window._msUpdateCards(links.useCase.index);
+            if (window._msScrollToCard) window._msScrollToCard(links.useCase.index);
+          }, 600);
+        } else {
+          const el = document.getElementById(links.useCase.id);
+          if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+        }
+      });
     });
 
     // Action 3: "Beispiel Protokoll" → open existing example modal
@@ -4179,7 +4213,14 @@
       const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
       closeVideoModal();
       if (links.example.modalId) {
-        openExampleModal(links.example.modalId, e.target);
+        // Open example modal directly (same logic as the IIFE handler)
+        const overlay = document.getElementById(links.example.modalId);
+        if (overlay) {
+          overlay.hidden = false;
+          document.body.style.overflow = "hidden";
+          const closeBtn = overlay.querySelector(".example-modal-close");
+          if (closeBtn) closeBtn.focus();
+        }
       }
     });
 
