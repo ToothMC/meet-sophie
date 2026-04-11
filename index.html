@@ -4023,21 +4023,17 @@
     // ── Video Demo Modal ─────────────────────────────────
     const VIDEOS_READY = { talk: true, brainstorm: true, meeting: true, salespitch: true };
 
-    // Preload videos in background so they play instantly when modal opens
-    const _preloadedVideos = {};
+    // Preload videos via fetch() so browser caches them — videoEl.src then hits cache
+    const _videoBlobs = {};
     setTimeout(() => {
+      const srcs = { talk: "/videos/demo-talk.mp4", brainstorm: "/videos/demo-brainstorm.mp4", meeting: "/videos/demo-meeting.mp4", salespitch: "/videos/demo-salespitch.mp4" };
       Object.entries(VIDEOS_READY).forEach(([mode, ready]) => {
-        if (!ready) return;
-        const src = { talk: "/videos/demo-talk.mp4", brainstorm: "/videos/demo-brainstorm.mp4", meeting: "/videos/demo-meeting.mp4", salespitch: "/videos/demo-salespitch.mp4" }[mode];
-        if (!src) return;
-        const vid = document.createElement("video");
-        vid.preload = "auto";
-        vid.muted = true;
-        vid.src = src;
-        vid.load();
-        _preloadedVideos[mode] = vid;
+        if (!ready || !srcs[mode]) return;
+        fetch(srcs[mode]).then(r => r.blob()).then(blob => {
+          _videoBlobs[mode] = URL.createObjectURL(blob);
+        }).catch(() => {});
       });
-    }, 2000); // Start preload 2s after page load to not block critical resources
+    }, 1500);
 
     const MODE_VIDEOS = {
       talk: {
@@ -4142,7 +4138,8 @@
       videoActionExample.textContent = "\uD83D\uDCC4 " + (links.exampleLabel[l] || links.exampleLabel.en);
 
       if (VIDEOS_READY[videoCurrentMode]) {
-        videoEl.src = v.src;
+        // Use preloaded blob URL if available, otherwise fall back to network
+        videoEl.src = _videoBlobs[videoCurrentMode] || v.src;
         videoEl.muted = false;
         videoEl.style.display = "";
         videoPlaceholder.style.display = "none";
