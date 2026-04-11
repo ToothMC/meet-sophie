@@ -2317,7 +2317,7 @@
     <div class="video-card">
       <button class="video-close" id="videoClose">&times;</button>
       <div class="video-player" id="videoPlayer">
-        <video id="videoEl" playsinline muted style="display:none"></video>
+        <video id="videoEl" playsinline style="display:none"></video>
         <div id="videoPlaceholder">
           <div class="video-placeholder-icon" id="videoPlaceholderIcon">&#9654;</div>
           <div class="video-placeholder-text" id="videoPlaceholderText">Demo kommt bald</div>
@@ -4143,9 +4143,14 @@
 
       if (VIDEOS_READY[videoCurrentMode]) {
         videoEl.src = v.src;
+        videoEl.muted = false;
         videoEl.style.display = "";
         videoPlaceholder.style.display = "none";
-        videoEl.play().catch(() => {});
+        videoEl.play().catch(() => {
+          // Autoplay with sound blocked — retry muted
+          videoEl.muted = true;
+          videoEl.play().catch(() => {});
+        });
       } else {
         videoEl.style.display = "none";
         videoPlaceholder.style.display = "";
