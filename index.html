@@ -3710,8 +3710,21 @@
         ctaWrap.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
         if (mode) ctaWrap.classList.add("mode-" + mode);
       }
-      // No auto-reset — mode stays until user deselects or clicks CTA
+      // Auto-reset to default (blue) after 5s when a mode is selected
       clearTimeout(_heroModeResetTimer);
+      if (mode) {
+        _heroModeResetTimer = setTimeout(() => {
+          applyHeroMode(null);
+          // Deselect all mode pills + restore brainstorm pill
+          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+          const _bsSegEl = document.getElementById("bsSeg");
+          const _bsPill = document.getElementById("bsPillMain");
+          if (_bsSegEl) _bsSegEl.style.display = "none";
+          if (_bsPill) { _bsPill.style.display = ""; _bsPill.classList.remove("active"); }
+          selectedChatMode = null;
+          localStorage.removeItem("sophie_session_mode");
+        }, 5000);
+      }
     }
 
     // Hero CTA → opens chat foreground
@@ -4137,6 +4150,8 @@
     function openVideoModal(mode) {
       const v = MODE_VIDEOS[mode || "talk"];
       if (!v) return;
+      // Pause auto-reset while modal is open
+      clearTimeout(_heroModeResetTimer);
       videoCurrentMode = mode || "talk";
       const l = currentLang;
 
