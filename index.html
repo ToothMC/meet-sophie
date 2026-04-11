@@ -4189,6 +4189,10 @@
       videoModal.classList.remove("open");
       videoEl.pause();
       videoEl.removeAttribute("src");
+      // Restart auto-reset timer so button returns to "Mit Sophie sprechen"
+      if (selectedChatMode) {
+        applyHeroMode(selectedChatMode);
+      }
     }
 
     document.getElementById("videoBackdrop").addEventListener("click", closeVideoModal);
