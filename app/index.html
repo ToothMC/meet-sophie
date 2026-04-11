@@ -1169,7 +1169,7 @@
     });
 
     // ── Video Demo Modal ─────────────────────────────────
-    const VIDEOS_READY = false; // Feature flag: set true when video files exist
+    const VIDEOS_READY = { talk: true, brainstorm: false, meeting: false, salespitch: false };
 
     const MODE_VIDEOS = {
       talk: {
@@ -1239,7 +1239,7 @@
       videoCta.textContent = v.cta[l] + " \u2192";
       videoCta.className = "video-cta" + (v.ctaClass ? " " + v.ctaClass : "");
 
-      if (VIDEOS_READY) {
+      if (VIDEOS_READY[videoCurrentMode]) {
         videoEl.src = v.src;
         videoEl.style.display = "";
         videoPlaceholder.style.display = "none";
