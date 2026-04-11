@@ -568,19 +568,15 @@
     .video-body{padding:24px}
     .video-title{font-size:18px;font-weight:600;color:#fff;margin:0 0 8px;line-height:1.3}
     .video-desc{font-size:14px;color:rgba(255,255,255,.5);margin:0 0 20px;line-height:1.5}
-    .video-cta{
-      display:block;width:100%;padding:14px;
-      background:#2563eb;color:#fff;border:none;
-      border-radius:12px;font-size:16px;font-weight:600;
-      cursor:pointer;text-align:center;transition:background .2s;
+    .video-actions{display:flex;gap:8px}
+    .video-action{
+      flex:1;display:flex;align-items:center;justify-content:center;
+      padding:12px 8px;border-radius:10px;font-size:13px;font-weight:600;
+      color:#fff;text-decoration:none;text-align:center;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+      transition:background .2s,border-color .2s;cursor:pointer;line-height:1.3;
     }
-    .video-cta:hover{background:#1d4ed8}
-    .video-cta.mode-brainstorm{background:#b8860b}
-    .video-cta.mode-brainstorm:hover{background:#9a7209}
-    .video-cta.mode-meeting{background:#16a34a}
-    .video-cta.mode-meeting:hover{background:#15803d}
-    .video-cta.mode-salespitch{background:#dc2626}
-    .video-cta.mode-salespitch:hover{background:#b91c1c}
+    .video-action:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.25)}
     @media(max-width:600px){
       .video-modal{padding:0}
       .video-card{max-width:100%;border-radius:0;min-height:100vh;
@@ -2330,7 +2326,11 @@
       <div class="video-body">
         <h3 class="video-title" id="videoTitle"></h3>
         <p class="video-desc" id="videoDesc"></p>
-        <button class="video-cta" id="videoCta"></button>
+        <div class="video-actions">
+          <a class="video-action" id="videoActionChat" href="#"></a>
+          <a class="video-action" id="videoActionUseCase" href="#"></a>
+          <a class="video-action" id="videoActionExample" href="#"></a>
+        </div>
       </div>
     </div>
   </div>
@@ -3710,21 +3710,8 @@
         ctaWrap.classList.remove("mode-meeting", "mode-brainstorm", "mode-salespitch");
         if (mode) ctaWrap.classList.add("mode-" + mode);
       }
-      // Auto-reset to default (blue) after 5s when a mode is selected
+      // No auto-reset — mode stays until user deselects or clicks CTA
       clearTimeout(_heroModeResetTimer);
-      if (mode) {
-        _heroModeResetTimer = setTimeout(() => {
-          applyHeroMode(null);
-          // Deselect all mode pills + restore brainstorm pill
-          document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
-          const _bsSegEl = document.getElementById("bsSeg");
-          const _bsPill = document.getElementById("bsPillMain");
-          if (_bsSegEl) _bsSegEl.style.display = "none";
-          if (_bsPill) { _bsPill.style.display = ""; _bsPill.classList.remove("active"); }
-          selectedChatMode = null;
-          localStorage.removeItem("sophie_session_mode");
-        }, 5000);
-      }
     }
 
     // Hero CTA → opens chat foreground
@@ -4003,14 +3990,18 @@
     });
     // ──────────────────────────────────────────────────────────
 
-    // Mode pills — toggle active state + update button label/color + open video modal
+    // Mode pills — toggle active state + update button label/color (NO video modal)
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
-          // Second click on same pill → re-open video modal
-          openVideoModal(mode);
-          return;
+          // Second click on same pill → deselect
+          selectedChatMode = null;
+          brainstormChatConfig = null;
+          btn.classList.remove("active");
+          setFunnelMode(null);
+          applyHeroMode(null);
+          if (mode === "brainstorm") hideBsSeg();
         } else if (mode === "brainstorm") {
           brainstormChatConfig = null;
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
@@ -4026,8 +4017,6 @@
           setFunnelMode(mode);
           applyHeroMode(mode);
         }
-        // Open video modal on first selection
-        openVideoModal(mode);
       });
     });
 
@@ -4081,6 +4070,34 @@
       },
     };
 
+    // Link config per mode for video modal actions
+    const MODE_VIDEO_LINKS = {
+      talk: {
+        chat: { de: "Gespr\u00e4ch starten", en: "Start conversation" },
+        useCase: { type: "card", index: 0 },
+        example: { modalId: "exampleModal1" },
+        exampleLabel: { de: "Beispiel Protokoll", en: "Example Report" },
+      },
+      salespitch: {
+        chat: { de: "Sales Pitch starten", en: "Start Sales Pitch" },
+        useCase: { type: "card", index: 1 },
+        example: { modalId: "exampleModal2" },
+        exampleLabel: { de: "Beispiel Scorecard", en: "Example Scorecard" },
+      },
+      meeting: {
+        chat: { de: "Meeting starten", en: "Start Meeting" },
+        useCase: { type: "section", id: "mode-meeting" },
+        example: { modalId: "exampleModal4" },
+        exampleLabel: { de: "Beispiel Report", en: "Example Report" },
+      },
+      brainstorm: {
+        chat: { de: "Brainstorming starten", en: "Start Brainstorming" },
+        useCase: { type: "section", id: "mode-brainstorm" },
+        example: { modalId: "exampleModal5" },
+        exampleLabel: { de: "Beispiel Scorecard", en: "Example Scorecard" },
+      },
+    };
+
     const videoModal = document.getElementById("videoModal");
     const videoEl = document.getElementById("videoEl");
     const videoPlaceholder = document.getElementById("videoPlaceholder");
@@ -4088,7 +4105,9 @@
     const videoPlaceholderText = document.getElementById("videoPlaceholderText");
     const videoTitle = document.getElementById("videoTitle");
     const videoDesc = document.getElementById("videoDesc");
-    const videoCta = document.getElementById("videoCta");
+    const videoActionChat = document.getElementById("videoActionChat");
+    const videoActionUseCase = document.getElementById("videoActionUseCase");
+    const videoActionExample = document.getElementById("videoActionExample");
     let videoCurrentMode = "";
 
     function openVideoModal(mode) {
@@ -4099,8 +4118,12 @@
 
       videoTitle.textContent = v.title[l] || v.title.en;
       videoDesc.textContent = v.desc[l] || v.desc.en;
-      videoCta.textContent = (v.cta[l] || v.cta.en) + " \u2192";
-      videoCta.className = "video-cta" + (v.ctaClass ? " " + v.ctaClass : "");
+
+      // Update action links
+      const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
+      videoActionChat.textContent = "\uD83D\uDCAC " + (links.chat[l] || links.chat.en);
+      videoActionUseCase.textContent = "\uD83D\uDCCB Use Case";
+      videoActionExample.textContent = "\uD83D\uDCC4 " + (links.exampleLabel[l] || links.exampleLabel.en);
 
       if (VIDEOS_READY[videoCurrentMode]) {
         videoEl.src = v.src;
@@ -4126,16 +4149,37 @@
     document.getElementById("videoBackdrop").addEventListener("click", closeVideoModal);
     document.getElementById("videoClose").addEventListener("click", closeVideoModal);
 
-    videoCta.addEventListener("click", () => {
+    // Action 1: "Gespräch starten" → open chat with mode pre-selected
+    videoActionChat.addEventListener("click", (e) => {
+      e.preventDefault();
+      const mode = videoCurrentMode;
       closeVideoModal();
-      // Navigate to the session like the original CTA would
-      if (videoCurrentMode === "meeting") {
-        location.href = "/meeting/";
-      } else {
-        if (videoCurrentMode && videoCurrentMode !== "talk") {
-          localStorage.setItem("sophie_session_mode", videoCurrentMode);
-        }
-        location.href = "/talk";
+      if (mode && mode !== "talk") {
+        setFunnelMode(mode);
+        applyHeroMode(mode);
+        document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+        const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${mode}"]`);
+        if (pill) pill.classList.add("active");
+      }
+      openChatForeground();
+      quickStartChat();
+    });
+
+    // Action 2: "Use Case" → scroll to relevant section/card
+    videoActionUseCase.addEventListener("click", (e) => {
+      e.preventDefault();
+      const mode = videoCurrentMode;
+      closeVideoModal();
+      scrollToLandingTarget(mode || "talk");
+    });
+
+    // Action 3: "Beispiel Protokoll" → open existing example modal
+    videoActionExample.addEventListener("click", (e) => {
+      e.preventDefault();
+      const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
+      closeVideoModal();
+      if (links.example.modalId) {
+        openExampleModal(links.example.modalId, e.target);
       }
     });
 
