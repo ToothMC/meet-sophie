@@ -532,6 +532,61 @@
       background:rgba(120,80,255,.2);border-color:rgba(120,80,255,.45);
       color:rgba(200,180,255,.95);
     }
+    /* ── Video Demo Modal ─────────────────────────────────── */
+    .video-modal{
+      display:none;position:fixed;inset:0;z-index:10000;
+      align-items:center;justify-content:center;padding:24px;
+    }
+    .video-modal.open{display:flex}
+    .video-backdrop{
+      position:absolute;inset:0;background:rgba(0,0,0,.75);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    }
+    .video-card{
+      position:relative;z-index:1;
+      background:#12121e;border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;max-width:640px;width:100%;
+      overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);
+    }
+    .video-close{
+      position:absolute;top:12px;right:12px;z-index:2;
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(0,0,0,.5);border:none;color:#fff;
+      font-size:18px;cursor:pointer;display:flex;
+      align-items:center;justify-content:center;transition:background .2s;
+    }
+    .video-close:hover{background:rgba(0,0,0,.8)}
+    .video-player{
+      width:100%;aspect-ratio:16/9;
+      background:linear-gradient(135deg,#1e1e3a 0%,#2a1a4a 50%,#1a2a3a 100%);
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;gap:12px;position:relative;
+    }
+    .video-player video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .video-placeholder-icon{font-size:48px;opacity:.4}
+    .video-placeholder-text{font-size:14px;color:rgba(255,255,255,.35)}
+    .video-body{padding:24px}
+    .video-title{font-size:18px;font-weight:600;color:#fff;margin:0 0 8px;line-height:1.3}
+    .video-desc{font-size:14px;color:rgba(255,255,255,.5);margin:0 0 20px;line-height:1.5}
+    .video-cta{
+      display:block;width:100%;padding:14px;
+      background:#2563eb;color:#fff;border:none;
+      border-radius:12px;font-size:16px;font-weight:600;
+      cursor:pointer;text-align:center;transition:background .2s;
+    }
+    .video-cta:hover{background:#1d4ed8}
+    .video-cta.mode-brainstorm{background:#b8860b}
+    .video-cta.mode-brainstorm:hover{background:#9a7209}
+    .video-cta.mode-meeting{background:#16a34a}
+    .video-cta.mode-meeting:hover{background:#15803d}
+    .video-cta.mode-salespitch{background:#dc2626}
+    .video-cta.mode-salespitch:hover{background:#b91c1c}
+    @media(max-width:600px){
+      .video-modal{padding:0}
+      .video-card{max-width:100%;border-radius:0;min-height:100vh;
+        display:flex;flex-direction:column;justify-content:center}
+    }
+
     .hero-visual{
       display:none;
     }
@@ -2260,6 +2315,26 @@
 </head>
 <body>
 
+  <!-- ── Video Demo Modal ─────────────────────────────────── -->
+  <div class="video-modal" id="videoModal">
+    <div class="video-backdrop" id="videoBackdrop"></div>
+    <div class="video-card">
+      <button class="video-close" id="videoClose">&times;</button>
+      <div class="video-player" id="videoPlayer">
+        <video id="videoEl" playsinline muted style="display:none"></video>
+        <div id="videoPlaceholder">
+          <div class="video-placeholder-icon" id="videoPlaceholderIcon">&#9654;</div>
+          <div class="video-placeholder-text" id="videoPlaceholderText">Demo kommt bald</div>
+        </div>
+      </div>
+      <div class="video-body">
+        <h3 class="video-title" id="videoTitle"></h3>
+        <p class="video-desc" id="videoDesc"></p>
+        <button class="video-cta" id="videoCta"></button>
+      </div>
+    </div>
+  </div>
+
   <div class="chat-foreground-backdrop" id="chatBackdrop"></div>
   <header class="site-header">
     <div class="wrap nav">
@@ -3763,7 +3838,7 @@
         // Read active mode from pill state (more reliable than variable)
         const activePill = document.querySelector('#heroModeBar .hero-mode-pill.active');
         const mode = activePill ? activePill.dataset.mode : 'talk';
-        scrollToLandingTarget(mode);
+        openVideoModal(mode);
       });
     }
 
@@ -3928,17 +4003,14 @@
     });
     // ──────────────────────────────────────────────────────────
 
-    // Mode pills — toggle active state + update button label/color
+    // Mode pills — toggle active state + update button label/color + open video modal
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
-          selectedChatMode = null;
-          brainstormChatConfig = null;
-          btn.classList.remove("active");
-          setFunnelMode(null);
-          applyHeroMode(null);
-          if (mode === "brainstorm") hideBsSeg();
+          // Second click on same pill → re-open video modal
+          openVideoModal(mode);
+          return;
         } else if (mode === "brainstorm") {
           brainstormChatConfig = null;
           document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
@@ -3954,13 +4026,123 @@
           setFunnelMode(mode);
           applyHeroMode(mode);
         }
+        // Open video modal on first selection
+        openVideoModal(mode);
       });
+    });
+
+    // ── Video Demo Modal ─────────────────────────────────
+    const VIDEOS_READY = { talk: true, brainstorm: false, meeting: false, salespitch: false };
+
+    const MODE_VIDEOS = {
+      talk: {
+        src: "/videos/demo-talk.mp4",
+        icon: "\u25CF",
+        title: { de: "So funktioniert ein Gespr\u00e4ch mit Sophie", en: "How a conversation with Sophie works" },
+        desc: {
+          de: "Sophie h\u00f6rt zu, fragt nach und hilft dir, Gedanken zu sortieren. Kein Skript, kein Druck \u2014 einfach reden.",
+          en: "Sophie listens, asks questions, and helps you sort through your thoughts. No script, no pressure \u2014 just talk.",
+        },
+        cta: { de: "Gespr\u00e4ch starten", en: "Start conversation" },
+        ctaClass: "",
+      },
+      brainstorm: {
+        src: "/videos/demo-brainstorm.mp4",
+        icon: "\u2726",
+        title: { de: "Brainstorming mit Sophie + Scorecard", en: "Brainstorming with Sophie + Scorecard" },
+        desc: {
+          de: "Wirf Ideen in den Raum, Sophie strukturiert mit. Am Ende bekommst du eine Scorecard mit Bewertung.",
+          en: "Throw ideas around, Sophie helps structure them. You\u2019ll get a scorecard with ratings at the end.",
+        },
+        cta: { de: "Brainstorming starten", en: "Start brainstorming" },
+        ctaClass: "mode-brainstorm",
+      },
+      meeting: {
+        src: "/videos/demo-meeting.mp4",
+        icon: "\u25D9",
+        title: { de: "Meeting mit Sophie: Report & Lean Check", en: "Meeting with Sophie: Report & Lean Check" },
+        desc: {
+          de: "Sophie h\u00f6rt in dein Meeting rein, erstellt einen Report und pr\u00fcft mit einem Lean Check, ob alles abgedeckt ist.",
+          en: "Sophie listens to your meeting, creates a report, and runs a lean check to see if everything\u2019s covered.",
+        },
+        cta: { de: "Meeting starten", en: "Start meeting" },
+        ctaClass: "mode-meeting",
+      },
+      salespitch: {
+        src: "/videos/demo-salespitch.mp4",
+        icon: "\u25B2",
+        title: { de: "Sales Pitch mit Sophie trainieren", en: "Practice your Sales Pitch with Sophie" },
+        desc: {
+          de: "Pr\u00e4sentiere deinen Pitch, Sophie gibt Echtzeit-Feedback zu Inhalt, Struktur und \u00dcberzeugungskraft.",
+          en: "Present your pitch, Sophie gives real-time feedback on content, structure, and persuasion.",
+        },
+        cta: { de: "Pitch starten", en: "Start pitch" },
+        ctaClass: "mode-salespitch",
+      },
+    };
+
+    const videoModal = document.getElementById("videoModal");
+    const videoEl = document.getElementById("videoEl");
+    const videoPlaceholder = document.getElementById("videoPlaceholder");
+    const videoPlaceholderIcon = document.getElementById("videoPlaceholderIcon");
+    const videoPlaceholderText = document.getElementById("videoPlaceholderText");
+    const videoTitle = document.getElementById("videoTitle");
+    const videoDesc = document.getElementById("videoDesc");
+    const videoCta = document.getElementById("videoCta");
+    let videoCurrentMode = "";
+
+    function openVideoModal(mode) {
+      const v = MODE_VIDEOS[mode || "talk"];
+      if (!v) return;
+      videoCurrentMode = mode || "talk";
+      const l = currentLang;
+
+      videoTitle.textContent = v.title[l] || v.title.en;
+      videoDesc.textContent = v.desc[l] || v.desc.en;
+      videoCta.textContent = (v.cta[l] || v.cta.en) + " \u2192";
+      videoCta.className = "video-cta" + (v.ctaClass ? " " + v.ctaClass : "");
+
+      if (VIDEOS_READY[videoCurrentMode]) {
+        videoEl.src = v.src;
+        videoEl.style.display = "";
+        videoPlaceholder.style.display = "none";
+        videoEl.play().catch(() => {});
+      } else {
+        videoEl.style.display = "none";
+        videoPlaceholder.style.display = "";
+        videoPlaceholderIcon.textContent = v.icon;
+        videoPlaceholderText.textContent = l === "de" ? "Demo kommt bald" : "Demo coming soon";
+      }
+
+      videoModal.classList.add("open");
+    }
+
+    function closeVideoModal() {
+      videoModal.classList.remove("open");
+      videoEl.pause();
+      videoEl.removeAttribute("src");
+    }
+
+    document.getElementById("videoBackdrop").addEventListener("click", closeVideoModal);
+    document.getElementById("videoClose").addEventListener("click", closeVideoModal);
+
+    videoCta.addEventListener("click", () => {
+      closeVideoModal();
+      // Navigate to the session like the original CTA would
+      if (videoCurrentMode === "meeting") {
+        location.href = "/meeting/";
+      } else {
+        if (videoCurrentMode && videoCurrentMode !== "talk") {
+          localStorage.setItem("sophie_session_mode", videoCurrentMode);
+        }
+        location.href = "/talk";
+      }
     });
 
     // Click outside pills/CTA → reset mode to Talk
     document.addEventListener("click", (e) => {
       if (!selectedChatMode) return;
-      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat")) return;
+      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat") || e.target.closest("#videoModal")) return;
       selectedChatMode = null;
       setFunnelMode(null);
       applyHeroMode(null);
