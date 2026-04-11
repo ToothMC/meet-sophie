@@ -219,7 +219,7 @@
       if (!data) {
         await supabase.from("user_usage").insert({
           user_id: userId,
-          free_tokens_total: 50,
+          free_tokens_total: 0,
           free_tokens_used: 0
         });
       }
@@ -263,9 +263,22 @@
       await ensureUserUsageRow(user.id);
       await ensureUserRelationshipRow(user.id);
 
+      // Check if user has an active subscription
+      // On failure (RLS timing, network), default to /app — the overlay handles gating there
+      let hasActiveSub = true; // safe default: let /app handle gating
+      try {
+        const { data: sub, error: subErr } = await supabase
+          .from("user_subscriptions")
+          .select("is_active")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!subErr) hasActiveSub = !!sub?.is_active;
+      } catch (_) {}
+
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
-      let target = "/app";
+      // Default: /pricing if no active subscription, /app otherwise
+      let target = hasActiveSub ? "/app" : "/pricing";
       if (redirect) {
         try {
           const url = new URL(redirect, window.location.origin);

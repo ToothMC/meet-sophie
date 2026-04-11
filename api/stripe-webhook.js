@@ -95,9 +95,11 @@ export default async function handler(req, res) {
 
         let plan = String(session?.metadata?.plan || "").toLowerCase().trim();
 
+        // Resolve plan from Stripe subscription if not in metadata
+        let subObj = null;
         if ((!plan || plan === "0") && stripeSubscriptionId) {
           try {
-            const subObj = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            subObj = await stripe.subscriptions.retrieve(stripeSubscriptionId);
             plan = String(subObj?.metadata?.plan || "").toLowerCase().trim();
 
             if (!plan || plan === "0") {
@@ -108,6 +110,11 @@ export default async function handler(req, res) {
           } catch (e) {
             console.warn("Plan fallback failed:", e?.message || e);
           }
+        }
+
+        // Fetch subscription object for trial info if not already fetched
+        if (!subObj && stripeSubscriptionId) {
+          try { subObj = await stripe.subscriptions.retrieve(stripeSubscriptionId); } catch {}
         }
 
         const includedTokens = includedTokensForPlan(plan);
@@ -126,6 +133,16 @@ export default async function handler(req, res) {
           return res.status(500).send("No included tokens resolved");
         }
 
+        // Extract trial info from Stripe subscription
+        const subStatus = subObj?.status || "active";
+        const isTrialing = subStatus === "trialing";
+        const trialEnd = subObj?.trial_end
+          ? new Date(subObj.trial_end * 1000).toISOString()
+          : null;
+        const currentPeriodEnd = subObj?.current_period_end
+          ? new Date(subObj.current_period_end * 1000).toISOString()
+          : null;
+
         const { error: subErr } = await supabase
           .from("user_subscriptions")
           .upsert(
@@ -133,10 +150,13 @@ export default async function handler(req, res) {
               user_id: userId,
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
-              status: "active",
+              status: subStatus,
               is_active: true,
               plan: plan || null,
-              current_period_end: null,
+              current_period_end: currentPeriodEnd,
+              trial_end: trialEnd,
+              trial_started_at: isTrialing ? new Date().toISOString() : null,
+              cancel_at_period_end: false,
             },
             { onConflict: "user_id" }
           );
@@ -162,7 +182,7 @@ export default async function handler(req, res) {
           const { error: uInsErr } = await supabase.from("user_usage").insert({
             user_id: userId,
             free_tokens_total: DEFAULT_FREE_TOKENS,
-            free_tokens_used: DEFAULT_FREE_TOKENS,
+            free_tokens_used: 0,
             paid_tokens_total: includedTokens,
             paid_tokens_used: 0,
             topup_tokens_balance: 0,
@@ -190,6 +210,8 @@ export default async function handler(req, res) {
           const { error: uUpdErr } = await supabase
             .from("user_usage")
             .update({
+              free_tokens_total: 0,
+              free_tokens_used: 0,
               paid_tokens_total: includedTokens,
               paid_tokens_used: 0,
               topup_tokens_balance: newTopupBalance,
@@ -208,6 +230,15 @@ export default async function handler(req, res) {
           stripe_customer_id: stripeCustomerId,
           included_tokens: includedTokens,
         });
+
+        // Track trial_start event for trial subscriptions
+        if (isTrialing) {
+          await safeTrack(supabase, userId, "trial_start", {
+            plan: plan || null,
+            trial_end: trialEnd,
+            stripe_subscription_id: stripeSubscriptionId,
+          });
+        }
 
         return res.status(200).json({ received: true });
       }
@@ -244,7 +275,7 @@ export default async function handler(req, res) {
           const newBal = (usage.topup_tokens_balance || 0) + addTokens;
           const { error: uUpdErr } = await supabase
             .from("user_usage")
-            .update({ topup_tokens_balance: newBal })
+            .update({ free_tokens_total: 0, free_tokens_used: 0, topup_tokens_balance: newBal })
             .eq("user_id", userId);
 
           if (uUpdErr) return res.status(500).send("Supabase write failed (user_usage update)");
@@ -271,10 +302,14 @@ export default async function handler(req, res) {
       const currentPeriodEnd = sub.current_period_end
         ? new Date(sub.current_period_end * 1000).toISOString()
         : null;
+      const trialEnd = sub.trial_end
+        ? new Date(sub.trial_end * 1000).toISOString()
+        : null;
+      const cancelAtPeriodEnd = !!sub.cancel_at_period_end;
 
       const { data: row, error: findErr } = await supabase
         .from("user_subscriptions")
-        .select("user_id, plan")
+        .select("user_id, plan, trial_end")
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
@@ -291,6 +326,8 @@ export default async function handler(req, res) {
         status,
         is_active: isActive,
         current_period_end: currentPeriodEnd,
+        trial_end: trialEnd,
+        cancel_at_period_end: cancelAtPeriodEnd,
       };
 
       // If plan changed (e.g. via Stripe portal), update plan name and tokens
@@ -305,6 +342,17 @@ export default async function handler(req, res) {
         .eq("user_id", userId);
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
+
+      // Track trial_cancel: user canceled while still in trial
+      if (cancelAtPeriodEnd && row.trial_end) {
+        const trialEndDate = new Date(row.trial_end);
+        if (trialEndDate > new Date()) {
+          await safeTrack(supabase, userId, "trial_cancel", {
+            stripe_subscription_id: stripeSubscriptionId,
+            trial_end: row.trial_end,
+          });
+        }
+      }
 
       // If plan changed, adjust token allocation (carry over remaining as topup)
       if (newPlan && newPlan !== row.plan) {
@@ -335,6 +383,8 @@ export default async function handler(req, res) {
         status,
         is_active: isActive,
         current_period_end: currentPeriodEnd,
+        trial_end: trialEnd,
+        cancel_at_period_end: cancelAtPeriodEnd,
         stripe_subscription_id: stripeSubscriptionId,
         plan_changed: newPlan && newPlan !== row.plan ? `${row.plan}→${newPlan}` : null,
       });
@@ -356,7 +406,7 @@ export default async function handler(req, res) {
 
       const { data: row, error: findErr } = await supabase
         .from("user_subscriptions")
-        .select("user_id, plan, is_active")
+        .select("user_id, plan, is_active, trial_started_at")
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
@@ -384,6 +434,20 @@ export default async function handler(req, res) {
         included_tokens: includedTokens,
       });
 
+      // Track trial_convert: first real payment after a trial period
+      if (row.trial_started_at) {
+        await safeTrack(supabase, userId, "trial_convert", {
+          stripe_subscription_id: stripeSubscriptionId,
+          plan: row.plan,
+          trial_started_at: row.trial_started_at,
+        });
+        // Clear trial fields now that user has converted
+        await supabase.from("user_subscriptions").update({
+          trial_end: null,
+          trial_started_at: null,
+        }).eq("user_id", userId);
+      }
+
       return res.status(200).json({ received: true });
     }
 
@@ -394,7 +458,7 @@ export default async function handler(req, res) {
 
       const { data: row, error: findErr } = await supabase
         .from("user_subscriptions")
-        .select("user_id")
+        .select("user_id, trial_started_at")
         .eq("stripe_subscription_id", stripeSubscriptionId)
         .maybeSingle();
 
@@ -409,12 +473,14 @@ export default async function handler(req, res) {
           status: "canceled",
           is_active: false,
           current_period_end: null,
+          trial_end: null,
+          cancel_at_period_end: false,
         })
         .eq("user_id", userId);
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
 
-      // optional: take away paid tokens immediately (depends on your gating)
+      // Take away paid tokens immediately
       await supabase.from("user_usage").update({
         paid_tokens_total: 0,
       }).eq("user_id", userId);
@@ -422,6 +488,17 @@ export default async function handler(req, res) {
       await safeTrack(supabase, userId, "subscription_deleted", {
         stripe_subscription_id: stripeSubscriptionId,
       });
+
+      // Track churn_month_1: canceled within 60 days of trial start
+      if (row.trial_started_at) {
+        const daysSinceTrialStart = (Date.now() - new Date(row.trial_started_at).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceTrialStart <= 60) {
+          await safeTrack(supabase, userId, "churn_month_1", {
+            stripe_subscription_id: stripeSubscriptionId,
+            days_since_trial_start: Math.round(daysSinceTrialStart),
+          });
+        }
+      }
 
       return res.status(200).json({ received: true });
     }

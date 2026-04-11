@@ -532,6 +532,57 @@
       background:rgba(120,80,255,.2);border-color:rgba(120,80,255,.45);
       color:rgba(200,180,255,.95);
     }
+    /* ── Video Demo Modal ─────────────────────────────────── */
+    .video-modal{
+      display:none;position:fixed;inset:0;z-index:10000;
+      align-items:center;justify-content:center;padding:24px;
+    }
+    .video-modal.open{display:flex}
+    .video-backdrop{
+      position:absolute;inset:0;background:rgba(0,0,0,.75);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    }
+    .video-card{
+      position:relative;z-index:1;
+      background:#12121e;border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;max-width:400px;width:100%;
+      overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);
+    }
+    .video-close{
+      position:absolute;top:12px;right:12px;z-index:2;
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(0,0,0,.5);border:none;color:#fff;
+      font-size:18px;cursor:pointer;display:flex;
+      align-items:center;justify-content:center;transition:background .2s;
+    }
+    .video-close:hover{background:rgba(0,0,0,.8)}
+    .video-player{
+      width:100%;aspect-ratio:9/16;max-height:70vh;
+      background:linear-gradient(135deg,#1e1e3a 0%,#2a1a4a 50%,#1a2a3a 100%);
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;gap:12px;position:relative;
+    }
+    .video-player video{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
+    .video-placeholder-icon{font-size:48px;opacity:.4}
+    .video-placeholder-text{font-size:14px;color:rgba(255,255,255,.35)}
+    .video-body{padding:24px}
+    .video-title{font-size:18px;font-weight:600;color:#fff;margin:0 0 8px;line-height:1.3}
+    .video-desc{font-size:14px;color:rgba(255,255,255,.5);margin:0 0 20px;line-height:1.5}
+    .video-actions{display:flex;gap:8px}
+    .video-action{
+      flex:1;display:flex;align-items:center;justify-content:center;
+      padding:12px 8px;border-radius:10px;font-size:13px;font-weight:600;
+      color:#fff;text-decoration:none;text-align:center;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+      transition:background .2s,border-color .2s;cursor:pointer;line-height:1.3;
+    }
+    .video-action:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.25)}
+    @media(max-width:600px){
+      .video-modal{padding:0}
+      .video-card{max-width:100%;border-radius:0;min-height:100vh;
+        display:flex;flex-direction:column;justify-content:center}
+    }
+
     .hero-visual{
       display:none;
     }
@@ -2260,6 +2311,30 @@
 </head>
 <body>
 
+  <!-- ── Video Demo Modal ─────────────────────────────────── -->
+  <div class="video-modal" id="videoModal">
+    <div class="video-backdrop" id="videoBackdrop"></div>
+    <div class="video-card">
+      <button class="video-close" id="videoClose">&times;</button>
+      <div class="video-player" id="videoPlayer">
+        <video id="videoEl" playsinline style="display:none"></video>
+        <div id="videoPlaceholder">
+          <div class="video-placeholder-icon" id="videoPlaceholderIcon">&#9654;</div>
+          <div class="video-placeholder-text" id="videoPlaceholderText">Demo kommt bald</div>
+        </div>
+      </div>
+      <div class="video-body">
+        <h3 class="video-title" id="videoTitle"></h3>
+        <p class="video-desc" id="videoDesc"></p>
+        <div class="video-actions">
+          <a class="video-action" id="videoActionChat" href="#"></a>
+          <a class="video-action" id="videoActionUseCase" href="#"></a>
+          <a class="video-action" id="videoActionExample" href="#"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="chat-foreground-backdrop" id="chatBackdrop"></div>
   <header class="site-header">
     <div class="wrap nav">
@@ -3763,7 +3838,7 @@
         // Read active mode from pill state (more reliable than variable)
         const activePill = document.querySelector('#heroModeBar .hero-mode-pill.active');
         const mode = activePill ? activePill.dataset.mode : 'talk';
-        scrollToLandingTarget(mode);
+        openVideoModal(mode);
       });
     }
 
@@ -3928,11 +4003,12 @@
     });
     // ──────────────────────────────────────────────────────────
 
-    // Mode pills — toggle active state + update button label/color
+    // Mode pills — toggle active state + update button label/color (NO video modal)
     document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(btn => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
         if (selectedChatMode === mode) {
+          // Second click on same pill → deselect
           selectedChatMode = null;
           brainstormChatConfig = null;
           btn.classList.remove("active");
@@ -3957,10 +4033,234 @@
       });
     });
 
+    // ── Video Demo Modal ─────────────────────────────────
+    const VIDEOS_READY = { talk: true, brainstorm: true, meeting: true, salespitch: true };
+
+    // Preload videos via fetch() so browser caches them — videoEl.src then hits cache
+    // Sequential loading with low priority to not block page navigation
+    const _videoBlobs = {};
+    setTimeout(() => {
+      const srcs = [
+        ["talk", "/videos/demo-talk.mp4"],
+        ["brainstorm", "/videos/demo-brainstorm.mp4"],
+        ["meeting", "/videos/demo-meeting.mp4"],
+        ["salespitch", "/videos/demo-salespitch.mp4"],
+      ].filter(([mode]) => VIDEOS_READY[mode]);
+
+      // Load one at a time so navigation stays fast
+      (async function loadNext(i) {
+        if (i >= srcs.length) return;
+        const [mode, src] = srcs[i];
+        try {
+          const r = await fetch(src, { priority: "low" });
+          const blob = await r.blob();
+          _videoBlobs[mode] = URL.createObjectURL(blob);
+        } catch {}
+        loadNext(i + 1);
+      })(0);
+    }, 4000); // Wait 4s so initial page render + navigation is unblocked
+
+    const MODE_VIDEOS = {
+      talk: {
+        src: "/videos/demo-talk.mp4",
+        icon: "\u25CF",
+        title: { de: "So funktioniert ein Gespr\u00e4ch mit Sophie", en: "How a conversation with Sophie works" },
+        desc: {
+          de: "Sophie h\u00f6rt zu, fragt nach und hilft dir, Gedanken zu sortieren. Kein Skript, kein Druck \u2014 einfach reden.",
+          en: "Sophie listens, asks questions, and helps you sort through your thoughts. No script, no pressure \u2014 just talk.",
+        },
+        cta: { de: "Gespr\u00e4ch starten", en: "Start conversation" },
+        ctaClass: "",
+      },
+      brainstorm: {
+        src: "/videos/demo-brainstorm.mp4",
+        icon: "\u2726",
+        title: { de: "Brainstorming mit Sophie + Scorecard", en: "Brainstorming with Sophie + Scorecard" },
+        desc: {
+          de: "Wirf Ideen in den Raum, Sophie strukturiert mit. Am Ende bekommst du eine Scorecard mit Bewertung.",
+          en: "Throw ideas around, Sophie helps structure them. You\u2019ll get a scorecard with ratings at the end.",
+        },
+        cta: { de: "Brainstorming starten", en: "Start brainstorming" },
+        ctaClass: "mode-brainstorm",
+      },
+      meeting: {
+        src: "/videos/demo-meeting.mp4",
+        icon: "\u25D9",
+        title: { de: "Meeting mit Sophie: Report & Lean Check", en: "Meeting with Sophie: Report & Lean Check" },
+        desc: {
+          de: "Sophie h\u00f6rt in dein Meeting rein, erstellt einen Report und pr\u00fcft mit einem Lean Check, ob alles abgedeckt ist.",
+          en: "Sophie listens to your meeting, creates a report, and runs a lean check to see if everything\u2019s covered.",
+        },
+        cta: { de: "Meeting starten", en: "Start meeting" },
+        ctaClass: "mode-meeting",
+      },
+      salespitch: {
+        src: "/videos/demo-salespitch.mp4",
+        icon: "\u25B2",
+        title: { de: "Sales Pitch mit Sophie trainieren", en: "Practice your Sales Pitch with Sophie" },
+        desc: {
+          de: "Pr\u00e4sentiere deinen Pitch, Sophie gibt Echtzeit-Feedback zu Inhalt, Struktur und \u00dcberzeugungskraft.",
+          en: "Present your pitch, Sophie gives real-time feedback on content, structure, and persuasion.",
+        },
+        cta: { de: "Pitch starten", en: "Start pitch" },
+        ctaClass: "mode-salespitch",
+      },
+    };
+
+    // Link config per mode for video modal actions
+    const MODE_VIDEO_LINKS = {
+      talk: {
+        chat: { de: "Gespr\u00e4ch starten", en: "Start conversation" },
+        useCase: { type: "card", index: 0 },
+        example: { modalId: "exampleModal1" },
+        exampleLabel: { de: "Beispiel Protokoll", en: "Example Report" },
+      },
+      salespitch: {
+        chat: { de: "Sales Pitch starten", en: "Start Sales Pitch" },
+        useCase: { type: "card", index: 1 },
+        example: { modalId: "exampleModal2" },
+        exampleLabel: { de: "Beispiel Scorecard", en: "Example Scorecard" },
+      },
+      meeting: {
+        chat: { de: "Meeting starten", en: "Start Meeting" },
+        useCase: { type: "section", id: "mode-meeting" },
+        example: { modalId: "exampleModal4" },
+        exampleLabel: { de: "Beispiel Report", en: "Example Report" },
+      },
+      brainstorm: {
+        chat: { de: "Brainstorming starten", en: "Start Brainstorming" },
+        useCase: { type: "section", id: "mode-brainstorm" },
+        example: { modalId: "exampleModal5" },
+        exampleLabel: { de: "Beispiel Scorecard", en: "Example Scorecard" },
+      },
+    };
+
+    const videoModal = document.getElementById("videoModal");
+    const videoEl = document.getElementById("videoEl");
+    const videoPlaceholder = document.getElementById("videoPlaceholder");
+    const videoPlaceholderIcon = document.getElementById("videoPlaceholderIcon");
+    const videoPlaceholderText = document.getElementById("videoPlaceholderText");
+    const videoTitle = document.getElementById("videoTitle");
+    const videoDesc = document.getElementById("videoDesc");
+    const videoActionChat = document.getElementById("videoActionChat");
+    const videoActionUseCase = document.getElementById("videoActionUseCase");
+    const videoActionExample = document.getElementById("videoActionExample");
+    let videoCurrentMode = "";
+
+    function openVideoModal(mode) {
+      const v = MODE_VIDEOS[mode || "talk"];
+      if (!v) return;
+      // Pause auto-reset while modal is open
+      clearTimeout(_heroModeResetTimer);
+      videoCurrentMode = mode || "talk";
+      const l = currentLang;
+
+      videoTitle.textContent = v.title[l] || v.title.en;
+      videoDesc.textContent = v.desc[l] || v.desc.en;
+
+      // Update action links
+      const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
+      videoActionChat.textContent = "\uD83D\uDCAC " + (links.chat[l] || links.chat.en);
+      videoActionUseCase.textContent = "\uD83D\uDCCB Use Case";
+      videoActionExample.textContent = "\uD83D\uDCC4 " + (links.exampleLabel[l] || links.exampleLabel.en);
+
+      if (VIDEOS_READY[videoCurrentMode]) {
+        // Use preloaded blob URL if available, otherwise fall back to network
+        videoEl.src = _videoBlobs[videoCurrentMode] || v.src;
+        videoEl.muted = false;
+        videoEl.style.display = "";
+        videoPlaceholder.style.display = "none";
+        videoEl.play().catch(() => {
+          // Autoplay with sound blocked — retry muted
+          videoEl.muted = true;
+          videoEl.play().catch(() => {});
+        });
+      } else {
+        videoEl.style.display = "none";
+        videoPlaceholder.style.display = "";
+        videoPlaceholderIcon.textContent = v.icon;
+        videoPlaceholderText.textContent = l === "de" ? "Demo kommt bald" : "Demo coming soon";
+      }
+
+      videoModal.classList.add("open");
+    }
+
+    function closeVideoModal() {
+      videoModal.classList.remove("open");
+      videoEl.pause();
+      videoEl.removeAttribute("src");
+      // Restart auto-reset timer so button returns to "Mit Sophie sprechen"
+      if (selectedChatMode) {
+        applyHeroMode(selectedChatMode);
+      }
+    }
+
+    document.getElementById("videoBackdrop").addEventListener("click", closeVideoModal);
+    document.getElementById("videoClose").addEventListener("click", closeVideoModal);
+
+    // Action 1: "Gespräch starten" → open chat with mode pre-selected
+    videoActionChat.addEventListener("click", (e) => {
+      e.preventDefault();
+      const mode = videoCurrentMode;
+      closeVideoModal();
+      if (mode && mode !== "talk") {
+        setFunnelMode(mode);
+        applyHeroMode(mode);
+        document.querySelectorAll("#heroModeBar .hero-mode-pill").forEach(b => b.classList.remove("active"));
+        const pill = document.querySelector(`#heroModeBar .hero-mode-pill[data-mode="${mode}"]`);
+        if (pill) pill.classList.add("active");
+      }
+      openChatForeground();
+      quickStartChat();
+    });
+
+    // Action 2: "Use Case" → scroll to relevant section/card
+    videoActionUseCase.addEventListener("click", (e) => {
+      e.preventDefault();
+      const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
+      closeVideoModal();
+      requestAnimationFrame(() => {
+        if (links.useCase.type === "card") {
+          const section = document.getElementById("use-cases");
+          if (section) {
+            const y = section.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+          setTimeout(() => {
+            if (window._msUpdateCards) window._msUpdateCards(links.useCase.index);
+            if (window._msScrollToCard) window._msScrollToCard(links.useCase.index);
+          }, 600);
+        } else {
+          const el = document.getElementById(links.useCase.id);
+          if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+        }
+      });
+    });
+
+    // Action 3: "Beispiel Protokoll" → open existing example modal
+    videoActionExample.addEventListener("click", (e) => {
+      e.preventDefault();
+      const links = MODE_VIDEO_LINKS[videoCurrentMode] || MODE_VIDEO_LINKS.talk;
+      closeVideoModal();
+      if (links.example.modalId) {
+        // Open example modal directly (same logic as the IIFE handler)
+        const overlay = document.getElementById(links.example.modalId);
+        if (overlay) {
+          overlay.hidden = false;
+          document.body.style.overflow = "hidden";
+          const closeBtn = overlay.querySelector(".example-modal-close");
+          if (closeBtn) closeBtn.focus();
+        }
+      }
+    });
+
     // Click outside pills/CTA → reset mode to Talk
     document.addEventListener("click", (e) => {
       if (!selectedChatMode) return;
-      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat")) return;
+      if (e.target.closest("#heroModeBar") || e.target.closest("#hero-btn-primary") || e.target.closest("#sophieChat") || e.target.closest("#videoModal")) return;
       selectedChatMode = null;
       setFunnelMode(null);
       applyHeroMode(null);
@@ -6201,26 +6501,28 @@
       <button class="example-modal-close" aria-label="Schließen">&times;</button>
 <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:780px;margin:0 auto;padding:40px 24px;color:#1a1a1a;line-height:1.6;background:#fff;box-sizing:border-box;">
 
+  <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #1a1a1a;padding-bottom:16px;margin-bottom:6px;">
     <div>
-      <div style="font-size:9px;font-weight:400;letter-spacing:0.22em;text-transform:uppercase;color:#888;margin-bottom:6px;">Sitzungsprotokoll</div>
-      <div id="demoReportTitle4" style="font-size:22px;font-weight:300;letter-spacing:0.04em;color:#1a1a1a;">Produktstrategie Q3 — Priorisierung</div>
+      <div style="font-size:9px;font-weight:400;letter-spacing:0.22em;text-transform:uppercase;color:#888;margin-bottom:6px;">Meeting-Protokoll</div>
+      <div id="demoReportTitle4" style="font-size:22px;font-weight:300;letter-spacing:0.04em;color:#1a1a1a;">Projekt Aurora — Sprint Review & Planung</div>
     </div>
     <div style="text-align:right;">
       <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#aaa;margin-bottom:4px;">Datum</div>
-      <div style="font-size:12px;font-weight:300;color:#444;">07.04.2026</div>
+      <div style="font-size:12px;font-weight:300;color:#444;">09.04.2026</div>
     </div>
   </div>
   <div style="height:1px;background:#e0e0e0;margin-bottom:40px;"></div>
 
+  <!-- Meta -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;margin-bottom:48px;">
     <div>
       <div style="font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:#aaa;margin-bottom:6px;">Ort</div>
-      <div style="font-size:12px;font-weight:300;color:#333;">Google Meet</div>
+      <div style="font-size:12px;font-weight:300;color:#333;">Microsoft Teams</div>
     </div>
     <div>
       <div style="font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:#aaa;margin-bottom:6px;">Uhrzeit</div>
-      <div style="font-size:12px;font-weight:300;color:#333;">10:00 – 10:45</div>
+      <div style="font-size:12px;font-weight:300;color:#333;">14:00 – 15:15</div>
     </div>
     <div>
       <div style="font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:#aaa;margin-bottom:6px;">Protokoll</div>
@@ -6228,120 +6530,241 @@
     </div>
   </div>
 
+  <!-- Teilnehmer -->
   <div style="margin-bottom:48px;">
     <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:14px;">Teilnehmer</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 40px;">
-      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Michael <span style="color:#bbb;font-size:11px;">CEO</span></div>
-      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Lisa <span style="color:#bbb;font-size:11px;">Product</span></div>
-      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Jan <span style="color:#bbb;font-size:11px;">Engineering</span></div>
+      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Thomas Berger <span style="color:#bbb;font-size:11px;">Projektleitung</span></div>
+      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Sarah Klein <span style="color:#bbb;font-size:11px;">UX Design</span></div>
+      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Marco Rossi <span style="color:#bbb;font-size:11px;">Backend Engineering</span></div>
+      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">Julia Nowak <span style="color:#bbb;font-size:11px;">QA & Testing</span></div>
+      <div style="font-size:12px;font-weight:300;color:#333;padding:5px 0;border-bottom:1px solid #f0f0f0;">David Chen <span style="color:#bbb;font-size:11px;">Stakeholder / Product Owner</span></div>
     </div>
   </div>
 
   <div style="height:1px;background:#e8e8e8;margin-bottom:48px;"></div>
 
+  <!-- Ziel des Meetings -->
+  <div style="margin-bottom:48px;">
+    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:12px;">Ziel des Meetings</div>
+    <div style="font-size:13px;font-weight:300;color:#333;line-height:1.75;padding:16px 20px;background:#f8f9fa;border-radius:10px;border-left:3px solid #2563eb;">
+      Sprint 4 abschliessen, Ergebnisse bewerten, Blocker identifizieren und Sprint 5 mit klaren Verantwortlichkeiten planen. Entscheidung zur API-Architektur treffen.
+    </div>
+  </div>
+
+  <!-- Agenda -->
   <div style="margin-bottom:52px;">
-    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Tagesordnung</div>
+    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Agenda</div>
     <div style="margin-bottom:36px;">
       <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:10px;">
         <span style="font-size:9px;letter-spacing:0.14em;color:#bbb;min-width:36px;">01</span>
-        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">Feature-Priorisierung Q3</span>
+        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">Sprint 4 Review — Was wurde geliefert?</span>
       </div>
-      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Drei Features stehen zur Auswahl: Echtzeit-Tools, Custom Voices und Multi-Language. Das Team hat sich auf Echtzeit-Tools als Hauptfokus geeinigt, weil es den größten Nutzer-Impact hat und technisch am weitesten vorbereitet ist.</div>
+      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Von 12 geplanten Stories wurden 9 abgeschlossen. Das Nutzer-Dashboard ist live, die Benachrichtigungslogik funktioniert. Drei Stories (Datenexport, Rollenmanagement, SSO-Integration) wurden nicht fertig — Hauptgrund: unerwartete Abhängigkeit zum Legacy-System.</div>
     </div>
     <div style="margin-bottom:36px;">
       <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:10px;">
         <span style="font-size:9px;letter-spacing:0.14em;color:#bbb;min-width:36px;">02</span>
-        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">Pricing-Anpassung</span>
+        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">API-Architektur: REST vs. GraphQL</span>
       </div>
-      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Der Sprung von Free zu Assistant (9€) ist zu groß. Eine Lite-Stufe bei 4€ soll die Conversion verbessern. Lisa erstellt einen A/B-Test-Plan bis Ende der Woche.</div>
+      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Marco hat beide Optionen vorbereitet. Das Team hat sich nach Diskussion auf REST mit versionierten Endpunkten geeinigt. GraphQL wird als Option f&#252;r Phase 2 offen gehalten, wenn die Datenkomplexität steigt. David hat betont, dass die Entscheidung jetzt stehen muss, um den externen Partner nicht weiter zu blockieren.</div>
     </div>
     <div style="margin-bottom:36px;">
       <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:10px;">
         <span style="font-size:9px;letter-spacing:0.14em;color:#bbb;min-width:36px;">03</span>
-        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">Launch-Timeline</span>
+        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">UX-Feedback: Onboarding-Flow</span>
       </div>
-      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Public Launch wird auf Mitte Mai verschoben. Vorher müssen Paywall und Onboarding stehen. Jan schätzt 2 Wochen für die Paywall-Implementierung.</div>
+      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Sarah hat Usability-Tests mit 8 Nutzern pr&#228;sentiert. Hauptproblem: 60% brechen beim dritten Schritt ab. Der Flow wird von 5 auf 3 Schritte gek&#252;rzt. Ein interaktives Tutorial ersetzt die statische Erkl&#228;rseite.</div>
+    </div>
+    <div style="margin-bottom:36px;">
+      <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:10px;">
+        <span style="font-size:9px;letter-spacing:0.14em;color:#bbb;min-width:36px;">04</span>
+        <span style="font-size:13px;font-weight:400;letter-spacing:0.02em;color:#1a1a1a;">Sprint 5 Planung & Priorisierung</span>
+      </div>
+      <div style="padding-left:56px;font-size:12px;font-weight:300;color:#555;line-height:1.75;">Sprint 5 fokussiert auf drei Bereiche: (1) Datenexport nachholen, (2) neuer Onboarding-Flow, (3) API v1 Grundger&#252;st. SSO wird auf Sprint 6 geschoben. Julia f&#252;hrt parallele Regressionstests f&#252;r das Dashboard durch.</div>
     </div>
   </div>
 
   <div style="height:1px;background:#e8e8e8;margin-bottom:48px;"></div>
 
+  <!-- Meeting-Zusammenfassung -->
   <div style="margin-bottom:52px;">
-    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Beschlüsse</div>
-    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
-      <span style="font-size:9px;letter-spacing:0.12em;color:#ccc;min-width:36px;">B–01</span>
-      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Echtzeit-Tools wird Hauptfeature für Q3</span>
-    </div>
-    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
-      <span style="font-size:9px;letter-spacing:0.12em;color:#ccc;min-width:36px;">B–02</span>
-      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Lite-Tier bei 4€/Monat wird als A/B-Test eingeführt</span>
-    </div>
-    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
-      <span style="font-size:9px;letter-spacing:0.12em;color:#ccc;min-width:36px;">B–03</span>
-      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Public Launch verschoben auf Mitte Mai</span>
+    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:16px;">Zusammenfassung</div>
+    <div style="font-size:12px;font-weight:300;color:#444;line-height:1.8;padding:20px 24px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
+      Sprint 4 hat solide Ergebnisse geliefert — das Dashboard und die Benachrichtigungen sind produktionsreif. Die drei nicht abgeschlossenen Stories gehen auf eine Legacy-Abh&#228;ngigkeit zur&#252;ck, die im n&#228;chsten Sprint priorisiert adressiert wird. Die API-Architektur-Entscheidung ist gefallen: REST mit Versionierung. Der Onboarding-Flow wird grundlegend &#252;berarbeitet, nachdem Usability-Tests klare Schwachstellen gezeigt haben. Das Team geht mit klaren Verantwortlichkeiten und realistischerem Scope in Sprint 5.
     </div>
   </div>
 
+  <!-- Offene Punkte -->
   <div style="margin-bottom:52px;">
-    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Action Items</div>
-    <div style="display:grid;grid-template-columns:36px 1fr 100px 90px;gap:8px;align-items:baseline;font-size:12px;">
+    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Offene Punkte</div>
+    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
+      <span style="font-size:9px;letter-spacing:0.12em;color:#e89a1a;min-width:36px;">O–01</span>
+      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Legacy-System-Zugang: Wer kl&#228;rt die Berechtigungen mit dem Infrastruktur-Team?</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
+      <span style="font-size:9px;letter-spacing:0.12em;color:#e89a1a;min-width:36px;">O–02</span>
+      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Datenschutz-Review f&#252;r den Datenexport — muss vor Go-Live durch Legal</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
+      <span style="font-size:9px;letter-spacing:0.12em;color:#e89a1a;min-width:36px;">O–03</span>
+      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Performance-Budget f&#252;r den neuen Onboarding-Flow ist noch nicht definiert</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid #f2f2f2;">
+      <span style="font-size:9px;letter-spacing:0.12em;color:#e89a1a;min-width:36px;">O–04</span>
+      <span style="font-size:12px;font-weight:300;color:#333;line-height:1.6;">Externer Partner wartet auf API-Dokumentation — Frist unklar</span>
+    </div>
+  </div>
+
+  <!-- Aufgaben -->
+  <div style="margin-bottom:52px;">
+    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Aufgaben</div>
+    <div style="display:grid;grid-template-columns:36px 1fr 110px 90px;gap:8px;align-items:baseline;font-size:12px;">
       <div style="font-size:9px;letter-spacing:0.12em;color:#ccc;">Nr.</div>
       <div style="font-weight:500;color:#888;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;">Aufgabe</div>
       <div style="font-weight:500;color:#888;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;">Verantw.</div>
       <div style="font-weight:500;color:#888;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;">Frist</div>
+
       <div style="font-size:9px;color:#ccc;">A–01</div>
-      <div style="font-weight:300;color:#333;">A/B-Test-Plan Lite-Tier erstellen</div>
-      <div style="font-weight:300;color:#333;">Lisa</div>
-      <div style="font-weight:300;color:#333;">11.04.</div>
+      <div style="font-weight:300;color:#333;">API v1 Endpunkte definieren & dokumentieren</div>
+      <div style="font-weight:300;color:#333;">Marco</div>
+      <div style="font-weight:300;color:#333;">16.04.</div>
+
       <div style="font-size:9px;color:#ccc;">A–02</div>
-      <div style="font-weight:300;color:#333;">Paywall-Implementierung</div>
-      <div style="font-weight:300;color:#333;">Jan</div>
-      <div style="font-weight:300;color:#333;">25.04.</div>
+      <div style="font-weight:300;color:#333;">Onboarding-Flow Redesign (3-Step-Variante)</div>
+      <div style="font-weight:300;color:#333;">Sarah</div>
+      <div style="font-weight:300;color:#333;">18.04.</div>
+
       <div style="font-size:9px;color:#ccc;">A–03</div>
-      <div style="font-weight:300;color:#333;">Onboarding-Flow finalisieren</div>
-      <div style="font-weight:300;color:#333;">Michael</div>
-      <div style="font-weight:300;color:#333;">28.04.</div>
+      <div style="font-weight:300;color:#333;">Datenexport-Story fertigstellen (Legacy-Blocker kl&#228;ren)</div>
+      <div style="font-weight:300;color:#333;">Marco + Thomas</div>
+      <div style="font-weight:300;color:#333;">22.04.</div>
+
+      <div style="font-size:9px;color:#ccc;">A–04</div>
+      <div style="font-weight:300;color:#333;">Regressionstests Dashboard + Benachrichtigungen</div>
+      <div style="font-weight:300;color:#333;">Julia</div>
+      <div style="font-weight:300;color:#333;">14.04.</div>
+
+      <div style="font-size:9px;color:#ccc;">A–05</div>
+      <div style="font-weight:300;color:#333;">Datenschutz-Review beim Legal-Team anstossen</div>
+      <div style="font-weight:300;color:#333;">Thomas</div>
+      <div style="font-weight:300;color:#333;">11.04.</div>
+
+      <div style="font-size:9px;color:#ccc;">A–06</div>
+      <div style="font-weight:300;color:#333;">API-Doku an externen Partner senden</div>
+      <div style="font-weight:300;color:#333;">David</div>
+      <div style="font-weight:300;color:#333;">18.04.</div>
+    </div>
+  </div>
+
+  <!-- Next Steps & N&#228;chstes Meeting -->
+  <div style="margin-bottom:52px;">
+    <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:16px;">Next Steps</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:28px;">
+      <div style="display:flex;gap:10px;font-size:12px;font-weight:300;color:#333;line-height:1.6;"><span style="color:#22c55e;">&#10003;</span> Thomas kl&#228;rt Legacy-Zugang bis Freitag mit Infrastruktur-Team</div>
+      <div style="display:flex;gap:10px;font-size:12px;font-weight:300;color:#333;line-height:1.6;"><span style="color:#22c55e;">&#10003;</span> Sarah teilt die Usability-Test-Ergebnisse im Confluence</div>
+      <div style="display:flex;gap:10px;font-size:12px;font-weight:300;color:#333;line-height:1.6;"><span style="color:#22c55e;">&#10003;</span> Marco stellt API-Entwurf bis Mittwoch zur Review bereit</div>
+      <div style="display:flex;gap:10px;font-size:12px;font-weight:300;color:#333;line-height:1.6;"><span style="color:#22c55e;">&#10003;</span> David gibt Feedback zur Sprint-5-Planung bis Montag</div>
+    </div>
+    <div style="padding:16px 20px;background:#f0f4ff;border-radius:10px;border:1px solid #dbe4ff;">
+      <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#6b7db3;margin-bottom:6px;">N&#228;chstes Meeting</div>
+      <div style="font-size:13px;font-weight:400;color:#333;">Mittwoch, 16.04.2026 &middot; 14:00 Uhr &middot; Sprint 5 Kickoff</div>
+      <div style="font-size:11px;font-weight:300;color:#888;margin-top:4px;">Fokus: API-Review, Onboarding-Prototyp, Datenexport-Status</div>
     </div>
   </div>
 
   <div style="height:1px;background:#e8e8e8;margin-bottom:48px;"></div>
 
+  <!-- Lean Check -->
   <div style="margin-bottom:52px;">
     <div style="font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:#aaa;margin-bottom:20px;">Lean Check</div>
     <div style="padding:20px 24px;background:#fafafa;border-radius:12px;border:1px solid #eee;margin-bottom:16px;">
-      <div style="font-size:12px;font-weight:300;color:#555;line-height:1.75;margin-bottom:14px;">Sophie hat das Meeting auf Effizienz und Klarheit geprüft. Drei Punkte sind aufgefallen:</div>
+      <div style="font-size:12px;font-weight:300;color:#555;line-height:1.75;margin-bottom:18px;">Sophie hat das Meeting auf Struktur, Effizienz und Ergebnis-Qualit&#228;t gepr&#252;ft:</div>
+
+      <!-- Positiv -->
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="font-size:14px;margin-top:1px;">&#9989;</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Klare Entscheidung zur API-Architektur</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">REST vs. GraphQL wurde offen diskutiert, Argumente abgewogen, Entscheidung getroffen und dokumentiert. Vorbildlich.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="font-size:14px;margin-top:1px;">&#9989;</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Gute Sprint-Review-Transparenz</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">9 von 12 Stories abgeschlossen, Gr&#252;nde f&#252;r die fehlenden drei wurden benannt. Kein Sch&#246;nreden.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="font-size:14px;margin-top:1px;">&#9989;</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Datengest&#252;tztes UX-Feedback</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Sarah hat konkrete Zahlen aus den Usability-Tests gebracht (60% Abbruchrate Schritt 3). Entscheidung basiert auf Fakten, nicht Bauchgef&#252;hl.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verbesserungspotential -->
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;gap:12px;align-items:flex-start;">
-          <div style="font-size:14px;margin-top:1px;">⚠️</div>
+          <div style="font-size:14px;margin-top:1px;">&#9888;&#65039;</div>
           <div>
-            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Kein klares Zeitlimit pro Punkt</div>
-            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Feature-Priorisierung hat 25 Minuten beansprucht — mehr als die Hälfte der Gesamtzeit. Pricing und Launch kamen dadurch zu kurz.</div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Zeitverteilung ungleichm&#228;ssig</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Die API-Diskussion hat 35 Minuten beansprucht, die Sprint-5-Planung wurde in 10 Minuten durchgedr&#252;ckt. Risiko: wichtige Abh&#228;ngigkeiten werden &#252;bersehen.</div>
           </div>
         </div>
         <div style="display:flex;gap:12px;align-items:flex-start;">
-          <div style="font-size:14px;margin-top:1px;">⚠️</div>
+          <div style="font-size:14px;margin-top:1px;">&#9888;&#65039;</div>
           <div>
-            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Entscheidungskriterien nicht explizit benannt</div>
-            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Die Wahl von Echtzeit-Tools als Hauptfeature wurde beschlossen, aber die Kriterien dafür (Impact, Aufwand, Risiko) wurden nicht offen abgewogen.</div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Keine Risiko-Bewertung f&#252;r Sprint 5</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Der Legacy-Blocker war schon in Sprint 4 das Problem. Es fehlt eine explizite Einsch&#228;tzung, ob er in Sprint 5 wirklich gel&#246;st werden kann — oder ob ein Plan B n&#246;tig ist.</div>
           </div>
         </div>
         <div style="display:flex;gap:12px;align-items:flex-start;">
-          <div style="font-size:14px;margin-top:1px;">⚠️</div>
+          <div style="font-size:14px;margin-top:1px;">&#9888;&#65039;</div>
           <div>
-            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Offene Fragen nicht eingefangen</div>
-            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Mehrere Fragen blieben im Raum stehen, ohne dass sie als offene Punkte festgehalten wurden — z.B. wer den Onboarding-Text schreibt und ob das Lite-Tier auch für Bestandskunden gilt.</div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Externe Abh&#228;ngigkeit ohne klare Frist</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Der externe Partner wartet auf die API-Doku, aber es wurde kein verbindliches Lieferdatum vereinbart. Das kann zum Engpass werden.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="font-size:14px;margin-top:1px;">&#9888;&#65039;</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;color:#1a1a1a;">Datenschutz-Review als blinder Fleck</div>
+            <div style="font-size:11px;font-weight:300;color:#888;margin-top:2px;">Der Datenexport braucht ein Legal-Review, aber niemand hat gefragt, wie lange das dauert. Wenn Legal 2+ Wochen braucht, verschiebt sich der Zeitplan.</div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Score -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div style="text-align:center;padding:16px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+        <div style="font-size:24px;font-weight:600;color:#1a1a1a;">72</div>
+        <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#aaa;margin-top:4px;">Struktur</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+        <div style="font-size:24px;font-weight:600;color:#1a1a1a;">81</div>
+        <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#aaa;margin-top:4px;">Klarheit</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+        <div style="font-size:24px;font-weight:600;color:#1a1a1a;">65</div>
+        <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#aaa;margin-top:4px;">Risiko-Mgmt</div>
+      </div>
+    </div>
+
+    <!-- Empfehlung -->
     <div style="padding:14px 20px;background:#f0fdf4;border-radius:10px;border-left:3px solid #22c55e;font-size:12px;color:#333;line-height:1.6;">
-      <strong style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Empfehlung:</strong> Nächstes Meeting mit festen Timeslots pro Punkt starten. Entscheidungen mit Kriterien dokumentieren. Offene Fragen am Ende explizit einsammeln.
+      <strong style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Empfehlung:</strong> Zeitboxing einf&#252;hren (max. 15 Min pro Punkt). F&#252;r den Legacy-Blocker einen Plan B vorbereiten. Externe Fristen im n&#228;chsten Meeting explizit best&#228;tigen. Datenschutz-Review-Dauer vor Sprint-Ende kl&#228;ren.
     </div>
   </div>
 
+  <!-- Footer -->
   <div style="margin-top:60px;padding-top:16px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:10px;color:#bbb;letter-spacing:0.05em;">
-    <span>Erstellt mit Sophie · meet-sophie.com</span>
-    <span>07.04.2026</span>
+    <span>Erstellt mit Sophie &middot; meet-sophie.com</span>
+    <span>09.04.2026</span>
   </div>
 </div>
     </div>
