@@ -81,7 +81,8 @@
       "Bash(grep -r \"CREATE OR REPLACE FUNCTION\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase -name \"*.sql\" -exec grep -l \"deduct_tokens\" {} \\\\;)",
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_tables",
-      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration"
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration",
+      "Bash(grep -r \"Talk\\\\|talk\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code --include=\"*.js\" --include=\"*.jsx\" -l ! -path \"*/node_modules/*\" ! -path \"*/.git/*\" ! -path \"*/.claude/*\")"
     ]
   },
   "hooks": {

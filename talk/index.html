@@ -4444,6 +4444,9 @@ function pauseSession() {
   if (pc)     { try { pc.close(); } catch(e){} pc = null; }
   if (audioEl){ try { audioEl.srcObject = null; } catch(e){} audioEl = null; }
 
+  // Reset state machine so startVoice() can run on resume
+  cs.state = S.IDLE;
+
   // UI: paused state
   pauseBtn.innerHTML = '<span class="pause-icon"><svg viewBox="0 0 12 16" fill="currentColor"><path d="M1 1.5L11 8L1 14.5z"/></svg></span> <span id="pauseBtnText">' + (t("resume") || "Resume") + '</span>';
   pauseBtn.classList.add("is-paused");
