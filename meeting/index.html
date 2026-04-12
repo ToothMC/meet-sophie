@@ -2797,16 +2797,19 @@ async function uploadFile(file) {
       if (content.length > 8000) content = content.slice(0, 8000) + "\n... (truncated)";
     }
 
-    // 3. Save as meeting_context
-    await api("context", {
+    // 3. Save as meeting_context (server extracts PDF/DOCX/image content)
+    const ctxResult = await api("context", {
       meeting_id: meetingId,
       context_type: "file",
       content,
       file_path: path,
     });
 
-    itemDiv.classList.remove("uploading");
-    itemDiv.querySelector(".file-status").textContent = "✓";
+    // Replace uploading placeholder with document card
+    itemDiv.remove();
+    if (ctxResult?.context) {
+      renderDocCard(ctxResult.context, $("fileList"));
+    }
     appendSystemMsg(`${file.name} ${t("uploadDone").toLowerCase()}`);
   } catch (e) {
     itemDiv.classList.remove("uploading");
