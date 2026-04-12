@@ -162,7 +162,8 @@ body::after{
 }
 .wave-card::before{left:0;background:linear-gradient(to right,rgba(4,4,10,1),transparent)}
 .wave-card::after{right:0;background:linear-gradient(to left,rgba(4,4,10,1),transparent)}
-canvas#waveCanvas{display:block;width:100%;height:120px}
+.kr-bars{display:flex;align-items:center;justify-content:center;gap:5px;height:100px;width:100%;padding:0 12px;box-sizing:border-box}
+.kr-bar{width:6px;height:4px;border-radius:3px;background:hsl(218,88%,45%);transform-origin:center}
 .wave-meta{position:absolute;top:8px;left:12px;right:12px;z-index:3;display:flex;justify-content:space-between;pointer-events:none}
 .wave-label{font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(140,120,255,.6);animation:fade-label 3s ease-in-out infinite}
 .wave-hz{font-size:10px;color:rgba(120,200,255,.55);font-family:'SF Mono','Fira Code',monospace;font-weight:500}
@@ -1310,13 +1311,13 @@ canvas#waveCanvas{display:block;width:100%;height:120px}
       <div class="v-conn" id="vConn"></div>
     </div>
 
-    <!-- Waveform Canvas -->
+    <!-- Voice Visualizer (Knight Rider bars) -->
     <div class="wave-card">
       <div class="wave-meta">
         <span class="wave-label" id="waveLabel">Stimme · Live</span>
         <span class="wave-hz" id="waveHz">&ndash;</span>
       </div>
-      <canvas id="waveCanvas"></canvas>
+      <div class="kr-bars" id="krBars"></div>
     </div>
   </div>
 
@@ -2801,260 +2802,105 @@ function _buildGlobe(svgEl_, size, R) {
 const _globeSvgMini = document.getElementById('globeSvgMini');
 if (_globeSvgMini) _buildGlobe(_globeSvgMini, 64, 27);
 
-// ── Waveform + EQ Engine ──
-const _waveCanvas = document.getElementById('waveCanvas');
-const _waveCtx = _waveCanvas ? _waveCanvas.getContext('2d') : null;
-const _W = 600, _H = 120;
-if (_waveCanvas) { _waveCanvas.width = _W; _waveCanvas.height = _H; }
+// ── Knight Rider Bar Visualizer (real audio driven) ──
+const _KR_NUM = 20;
+const _KR_MAX_H = 92;
+const _KR_MIN_H = 4;
+
+// Build bar DOM elements
+const _krContainer = document.getElementById('krBars');
+const _krBars = [];
+if (_krContainer) {
+  for (let i = 0; i < _KR_NUM; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'kr-bar';
+    _krContainer.appendChild(bar);
+    _krBars.push(bar);
+  }
+}
 
 let _hyperVoiceMode = 'silent';
 let _waveRunning = false;
-let _waveT = 0;
-let _amp = 0.035, _ampTarget = 0.035;
+let _hyperSophieSpeaking = false;
 let _hyperAnalyser = null;
 let _hyperDataArray = null;
-let _hyperAnalyserWorks = false; // true once we detect real audio data from analyser
-let _hyperSophieSpeaking = false; // event-driven: set by DataChannel response.created / response.done
-let _hyperZeroRmsCount = 0; // count consecutive zero-RMS frames to detect broken analyser
-
-// Noise seeds
-const _seeds = Array.from({ length: 16 }, () => Math.random() * 1000);
-
-const _MODES = {
-  sophie: {
-    colors: ['rgba(160,120,255,1)', 'rgba(100,180,255,1)', 'rgba(200,140,255,1)'],
-    glowRgb: '140,100,255',
-    ampBase: 0.82, ampVar: 0.32,
-    freqBase: 1.3, freqVar: 0.7,
-    waves: 3,
-    label: 'Stimme · Live',
-    status: 'spricht gerade',
-  },
-  silent: {
-    colors: ['rgba(70,70,130,1)', 'rgba(55,55,110,1)'],
-    glowRgb: '80,80,160',
-    ampBase: 0.035, ampVar: 0.015,
-    freqBase: 0.4, freqVar: 0.08,
-    waves: 2,
-    label: 'Stille',
-    status: 'wartet',
-  },
-};
-
-function _oNoise(seed, t, freq) {
-  return Math.sin(t * freq + seed) * 0.52
-       + Math.sin(t * freq * 2.13 + seed * 1.31) * 0.29
-       + Math.sin(t * freq * 0.45 + seed * 0.71) * 0.19;
-}
-
-function _buildWave(cfg, wi, ampNow, t) {
-  const pts = [];
-  const freq = cfg.freqBase + wi * 0.55
-             + _oNoise(_seeds[wi], t * 0.25, 0.38) * cfg.freqVar * 0.45;
-  const phase = wi * 0.72;
-  for (let x = 0; x <= _W; x += 2) {
-    const xn = x / _W;
-    const env = Math.sin(xn * Math.PI);
-    const y1 = _oNoise(_seeds[wi],     t * freq + xn * 8 + phase, 1);
-    const y2 = _oNoise(_seeds[wi + 4], t * (freq * 0.58) + xn * 5, 1);
-    const y3 = _oNoise(_seeds[wi + 8], t * (freq * 1.42) + xn * 12 + phase * 2, 0.5);
-    const y  = _H / 2 + (y1 * 0.55 + y2 * 0.3 + y3 * 0.15) * ampNow * _H * 0.36 * env;
-    pts.push([x, y]);
-  }
-  return pts;
-}
-
-function _strokeWave(pts) {
-  _waveCtx.beginPath();
-  pts.forEach(([x, y], i) => {
-    if (i === 0) { _waveCtx.moveTo(x, y); return; }
-    const [px, py] = pts[i - 1];
-    const cpx = (px + x) / 2;
-    _waveCtx.bezierCurveTo(cpx, py, cpx, y, x, y);
-  });
-  _waveCtx.stroke();
-}
+let _hyperAnalyserWorks = false;
+let _hyperZeroRmsCount = 0;
+let _krFreqData = null; // Uint8Array for frequency bins
 
 let _lastFrameTime = 0;
-function _drawFrame(now) {
-  if (!_waveRunning || !_waveCtx) return;
+let _krAnimId = null;
 
-  // Throttle to ~30fps (33ms between frames) — halves CPU vs 60fps
-  if (now - _lastFrameTime < 33) { requestAnimationFrame(_drawFrame); return; }
+function _krDrawFrame(now) {
+  if (!_waveRunning) return;
+
+  // Throttle to ~30fps
+  if (now - _lastFrameTime < 33) { _krAnimId = requestAnimationFrame(_krDrawFrame); return; }
   _lastFrameTime = now;
 
-  // Auto-fade: ALWAYS fade out after 10s — stops rendering entirely (0 CPU).
-  // User must tap the wave-card to reactivate.
-  const _hasAudio = _amp > 0.08;
-  if (!_waveFaded && (Date.now() - _waveStartTime > _WAVE_FADE_MS)) {
-    _waveFaded = true;
-    const wc = document.querySelector('.wave-card');
-    if (wc) { wc.style.opacity = '0'; wc.style.pointerEvents = 'auto'; }
-    return; // stop rendering completely — 0 CPU
-  }
-  const cfg = _hasAudio ? _MODES.sophie : _MODES.silent;
-  _waveT += 0.015;
+  // ── Read real frequency data from analyser — no smoothing, no filters ──
+  let barLevels = new Float64Array(_KR_NUM); // 0..1 per bar
 
-  // ── Hybrid amplitude: try real audio, fallback to event-driven synthetic ──
-  let _useRealAudio = false;
-  if (_hyperAnalyser && _hyperDataArray) {
-    _hyperAnalyser.getFloatTimeDomainData(_hyperDataArray);
-    const rms = Math.sqrt(_hyperDataArray.reduce((s, v) => s + v * v, 0) / _hyperDataArray.length);
-    if (rms > 0.005) {
-      // Real audio data flowing!
-      _hyperAnalyserWorks = true;
-      _hyperZeroRmsCount = 0;
-      _ampTarget = Math.max(0.03, Math.min(1.0, rms * 12));
-      _useRealAudio = true;
-    } else {
-      _hyperZeroRmsCount++;
-      // After 180 zero frames (~3s), analyser is not providing data
-      if (_hyperZeroRmsCount > 180) _hyperAnalyserWorks = false;
-    }
-    // (debug logging removed for performance)
-  }
-  // Fallback: event-driven synthetic amplitude (when analyser fails or absent)
-  if (!_useRealAudio) {
-    if (_hyperSophieSpeaking) {
-      // Sophie is responding → simulate speech-like amplitude
-      const sophieCfg = _MODES.sophie;
-      _ampTarget = sophieCfg.ampBase + _oNoise(_seeds[0], _waveT * 0.75, 1) * sophieCfg.ampVar;
-    } else {
-      const silentCfg = _MODES.silent;
-      _ampTarget = silentCfg.ampBase + _oNoise(_seeds[0], _waveT * 0.75, 1) * silentCfg.ampVar;
-    }
-  }
-  // Fast follow for speech sync (0.18 = responsive, 0.045 was too sluggish)
-  _amp += (_ampTarget - _amp) * 0.18;
+  if (_hyperAnalyser && _krFreqData) {
+    _hyperAnalyser.getByteFrequencyData(_krFreqData);
+    // Map frequency bins to bars: distribute bins across _KR_NUM bars
+    // Mirror: bars are symmetric from center outward
+    const half = Math.ceil(_KR_NUM / 2); // 10 unique levels, mirrored
+    const totalBins = _krFreqData.length; // 128 bins (fftSize 256 / 2)
+    // Use lower ~80% of spectrum (skip ultra-high freq noise)
+    const usableBins = Math.floor(totalBins * 0.8);
+    const binsPerBar = usableBins / half;
 
-  _waveCtx.clearRect(0, 0, _W, _H);
-
-  // Baseline
-  _waveCtx.save();
-  _waveCtx.strokeStyle = 'rgba(80,60,180,.1)';
-  _waveCtx.lineWidth = 0.5;
-  _waveCtx.setLineDash([4, 10]);
-  _waveCtx.beginPath(); _waveCtx.moveTo(0, _H / 2); _waveCtx.lineTo(_W, _H / 2); _waveCtx.stroke();
-  _waveCtx.setLineDash([]);
-  _waveCtx.restore();
-
-  for (let wi = cfg.waves - 1; wi >= 0; wi--) {
-    const pts = _buildWave(cfg, wi, _amp, _waveT);
-    const color = cfg.colors[wi % cfg.colors.length];
-    const alpha = wi === 0 ? 0.92 : Math.max(0.1, 0.38 - wi * 0.12);
-    const lw = wi === 0 ? 1.8 : 0.9;
-    const isFront = wi === 0;
-
-    // Glow pass
-    if (isFront && _hyperVoiceMode !== 'silent') {
-      _waveCtx.save();
-      _waveCtx.globalAlpha = 0.15;
-      _waveCtx.strokeStyle = `rgba(${cfg.glowRgb},1)`;
-      _waveCtx.lineWidth = 14;
-      _waveCtx.lineCap = 'round';
-      _strokeWave(pts);
-      _waveCtx.restore();
-    }
-
-    // Fill
-    if (isFront) {
-      const grad = _waveCtx.createLinearGradient(0, _H / 2 - _amp * _H * 0.36, 0, _H / 2 + _amp * _H * 0.36);
-      grad.addColorStop(0, `rgba(${cfg.glowRgb},0.1)`);
-      grad.addColorStop(0.5, `rgba(${cfg.glowRgb},0.03)`);
-      grad.addColorStop(1, `rgba(${cfg.glowRgb},0.1)`);
-      _waveCtx.fillStyle = grad;
-      _waveCtx.beginPath();
-      _waveCtx.moveTo(pts[0][0], _H / 2);
-      pts.forEach(([x, y]) => _waveCtx.lineTo(x, y));
-      _waveCtx.lineTo(pts[pts.length - 1][0], _H / 2);
-      _waveCtx.closePath();
-      _waveCtx.fill();
-
-      // Mirror
-      _waveCtx.save();
-      _waveCtx.globalAlpha = 0.28;
-      _waveCtx.strokeStyle = color;
-      _waveCtx.lineWidth = 0.8;
-      _waveCtx.beginPath();
-      pts.forEach(([x, y], i) => {
-        const my = _H - y;
-        i === 0 ? _waveCtx.moveTo(x, my) : _waveCtx.lineTo(x, my);
-      });
-      _waveCtx.stroke();
-      _waveCtx.restore();
-    }
-
-    // Main wave
-    _waveCtx.save();
-    _waveCtx.globalAlpha = alpha;
-    _waveCtx.strokeStyle = color;
-    _waveCtx.lineWidth = lw;
-    _waveCtx.lineCap = 'round';
-    _waveCtx.lineJoin = 'round';
-    _strokeWave(pts);
-    _waveCtx.restore();
-
-    // Peak glow dot
-    if (isFront && _hyperVoiceMode !== 'silent') {
-      let peakX = 0, peakY = _H / 2, peakD = 0;
-      pts.forEach(([x, y]) => { const d = Math.abs(y - _H / 2); if (d > peakD) { peakD = d; peakX = x; peakY = y; } });
-      if (peakD > 6) {
-        _waveCtx.save();
-        _waveCtx.globalAlpha = 0.9;
-        _waveCtx.fillStyle = cfg.colors[0];
-        _waveCtx.shadowColor = `rgba(${cfg.glowRgb},0.9)`;
-        _waveCtx.shadowBlur = 10;
-        _waveCtx.beginPath();
-        _waveCtx.arc(peakX, peakY, 2.8, 0, Math.PI * 2);
-        _waveCtx.fill();
-        _waveCtx.restore();
-      }
+    for (let b = 0; b < half; b++) {
+      const binStart = Math.floor(b * binsPerBar);
+      const binEnd = Math.floor((b + 1) * binsPerBar);
+      let sum = 0;
+      for (let j = binStart; j < binEnd; j++) sum += _krFreqData[j];
+      const avg = sum / (binEnd - binStart); // 0..255
+      const level = avg / 255; // 0..1
+      // Mirror: center-out (bar 9=center-left, bar 10=center-right for 20 bars)
+      const leftIdx = half - 1 - b;  // 9,8,7,...0
+      const rightIdx = half + b;     // 10,11,...19
+      barLevels[leftIdx] = level;
+      if (rightIdx < _KR_NUM) barLevels[rightIdx] = level;
     }
   }
 
-  requestAnimationFrame(_drawFrame);
+  _krBars.forEach((bar, i) => {
+    if (!bar) return;
+    const level = barLevels[i];
+    const h = _KR_MIN_H + (_KR_MAX_H - _KR_MIN_H) * level;
+    const lightness = Math.round(32 + level * 35);
+    bar.style.height = h + 'px';
+    bar.style.background = 'hsl(218,88%,' + lightness + '%)';
+  });
+
+  _krAnimId = requestAnimationFrame(_krDrawFrame);
 }
-
-// (EQ bars removed — CPU savings)
 
 // ── Voice mode switch (called from DataChannel events) ──
 function setHyperVoiceMode(m) {
   _hyperVoiceMode = m;
   _hyperSophieSpeaking = (m === 'sophie');
-  console.log("[hyper] Voice mode →", m, "| analyserWorks:", _hyperAnalyserWorks);
+  console.log("[hyper] Voice mode →", m);
 }
 
-// ── Start/stop wave rendering ──
-let _waveStartTime = 0;
-let _waveFaded = false;
-const _WAVE_FADE_MS = 60000; // always fade out after 60s
-
+// ── Start/stop rendering ──
 function startHyperWave() {
   if (_waveRunning) return;
   _waveRunning = true;
-  _waveStartTime = Date.now();
-  _waveFaded = false;
-  const wc = document.querySelector('.wave-card');
-  if (wc) { wc.style.opacity = '1'; wc.style.transition = 'opacity 1s ease'; }
-  _drawFrame();
-}
-
-// User tap to reactivate waveform after auto-fade
-const _waveCard = document.querySelector('.wave-card');
-if (_waveCard) {
-  _waveCard.addEventListener('click', () => {
-    if (!_waveRunning || !_waveFaded) return;
-    _waveFaded = false;
-    _waveStartTime = Date.now();
-    _waveCard.style.opacity = '1';
-    _waveCard.style.pointerEvents = '';
-    _drawFrame();
-  });
+  _krAnimId = requestAnimationFrame(_krDrawFrame);
 }
 
 function stopHyperWave() {
   _waveRunning = false;
-  _waveFaded = false;
+  if (_krAnimId) { cancelAnimationFrame(_krAnimId); _krAnimId = null; }
+  // Reset bars to idle
+  _krBars.forEach(bar => {
+    if (!bar) return;
+    bar.style.height = _KR_MIN_H + 'px';
+    bar.style.background = 'hsl(218,88%,45%)';
+  });
 }
 
 // ── Sync sv-timer with existing timer ──
@@ -6520,11 +6366,12 @@ async function startVoice(){
         if (_hyperAudioCtx.state === 'suspended') _hyperAudioCtx.resume();
         const _source = _hyperAudioCtx.createMediaStreamSource(e.streams[0]);
         _hyperAnalyser = _hyperAudioCtx.createAnalyser();
-        _hyperAnalyser.fftSize = 512;
-        _hyperAnalyser.smoothingTimeConstant = 0.65;
+        _hyperAnalyser.fftSize = 256;
+        _hyperAnalyser.smoothingTimeConstant = 0;
         _source.connect(_hyperAnalyser);
         // Do NOT connect to destination — audioEl handles playback
         _hyperDataArray = new Float32Array(_hyperAnalyser.fftSize);
+        _krFreqData = new Uint8Array(_hyperAnalyser.frequencyBinCount);
         console.log("[hyper] Analyser connected to remote stream, AudioContext state:", _hyperAudioCtx.state);
         // Pre-decode ready sound now that AudioContext exists
         decodeReadySound();
