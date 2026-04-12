@@ -15,6 +15,7 @@ import { TOKEN_COSTS } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
 import mammoth from "mammoth";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 // ---------------------------------------------------------------------------
 // Auth helpers (shared with chat.js)
