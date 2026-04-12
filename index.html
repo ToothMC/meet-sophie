@@ -4902,6 +4902,9 @@
     }
 
     function showInlineEmailCapture(detectedMode) {
+      // Signal auth-active so CSS hides the chat footer (prevents typing email into chat input)
+      const chatCard = document.getElementById("sophieChat");
+      if (chatCard) chatCard.classList.add("auth-active");
       const EMAIL_LABELS = {
         en: { placeholder: "your email", send: "Send invite",
               invite: "I'll send you a personal invitation — where should it go?",
