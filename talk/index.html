@@ -7016,7 +7016,7 @@ if (!hasRealConversation) {
     if (!cs.memoryUpdateSent && memoryBody) {
       cs.memoryUpdateSent = true;
       const memAbort = new AbortController();
-      const memTimeout = setTimeout(() => memAbort.abort(), 30000);
+      const memTimeout = setTimeout(() => memAbort.abort(), 90000);
       try {
         const memRes = await fetch("/api/memory-update", {
           method: "POST",
@@ -7033,23 +7033,23 @@ if (!hasRealConversation) {
       }
     }
 
-    // ── Report: only trigger if memory succeeded (session row exists in DB) ──
-    if (!cs.reportTriggered && sessionId && memoryOk) {
+    // ── Report: trigger regardless of memory status ──
+    // The transcript is sent directly to generate-report, so it doesn't
+    // depend on the conversation_output row existing yet.
+    if (!cs.reportTriggered && sessionId) {
       cs.reportTriggered = true;
+      // If memory failed/timed out, give server a moment to finish creating the output row
+      if (!memoryOk) {
+        console.warn("[report] memory failed/timed out — waiting 5s before report trigger");
+        await new Promise(r => setTimeout(r, 5000));
+      }
       track("session_lifecycle", { phase: "report_triggered", runId: cs.runId });
       await pollReportProgress(sessionId, [...cs.finalSnapshot], { triggeredByLimit });
-    } else {
+    } else if (!sessionId) {
       stopFakeReportLoader();
-      if (!memoryOk) {
-        // Memory failed/timed out — show simple summary instead of empty report
-        showPostCallResults({
-          output: { short_summary: cs.finalSnapshot.length > 0 ? t("no_summary") : t("no_summary"), key_insights: [], action_plan: [] }
-        }, [...cs.finalSnapshot], { triggeredByLimit });
-      } else {
-        showPostCallResults({
-          output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
-        }, [...cs.finalSnapshot], { triggeredByLimit });
-      }
+      showPostCallResults({
+        output: { short_summary: t("no_summary"), key_insights: [], action_plan: [] }
+      }, [...cs.finalSnapshot], { triggeredByLimit });
     }
 
     cs.stopGuard = false;
