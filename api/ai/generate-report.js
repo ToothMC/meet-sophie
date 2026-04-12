@@ -149,7 +149,9 @@ export default async function handler(req, res) {
       }
 
       // ── Language-aware meeting report prompt ──────────────────────────────
-      const langInstruction = unsupportedLang
+      const langInstruction = meetingAutoLang
+        ? 'LANGUAGE: Detect the language from the transcript content and write the ENTIRE report in that SAME language. All headings, labels, and body text must be in the detected language. Do NOT translate any content.'
+        : unsupportedLang
         ? `Write the ENTIRE report in the SAME language as the transcript (detected: ${unsupportedLang}). All headings, labels, and content must be in that language.`
         : isEN ? 'Write the ENTIRE report in English.'
         : isFR ? 'Rédige le rapport ENTIER en français.'
