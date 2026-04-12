@@ -3719,7 +3719,18 @@ async function fetchRealtimeAnswerSdp(offerSdp, clientSecret) {
   }
 }
 
-async function connectSophieVoice() {
+function startPrepVoice() {
+  if (sophieVoicePc) {
+    // Already connected — disconnect (toggle)
+    disconnectSophieVoice();
+    $("prepVoiceBtn").textContent = "🎙 Mit Sophie besprechen";
+    return;
+  }
+  $("prepVoiceBtn").textContent = "⏳ Verbinde...";
+  connectSophieVoice("prep");
+}
+
+async function connectSophieVoice(phase = "live") {
   if (isConnecting || sophieVoicePc) return;
 
   // Acquire realtime lock (primary → realtime order)
