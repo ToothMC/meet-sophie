@@ -3772,6 +3772,7 @@ async function connectSophieVoice(phase = "live") {
       Authorization: `Bearer ${authToken}`,
       "X-Sophie-Session-Mode": "meeting",
       "X-Sophie-Meeting-Id": meetingId || "",
+      "X-Sophie-Meeting-Phase": phase,
     };
     // Burst mode: tell server to load transcript context from DB
     if (isMeetingBurstActive) {
