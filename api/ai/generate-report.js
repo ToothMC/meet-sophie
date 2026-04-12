@@ -109,7 +109,10 @@ export default async function handler(req, res) {
     const modeHint = session_mode ? (isEN ? `Session mode: "${session_mode}".` : isFR ? `Mode de session : "${session_mode}".` : `Session-Modus: "${session_mode}".`) : '';
     const dateLocale = isEN ? 'en-US' : isFR ? 'fr-FR' : 'de-DE';
     const todayDate = new Date().toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const dateInstruction = isEN
+    const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD — language-neutral
+    const dateInstruction = meetingAutoLang
+      ? `Today's date is ${todayISO}. Convert ALL relative time references ("next week", "morgen", "nächste Woche", "demain" etc.) to concrete dates, formatted in the date style appropriate for the detected language.`
+      : isEN
       ? `Today's date is ${todayDate}. Convert ALL relative time references (e.g. "next week", "tomorrow", "in 2 days") to concrete dates.`
       : isFR
       ? `La date d'aujourd'hui est le ${todayDate}. Convertir TOUTES les références temporelles relatives en dates concrètes.`
