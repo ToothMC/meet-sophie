@@ -2433,9 +2433,11 @@ logoutBtn.onclick = async () => {
     }
   } catch(e) {}
 
+  // Signal to login page that this is a deliberate logout
+  try { sessionStorage.setItem("sophie_logout", "1"); } catch (_) {}
   // Clear local session FIRST to prevent redirect loops
   try { localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token"); } catch (_) {}
-  try { await supabase.auth.signOut(); } catch(e) {}
+  try { await supabase.auth.signOut({ scope: "local" }); } catch(e) {}
   window.location.replace("/login-dev");
 };
 

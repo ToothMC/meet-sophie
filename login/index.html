@@ -157,6 +157,15 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let authHandled = false;
 
+    // If we just came from logout, force-clear any stale session
+    // The logout action sets this flag before redirecting here
+    const justLoggedOut = sessionStorage.getItem("sophie_logout");
+    if (justLoggedOut) {
+      sessionStorage.removeItem("sophie_logout");
+      try { localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token"); } catch (_) {}
+      try { await supabase.auth.signOut({ scope: "local" }); } catch (_) {}
+    }
+
     const LANG = (navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en";
     const T = {
       de: {
