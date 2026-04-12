@@ -3826,6 +3826,23 @@ async function connectSophieVoice(phase = "live") {
           },
         },
       }));
+
+      // Prep mode: send kickoff instruction so Sophie opens the conversation
+      if (phase === "prep") {
+        $("prepVoiceBtn").textContent = "🔴 Beenden";
+        sophieVoiceDc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{
+              type: "input_text",
+              text: "[System: Start the meeting preparation. Briefly acknowledge you have the context, then guide the user through agenda, goals, and potential risks. Speak naturally — this is a voice conversation.]",
+            }],
+          },
+        }));
+        sophieVoiceDc.send(JSON.stringify({ type: "response.create" }));
+      }
     };
     sophieVoiceDc.onmessage = (evt) => {
       try {
