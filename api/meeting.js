@@ -1489,8 +1489,8 @@ Extrahiere strukturiert folgende Kategorien:
 3. folgeaufgaben: Konkrete To-Dos (mit Verantwortlichen falls genannt)
 4. agenda_vorschlaege: Punkte die in einem Folge-Meeting besprochen werden sollten
 
-Antworte NUR mit validem JSON in dieser Form:
-{"offene_punkte":[],"entscheidungen":[],"folgeaufgaben":[],"agenda_vorschlaege":[]}
+Antworte NUR mit validem JSON. Alle Array-Werte MÜSSEN einfache Strings sein (kein verschachteltes JSON, keine Objekte):
+{"offene_punkte":["Text..."],"entscheidungen":["Text..."],"folgeaufgaben":["Text..."],"agenda_vorschlaege":["Text..."]}
 
 Dokument:
 ${docText}`;
