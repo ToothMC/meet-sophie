@@ -98,7 +98,10 @@
       "Bash(mv demo-meeting-min.mp4 demo-meeting.mp4)",
       "Bash(mv demo-salespitch-min.mp4 demo-salespitch.mp4)",
       "Bash(grep -l \"generate-report\\\\|generateReport\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_edge_functions",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_edge_function",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__deploy_edge_function"
     ]
   },
   "hooks": {
