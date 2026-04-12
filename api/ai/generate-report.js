@@ -75,9 +75,27 @@ export default async function handler(req, res) {
     }
   } catch (_) {}
 
-  await supabase.from('conversation_outputs')
-    .update({ report_status: 'generating', report_progress: 5 })
-    .eq('session_id', session_id);
+  // Ensure conversation_output row exists (memory-update might still be running)
+  const { data: existingOutput } = await supabase
+    .from('conversation_outputs')
+    .select('id')
+    .eq('session_id', session_id)
+    .maybeSingle();
+
+  if (!existingOutput) {
+    console.log(`[report] ${session_id} — no output row yet, creating fallback`);
+    await supabase.from('conversation_outputs').insert({
+      session_id,
+      title: 'Generating...',
+      short_summary: '',
+      report_status: 'generating',
+      report_progress: 5,
+    });
+  } else {
+    await supabase.from('conversation_outputs')
+      .update({ report_status: 'generating', report_progress: 5 })
+      .eq('session_id', session_id);
+  }
 
   try {
     const modeHint = session_mode ? (isEN ? `Session mode: "${session_mode}".` : isFR ? `Mode de session : "${session_mode}".` : `Session-Modus: "${session_mode}".`) : '';
