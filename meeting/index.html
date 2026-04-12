@@ -1728,17 +1728,11 @@ async function loadMeeting(id) {
       window.__parentPrefill = null;
     }
 
-    // Load existing uploaded files
+    // Load existing uploaded files as document cards
     const fileContexts = contexts.filter(c => c.context_type === "file");
     const fileListEl = $("fileList");
     fileListEl.innerHTML = "";
-    fileContexts.forEach(fc => {
-      const fileName = fc.file_path ? fc.file_path.split("/").pop().replace(/^\d+_/, "") : "File";
-      const div = document.createElement("div");
-      div.className = "file-item";
-      div.innerHTML = `<span class="file-icon">📎</span><span class="file-name">${fileName}</span><span class="file-status">✓</span>`;
-      fileListEl.appendChild(div);
-    });
+    fileContexts.forEach(fc => renderDocCard(fc, fileListEl));
 
     // Load existing notes as system messages
     const notes = data.notes || [];
