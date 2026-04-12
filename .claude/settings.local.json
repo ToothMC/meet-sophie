@@ -113,7 +113,11 @@
       "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__list_customers",
       "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__fetch_stripe_resources",
       "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__search_stripe_resources",
-      "Bash(ls -la /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)"
+      "Bash(ls -la /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)",
+      "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name \"*.js\" -path \"*/api/*\" ! -path \"*/node_modules/*\" ! -path \"*/.git/*\" -exec grep -l \"billing\\\\|stripe\\\\|checkout\" {} \\\\;)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "mcp__1d6cc1ef-783b-475d-83d9-e5dde946e526__create_draft",
+      "Bash(node scripts/build-blog.mjs)"
     ]
   },
   "hooks": {
