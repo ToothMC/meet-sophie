@@ -705,12 +705,13 @@
     /* ── Mobile: chat fullscreen ─────────────────────────────── */
     @media (max-width: 640px) {
       .chat-overlay {
-        top: 0; left: 0; right: 0; bottom: 0;
+        top: 0; left: 0; right: 0;
+        bottom: auto;        /* NOT bottom:0 — let height win for visualViewport JS */
         transform: none;
         width: 100%;
-        height: 100dvh;
-        height: 100vh; /* fallback */
-        height: 100dvh;
+        height: 100%;
+        max-height: none;    /* override desktop max-height */
+        min-height: 0;       /* override desktop min-height */
         border-radius: 0;
       }
       .chat-backdrop.open { display: none; }
@@ -1170,21 +1171,34 @@
     document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
     chatBackdrop.addEventListener("click", closeChat);
 
-    // ── Mobile keyboard: keep chat overlay sized to visual viewport ──
-    if (window.visualViewport) {
-      const chatOverlayEl = chatOverlay;
-      const onViewportResize = () => {
-        if (!chatOverlayEl.classList.contains("open")) return;
-        const vvh = window.visualViewport.height;
-        const vvOffsetTop = window.visualViewport.offsetTop;
-        chatOverlayEl.style.height = vvh + "px";
-        chatOverlayEl.style.top = vvOffsetTop + "px";
-        // scroll messages to bottom so latest is visible
-        const msgs = chatOverlayEl.querySelector(".chat-messages");
-        if (msgs) msgs.scrollTop = msgs.scrollHeight;
-      };
-      window.visualViewport.addEventListener("resize", onViewportResize);
-      window.visualViewport.addEventListener("scroll", onViewportResize);
+    // ── Mobile keyboard: pin chat overlay to visual viewport ──
+    // iOS Safari does NOT resize the layout viewport when the keyboard opens.
+    // dvh/interactive-widget are NOT supported on Safari.
+    // Only reliable approach: listen to visualViewport and set height + top explicitly.
+    {
+      const vv = window.visualViewport;
+      if (vv) {
+        const overlay = chatOverlay;
+        const msgs = overlay.querySelector(".chat-messages");
+        const footer = overlay.querySelector(".chat-footer");
+
+        const syncToViewport = () => {
+          if (!overlay.classList.contains("open")) return;
+          // Pin overlay exactly to the visual viewport
+          overlay.style.top = vv.offsetTop + "px";
+          overlay.style.height = vv.height + "px";
+          // When keyboard is open, safe-area-inset-bottom is 0
+          const kbOpen = vv.height < window.innerHeight - 50;
+          if (footer) footer.style.paddingBottom = kbOpen ? "8px" : "";
+          // Keep messages scrolled to bottom
+          if (msgs) msgs.scrollTop = msgs.scrollHeight;
+          // Prevent iOS from scrolling the page behind the overlay
+          window.scrollTo(0, 0);
+        };
+
+        vv.addEventListener("resize", syncToViewport);
+        vv.addEventListener("scroll", syncToViewport);
+      }
     }
 
     // Auto-resize textarea
