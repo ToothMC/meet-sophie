@@ -2927,6 +2927,29 @@ function importCheckedToAgenda(btn) {
   appendSystemMsg(`✅ ${checked.length} Punkt(e) zur Agenda hinzugefügt.`);
 }
 
+function importCheckedToParticipants(btn) {
+  const panel = btn.closest(".analysis-panel");
+  if (!panel) return;
+  const checked = [...panel.querySelectorAll(".participant-item-cb:checked")];
+  if (!checked.length) { appendSystemMsg("Bitte zuerst Teilnehmer auswählen."); return; }
+
+  const participantsEl = $("ctxParticipants");
+  const existing = (participantsEl.value || "").trim();
+  const newNames = checked.map(cb => cb.dataset.text.trim()).filter(Boolean);
+  const existingNames = existing ? existing.split(",").map(n => n.trim()).filter(Boolean) : [];
+  // Deduplicate: only add names not already present (case-insensitive)
+  const toAdd = newNames.filter(n => !existingNames.some(e => e.toLowerCase() === n.toLowerCase()));
+  if (!toAdd.length) { appendSystemMsg("Alle ausgewählten Teilnehmer sind bereits eingetragen."); return; }
+
+  participantsEl.value = [...existingNames, ...toAdd].join(", ");
+  autoResizeTextarea(participantsEl);
+  saveContext();
+  participantsEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  participantsEl.style.outline = "2px solid #c4a882";
+  setTimeout(() => { participantsEl.style.outline = ""; }, 1500);
+  appendSystemMsg(`✅ ${toAdd.length} Teilnehmer übernommen.`);
+}
+
 // Phase 5: Sophie hat im Voice-Gespräch Agenda-Punkte erarbeitet → Import anbieten
 function offerPrepAgendaImport(items) {
   // Remove any existing offer panel
