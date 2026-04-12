@@ -63,6 +63,43 @@ async function requireAuth(req, res) {
 // File content extraction (server-side)
 // ---------------------------------------------------------------------------
 
+// Helper: call GPT-4o Vision for images and scanned documents
+async function extractViaVision(base64, mimeType, fileName, isHandwritten = false) {
+  const prompt = isHandwritten
+    ? `This image contains handwritten or printed notes, a paper document, or a photo of a document.
+Your task:
+1. Transcribe ALL visible text exactly as written — including handwritten text, printed text, tables, and lists.
+2. Preserve structure: use bullet points for lists, line breaks between sections, and mark headings clearly.
+3. If text is illegible, write [illegible] in place.
+4. Do NOT describe the image — only transcribe the text content.
+5. Keep the original language (do not translate).
+Filename: ${fileName}`
+    : `Extract all text content from this image (${fileName}). Be thorough. If it contains a document, table, or chart, extract all the data in structured form.`;
+
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      max_tokens: 2000,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+        ],
+      }],
+    }),
+  });
+
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || null;
+}
+
 async function extractFileContent(supabase, filePath) {
   // Download file from Supabase Storage
   const { data: fileData, error: dlError } = await supabase.storage
@@ -79,74 +116,58 @@ async function extractFileContent(supabase, filePath) {
     return text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text;
   }
 
-  // PDF / DOCX / PPTX / Images: use OpenAI to extract/describe content
-  if (["pdf", "docx", "pptx", "png", "jpg", "jpeg", "webp"].includes(ext)) {
-    const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
+  // Images: GPT-4o Vision with handwriting-aware prompt
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
+    const buffer = await fileData.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+    const extracted = await extractViaVision(base64, mimeType, fileName, true);
+    if (extracted) return `[Image: ${fileName}]\n${extracted}`;
+    return `[Image: ${fileName}] — Could not extract content.`;
+  }
 
-    // Convert to base64 for images
-    if (isImage) {
-      const buffer = await fileData.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
-      const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
-
-      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o",
-          max_tokens: 1500,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: `Describe and extract all text from this image (${fileName}). Be thorough. If it contains a document, table, or chart, extract the data.` },
-              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-            ],
-          }],
-        }),
-      });
-
-      if (resp.ok) {
-        const data = await resp.json();
-        return `[Image: ${fileName}]\n${data?.choices?.[0]?.message?.content || ""}`;
+  // DOCX: extract with mammoth
+  if (ext === "docx") {
+    try {
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      const result = await mammoth.extractRawText({ buffer });
+      const text = (result.value || "").trim();
+      if (text) {
+        return `[DOCX: ${fileName}]\n${text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text}`;
       }
+    } catch (e) {
+      console.error("DOCX extraction error:", e?.message);
     }
+    return `[DOCX: ${fileName}] — Could not extract text.`;
+  }
 
-    // DOCX: extract with mammoth
-    if (ext === "docx") {
-      try {
-        const buffer = Buffer.from(await fileData.arrayBuffer());
-        const result = await mammoth.extractRawText({ buffer });
-        const text = (result.value || "").trim();
-        if (text) {
-          return `[DOCX: ${fileName}]\n${text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text}`;
-        }
-      } catch (e) {
-        console.error("DOCX extraction error:", e?.message);
+  // PDF: pdf-parse primary, GPT-4o Vision fallback for scanned PDFs
+  if (ext === "pdf") {
+    try {
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      // Limit to 500KB to avoid Vercel function timeouts on huge PDFs
+      const parseBuffer = buffer.length > 512000 ? buffer.slice(0, 512000) : buffer;
+      const parsed = await pdfParse(parseBuffer, { max: 50 });
+      const text = (parsed.text || "").trim();
+      if (text.length > 100) {
+        const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text;
+        return `[PDF: ${fileName} — ${parsed.numpages} page(s)]\n${truncated}`;
       }
-      return `[DOCX: ${fileName}] — Could not extract text.`;
+      // Very little text extracted → likely a scanned PDF, try Vision fallback
+      // Convert first ~100KB as base64 and send as image hint
+      const base64 = buffer.slice(0, 102400).toString("base64");
+      const visionResult = await extractViaVision(base64, "image/jpeg", fileName, true).catch(() => null);
+      if (visionResult) return `[PDF (scan): ${fileName}]\n${visionResult}`;
+      return `[PDF: ${fileName}] — This appears to be a scanned document. For better results, take a photo and upload as JPG.`;
+    } catch (e) {
+      console.error("PDF extraction error:", e?.message);
+      return `[PDF: ${fileName}] — Could not extract text (${e?.message || "unknown error"}).`;
     }
+  }
 
-    // PDF: extract readable strings from raw binary
-    if (ext === "pdf") {
-      const buffer = await fileData.arrayBuffer();
-      const textContent = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-      const readable = textContent.match(/\(([^)]+)\)/g);
-      if (readable && readable.length > 5) {
-        const extracted = readable.map(s => s.slice(1, -1)).join(" ").slice(0, 8000);
-        return `[PDF: ${fileName}]\n${extracted}`;
-      }
-      return `[PDF: ${fileName}] — Text extraction limited. Content stored as reference.`;
-    }
-
-    // PPTX: basic reference (full extraction would need separate library)
-    if (ext === "pptx") {
-      return `[PPTX: ${fileName}] — Presentation uploaded for reference.`;
-    }
-
-    return `[Document: ${fileName}] — Uploaded for reference.`;
+  // PPTX: basic reference
+  if (ext === "pptx") {
+    return `[PPTX: ${fileName}] — Presentation uploaded for reference. Text extraction for PPTX is not yet supported — export individual slides as PDF for best results.`;
   }
 
   return `[File: ${fileName}]`;
