@@ -460,10 +460,22 @@ async function handleContext(req, res) {
   const insertData = { meeting_id, context_type, content: finalContent };
   if (body.file_path) insertData.file_path = body.file_path;
 
+  // Build metadata for file uploads (used for document report cards in UI)
+  if (context_type === "file" && body.file_path) {
+    const originalFilename = body.file_path.split("/").pop().replace(/^\d+_/, "");
+    const preview = finalContent.replace(/^\[.*?\]\n?/, "").slice(0, 300).replace(/\s+/g, " ").trim();
+    insertData.metadata = {
+      original_filename: originalFilename,
+      char_count: finalContent.length,
+      preview: preview || null,
+      extracted_at: new Date().toISOString(),
+    };
+  }
+
   const { data, error } = await supabase
     .from("meeting_context")
     .insert(insertData)
-    .select("id, context_type, file_path, created_at")
+    .select("id, context_type, file_path, content, metadata, created_at")
     .single();
 
   if (error) {
