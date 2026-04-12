@@ -707,11 +707,15 @@ Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der ve
       if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
 
       if (source === 'meeting') {
-        await supabase.from('meeting_summary').delete().eq('meeting_id', session_id);
-        const { data: mtg } = await supabase.from('meetings').select('session_id').eq('id', session_id).maybeSingle();
-        if (mtg?.session_id) {
+        // Verify ownership before deleting
+        const { data: mtg } = await supabase.from('meetings').select('id, session_id').eq('id', session_id).eq('user_id', user.id).maybeSingle();
+        if (!mtg) return res.status(404).json({ error: 'Meeting not found' });
+        if (mtg.session_id) {
           await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
+          await supabase.from('user_sessions').delete().eq('id', mtg.session_id);
         }
+        // Delete the meeting row (cascades to context, notes, summary)
+        await supabase.from('meetings').delete().eq('id', session_id).eq('user_id', user.id);
       } else {
         await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
         await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);

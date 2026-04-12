@@ -123,7 +123,10 @@
       "Bash(curl -s -H \"Authorization: token $\\(git config --get credential.helper \\)\" \"https://api.github.com/repos/ToothMC/meet-sophie/deployments?ref=feature/meeting-prep-improvements&per_page=3\")",
       "Bash(grep -n \"updatePhaseUI\\\\|function autoResizeTextarea\\\\|const autoResizeTextarea\\\\|function \\\\$\\\\|const \\\\$\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/meeting/index.html)",
       "Bash(grep -n \"^const \\\\$\\\\|^function \\\\$\\\\|^\\\\s*\\\\$ =\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/meeting/index.html)",
-      "Bash(node --input-type=module)"
+      "Bash(node --input-type=module)",
+      "Bash(grep -i \"session_id.*REFERENCES\\\\|REFERENCES.*user_sessions\\\\|meetings.*session\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -rn \"ALTER TABLE meetings.*session_id\\\\|ADD COLUMN.*session_id\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
+      "Bash(grep -rn \"meetings.*session_id\\\\|session_id.*meetings\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)"
     ]
   },
   "hooks": {
