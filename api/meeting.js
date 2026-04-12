@@ -140,27 +140,34 @@ async function extractFileContent(supabase, filePath) {
     return `[DOCX: ${fileName}] — Could not extract text.`;
   }
 
-  // PDF: pdf-parse primary, GPT-4o Vision fallback for scanned PDFs
+  // PDF: dynamic import of pdf-parse to avoid serverless module-load failures
   if (ext === "pdf") {
     try {
       const buffer = Buffer.from(await fileData.arrayBuffer());
-      // Limit to 500KB to avoid Vercel function timeouts on huge PDFs
+      // Limit to 500KB to avoid function timeouts on very large PDFs
       const parseBuffer = buffer.length > 512000 ? buffer.slice(0, 512000) : buffer;
+
+      let pdfParse;
+      try {
+        // Dynamic import avoids crashing the whole module if pdf-parse has issues
+        const mod = await import("pdf-parse/lib/pdf-parse.js");
+        pdfParse = mod.default || mod;
+      } catch (importErr) {
+        console.error("pdf-parse import failed:", importErr?.message);
+        return `[PDF: ${fileName}] — Text extraction unavailable in this environment. Please export as DOCX or take a photo for best results.`;
+      }
+
       const parsed = await pdfParse(parseBuffer, { max: 50 });
       const text = (parsed.text || "").trim();
-      if (text.length > 100) {
-        const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text;
-        return `[PDF: ${fileName} — ${parsed.numpages} page(s)]\n${truncated}`;
+      if (text.length > 50) {
+        const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n... (gekürzt)" : text;
+        return `[PDF: ${fileName} — ${parsed.numpages} Seite(n)]\n${truncated}`;
       }
-      // Very little text extracted → likely a scanned PDF, try Vision fallback
-      // Convert first ~100KB as base64 and send as image hint
-      const base64 = buffer.slice(0, 102400).toString("base64");
-      const visionResult = await extractViaVision(base64, "image/jpeg", fileName, true).catch(() => null);
-      if (visionResult) return `[PDF (scan): ${fileName}]\n${visionResult}`;
-      return `[PDF: ${fileName}] — This appears to be a scanned document. For better results, take a photo and upload as JPG.`;
+      // Very little text → likely a scanned PDF
+      return `[PDF: ${fileName}] — Dieses PDF scheint gescannt zu sein (kein lesbarer Text). Für beste Ergebnisse: Foto aufnehmen und als Bild hochladen.`;
     } catch (e) {
       console.error("PDF extraction error:", e?.message);
-      return `[PDF: ${fileName}] — Could not extract text (${e?.message || "unknown error"}).`;
+      return `[PDF: ${fileName}] — Textextraktion fehlgeschlagen: ${e?.message || "unbekannter Fehler"}.`;
     }
   }
 
