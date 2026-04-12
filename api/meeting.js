@@ -1474,8 +1474,8 @@ async function handleAnalyzeDoc(req, res) {
     return res.status(422).json({ error: "Document content not yet extracted" });
   }
 
-  // Return cached analysis if available
-  if (ctx.metadata?.analysis) {
+  // Return cached analysis if available and has all current fields (incl. teilnehmer)
+  if (ctx.metadata?.analysis && ctx.metadata.analysis.teilnehmer !== undefined) {
     return res.status(200).json({ ok: true, analysis: ctx.metadata.analysis, cached: true });
   }
 
