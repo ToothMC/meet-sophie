@@ -2903,7 +2903,7 @@ function offerPrepAgendaImport(items) {
   // Remove any existing offer panel
   document.getElementById("prepAgendaOffer")?.remove();
 
-  const escaped = items.map(i => i.replace(/</g, "&lt;"));
+  const escaped = items.map(i => String(typeof i === "object" ? JSON.stringify(i) : i).replace(/</g, "&lt;"));
   const checkboxes = escaped.map((item, i) =>
     `<label style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#3a3030;margin-bottom:4px;cursor:pointer">
       <input type="checkbox" class="prep-agenda-cb" data-text="${item}" checked style="margin-top:2px;flex-shrink:0">
