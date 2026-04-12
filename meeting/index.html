@@ -2850,39 +2850,63 @@ function showAnalysisPanel(analysis, card) {
   // Remove existing panel if any
   card.querySelector(".analysis-panel")?.remove();
 
-  const sections = [
+  let html = `<div class="analysis-panel" style="margin-top:8px;border-top:1px solid #ede8e2;padding-top:8px">`;
+  let hasContent = false;
+
+  // ── Teilnehmer (separate import target: ctxParticipants) ──
+  const teilnehmer = analysis.teilnehmer;
+  if (teilnehmer?.length) {
+    hasContent = true;
+    html += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">👥 Teilnehmer</div>`;
+    teilnehmer.forEach(item => {
+      const escaped = String(typeof item === "object" ? JSON.stringify(item) : item).replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      html += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
+        <input type="checkbox" class="participant-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0;accent-color:#c4a882">
+        <span>${escaped}</span>
+      </label>`;
+    });
+    html += `<button class="doc-card-btn" style="margin-top:4px;width:100%;font-size:11px" data-action="import-participants">In Teilnehmer übernehmen</button>`;
+    html += `</div>`;
+  }
+
+  // ── Agenda-relevante Abschnitte ──
+  const agendaSections = [
     { key: "offene_punkte",     label: "Offene Punkte",    emoji: "❓" },
     { key: "entscheidungen",    label: "Entscheidungen",   emoji: "✅" },
     { key: "folgeaufgaben",     label: "Folgeaufgaben",    emoji: "📌" },
     { key: "agenda_vorschlaege",label: "Agenda-Vorschläge",emoji: "📋" },
   ];
 
-  let html = `<div class="analysis-panel" style="margin-top:8px;border-top:1px solid #ede8e2;padding-top:8px">`;
-  let hasContent = false;
-
-  sections.forEach(({ key, label, emoji }) => {
+  let hasAgendaContent = false;
+  let agendaHtml = "";
+  agendaSections.forEach(({ key, label, emoji }) => {
     const items = analysis[key];
     if (!items?.length) return;
+    hasAgendaContent = true;
     hasContent = true;
-    html += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">${emoji} ${label}</div>`;
-    items.forEach((item, i) => {
-      const escaped = String(typeof item === "object" ? JSON.stringify(item) : item).replace(/</g, "&lt;");
-      html += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
-        <input type="checkbox" class="agenda-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0">
+    agendaHtml += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">${emoji} ${label}</div>`;
+    items.forEach(item => {
+      const escaped = String(typeof item === "object" ? JSON.stringify(item) : item).replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      agendaHtml += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
+        <input type="checkbox" class="agenda-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0;accent-color:#c4a882">
         <span>${escaped}</span>
       </label>`;
     });
-    html += `</div>`;
+    agendaHtml += `</div>`;
   });
+
+  html += agendaHtml;
+  if (hasAgendaContent) {
+    html += `<button class="doc-card-btn primary" style="margin-top:4px;width:100%" data-action="import-agenda">Auswahl in Agenda übernehmen</button>`;
+  }
 
   if (!hasContent) {
     html += `<div style="font-size:11px;color:#a09080">Keine strukturierten Inhalte gefunden.</div>`;
-  } else {
-    html += `<button class="doc-card-btn primary" style="margin-top:4px;width:100%" data-action="import-agenda">Auswahl in Agenda übernehmen</button>`;
   }
   html += `</div>`;
   card.insertAdjacentHTML("beforeend", html);
   card.querySelector("[data-action='import-agenda']")?.addEventListener("click", (e) => importCheckedToAgenda(e.currentTarget));
+  card.querySelector("[data-action='import-participants']")?.addEventListener("click", (e) => importCheckedToParticipants(e.currentTarget));
 }
 
 function importCheckedToAgenda(btn) {
