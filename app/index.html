@@ -1163,6 +1163,23 @@
     document.getElementById("chatCloseBtn").addEventListener("click", closeChat);
     chatBackdrop.addEventListener("click", closeChat);
 
+    // ── Mobile keyboard: keep chat overlay sized to visual viewport ──
+    if (window.visualViewport) {
+      const chatOverlayEl = chatOverlay;
+      const onViewportResize = () => {
+        if (!chatOverlayEl.classList.contains("open")) return;
+        const vvh = window.visualViewport.height;
+        const vvOffsetTop = window.visualViewport.offsetTop;
+        chatOverlayEl.style.height = vvh + "px";
+        chatOverlayEl.style.top = vvOffsetTop + "px";
+        // scroll messages to bottom so latest is visible
+        const msgs = chatOverlayEl.querySelector(".chat-messages");
+        if (msgs) msgs.scrollTop = msgs.scrollHeight;
+      };
+      window.visualViewport.addEventListener("resize", onViewportResize);
+      window.visualViewport.addEventListener("scroll", onViewportResize);
+    }
+
     // Auto-resize textarea
     chatInput.addEventListener("input", () => {
       chatInput.style.height = "auto";
