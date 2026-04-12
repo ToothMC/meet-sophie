@@ -1092,12 +1092,8 @@
       applyHeroMode(selectedMode);
     });
 
-    // ── Click outside pills → deselect mode (1:1 landing page) ──
-    document.addEventListener("click", (e) => {
-      if (!selectedMode) return;
-      if (e.target.closest("#modeBar") || e.target.closest("#startTalkBtn") || e.target.closest("#chatOverlay")) return;
-      deselectMode();
-    });
+    // Click outside pills deselect removed — mode stays selected until
+    // user clicks the same pill again (1:1 landing page behavior).
 
     // ── Navigation ───────────────────────────────────────
     ctaBtn.addEventListener("click", () => {
