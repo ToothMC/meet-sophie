@@ -707,9 +707,10 @@
       .chat-overlay {
         top: 0; left: 0; right: 0; bottom: 0;
         transform: none;
-        width: 100%; height: 100%;
-        min-height: 100vh;
-        max-height: 100vh;
+        width: 100%;
+        height: 100dvh;
+        height: 100vh; /* fallback */
+        height: 100dvh;
         border-radius: 0;
       }
       .chat-backdrop.open { display: none; }
