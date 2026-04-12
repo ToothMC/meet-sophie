@@ -2890,10 +2890,52 @@ function importCheckedToAgenda(btn) {
   const agendaEl = $("ctxAgenda");
   agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
   autoResizeTextarea(agendaEl);
-
-  // Auto-save context
   $("saveContextBtn").click();
   appendSystemMsg(`${checked.length} Punkt(e) zur Agenda hinzugefügt.`);
+}
+
+// Phase 5: Sophie hat im Voice-Gespräch Agenda-Punkte erarbeitet → Import anbieten
+function offerPrepAgendaImport(items) {
+  // Remove any existing offer panel
+  document.getElementById("prepAgendaOffer")?.remove();
+
+  const escaped = items.map(i => i.replace(/</g, "&lt;"));
+  const checkboxes = escaped.map((item, i) =>
+    `<label style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#3a3030;margin-bottom:4px;cursor:pointer">
+      <input type="checkbox" class="prep-agenda-cb" data-text="${item}" checked style="margin-top:2px;flex-shrink:0">
+      <span>${item}</span>
+    </label>`
+  ).join("");
+
+  const div = document.createElement("div");
+  div.id = "prepAgendaOffer";
+  div.style.cssText = "background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin:8px 0";
+  div.innerHTML = `
+    <div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:8px">📋 Sophie hat ${items.length} Agenda-Punkt(e) erarbeitet:</div>
+    ${checkboxes}
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="doc-card-btn primary" style="flex:1" onclick="confirmPrepAgendaImport()">In Agenda übernehmen</button>
+      <button class="doc-card-btn" onclick="document.getElementById('prepAgendaOffer').remove()">Verwerfen</button>
+    </div>`;
+
+  // Insert after the context panel's save button area
+  const contextBody = document.querySelector(".context-body");
+  if (contextBody) contextBody.insertBefore(div, contextBody.firstChild);
+}
+
+function confirmPrepAgendaImport() {
+  const offer = document.getElementById("prepAgendaOffer");
+  if (!offer) return;
+  const checked = [...offer.querySelectorAll(".prep-agenda-cb:checked")];
+  if (!checked.length) { offer.remove(); return; }
+
+  const items = checked.map(cb => "- " + cb.dataset.text).join("\n");
+  const agendaEl = $("ctxAgenda");
+  agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
+  autoResizeTextarea(agendaEl);
+  $("saveContextBtn").click();
+  offer.remove();
+  appendSystemMsg(`✅ ${checked.length} Agenda-Punkt(e) aus Voice-Gespräch übernommen.`);
 }
 
 async function uploadFile(file) {
