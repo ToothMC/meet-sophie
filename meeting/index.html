@@ -2764,6 +2764,63 @@ const FILE_ICONS = {
   "image/png": "🖼️", "image/jpeg": "🖼️", "image/webp": "🖼️",
 };
 
+// ---------------------------------------------------------------------------
+// Document Report Cards
+// ---------------------------------------------------------------------------
+
+function renderDocCard(fc, container) {
+  const meta = fc.metadata || {};
+  const fileName = meta.original_filename
+    || (fc.file_path ? fc.file_path.split("/").pop().replace(/^\d+_/, "") : "File");
+  const ext = fileName.split(".").pop().toLowerCase();
+  const icon = ext === "pdf" ? "📄" : ["png","jpg","jpeg","webp"].includes(ext) ? "🖼️"
+    : ext === "docx" ? "📝" : ext === "pptx" ? "📊" : "📎";
+
+  const div = document.createElement("div");
+  div.className = "doc-card";
+  div.dataset.contextId = fc.id || "";
+
+  const preview = meta.preview || "";
+  const charInfo = meta.char_count > 0
+    ? `${(meta.char_count / 1000).toFixed(1)}k Zeichen` : "";
+
+  div.innerHTML = `
+    <div class="doc-card-header">
+      <span class="doc-card-icon">${icon}</span>
+      <span class="doc-card-name" title="${fileName}">${fileName}</span>
+      <span class="doc-card-status">${charInfo}</span>
+    </div>
+    ${preview ? `<div class="doc-card-preview">${preview}</div>` : ""}
+    <div class="doc-card-actions">
+      <button class="doc-card-btn" onclick="openDocModal(this)">Anzeigen</button>
+      <button class="doc-card-btn primary" onclick="analyzeDoc(this)">Mit KI analysieren</button>
+    </div>`;
+
+  // Store full content for modal
+  div._fullContent = fc.content || "";
+  div._fileName = fileName;
+  container.appendChild(div);
+}
+
+function openDocModal(btn) {
+  const card = btn.closest(".doc-card");
+  const content = card._fullContent || "(kein Inhalt)";
+  const fileName = card._fileName || "Dokument";
+
+  const overlay = document.createElement("div");
+  overlay.className = "doc-modal-overlay";
+  overlay.innerHTML = `
+    <div class="doc-modal">
+      <div class="doc-modal-header">
+        <span class="doc-modal-title">${fileName}</span>
+        <button class="doc-modal-close" onclick="this.closest('.doc-modal-overlay').remove()">✕</button>
+      </div>
+      <div class="doc-modal-body">${content.replace(/</g,"&lt;")}</div>
+    </div>`;
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 async function uploadFile(file) {
   if (!meetingId) return;
 
