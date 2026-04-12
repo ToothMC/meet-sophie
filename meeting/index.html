@@ -2918,9 +2918,11 @@ function offerPrepAgendaImport(items) {
     <div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:8px">📋 Sophie hat ${items.length} Agenda-Punkt(e) erarbeitet:</div>
     ${checkboxes}
     <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="doc-card-btn primary" style="flex:1" onclick="confirmPrepAgendaImport()">In Agenda übernehmen</button>
-      <button class="doc-card-btn" onclick="document.getElementById('prepAgendaOffer').remove()">Verwerfen</button>
+      <button class="doc-card-btn primary" style="flex:1" data-action="confirm-agenda">In Agenda übernehmen</button>
+      <button class="doc-card-btn" data-action="discard-agenda">Verwerfen</button>
     </div>`;
+  div.querySelector("[data-action='confirm-agenda']").addEventListener("click", confirmPrepAgendaImport);
+  div.querySelector("[data-action='discard-agenda']").addEventListener("click", () => div.remove());
 
   // Insert after the context panel's save button area
   const contextBody = document.querySelector(".context-body");
