@@ -1538,6 +1538,7 @@ export default async function handler(req, res) {
     case "finalize_billing": return handleFinalizeBilling(req, res);
     case "burst_message":    return handleBurstMessage(req, res);
     case "burst_cost":       return handleBurstCost(req, res);
+    case "analyze_doc":      return handleAnalyzeDoc(req, res);
     case "summarize":        return handleSummarize(req, res);
     case "summary":          return handleSummary(req, res);
     case "delete":           return handleDelete(req, res);
