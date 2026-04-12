@@ -227,7 +227,7 @@ async function handlePortal(req, res) {
     }
 
     const baseUrl    = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
-    const return_url = `${baseUrl}/talk/`;
+    const return_url = `${baseUrl}/app/`;
 
     const session = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,
