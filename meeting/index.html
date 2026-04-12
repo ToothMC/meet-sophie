@@ -235,6 +235,46 @@ body{
 .file-item .file-status{font-size:10px;color:#34c47a}
 .uploading{opacity:.5}
 
+/* ---- DOCUMENT REPORT CARDS ---- */
+.doc-card{
+  background:#fff;border:1px solid #e5e0d8;border-radius:10px;
+  padding:10px 12px;margin-bottom:6px;font-size:12px;color:#5a4a40;
+}
+.doc-card-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.doc-card-icon{font-size:15px;flex-shrink:0}
+.doc-card-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-card-status{font-size:10px;color:#34c47a;flex-shrink:0}
+.doc-card-preview{
+  color:#a09080;font-size:11px;line-height:1.4;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  margin-bottom:6px;
+}
+.doc-card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.doc-card-btn{
+  font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #ddd;
+  background:#faf8f5;color:#5a4a40;cursor:pointer;
+}
+.doc-card-btn:hover{background:#ede8e2}
+.doc-card-btn.primary{background:#c4a882;color:#fff;border-color:#c4a882}
+.doc-card-btn.primary:hover{background:#b8956e}
+
+/* ---- DOC PREVIEW MODAL ---- */
+.doc-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.doc-modal{
+  background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:600px;
+  max-height:80vh;display:flex;flex-direction:column;padding:0;overflow:hidden;
+}
+.doc-modal-header{
+  display:flex;align-items:center;gap:10px;padding:14px 16px;
+  border-bottom:1px solid #ede8e2;
+}
+.doc-modal-title{flex:1;font-weight:600;font-size:14px;color:#2a2420;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-modal-close{font-size:20px;cursor:pointer;color:#a09080;padding:0 4px;background:none;border:none}
+.doc-modal-body{flex:1;overflow-y:auto;padding:16px;font-size:13px;color:#3a3030;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+
 /* ---- HINT MESSAGES ---- */
 .msg.assistant.hint{
   border-left:3px solid #eab308;
