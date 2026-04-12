@@ -2816,10 +2816,11 @@ function openDocModal(btn) {
     <div class="doc-modal">
       <div class="doc-modal-header">
         <span class="doc-modal-title">${fileName}</span>
-        <button class="doc-modal-close" onclick="this.closest('.doc-modal-overlay').remove()">✕</button>
+        <button class="doc-modal-close" data-action="close-modal">✕</button>
       </div>
       <div class="doc-modal-body">${content.replace(/</g,"&lt;")}</div>
     </div>`;
+  overlay.querySelector("[data-action='close-modal']").addEventListener("click", () => overlay.remove());
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 }
