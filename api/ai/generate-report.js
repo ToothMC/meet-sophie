@@ -142,7 +142,9 @@ export default async function handler(req, res) {
       } catch (_) {}
       if (!meetingTemplate) {
         const { getDefaultTemplates: gdt } = await import('../../lib/report-templates.js');
-        const DT = gdt(reportLang || 'de');
+        // For auto-detect: use 'de' as structural template (most common for this product);
+        // AI will adapt section labels to the detected transcript language.
+        const DT = gdt(meetingAutoLang ? 'de' : (reportLang || 'de'));
         meetingTemplate = DT?.meeting || DT?.default || null;
       }
 
