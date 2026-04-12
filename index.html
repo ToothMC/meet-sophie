@@ -4430,7 +4430,8 @@
       }
 
       hide(typingEl);
-      if (authNudgeShown) show(authEl); else hide(authEl);
+      if (authNudgeShown) { show(authEl); if (footerEl) hide(footerEl); }
+      else { hide(authEl); if (footerEl) show(footerEl); }
       if (!sessionEnded) hide(reportEl);
 
       renderHistoryFromState();
