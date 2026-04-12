@@ -2838,14 +2838,6 @@ function _krDrawFrame(now) {
   if (now - _lastFrameTime < 33) { _krAnimId = requestAnimationFrame(_krDrawFrame); return; }
   _lastFrameTime = now;
 
-  // Auto-fade after 60s — stop rendering entirely (0 CPU)
-  if (!_waveFaded && (Date.now() - _waveStartTime > _WAVE_FADE_MS)) {
-    _waveFaded = true;
-    const wc = document.querySelector('.wave-card');
-    if (wc) { wc.style.opacity = '0'; wc.style.pointerEvents = 'auto'; }
-    return;
-  }
-
   // ── Read real frequency data from analyser — no smoothing, no filters ──
   let barLevels = new Float64Array(_KR_NUM); // 0..1 per bar
 
@@ -2894,36 +2886,14 @@ function setHyperVoiceMode(m) {
 }
 
 // ── Start/stop rendering ──
-let _waveStartTime = 0;
-let _waveFaded = false;
-const _WAVE_FADE_MS = 60000; // always fade out after 60s
-
 function startHyperWave() {
   if (_waveRunning) return;
   _waveRunning = true;
-  _waveStartTime = Date.now();
-  _waveFaded = false;
-  const wc = document.querySelector('.wave-card');
-  if (wc) { wc.style.opacity = '1'; wc.style.transition = 'opacity 1s ease'; }
   _krAnimId = requestAnimationFrame(_krDrawFrame);
-}
-
-// User tap to reactivate after auto-fade
-const _waveCard = document.querySelector('.wave-card');
-if (_waveCard) {
-  _waveCard.addEventListener('click', () => {
-    if (!_waveRunning || !_waveFaded) return;
-    _waveFaded = false;
-    _waveStartTime = Date.now();
-    _waveCard.style.opacity = '1';
-    _waveCard.style.pointerEvents = '';
-    _krAnimId = requestAnimationFrame(_krDrawFrame);
-  });
 }
 
 function stopHyperWave() {
   _waveRunning = false;
-  _waveFaded = false;
   if (_krAnimId) { cancelAnimationFrame(_krAnimId); _krAnimId = null; }
   // Reset bars to idle
   _krBars.forEach(bar => {
