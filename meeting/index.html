@@ -3957,6 +3957,17 @@ function handleVoiceTranscriptEvent(msg) {
   // Response complete — save Sophie's text + start auto-disconnect timer
   if (msg?.type === "response.done") {
     let final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+
+    // Phase 5: detect prep_agenda JSON and offer agenda import
+    const prepAgendaMatch = final.match(/\{"prep_agenda"\s*:\s*(\[[\s\S]*?\])\}/);
+    if (prepAgendaMatch) {
+      try {
+        const items = JSON.parse(prepAgendaMatch[1]);
+        if (Array.isArray(items) && items.length > 0) offerPrepAgendaImport(items);
+      } catch (_) {}
+      final = final.replace(/\s*\{"prep_agenda"[\s\S]*?\}\s*/g, "").trim();
+    }
+
     final = final.replace(/\s*\{["']?(?:decisions|actions|risks|open_points)["']?\s*:[\s\S]*$/i, "").trim();
     const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
     if (final && final !== last) {
