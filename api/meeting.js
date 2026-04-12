@@ -1430,6 +1430,97 @@ async function handleBurstCost(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Action: analyze_doc — KI-Analyse eines hochgeladenen Dokuments
+// Extrahiert offene Punkte, Entscheidungen, Folgeaufgaben, Agenda-Vorschläge.
+// Ergebnis wird im metadata.analysis Feld gecacht (kein Doppel-Aufruf).
+// ---------------------------------------------------------------------------
+
+async function handleAnalyzeDoc(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const body = parseBody(req);
+  const { meeting_id, context_id } = body;
+  if (!meeting_id || !context_id) return res.status(400).json({ error: "Missing meeting_id or context_id" });
+
+  const supabase = getSupabase();
+
+  // Verify meeting ownership
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("id", meeting_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  // Load the context row
+  const { data: ctx } = await supabase
+    .from("meeting_context")
+    .select("id, content, metadata")
+    .eq("id", context_id)
+    .eq("meeting_id", meeting_id)
+    .maybeSingle();
+  if (!ctx) return res.status(404).json({ error: "Context not found" });
+  if (!ctx.content || ctx.content.startsWith("[File:")) {
+    return res.status(422).json({ error: "Document content not yet extracted" });
+  }
+
+  // Return cached analysis if available
+  if (ctx.metadata?.analysis) {
+    return res.status(200).json({ ok: true, analysis: ctx.metadata.analysis, cached: true });
+  }
+
+  // Strip file header prefix for cleaner input
+  const docText = ctx.content.replace(/^\[.*?\]\n?/, "").slice(0, 12000);
+
+  const prompt = `Analysiere dieses Dokument (Meeting-Protokoll, Notizen oder Bericht).
+Extrahiere strukturiert folgende Kategorien:
+1. offene_punkte: Dinge die noch offen oder ungeklärt sind
+2. entscheidungen: Bereits getroffene Entscheidungen
+3. folgeaufgaben: Konkrete To-Dos (mit Verantwortlichen falls genannt)
+4. agenda_vorschlaege: Punkte die in einem Folge-Meeting besprochen werden sollten
+
+Antworte NUR mit validem JSON in dieser Form:
+{"offene_punkte":[],"entscheidungen":[],"folgeaufgaben":[],"agenda_vorschlaege":[]}
+
+Dokument:
+${docText}`;
+
+  let analysis;
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!resp.ok) throw new Error(`OpenAI error ${resp.status}`);
+    const data = await resp.json();
+    analysis = JSON.parse(data.choices[0].message.content);
+  } catch (e) {
+    console.error("analyze_doc AI error:", e?.message);
+    return res.status(500).json({ error: "AI analysis failed" });
+  }
+
+  // Cache in metadata + deduct tokens
+  const updatedMeta = { ...(ctx.metadata || {}), analysis, analyzed_at: new Date().toISOString() };
+  await supabase.from("meeting_context").update({ metadata: updatedMeta }).eq("id", context_id);
+  try { await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message * 3 }); } catch (_) {}
+
+  return res.status(200).json({ ok: true, analysis });
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
