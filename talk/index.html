@@ -2178,6 +2178,24 @@ voiceChatInput?.addEventListener("keydown", (e) => {
   }
 });
 
+// ── Mobile keyboard: keep fixed voice-chat input visible ──
+if (window.visualViewport) {
+  const vcEl = document.querySelector(".voice-chat");
+  const onVCViewportResize = () => {
+    if (!vcEl || vcEl.style.display === "none") return;
+    const vv = window.visualViewport;
+    // On iOS, when keyboard opens the visual viewport shrinks but the layout viewport stays the same.
+    // We need to reposition the fixed element to sit at the bottom of the visual viewport.
+    const bottomOffset = window.innerHeight - (vv.offsetTop + vv.height);
+    vcEl.style.bottom = bottomOffset + "px";
+    // Scroll messages to bottom
+    const msgs = vcEl.querySelector(".voice-chat-messages");
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  };
+  window.visualViewport.addEventListener("resize", onVCViewportResize);
+  window.visualViewport.addEventListener("scroll", onVCViewportResize);
+}
+
 // Style-Switcher: regenerate report in different style
 document.getElementById("reportStyleBar")?.addEventListener("click", async (e) => {
   const pill = e.target.closest(".reportStylePill");
