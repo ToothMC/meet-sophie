@@ -2878,10 +2878,11 @@ function showAnalysisPanel(analysis, card) {
   if (!hasContent) {
     html += `<div style="font-size:11px;color:#a09080">Keine strukturierten Inhalte gefunden.</div>`;
   } else {
-    html += `<button class="doc-card-btn primary" style="margin-top:4px;width:100%" onclick="importCheckedToAgenda(this)">Auswahl in Agenda übernehmen</button>`;
+    html += `<button class="doc-card-btn primary" style="margin-top:4px;width:100%" data-action="import-agenda">Auswahl in Agenda übernehmen</button>`;
   }
   html += `</div>`;
   card.insertAdjacentHTML("beforeend", html);
+  card.querySelector("[data-action='import-agenda']")?.addEventListener("click", (e) => importCheckedToAgenda(e.currentTarget));
 }
 
 function importCheckedToAgenda(btn) {
