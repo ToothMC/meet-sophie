@@ -414,7 +414,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
         try {
           const extractAdapter = getAdapter('openai');
           const extractResp = await extractAdapter.complete({
-            messages: [{ role: 'user', content: `${isEN ? 'Extract structured data from this meeting protocol as JSON.' : isFR ? 'Extrais les données structurées de ce compte rendu de réunion en JSON.' : 'Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.'}
+            messages: [{ role: 'user', content: `${meetingAutoLang ? 'Extract structured data from this meeting protocol as JSON. Write all text values in the SAME language as the meeting protocol.' : isEN ? 'Extract structured data from this meeting protocol as JSON.' : isFR ? 'Extrais les données structurées de ce compte rendu de réunion en JSON.' : 'Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.'}
 ${dateInstruction}
 
 HTML-REPORT:
