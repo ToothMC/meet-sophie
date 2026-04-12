@@ -2821,12 +2821,78 @@ function openDocModal(btn) {
   document.body.appendChild(overlay);
 }
 
-// Placeholder — wired up in Phase 3
 function analyzeDoc(btn) {
   const card = btn.closest(".doc-card");
   const contextId = card.dataset.contextId;
-  if (!contextId) return;
-  analyzeDocById(contextId, card);
+  if (!contextId) { appendSystemMsg("⚠️ Dokument noch nicht gespeichert — bitte kurz warten."); return; }
+  analyzeDocById(contextId, card, btn);
+}
+
+async function analyzeDocById(contextId, card, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "Analysiere..."; }
+  try {
+    const result = await api("analyze_doc", { meeting_id: meetingId, context_id: contextId });
+    if (!result?.analysis) throw new Error("Keine Analyse");
+    showAnalysisPanel(result.analysis, card);
+    if (result.cached && btn) btn.textContent = "Erneut anzeigen";
+  } catch (e) {
+    appendSystemMsg("⚠️ Analyse fehlgeschlagen: " + (e?.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; if (!btn.textContent.includes("anzeigen")) btn.textContent = "Mit KI analysieren"; }
+  }
+}
+
+function showAnalysisPanel(analysis, card) {
+  // Remove existing panel if any
+  card.querySelector(".analysis-panel")?.remove();
+
+  const sections = [
+    { key: "offene_punkte",     label: "Offene Punkte",    emoji: "❓" },
+    { key: "entscheidungen",    label: "Entscheidungen",   emoji: "✅" },
+    { key: "folgeaufgaben",     label: "Folgeaufgaben",    emoji: "📌" },
+    { key: "agenda_vorschlaege",label: "Agenda-Vorschläge",emoji: "📋" },
+  ];
+
+  let html = `<div class="analysis-panel" style="margin-top:8px;border-top:1px solid #ede8e2;padding-top:8px">`;
+  let hasContent = false;
+
+  sections.forEach(({ key, label, emoji }) => {
+    const items = analysis[key];
+    if (!items?.length) return;
+    hasContent = true;
+    html += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">${emoji} ${label}</div>`;
+    items.forEach((item, i) => {
+      const escaped = item.replace(/</g, "&lt;");
+      html += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
+        <input type="checkbox" class="agenda-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0">
+        <span>${escaped}</span>
+      </label>`;
+    });
+    html += `</div>`;
+  });
+
+  if (!hasContent) {
+    html += `<div style="font-size:11px;color:#a09080">Keine strukturierten Inhalte gefunden.</div>`;
+  } else {
+    html += `<button class="doc-card-btn primary" style="margin-top:4px;width:100%" onclick="importCheckedToAgenda(this)">Auswahl in Agenda übernehmen</button>`;
+  }
+  html += `</div>`;
+  card.insertAdjacentHTML("beforeend", html);
+}
+
+function importCheckedToAgenda(btn) {
+  const panel = btn.closest(".analysis-panel");
+  const checked = [...panel.querySelectorAll(".agenda-item-cb:checked")];
+  if (!checked.length) { appendSystemMsg("Bitte zuerst Punkte auswählen."); return; }
+
+  const items = checked.map(cb => "- " + cb.dataset.text).join("\n");
+  const agendaEl = $("ctxAgenda");
+  agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
+  autoResizeTextarea(agendaEl);
+
+  // Auto-save context
+  $("saveContextBtn").click();
+  appendSystemMsg(`${checked.length} Punkt(e) zur Agenda hinzugefügt.`);
 }
 
 async function uploadFile(file) {
