@@ -2795,8 +2795,8 @@ function renderDocCard(fc, container) {
     </div>
     ${preview ? `<div class="doc-card-preview">${preview}</div>` : ""}
     <div class="doc-card-actions">
-      <button class="doc-card-btn" onclick="openDocModal(this)">Anzeigen</button>
-      <button class="doc-card-btn primary" onclick="analyzeDoc(this)">Mit KI analysieren</button>
+      <button class="doc-card-btn" data-action="show-doc">Anzeigen</button>
+      <button class="doc-card-btn primary" data-action="analyze-doc">Mit KI analysieren</button>
     </div>`;
 
   // Store full content for modal
