@@ -5658,7 +5658,6 @@
       appendBubble("sophie", loginMsg);
       history.push({ role: "assistant", content: loginMsg });
       show(authEl);
-      if (footerEl) hide(footerEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       // Focus on email field, not chat input
       setTimeout(() => {
