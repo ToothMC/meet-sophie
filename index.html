@@ -4932,8 +4932,6 @@
 
       const emailInput = form.querySelector("input");
       const sendBtnEl  = form.querySelector("button");
-      // Hide chat input so user can only type into email field
-      if (footerEl) hide(footerEl);
       setTimeout(() => emailInput.focus(), 80);
 
       const submit = async () => {
