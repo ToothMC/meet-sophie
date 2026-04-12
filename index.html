@@ -4698,6 +4698,8 @@
       hide(typingEl);
       hide(authEl);
       hide(reportEl);
+      const chatCard = document.getElementById("sophieChat");
+      if (chatCard) chatCard.classList.remove("auth-active");
       if (messagesEl) messagesEl.innerHTML = "";
       showOpener(currentLang);
     }
