@@ -330,9 +330,17 @@
     // State for OTP code input (shown after email is sent on iOS PWA)
     let pendingOtpEmail = null;
 
+    let sendCooldownUntil = 0;
     btn.onclick = async () => {
       const email = emailInput.value.trim();
       if (!email) return setStatus(t.empty, true);
+
+      // Prevent double-send (invalidates previous OTP code)
+      const now = Date.now();
+      if (now < sendCooldownUntil) {
+        const secsLeft = Math.ceil((sendCooldownUntil - now) / 1000);
+        return;
+      }
 
       setStatus(useOTP ? t.sendingOtp : t.sending);
       btn.disabled = true;
@@ -340,9 +348,23 @@
       const redirectUrl = window.location.origin + "/auth/callback";
       const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
 
-      btn.disabled = false;
+      if (error) { btn.disabled = false; return setStatus(error.message, true); }
 
-      if (error) return setStatus(error.message, true);
+      // 30s cooldown to prevent double-send
+      sendCooldownUntil = Date.now() + 30000;
+      btn.disabled = true;
+      let cd = 30;
+      const originalText = btn.textContent;
+      const cdInterval = setInterval(() => {
+        cd--;
+        if (cd <= 0) {
+          clearInterval(cdInterval);
+          btn.disabled = false;
+          btn.textContent = originalText;
+        } else {
+          btn.textContent = `${originalText} (${cd}s)`;
+        }
+      }, 1000);
 
       // Remember email for next visit
       try { localStorage.setItem("sophie_login_email", email); } catch (_) {}
@@ -409,10 +431,25 @@
       };
 
       resendBtn.onclick = async () => {
+        const now = Date.now();
+        if (now < sendCooldownUntil) return;
         resendBtn.disabled = true;
         await sendAuthEmail(supabase, email, "");
         setStatus(t.sentOtp);
-        resendBtn.disabled = false;
+        // 30s cooldown — previous code is now invalid
+        sendCooldownUntil = Date.now() + 30000;
+        let cd = 30;
+        const origText = resendBtn.textContent;
+        const ri = setInterval(() => {
+          cd--;
+          if (cd <= 0) {
+            clearInterval(ri);
+            resendBtn.disabled = false;
+            resendBtn.textContent = origText;
+          } else {
+            resendBtn.textContent = `${origText} (${cd}s)`;
+          }
+        }, 1000);
       };
     }
   </script>

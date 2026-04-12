@@ -969,10 +969,13 @@
       if (event === "SIGNED_OUT") { location.replace("/"); return; }
       if (!sess?.access_token) {
         // Token refresh can transiently fire with null — retry before redirecting
-        try {
-          const { data } = await supabase.auth.getSession();
-          if (data?.session?.access_token) return; // recovered
-        } catch (_) {}
+        for (let i = 0; i < 3; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          try {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session?.access_token) return; // recovered
+          } catch (_) {}
+        }
         location.replace("/");
       }
     });

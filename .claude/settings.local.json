@@ -97,7 +97,8 @@
       "Bash(mv demo-brainstorm-min.mp4 demo-brainstorm.mp4)",
       "Bash(mv demo-meeting-min.mp4 demo-meeting.mp4)",
       "Bash(mv demo-salespitch-min.mp4 demo-salespitch.mp4)",
-      "Bash(grep -l \"generate-report\\\\|generateReport\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)"
+      "Bash(grep -l \"generate-report\\\\|generateReport\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)",
+      "Bash(xargs ls:*)"
     ]
   },
   "hooks": {

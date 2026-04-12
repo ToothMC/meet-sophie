@@ -731,8 +731,20 @@ if (!session?.user) {
 }
 
 // Session Watch (Logout / Session verloren)
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_OUT" || !session?.user) {
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "SIGNED_OUT") {
+    window.location.href = "/login-dev";
+    return;
+  }
+  if (!session?.user) {
+    // Token refresh can transiently fire with null — retry before redirecting
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user) return;
+      } catch (_) {}
+    }
     window.location.href = "/login-dev";
   }
 });  
@@ -2421,8 +2433,10 @@ logoutBtn.onclick = async () => {
     }
   } catch(e) {}
 
+  // Clear local session FIRST to prevent redirect loops
+  try { localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token"); } catch (_) {}
   try { await supabase.auth.signOut(); } catch(e) {}
-  window.location.href = "/login-dev";
+  window.location.replace("/login-dev");
 };
 
 showSummaryBtn.addEventListener("click", showSummaryView);

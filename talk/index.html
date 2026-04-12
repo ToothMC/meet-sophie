@@ -1669,11 +1669,14 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       console.warn("[auth] token refresh failed during active session — ignoring");
       return;
     }
-    // Not in a session — retry once before redirecting
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.user) return; // recovered
-    } catch (_) {}
+    // Retry up to 3 times before redirecting (token refresh can be slow on mobile)
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user) return; // recovered
+      } catch (_) {}
+    }
     window.location.href = "/login";
   }
 });
@@ -7070,8 +7073,10 @@ logoutBtn.onclick = async () => {
     }
   } catch(e) {}
 
+  // Clear local session FIRST to prevent redirect loops
+  try { localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token"); } catch (_) {}
   try { await supabase.auth.signOut(); } catch(e) {}
-  window.location.href = "/login";
+  window.location.replace("/login");
 };
 
 document.addEventListener("visibilitychange", () => {
