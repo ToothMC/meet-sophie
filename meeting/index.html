@@ -1454,8 +1454,8 @@ async function showHistory() {
 
   try {
     const data = await api("list", null, "GET");
-    // Only show meetings with content (summary or notes)
-    const meetings = (data.meetings || []).filter(m => m.has_summary || m.phase === "live");
+    // Show active meetings (prep/live/post) always; closed only if they have a summary
+    const meetings = (data.meetings || []).filter(m => m.phase !== "closed" || m.has_summary);
 
     if (meetings.length === 0) {
       list.innerHTML = '<p style="color:#a09080;font-size:14px;text-align:center;padding:40px 0">No meetings yet.</p>';
