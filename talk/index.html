@@ -163,7 +163,7 @@ body::after{
 .wave-card::before{left:0;background:linear-gradient(to right,rgba(4,4,10,1),transparent)}
 .wave-card::after{right:0;background:linear-gradient(to left,rgba(4,4,10,1),transparent)}
 .kr-bars{display:flex;align-items:center;justify-content:center;gap:5px;height:100px;width:100%;padding:0 12px;box-sizing:border-box}
-.kr-bar{width:6px;height:4px;border-radius:3px;background:hsl(218,88%,45%);transform-origin:center;transition:height 0.05s ease}
+.kr-bar{width:6px;height:4px;border-radius:3px;background:hsl(218,88%,45%);transform-origin:center}
 .wave-meta{position:absolute;top:8px;left:12px;right:12px;z-index:3;display:flex;justify-content:space-between;pointer-events:none}
 .wave-label{font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(140,120,255,.6);animation:fade-label 3s ease-in-out infinite}
 .wave-hz{font-size:10px;color:rgba(120,200,255,.55);font-family:'SF Mono','Fira Code',monospace;font-weight:500}
@@ -2802,17 +2802,10 @@ function _buildGlobe(svgEl_, size, R) {
 const _globeSvgMini = document.getElementById('globeSvgMini');
 if (_globeSvgMini) _buildGlobe(_globeSvgMini, 64, 27);
 
-// ── Knight Rider Bar Visualizer ──
+// ── Knight Rider Bar Visualizer (real audio driven) ──
 const _KR_NUM = 20;
 const _KR_MAX_H = 92;
 const _KR_MIN_H = 4;
-const _KR_CENTER = (_KR_NUM - 1) / 2;
-
-function _krGaussWeight(i) {
-  const dist = (i - _KR_CENTER) / _KR_CENTER;
-  return Math.exp(-dist * dist * 7.5);
-}
-const _KR_WEIGHTS = Array.from({ length: _KR_NUM }, (_, i) => _krGaussWeight(i));
 
 // Build bar DOM elements
 const _krContainer = document.getElementById('krBars');
@@ -2826,12 +2819,6 @@ if (_krContainer) {
   }
 }
 
-const _krPhases = Array.from({ length: _KR_NUM }, () => Math.random() * Math.PI * 2);
-const _krSpeeds = Array.from({ length: _KR_NUM }, (_, i) => {
-  const dist = Math.abs(i - _KR_CENTER) / _KR_CENTER;
-  return 0.05 + Math.random() * 0.04 + dist * 0.02;
-});
-
 let _hyperVoiceMode = 'silent';
 let _waveRunning = false;
 let _hyperSophieSpeaking = false;
@@ -2839,6 +2826,7 @@ let _hyperAnalyser = null;
 let _hyperDataArray = null;
 let _hyperAnalyserWorks = false;
 let _hyperZeroRmsCount = 0;
+let _krFreqData = null; // Uint8Array for frequency bins
 
 let _lastFrameTime = 0;
 let _krAnimId = null;
@@ -2858,24 +2846,41 @@ function _krDrawFrame(now) {
     return;
   }
 
-  const isActive = _hyperSophieSpeaking;
+  // ── Read real frequency data from analyser — no smoothing, no filters ──
+  let barLevels = new Float64Array(_KR_NUM); // 0..1 per bar
+
+  if (_hyperAnalyser && _krFreqData) {
+    _hyperAnalyser.getByteFrequencyData(_krFreqData);
+    // Map frequency bins to bars: distribute bins across _KR_NUM bars
+    // Mirror: bars are symmetric from center outward
+    const half = Math.ceil(_KR_NUM / 2); // 10 unique levels, mirrored
+    const totalBins = _krFreqData.length; // 128 bins (fftSize 256 / 2)
+    // Use lower ~80% of spectrum (skip ultra-high freq noise)
+    const usableBins = Math.floor(totalBins * 0.8);
+    const binsPerBar = usableBins / half;
+
+    for (let b = 0; b < half; b++) {
+      const binStart = Math.floor(b * binsPerBar);
+      const binEnd = Math.floor((b + 1) * binsPerBar);
+      let sum = 0;
+      for (let j = binStart; j < binEnd; j++) sum += _krFreqData[j];
+      const avg = sum / (binEnd - binStart); // 0..255
+      const level = avg / 255; // 0..1
+      // Mirror: center-out (bar 9=center-left, bar 10=center-right for 20 bars)
+      const leftIdx = half - 1 - b;  // 9,8,7,...0
+      const rightIdx = half + b;     // 10,11,...19
+      barLevels[leftIdx] = level;
+      if (rightIdx < _KR_NUM) barLevels[rightIdx] = level;
+    }
+  }
 
   _krBars.forEach((bar, i) => {
     if (!bar) return;
-    if (isActive) {
-      _krPhases[i] += _krSpeeds[i];
-      const wave = Math.sin(_krPhases[i]) * 0.5 + 0.5;
-      const secondary = Math.sin(_krPhases[i] * 2.1 + i * 0.5) * 0.3 + 0.3;
-      const combined = wave * 0.72 + secondary * 0.28;
-      const w = _KR_WEIGHTS[i];
-      const h = _KR_MIN_H + (_KR_MAX_H - _KR_MIN_H) * combined * w;
-      const lightness = Math.round(32 + w * 35);
-      bar.style.height = h + 'px';
-      bar.style.background = 'hsl(218,88%,' + lightness + '%)';
-    } else {
-      bar.style.height = _KR_MIN_H + 'px';
-      bar.style.background = 'hsl(218,88%,45%)';
-    }
+    const level = barLevels[i];
+    const h = _KR_MIN_H + (_KR_MAX_H - _KR_MIN_H) * level;
+    const lightness = Math.round(32 + level * 35);
+    bar.style.height = h + 'px';
+    bar.style.background = 'hsl(218,88%,' + lightness + '%)';
   });
 
   _krAnimId = requestAnimationFrame(_krDrawFrame);
@@ -6391,11 +6396,12 @@ async function startVoice(){
         if (_hyperAudioCtx.state === 'suspended') _hyperAudioCtx.resume();
         const _source = _hyperAudioCtx.createMediaStreamSource(e.streams[0]);
         _hyperAnalyser = _hyperAudioCtx.createAnalyser();
-        _hyperAnalyser.fftSize = 512;
-        _hyperAnalyser.smoothingTimeConstant = 0.65;
+        _hyperAnalyser.fftSize = 256;
+        _hyperAnalyser.smoothingTimeConstant = 0;
         _source.connect(_hyperAnalyser);
         // Do NOT connect to destination — audioEl handles playback
         _hyperDataArray = new Float32Array(_hyperAnalyser.fftSize);
+        _krFreqData = new Uint8Array(_hyperAnalyser.frequencyBinCount);
         console.log("[hyper] Analyser connected to remote stream, AudioContext state:", _hyperAudioCtx.state);
         // Pre-decode ready sound now that AudioContext exists
         decodeReadySound();
