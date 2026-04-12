@@ -1173,27 +1173,35 @@
 
     // ── Mobile keyboard: pin chat overlay to visual viewport ──
     // iOS Safari does NOT resize the layout viewport when the keyboard opens.
-    // dvh/interactive-widget are NOT supported on Safari.
-    // Only reliable approach: listen to visualViewport and set height + top explicitly.
+    // Only intervene when keyboard is actually open (vv.height significantly smaller).
     {
       const vv = window.visualViewport;
       if (vv) {
         const overlay = chatOverlay;
         const msgs = overlay.querySelector(".chat-messages");
         const footer = overlay.querySelector(".chat-footer");
+        let wasKeyboardOpen = false;
 
         const syncToViewport = () => {
           if (!overlay.classList.contains("open")) return;
-          // Pin overlay exactly to the visual viewport
-          overlay.style.top = vv.offsetTop + "px";
-          overlay.style.height = vv.height + "px";
-          // When keyboard is open, safe-area-inset-bottom is 0
-          const kbOpen = vv.height < window.innerHeight - 50;
-          if (footer) footer.style.paddingBottom = kbOpen ? "8px" : "";
-          // Keep messages scrolled to bottom
-          if (msgs) msgs.scrollTop = msgs.scrollHeight;
-          // Prevent iOS from scrolling the page behind the overlay
-          window.scrollTo(0, 0);
+          const kbOpen = vv.height < window.innerHeight - 100;
+
+          if (kbOpen) {
+            // Keyboard open: shrink overlay to visible area
+            overlay.style.top = vv.offsetTop + "px";
+            overlay.style.height = vv.height + "px";
+            if (footer) footer.style.paddingBottom = "8px";
+            if (msgs) msgs.scrollTop = msgs.scrollHeight;
+            window.scrollTo(0, 0);
+            wasKeyboardOpen = true;
+          } else if (wasKeyboardOpen) {
+            // Keyboard just closed: reset to CSS defaults
+            overlay.style.top = "";
+            overlay.style.height = "";
+            if (footer) footer.style.paddingBottom = "";
+            wasKeyboardOpen = false;
+          }
+          // When keyboard is NOT open: do nothing, let CSS handle it
         };
 
         vv.addEventListener("resize", syncToViewport);
