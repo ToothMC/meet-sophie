@@ -2944,7 +2944,7 @@ function confirmPrepAgendaImport() {
   const agendaEl = $("ctxAgenda");
   agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
   autoResizeTextarea(agendaEl);
-  $("saveContextBtn").click();
+  saveContext();
   offer.remove();
   appendSystemMsg(`✅ ${checked.length} Agenda-Punkt(e) aus Voice-Gespräch übernommen.`);
 }
