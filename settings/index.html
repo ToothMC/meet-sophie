@@ -560,8 +560,10 @@ async function loadAccount() {
 
 // Logout
 const logoutAction = async () => {
-  await supabase.auth.signOut();
-  window.location.href = "/login";
+  // Clear local session FIRST to prevent redirect loops
+  try { localStorage.removeItem("sb-ohzfojsbmzinpxhcynpt-auth-token"); } catch (_) {}
+  try { await supabase.auth.signOut(); } catch (_) {}
+  window.location.replace("/login");
 };
 document.getElementById("logoutBtn").onclick = logoutAction;
 document.getElementById("logoutBtn2").onclick = logoutAction;
