@@ -2866,7 +2866,7 @@ function showAnalysisPanel(analysis, card) {
     hasContent = true;
     html += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">${emoji} ${label}</div>`;
     items.forEach((item, i) => {
-      const escaped = item.replace(/</g, "&lt;");
+      const escaped = String(typeof item === "object" ? JSON.stringify(item) : item).replace(/</g, "&lt;");
       html += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
         <input type="checkbox" class="agenda-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0">
         <span>${escaped}</span>
