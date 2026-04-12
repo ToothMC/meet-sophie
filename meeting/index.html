@@ -990,14 +990,15 @@ window.addEventListener("pagehide", () => {
   if (meetingPhase === "live") {
     emergencyFlush();
     // Best-effort: mark meeting as post so it doesn't stay "live" forever (zombie)
-    // sendBeacon works even as the page unloads
+    // fetch with keepalive completes even as the page unloads
     if (meetingId && accessToken) {
       try {
-        const payload = JSON.stringify({ meeting_id: meetingId, phase: "post", source: "pagehide" });
-        navigator.sendBeacon(
-          `/api/meeting?action=phase`,
-          new Blob([payload], { type: "application/json" })
-        );
+        fetch("/api/meeting?action=phase", {
+          method: "POST",
+          keepalive: true,
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+          body: JSON.stringify({ meeting_id: meetingId, phase: "post", source: "pagehide" }),
+        }).catch(() => {});
       } catch (_) {}
     }
   }
