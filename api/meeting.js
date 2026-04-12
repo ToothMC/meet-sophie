@@ -1484,13 +1484,14 @@ async function handleAnalyzeDoc(req, res) {
 
   const prompt = `Analysiere dieses Dokument (Meeting-Protokoll, Notizen oder Bericht).
 Extrahiere strukturiert folgende Kategorien:
-1. offene_punkte: Dinge die noch offen oder ungeklärt sind
-2. entscheidungen: Bereits getroffene Entscheidungen
-3. folgeaufgaben: Konkrete To-Dos (mit Verantwortlichen falls genannt)
-4. agenda_vorschlaege: Punkte die in einem Folge-Meeting besprochen werden sollten
+1. teilnehmer: Namen der Personen die im Dokument als Teilnehmer/Anwesende genannt werden (nur Namen, z.B. "Max Müller")
+2. offene_punkte: Dinge die noch offen oder ungeklärt sind
+3. entscheidungen: Bereits getroffene Entscheidungen
+4. folgeaufgaben: Konkrete To-Dos (mit Verantwortlichen falls genannt)
+5. agenda_vorschlaege: Punkte die in einem Folge-Meeting besprochen werden sollten
 
 Antworte NUR mit validem JSON. Alle Array-Werte MÜSSEN einfache Strings sein (kein verschachteltes JSON, keine Objekte):
-{"offene_punkte":["Text..."],"entscheidungen":["Text..."],"folgeaufgaben":["Text..."],"agenda_vorschlaege":["Text..."]}
+{"teilnehmer":["Name..."],"offene_punkte":["Text..."],"entscheidungen":["Text..."],"folgeaufgaben":["Text..."],"agenda_vorschlaege":["Text..."]}
 
 Dokument:
 ${docText}`;
