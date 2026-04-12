@@ -104,7 +104,16 @@
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__deploy_edge_function",
       "Read(//Users/michaelhammer/Downloads/**)",
       "Bash(gunzip -k Trace-20260412T115734.json.gz)",
-      "Bash(ls -la Trace-20260412T115734.json*)"
+      "Bash(ls -la Trace-20260412T115734.json*)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:saricden.com)",
+      "WebFetch(domain:www.franciscomoretti.com)",
+      "WebFetch(domain:www.htmhell.dev)",
+      "WebFetch(domain:medium.com)",
+      "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__list_customers",
+      "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__fetch_stripe_resources",
+      "mcp__4dff4410-becd-423d-88a2-0336cc6208b0__search_stripe_resources",
+      "Bash(ls -la /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.html)"
     ]
   },
   "hooks": {
