@@ -2821,6 +2821,14 @@ function openDocModal(btn) {
   document.body.appendChild(overlay);
 }
 
+// Placeholder — wired up in Phase 3
+function analyzeDoc(btn) {
+  const card = btn.closest(".doc-card");
+  const contextId = card.dataset.contextId;
+  if (!contextId) return;
+  analyzeDocById(contextId, card);
+}
+
 async function uploadFile(file) {
   if (!meetingId) return;
 
