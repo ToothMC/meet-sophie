@@ -795,7 +795,9 @@ export default async function handler(req, res) {
     const sophiePrompt = buildSophiePrompt({
       tier,
       sessionMode,
-      meetingPhase: sessionMode === "meeting" ? "live" : null,
+      meetingPhase: sessionMode === "meeting"
+        ? (String(req.headers["x-sophie-meeting-phase"] || "live").toLowerCase() === "prep" ? "prep" : "live")
+        : null,
       meetingContext,
       isFirstSession,
       hasHandover: hasHandoverContext,
