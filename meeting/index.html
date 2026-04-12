@@ -2895,11 +2895,11 @@ function importCheckedToAgenda(btn) {
   const agendaEl = $("ctxAgenda");
   agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
   autoResizeTextarea(agendaEl);
-  // Open the context panel so user sees the result
-  const contextBody = document.querySelector(".context-body");
-  if (contextBody) contextBody.style.display = "";
-  // Save directly (don't rely on .click() which can be a no-op when disabled)
   saveContext();
+  // Scroll agenda into view and flash it
+  agendaEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  agendaEl.style.outline = "2px solid #c4a882";
+  setTimeout(() => { agendaEl.style.outline = ""; }, 1500);
   appendSystemMsg(`✅ ${checked.length} Punkt(e) zur Agenda hinzugefügt.`);
 }
 
