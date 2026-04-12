@@ -1473,25 +1473,28 @@
             .order("last_message_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
-          // Last meeting
+          // Last meeting — order by created_at (always set; started_at is null for prep-phase meetings)
           supabase.from("meetings")
-            .select("id, title, meeting_type, phase, started_at")
+            .select("id, title, meeting_type, phase, started_at, created_at")
             .eq("user_id", userId)
-            .order("started_at", { ascending: false })
+            .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
         ]);
 
-        // Pick the most recent across all sources
+        // Pick the most recent across all sources.
+        // Meetings use created_at as fallback because started_at is null until the meeting goes live.
         const candidates = [
           sessRes.data && { ...sessRes.data, _src: "session" },
           chatRes.data && { ...chatRes.data, _src: "chat" },
-          meetRes.data && { ...meetRes.data, _src: "meeting", started_at: meetRes.data.started_at },
+          meetRes.data && { ...meetRes.data, _src: "meeting" },
         ].filter(Boolean);
 
-        const entry = candidates.sort((a, b) =>
-          new Date(b.last_message_at || b.started_at || b.session_date || 0) - new Date(a.last_message_at || a.started_at || a.session_date || 0)
-        )[0] || null;
+        const entry = candidates.sort((a, b) => {
+          const dateA = a.last_message_at || a.started_at || a.session_date || a.created_at || 0;
+          const dateB = b.last_message_at || b.started_at || b.session_date || b.created_at || 0;
+          return new Date(dateB) - new Date(dateA);
+        })[0] || null;
 
         if (entry) {
           const isMeeting = entry._src === "meeting";

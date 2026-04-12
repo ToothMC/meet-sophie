@@ -62,6 +62,43 @@ async function requireAuth(req, res) {
 // File content extraction (server-side)
 // ---------------------------------------------------------------------------
 
+// Helper: call GPT-4o Vision for images and scanned documents
+async function extractViaVision(base64, mimeType, fileName, isHandwritten = false) {
+  const prompt = isHandwritten
+    ? `This image contains handwritten or printed notes, a paper document, or a photo of a document.
+Your task:
+1. Transcribe ALL visible text exactly as written — including handwritten text, printed text, tables, and lists.
+2. Preserve structure: use bullet points for lists, line breaks between sections, and mark headings clearly.
+3. If text is illegible, write [illegible] in place.
+4. Do NOT describe the image — only transcribe the text content.
+5. Keep the original language (do not translate).
+Filename: ${fileName}`
+    : `Extract all text content from this image (${fileName}). Be thorough. If it contains a document, table, or chart, extract all the data in structured form.`;
+
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      max_tokens: 2000,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+        ],
+      }],
+    }),
+  });
+
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || null;
+}
+
 async function extractFileContent(supabase, filePath) {
   // Download file from Supabase Storage
   const { data: fileData, error: dlError } = await supabase.storage
@@ -78,74 +115,65 @@ async function extractFileContent(supabase, filePath) {
     return text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text;
   }
 
-  // PDF / DOCX / PPTX / Images: use OpenAI to extract/describe content
-  if (["pdf", "docx", "pptx", "png", "jpg", "jpeg", "webp"].includes(ext)) {
-    const isImage = ["png", "jpg", "jpeg", "webp"].includes(ext);
+  // Images: GPT-4o Vision with handwriting-aware prompt
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
+    const buffer = await fileData.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+    const extracted = await extractViaVision(base64, mimeType, fileName, true);
+    if (extracted) return `[Image: ${fileName}]\n${extracted}`;
+    return `[Image: ${fileName}] — Could not extract content.`;
+  }
 
-    // Convert to base64 for images
-    if (isImage) {
-      const buffer = await fileData.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
-      const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
-
-      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o",
-          max_tokens: 1500,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "text", text: `Describe and extract all text from this image (${fileName}). Be thorough. If it contains a document, table, or chart, extract the data.` },
-              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-            ],
-          }],
-        }),
-      });
-
-      if (resp.ok) {
-        const data = await resp.json();
-        return `[Image: ${fileName}]\n${data?.choices?.[0]?.message?.content || ""}`;
+  // DOCX: extract with mammoth
+  if (ext === "docx") {
+    try {
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      const result = await mammoth.extractRawText({ buffer });
+      const text = (result.value || "").trim();
+      if (text) {
+        return `[DOCX: ${fileName}]\n${text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text}`;
       }
+    } catch (e) {
+      console.error("DOCX extraction error:", e?.message);
     }
+    return `[DOCX: ${fileName}] — Could not extract text.`;
+  }
 
-    // DOCX: extract with mammoth
-    if (ext === "docx") {
+  // PDF: dynamic import of pdf-parse to avoid serverless module-load failures
+  if (ext === "pdf") {
+    try {
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      // Limit to 500KB to avoid function timeouts on very large PDFs
+      const parseBuffer = buffer.length > 512000 ? buffer.slice(0, 512000) : buffer;
+
+      let pdfParse;
       try {
-        const buffer = Buffer.from(await fileData.arrayBuffer());
-        const result = await mammoth.extractRawText({ buffer });
-        const text = (result.value || "").trim();
-        if (text) {
-          return `[DOCX: ${fileName}]\n${text.length > 8000 ? text.slice(0, 8000) + "\n... (truncated)" : text}`;
-        }
-      } catch (e) {
-        console.error("DOCX extraction error:", e?.message);
+        // Dynamic import avoids crashing the whole module if pdf-parse has issues
+        const mod = await import("pdf-parse/lib/pdf-parse.js");
+        pdfParse = mod.default || mod;
+      } catch (importErr) {
+        console.error("pdf-parse import failed:", importErr?.message);
+        return `[PDF: ${fileName}] — Text extraction unavailable in this environment. Please export as DOCX or take a photo for best results.`;
       }
-      return `[DOCX: ${fileName}] — Could not extract text.`;
-    }
 
-    // PDF: extract readable strings from raw binary
-    if (ext === "pdf") {
-      const buffer = await fileData.arrayBuffer();
-      const textContent = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-      const readable = textContent.match(/\(([^)]+)\)/g);
-      if (readable && readable.length > 5) {
-        const extracted = readable.map(s => s.slice(1, -1)).join(" ").slice(0, 8000);
-        return `[PDF: ${fileName}]\n${extracted}`;
+      const parsed = await pdfParse(parseBuffer, { max: 50 });
+      const text = (parsed.text || "").trim();
+      if (text.length > 50) {
+        const truncated = text.length > 8000 ? text.slice(0, 8000) + "\n... (gekürzt)" : text;
+        return `[PDF: ${fileName} — ${parsed.numpages} Seite(n)]\n${truncated}`;
       }
-      return `[PDF: ${fileName}] — Text extraction limited. Content stored as reference.`;
+      // Very little text → likely a scanned PDF
+      return `[PDF: ${fileName}] — Dieses PDF scheint gescannt zu sein (kein lesbarer Text). Für beste Ergebnisse: Foto aufnehmen und als Bild hochladen.`;
+    } catch (e) {
+      console.error("PDF extraction error:", e?.message);
+      return `[PDF: ${fileName}] — Textextraktion fehlgeschlagen: ${e?.message || "unbekannter Fehler"}.`;
     }
+  }
 
-    // PPTX: basic reference (full extraction would need separate library)
-    if (ext === "pptx") {
-      return `[PPTX: ${fileName}] — Presentation uploaded for reference.`;
-    }
-
-    return `[Document: ${fileName}] — Uploaded for reference.`;
+  // PPTX: basic reference
+  if (ext === "pptx") {
+    return `[PPTX: ${fileName}] — Presentation uploaded for reference. Text extraction for PPTX is not yet supported — export individual slides as PDF for best results.`;
   }
 
   return `[File: ${fileName}]`;
@@ -438,10 +466,22 @@ async function handleContext(req, res) {
   const insertData = { meeting_id, context_type, content: finalContent };
   if (body.file_path) insertData.file_path = body.file_path;
 
+  // Build metadata for file uploads (used for document report cards in UI)
+  if (context_type === "file" && body.file_path) {
+    const originalFilename = body.file_path.split("/").pop().replace(/^\d+_/, "");
+    const preview = finalContent.replace(/^\[.*?\]\n?/, "").slice(0, 300).replace(/\s+/g, " ").trim();
+    insertData.metadata = {
+      original_filename: originalFilename,
+      char_count: finalContent.length,
+      preview: preview || null,
+      extracted_at: new Date().toISOString(),
+    };
+  }
+
   const { data, error } = await supabase
     .from("meeting_context")
     .insert(insertData)
-    .select("id, context_type, file_path, created_at")
+    .select("id, context_type, file_path, content, metadata, created_at")
     .single();
 
   if (error) {
@@ -1396,6 +1436,98 @@ async function handleBurstCost(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Action: analyze_doc — KI-Analyse eines hochgeladenen Dokuments
+// Extrahiert offene Punkte, Entscheidungen, Folgeaufgaben, Agenda-Vorschläge.
+// Ergebnis wird im metadata.analysis Feld gecacht (kein Doppel-Aufruf).
+// ---------------------------------------------------------------------------
+
+async function handleAnalyzeDoc(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const body = parseBody(req);
+  const { meeting_id, context_id } = body;
+  if (!meeting_id || !context_id) return res.status(400).json({ error: "Missing meeting_id or context_id" });
+
+  const supabase = getSupabase();
+
+  // Verify meeting ownership
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("id", meeting_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  // Load the context row
+  const { data: ctx } = await supabase
+    .from("meeting_context")
+    .select("id, content, metadata")
+    .eq("id", context_id)
+    .eq("meeting_id", meeting_id)
+    .maybeSingle();
+  if (!ctx) return res.status(404).json({ error: "Context not found" });
+  if (!ctx.content || ctx.content.startsWith("[File:")) {
+    return res.status(422).json({ error: "Document content not yet extracted" });
+  }
+
+  // Return cached analysis if available and has all current fields (incl. teilnehmer)
+  if (ctx.metadata?.analysis && ctx.metadata.analysis.teilnehmer !== undefined) {
+    return res.status(200).json({ ok: true, analysis: ctx.metadata.analysis, cached: true });
+  }
+
+  // Strip file header prefix for cleaner input
+  const docText = ctx.content.replace(/^\[.*?\]\n?/, "").slice(0, 12000);
+
+  const prompt = `Analysiere dieses Dokument (Meeting-Protokoll, Notizen oder Bericht).
+Extrahiere strukturiert folgende Kategorien:
+1. teilnehmer: Namen der Personen die im Dokument als Teilnehmer/Anwesende genannt werden (nur Namen, z.B. "Max Müller")
+2. offene_punkte: Dinge die noch offen oder ungeklärt sind
+3. entscheidungen: Bereits getroffene Entscheidungen
+4. folgeaufgaben: Konkrete To-Dos (mit Verantwortlichen falls genannt)
+5. agenda_vorschlaege: Punkte die in einem Folge-Meeting besprochen werden sollten
+
+Antworte NUR mit validem JSON. Alle Array-Werte MÜSSEN einfache Strings sein (kein verschachteltes JSON, keine Objekte):
+{"teilnehmer":["Name..."],"offene_punkte":["Text..."],"entscheidungen":["Text..."],"folgeaufgaben":["Text..."],"agenda_vorschlaege":["Text..."]}
+
+Dokument:
+${docText}`;
+
+  let analysis;
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!resp.ok) throw new Error(`OpenAI error ${resp.status}`);
+    const data = await resp.json();
+    analysis = JSON.parse(data.choices[0].message.content);
+  } catch (e) {
+    console.error("analyze_doc AI error:", e?.message);
+    return res.status(500).json({ error: "AI analysis failed" });
+  }
+
+  // Cache in metadata + deduct tokens
+  const updatedMeta = { ...(ctx.metadata || {}), analysis, analyzed_at: new Date().toISOString() };
+  await supabase.from("meeting_context").update({ metadata: updatedMeta }).eq("id", context_id);
+  try { await supabase.rpc("deduct_tokens", { p_user_id: user.id, p_amount: TOKEN_COSTS.chat_message * 3 }); } catch (_) {}
+
+  return res.status(200).json({ ok: true, analysis });
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
@@ -1413,6 +1545,7 @@ export default async function handler(req, res) {
     case "finalize_billing": return handleFinalizeBilling(req, res);
     case "burst_message":    return handleBurstMessage(req, res);
     case "burst_cost":       return handleBurstCost(req, res);
+    case "analyze_doc":      return handleAnalyzeDoc(req, res);
     case "summarize":        return handleSummarize(req, res);
     case "summary":          return handleSummary(req, res);
     case "delete":           return handleDelete(req, res);

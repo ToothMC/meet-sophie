@@ -114,7 +114,7 @@ body{
 .context-toggle{
   display:none; /* Hide toggle label on mobile — fields speak for themselves */
 }
-.context-body{padding:8px 16px 8px}
+.context-body{padding:8px 16px 8px;max-height:70vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .context-body textarea{
   width:100%;padding:8px 10px;font-size:14px;line-height:1.4;
   background:#fff;border:1px solid #ede8e2;
@@ -234,6 +234,46 @@ body{
 .file-item .file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-item .file-status{font-size:10px;color:#34c47a}
 .uploading{opacity:.5}
+
+/* ---- DOCUMENT REPORT CARDS ---- */
+.doc-card{
+  background:#fff;border:1px solid #e5e0d8;border-radius:10px;
+  padding:10px 12px;margin-bottom:6px;font-size:12px;color:#5a4a40;
+}
+.doc-card-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.doc-card-icon{font-size:15px;flex-shrink:0}
+.doc-card-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-card-status{font-size:10px;color:#34c47a;flex-shrink:0}
+.doc-card-preview{
+  color:#a09080;font-size:11px;line-height:1.4;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  margin-bottom:6px;
+}
+.doc-card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.doc-card-btn{
+  font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #ddd;
+  background:#faf8f5;color:#5a4a40;cursor:pointer;
+}
+.doc-card-btn:hover{background:#ede8e2}
+.doc-card-btn.primary{background:#c4a882;color:#fff;border-color:#c4a882}
+.doc-card-btn.primary:hover{background:#b8956e}
+
+/* ---- DOC PREVIEW MODAL ---- */
+.doc-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.doc-modal{
+  background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:600px;
+  max-height:80vh;display:flex;flex-direction:column;padding:0;overflow:hidden;
+}
+.doc-modal-header{
+  display:flex;align-items:center;gap:10px;padding:14px 16px;
+  border-bottom:1px solid #ede8e2;
+}
+.doc-modal-title{flex:1;font-weight:600;font-size:14px;color:#2a2420;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-modal-close{font-size:20px;cursor:pointer;color:#a09080;padding:0 4px;background:none;border:none}
+.doc-modal-body{flex:1;overflow-y:auto;padding:16px;font-size:13px;color:#3a3030;line-height:1.6;white-space:pre-wrap;word-break:break-word}
 
 /* ---- HINT MESSAGES ---- */
 .msg.assistant.hint{
@@ -418,14 +458,17 @@ body{
       <textarea id="ctxAgenda" placeholder="Agenda..." rows="2"></textarea>
       <textarea id="ctxParticipants" placeholder="Participants..." rows="2"></textarea>
       <textarea id="ctxGoal" placeholder="Goal of this meeting..." rows="2"></textarea>
-      <button class="save-context-btn" id="saveContextBtn">Save Context</button>
+      <button class="save-context-btn" id="saveContextBtn" style="display:none">Save Context</button>
+      <button class="save-context-btn" id="prepVoiceBtn" style="background:linear-gradient(180deg,#3f8cff 0%,#2167db 100%);color:#fff;border-color:#2167db;width:100%;font-size:16px;font-weight:600">🎙 Mit Sophie besprechen</button>
 
       <!-- File Upload -->
       <div class="upload-area" id="uploadArea">
         <input type="file" id="fileInput" accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.webp" multiple />
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" />
         <span class="upload-label" id="uploadLabel">📎 Drop files or click to upload</span>
         <div style="font-size:10px;color:#a09080;margin-top:4px" id="uploadHint">TXT, DOCX, PDF, Images</div>
       </div>
+      <button class="doc-card-btn" style="width:100%;margin-top:4px" id="cameraBtn">📷 Foto aufnehmen</button>
       <div class="file-list" id="fileList"></div>
     </div>
   </div>
@@ -943,7 +986,23 @@ async function emergencyFlush() {
 }
 
 // pagehide = primary, visibilitychange = fallback
-window.addEventListener("pagehide", () => { if (meetingPhase === "live") emergencyFlush(); });
+window.addEventListener("pagehide", () => {
+  if (meetingPhase === "live") {
+    emergencyFlush();
+    // Best-effort: mark meeting as post so it doesn't stay "live" forever (zombie)
+    // fetch with keepalive completes even as the page unloads
+    if (meetingId && accessToken) {
+      try {
+        fetch("/api/meeting?action=phase", {
+          method: "POST",
+          keepalive: true,
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+          body: JSON.stringify({ meeting_id: meetingId, phase: "post", source: "pagehide" }),
+        }).catch(() => {});
+      } catch (_) {}
+    }
+  }
+});
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && meetingPhase === "live") emergencyFlush();
 });
@@ -1688,17 +1747,11 @@ async function loadMeeting(id) {
       window.__parentPrefill = null;
     }
 
-    // Load existing uploaded files
+    // Load existing uploaded files as document cards
     const fileContexts = contexts.filter(c => c.context_type === "file");
     const fileListEl = $("fileList");
     fileListEl.innerHTML = "";
-    fileContexts.forEach(fc => {
-      const fileName = fc.file_path ? fc.file_path.split("/").pop().replace(/^\d+_/, "") : "File";
-      const div = document.createElement("div");
-      div.className = "file-item";
-      div.innerHTML = `<span class="file-icon">📎</span><span class="file-name">${fileName}</span><span class="file-status">✓</span>`;
-      fileListEl.appendChild(div);
-    });
+    fileContexts.forEach(fc => renderDocCard(fc, fileListEl));
 
     // Load existing notes as system messages
     const notes = data.notes || [];
@@ -2730,6 +2783,235 @@ const FILE_ICONS = {
   "image/png": "🖼️", "image/jpeg": "🖼️", "image/webp": "🖼️",
 };
 
+// ---------------------------------------------------------------------------
+// Document Report Cards
+// ---------------------------------------------------------------------------
+
+function renderDocCard(fc, container) {
+  const meta = fc.metadata || {};
+  const fileName = meta.original_filename
+    || (fc.file_path ? fc.file_path.split("/").pop().replace(/^\d+_/, "") : "File");
+  const ext = fileName.split(".").pop().toLowerCase();
+  const icon = ext === "pdf" ? "📄" : ["png","jpg","jpeg","webp"].includes(ext) ? "🖼️"
+    : ext === "docx" ? "📝" : ext === "pptx" ? "📊" : "📎";
+
+  const div = document.createElement("div");
+  div.className = "doc-card";
+  div.dataset.contextId = fc.id || "";
+
+  const preview = meta.preview || "";
+  const charInfo = meta.char_count > 0
+    ? `${(meta.char_count / 1000).toFixed(1)}k Zeichen` : "";
+
+  div.innerHTML = `
+    <div class="doc-card-header">
+      <span class="doc-card-icon">${icon}</span>
+      <span class="doc-card-name" title="${fileName}">${fileName}</span>
+      <span class="doc-card-status">${charInfo}</span>
+    </div>
+    ${preview ? `<div class="doc-card-preview">${preview}</div>` : ""}
+    <div class="doc-card-actions">
+      <button class="doc-card-btn" data-action="show-doc">Anzeigen</button>
+      <button class="doc-card-btn primary" data-action="analyze-doc">Mit KI analysieren</button>
+    </div>`;
+
+  // Store full content for modal
+  div._fullContent = fc.content || "";
+  div._fileName = fileName;
+  container.appendChild(div);
+}
+
+function openDocModal(btn) {
+  const card = btn.closest(".doc-card");
+  const content = card._fullContent || "(kein Inhalt)";
+  const fileName = card._fileName || "Dokument";
+
+  const overlay = document.createElement("div");
+  overlay.className = "doc-modal-overlay";
+  overlay.innerHTML = `
+    <div class="doc-modal">
+      <div class="doc-modal-header">
+        <span class="doc-modal-title">${fileName}</span>
+        <button class="doc-modal-close" data-action="close-modal">✕</button>
+      </div>
+      <div class="doc-modal-body">${content.replace(/</g,"&lt;")}</div>
+    </div>`;
+  overlay.querySelector("[data-action='close-modal']").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function analyzeDoc(btn) {
+  const card = btn.closest(".doc-card");
+  const contextId = card.dataset.contextId;
+  if (!contextId) { appendSystemMsg("⚠️ Dokument noch nicht gespeichert — bitte kurz warten."); return; }
+  analyzeDocById(contextId, card, btn);
+}
+
+async function analyzeDocById(contextId, card, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "Analysiere..."; }
+  try {
+    const result = await api("analyze_doc", { meeting_id: meetingId, context_id: contextId });
+    if (!result?.analysis) throw new Error("Keine Analyse");
+    showAnalysisPanel(result.analysis, card);
+    if (result.cached && btn) btn.textContent = "Erneut anzeigen";
+  } catch (e) {
+    appendSystemMsg("⚠️ Analyse fehlgeschlagen: " + (e?.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; if (!btn.textContent.includes("anzeigen")) btn.textContent = "Mit KI analysieren"; }
+  }
+}
+
+function showAnalysisPanel(analysis, card) {
+  // Remove existing panel if any
+  card.querySelector(".analysis-panel")?.remove();
+
+  let html = `<div class="analysis-panel" style="margin-top:8px;border-top:1px solid #ede8e2;padding-top:8px">`;
+  let hasContent = false;
+
+  // ── Teilnehmer (separate import target: ctxParticipants) ──
+  const teilnehmer = analysis.teilnehmer;
+  if (teilnehmer?.length) {
+    hasContent = true;
+    html += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">👥 Teilnehmer</div>`;
+    teilnehmer.forEach(item => {
+      const escaped = String(typeof item === "object" ? JSON.stringify(item) : item).replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      html += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
+        <input type="checkbox" class="participant-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0;accent-color:#c4a882">
+        <span>${escaped}</span>
+      </label>`;
+    });
+    html += `<button class="doc-card-btn" style="margin-top:4px;width:100%;font-size:11px" data-action="import-participants">In Teilnehmer übernehmen</button>`;
+    html += `</div>`;
+  }
+
+  // ── Agenda-relevante Abschnitte ──
+  const agendaSections = [
+    { key: "offene_punkte",     label: "Offene Punkte",    emoji: "❓" },
+    { key: "entscheidungen",    label: "Entscheidungen",   emoji: "✅" },
+    { key: "folgeaufgaben",     label: "Folgeaufgaben",    emoji: "📌" },
+    { key: "agenda_vorschlaege",label: "Agenda-Vorschläge",emoji: "📋" },
+  ];
+
+  let hasAgendaContent = false;
+  let agendaHtml = "";
+  agendaSections.forEach(({ key, label, emoji }) => {
+    const items = analysis[key];
+    if (!items?.length) return;
+    hasAgendaContent = true;
+    hasContent = true;
+    agendaHtml += `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:#5a4a40;margin-bottom:3px">${emoji} ${label}</div>`;
+    items.forEach(item => {
+      const escaped = String(typeof item === "object" ? JSON.stringify(item) : item).replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      agendaHtml += `<label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#5a4a40;margin-bottom:2px;cursor:pointer">
+        <input type="checkbox" class="agenda-item-cb" data-text="${escaped}" style="margin-top:2px;flex-shrink:0;accent-color:#c4a882">
+        <span>${escaped}</span>
+      </label>`;
+    });
+    agendaHtml += `</div>`;
+  });
+
+  html += agendaHtml;
+  if (hasAgendaContent) {
+    html += `<button class="doc-card-btn primary" style="margin-top:4px;width:100%" data-action="import-agenda">Auswahl in Agenda übernehmen</button>`;
+  }
+
+  if (!hasContent) {
+    html += `<div style="font-size:11px;color:#a09080">Keine strukturierten Inhalte gefunden.</div>`;
+  }
+  html += `</div>`;
+  card.insertAdjacentHTML("beforeend", html);
+  card.querySelector("[data-action='import-agenda']")?.addEventListener("click", (e) => importCheckedToAgenda(e.currentTarget));
+  card.querySelector("[data-action='import-participants']")?.addEventListener("click", (e) => importCheckedToParticipants(e.currentTarget));
+}
+
+function importCheckedToAgenda(btn) {
+  const panel = btn.closest(".analysis-panel");
+  if (!panel) return;
+  const checked = [...panel.querySelectorAll(".agenda-item-cb:checked")];
+  if (!checked.length) { appendSystemMsg("Bitte zuerst Punkte auswählen."); return; }
+
+  const items = checked.map(cb => "- " + cb.dataset.text).join("\n");
+  const agendaEl = $("ctxAgenda");
+  agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
+  autoResizeTextarea(agendaEl);
+  saveContext();
+  // Scroll agenda into view and flash it
+  agendaEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  agendaEl.style.outline = "2px solid #c4a882";
+  setTimeout(() => { agendaEl.style.outline = ""; }, 1500);
+  appendSystemMsg(`✅ ${checked.length} Punkt(e) zur Agenda hinzugefügt.`);
+}
+
+function importCheckedToParticipants(btn) {
+  const panel = btn.closest(".analysis-panel");
+  if (!panel) return;
+  const checked = [...panel.querySelectorAll(".participant-item-cb:checked")];
+  if (!checked.length) { appendSystemMsg("Bitte zuerst Teilnehmer auswählen."); return; }
+
+  const participantsEl = $("ctxParticipants");
+  const existing = (participantsEl.value || "").trim();
+  const newNames = checked.map(cb => cb.dataset.text.trim()).filter(Boolean);
+  const existingNames = existing ? existing.split(",").map(n => n.trim()).filter(Boolean) : [];
+  // Deduplicate: only add names not already present (case-insensitive)
+  const toAdd = newNames.filter(n => !existingNames.some(e => e.toLowerCase() === n.toLowerCase()));
+  if (!toAdd.length) { appendSystemMsg("Alle ausgewählten Teilnehmer sind bereits eingetragen."); return; }
+
+  participantsEl.value = [...existingNames, ...toAdd].join(", ");
+  autoResizeTextarea(participantsEl);
+  saveContext();
+  participantsEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  participantsEl.style.outline = "2px solid #c4a882";
+  setTimeout(() => { participantsEl.style.outline = ""; }, 1500);
+  appendSystemMsg(`✅ ${toAdd.length} Teilnehmer übernommen.`);
+}
+
+// Phase 5: Sophie hat im Voice-Gespräch Agenda-Punkte erarbeitet → Import anbieten
+function offerPrepAgendaImport(items) {
+  // Remove any existing offer panel
+  document.getElementById("prepAgendaOffer")?.remove();
+
+  const escaped = items.map(i => String(typeof i === "object" ? JSON.stringify(i) : i).replace(/</g, "&lt;"));
+  const checkboxes = escaped.map((item, i) =>
+    `<label style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#3a3030;margin-bottom:4px;cursor:pointer">
+      <input type="checkbox" class="prep-agenda-cb" data-text="${item}" checked style="margin-top:2px;flex-shrink:0">
+      <span>${item}</span>
+    </label>`
+  ).join("");
+
+  const div = document.createElement("div");
+  div.id = "prepAgendaOffer";
+  div.style.cssText = "background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin:8px 0";
+  div.innerHTML = `
+    <div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:8px">📋 Sophie hat ${items.length} Agenda-Punkt(e) erarbeitet:</div>
+    ${checkboxes}
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="doc-card-btn primary" style="flex:1" data-action="confirm-agenda">In Agenda übernehmen</button>
+      <button class="doc-card-btn" data-action="discard-agenda">Verwerfen</button>
+    </div>`;
+  div.querySelector("[data-action='confirm-agenda']").addEventListener("click", confirmPrepAgendaImport);
+  div.querySelector("[data-action='discard-agenda']").addEventListener("click", () => div.remove());
+
+  // Insert after the context panel's save button area
+  const contextBody = document.querySelector(".context-body");
+  if (contextBody) contextBody.insertBefore(div, contextBody.firstChild);
+}
+
+function confirmPrepAgendaImport() {
+  const offer = document.getElementById("prepAgendaOffer");
+  if (!offer) return;
+  const checked = [...offer.querySelectorAll(".prep-agenda-cb:checked")];
+  if (!checked.length) { offer.remove(); return; }
+
+  const items = checked.map(cb => "- " + cb.dataset.text).join("\n");
+  const agendaEl = $("ctxAgenda");
+  agendaEl.value = (agendaEl.value.trim() ? agendaEl.value.trim() + "\n" : "") + items;
+  autoResizeTextarea(agendaEl);
+  saveContext();
+  offer.remove();
+  appendSystemMsg(`✅ ${checked.length} Agenda-Punkt(e) aus Voice-Gespräch übernommen.`);
+}
+
 async function uploadFile(file) {
   if (!meetingId) return;
 
@@ -2763,16 +3045,19 @@ async function uploadFile(file) {
       if (content.length > 8000) content = content.slice(0, 8000) + "\n... (truncated)";
     }
 
-    // 3. Save as meeting_context
-    await api("context", {
+    // 3. Save as meeting_context (server extracts PDF/DOCX/image content)
+    const ctxResult = await api("context", {
       meeting_id: meetingId,
       context_type: "file",
       content,
       file_path: path,
     });
 
-    itemDiv.classList.remove("uploading");
-    itemDiv.querySelector(".file-status").textContent = "✓";
+    // Replace uploading placeholder with document card
+    itemDiv.remove();
+    if (ctxResult?.context) {
+      renderDocCard(ctxResult.context, $("fileList"));
+    }
     appendSystemMsg(`${file.name} ${t("uploadDone").toLowerCase()}`);
   } catch (e) {
     itemDiv.classList.remove("uploading");
@@ -3550,7 +3835,18 @@ async function fetchRealtimeAnswerSdp(offerSdp, clientSecret) {
   }
 }
 
-async function connectSophieVoice() {
+function startPrepVoice() {
+  if (sophieVoicePc) {
+    // Already connected — disconnect (toggle)
+    disconnectSophieVoice();
+    $("prepVoiceBtn").textContent = "🎙 Mit Sophie besprechen";
+    return;
+  }
+  $("prepVoiceBtn").textContent = "⏳ Verbinde...";
+  connectSophieVoice("prep");
+}
+
+async function connectSophieVoice(phase = "live") {
   if (isConnecting || sophieVoicePc) return;
 
   // Acquire realtime lock (primary → realtime order)
@@ -3592,6 +3888,7 @@ async function connectSophieVoice() {
       Authorization: `Bearer ${authToken}`,
       "X-Sophie-Session-Mode": "meeting",
       "X-Sophie-Meeting-Id": meetingId || "",
+      "X-Sophie-Meeting-Phase": phase,
     };
     // Burst mode: tell server to load transcript context from DB
     if (isMeetingBurstActive) {
@@ -3645,6 +3942,23 @@ async function connectSophieVoice() {
           },
         },
       }));
+
+      // Prep mode: send kickoff instruction so Sophie opens the conversation
+      if (phase === "prep") {
+        $("prepVoiceBtn").textContent = "🔴 Beenden";
+        sophieVoiceDc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{
+              type: "input_text",
+              text: "[System: Start the meeting preparation. Briefly acknowledge you have the context, then guide the user through agenda, goals, and potential risks. Speak naturally — this is a voice conversation.]",
+            }],
+          },
+        }));
+        sophieVoiceDc.send(JSON.stringify({ type: "response.create" }));
+      }
     };
     sophieVoiceDc.onmessage = (evt) => {
       try {
@@ -3759,6 +4073,17 @@ function handleVoiceTranscriptEvent(msg) {
   // Response complete — save Sophie's text + start auto-disconnect timer
   if (msg?.type === "response.done") {
     let final = String(partialAssistant || "").replace(/\s+/g, " ").trim();
+
+    // Phase 5: detect prep_agenda JSON and offer agenda import
+    const prepAgendaMatch = final.match(/\{"prep_agenda"\s*:\s*(\[[\s\S]*?\])\}/);
+    if (prepAgendaMatch) {
+      try {
+        const items = JSON.parse(prepAgendaMatch[1]);
+        if (Array.isArray(items) && items.length > 0) offerPrepAgendaImport(items);
+      } catch (_) {}
+      final = final.replace(/\s*\{"prep_agenda"[\s\S]*?\}\s*/g, "").trim();
+    }
+
     final = final.replace(/\s*\{["']?(?:decisions|actions|risks|open_points)["']?\s*:[\s\S]*$/i, "").trim();
     const last = String(lastAssistantFinal || "").replace(/\s+/g, " ").trim();
     if (final && final !== last) {
@@ -4328,6 +4653,12 @@ window.deleteMeeting = async function(id, btn) {
 
 // File upload handlers
 $("uploadArea").addEventListener("click", () => $("fileInput").click());
+$("prepVoiceBtn").addEventListener("click", startPrepVoice);
+$("cameraBtn").addEventListener("click", (e) => { e.stopPropagation(); $("cameraInput").click(); });
+$("cameraInput").addEventListener("change", (e) => {
+  for (const file of e.target.files) uploadFile(file);
+  e.target.value = "";
+});
 $("fileInput").addEventListener("change", (e) => {
   for (const file of e.target.files) uploadFile(file);
   e.target.value = "";
@@ -4343,6 +4674,16 @@ $("uploadArea").addEventListener("drop", (e) => {
   e.preventDefault();
   $("uploadArea").style.borderColor = "";
   for (const file of e.dataTransfer.files) uploadFile(file);
+});
+
+// Event delegation for dynamically created doc-card buttons
+$("fileList").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const action = btn.dataset.action;
+  const card = btn.closest(".doc-card");
+  if (action === "show-doc" && card) openDocModal(btn);
+  if (action === "analyze-doc" && card) analyzeDocById(card.dataset.contextId, card, btn);
 });
 
 $("backBtn").addEventListener("click", (e) => {

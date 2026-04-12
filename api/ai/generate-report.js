@@ -47,12 +47,16 @@ export default async function handler(req, res) {
   // Determine report language: user profile (truth) > explicit param (UI lang) > fallback "en"
   // body.language comes from localStorage (UI language) and can differ from the user's
   // actual content-language preference stored in user_profile.preferred_language.
+  // NOTE: preferred_language in DB is only written by memory-update.js during Talk sessions.
+  // Users who only use Meeting mode may have null → hasExplicitPref = false → auto-detect from transcript.
   let reportLang = null;
+  let hasExplicitPref = false; // true only when user_profile.preferred_language is non-null
   try {
     const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
     if (sess?.user_id) {
       const { data: prof } = await supabase.from('user_profile').select('preferred_language').eq('user_id', sess.user_id).maybeSingle();
       reportLang = prof?.preferred_language || null;
+      hasExplicitPref = !!prof?.preferred_language;
     }
   } catch (_) {}
   if (!reportLang) reportLang = body.language || null;
@@ -61,7 +65,11 @@ export default async function handler(req, res) {
   if (!reportLang || (!['en', 'de', 'fr'].includes(reportLang))) reportLang = 'en';
   const isEN = reportLang === 'en';
   const isFR = reportLang === 'fr';
-  console.log(`[report] ${session_id} — language: ${reportLang}${unsupportedLang ? ` (requested: ${unsupportedLang}, using EN prompt + lang override)` : ''}`);
+  // Meeting auto-detect: if no explicit DB preference, detect language from transcript content.
+  // This handles users who speak German/French in meetings but never did a Talk session that
+  // would have written their preferred_language to the DB.
+  const meetingAutoLang = session_mode === 'meeting' && !hasExplicitPref;
+  console.log(`[report] ${session_id} — language: ${meetingAutoLang ? 'auto-detect (no explicit pref)' : reportLang}${unsupportedLang ? ` (requested: ${unsupportedLang}, using EN prompt + lang override)` : ''}`);
 
   // Resolve user_id for cost tracking + eco mode
   let reportUserId = null;
@@ -101,7 +109,10 @@ export default async function handler(req, res) {
     const modeHint = session_mode ? (isEN ? `Session mode: "${session_mode}".` : isFR ? `Mode de session : "${session_mode}".` : `Session-Modus: "${session_mode}".`) : '';
     const dateLocale = isEN ? 'en-US' : isFR ? 'fr-FR' : 'de-DE';
     const todayDate = new Date().toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const dateInstruction = isEN
+    const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD — language-neutral
+    const dateInstruction = meetingAutoLang
+      ? `Today's date is ${todayISO}. Convert ALL relative time references ("next week", "morgen", "nächste Woche", "demain" etc.) to concrete dates, formatted in the date style appropriate for the detected language.`
+      : isEN
       ? `Today's date is ${todayDate}. Convert ALL relative time references (e.g. "next week", "tomorrow", "in 2 days") to concrete dates.`
       : isFR
       ? `La date d'aujourd'hui est le ${todayDate}. Convertir TOUTES les références temporelles relatives en dates concrètes.`
@@ -131,12 +142,16 @@ export default async function handler(req, res) {
       } catch (_) {}
       if (!meetingTemplate) {
         const { getDefaultTemplates: gdt } = await import('../../lib/report-templates.js');
-        const DT = gdt(reportLang || 'de');
+        // For auto-detect: use 'de' as structural template (most common for this product);
+        // AI will adapt section labels to the detected transcript language.
+        const DT = gdt(meetingAutoLang ? 'de' : (reportLang || 'de'));
         meetingTemplate = DT?.meeting || DT?.default || null;
       }
 
       // ── Language-aware meeting report prompt ──────────────────────────────
-      const langInstruction = unsupportedLang
+      const langInstruction = meetingAutoLang
+        ? 'LANGUAGE: Detect the language from the transcript content and write the ENTIRE report in that SAME language. All headings, labels, and body text must be in the detected language. Do NOT translate any content.'
+        : unsupportedLang
         ? `Write the ENTIRE report in the SAME language as the transcript (detected: ${unsupportedLang}). All headings, labels, and content must be in that language.`
         : isEN ? 'Write the ENTIRE report in English.'
         : isFR ? 'Rédige le rapport ENTIER en français.'
@@ -399,7 +414,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
         try {
           const extractAdapter = getAdapter('openai');
           const extractResp = await extractAdapter.complete({
-            messages: [{ role: 'user', content: `${isEN ? 'Extract structured data from this meeting protocol as JSON.' : isFR ? 'Extrais les données structurées de ce compte rendu de réunion en JSON.' : 'Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.'}
+            messages: [{ role: 'user', content: `${meetingAutoLang ? 'Extract structured data from this meeting protocol as JSON. Write all text values in the SAME language as the meeting protocol.' : isEN ? 'Extract structured data from this meeting protocol as JSON.' : isFR ? 'Extrais les données structurées de ce compte rendu de réunion en JSON.' : 'Extrahiere aus diesem Meeting-Protokoll die strukturierten Daten als JSON.'}
 ${dateInstruction}
 
 HTML-REPORT:
