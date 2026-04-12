@@ -464,9 +464,11 @@ body{
       <!-- File Upload -->
       <div class="upload-area" id="uploadArea">
         <input type="file" id="fileInput" accept=".pdf,.docx,.pptx,.txt,.png,.jpg,.jpeg,.webp" multiple />
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" />
         <span class="upload-label" id="uploadLabel">📎 Drop files or click to upload</span>
         <div style="font-size:10px;color:#a09080;margin-top:4px" id="uploadHint">TXT, DOCX, PDF, Images</div>
       </div>
+      <button class="doc-card-btn" style="width:100%;margin-top:4px" id="cameraBtn">📷 Foto aufnehmen</button>
       <div class="file-list" id="fileList"></div>
     </div>
   </div>
