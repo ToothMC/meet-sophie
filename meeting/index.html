@@ -4608,6 +4608,16 @@ $("uploadArea").addEventListener("drop", (e) => {
   for (const file of e.dataTransfer.files) uploadFile(file);
 });
 
+// Event delegation for dynamically created doc-card buttons
+$("fileList").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const action = btn.dataset.action;
+  const card = btn.closest(".doc-card");
+  if (action === "show-doc" && card) openDocModal(btn);
+  if (action === "analyze-doc" && card) analyzeDocById(card.dataset.contextId, card, btn);
+});
+
 $("backBtn").addEventListener("click", (e) => {
   if (meetingId) {
     e.preventDefault();
