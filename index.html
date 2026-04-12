@@ -5871,6 +5871,7 @@
       const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
       if (!error) {
         hide(authEl);
+        if (footerEl) show(footerEl);
         showOTPInput(email, messagesEl, () => {
           _authReady(true);
           goToVoiceFromChat();
