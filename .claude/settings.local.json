@@ -118,7 +118,11 @@
       "mcp__mcp-registry__search_mcp_registry",
       "mcp__1d6cc1ef-783b-475d-83d9-e5dde946e526__create_draft",
       "Bash(node scripts/build-blog.mjs)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(vercel ls:*)",
+      "Bash(curl -s -H \"Authorization: token $\\(git config --get credential.helper \\)\" \"https://api.github.com/repos/ToothMC/meet-sophie/deployments?ref=feature/meeting-prep-improvements&per_page=3\")",
+      "Bash(grep -n \"updatePhaseUI\\\\|function autoResizeTextarea\\\\|const autoResizeTextarea\\\\|function \\\\$\\\\|const \\\\$\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/meeting/index.html)",
+      "Bash(grep -n \"^const \\\\$\\\\|^function \\\\$\\\\|^\\\\s*\\\\$ =\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/meeting/index.html)"
     ]
   },
   "hooks": {
