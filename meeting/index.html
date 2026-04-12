@@ -4585,6 +4585,7 @@ window.deleteMeeting = async function(id, btn) {
 
 // File upload handlers
 $("uploadArea").addEventListener("click", () => $("fileInput").click());
+$("prepVoiceBtn").addEventListener("click", startPrepVoice);
 $("cameraBtn").addEventListener("click", (e) => { e.stopPropagation(); $("cameraInput").click(); });
 $("cameraInput").addEventListener("change", (e) => {
   for (const file of e.target.files) uploadFile(file);
