@@ -117,7 +117,8 @@
       "Bash(find /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code -name \"*.js\" -path \"*/api/*\" ! -path \"*/node_modules/*\" ! -path \"*/.git/*\" -exec grep -l \"billing\\\\|stripe\\\\|checkout\" {} \\\\;)",
       "mcp__mcp-registry__search_mcp_registry",
       "mcp__1d6cc1ef-783b-475d-83d9-e5dde946e526__create_draft",
-      "Bash(node scripts/build-blog.mjs)"
+      "Bash(node scripts/build-blog.mjs)",
+      "Bash(npm install:*)"
     ]
   },
   "hooks": {
