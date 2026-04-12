@@ -7080,6 +7080,16 @@ logoutBtn.onclick = async () => {
 };
 
 document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    // Proactively refresh session when app returns from background (mobile PWA)
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data?.session) return;
+      const expiresAt = data.session.expires_at;
+      if (expiresAt && expiresAt * 1000 - Date.now() < 300000) {
+        supabase.auth.refreshSession();
+      }
+    }).catch(() => {});
+  }
   if (document.visibilityState === "visible" && voiceWakeLockWanted) {
     void acquireVoiceWakeLock({ silent: true });
   }

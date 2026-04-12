@@ -965,6 +965,20 @@
     profileBtn.textContent = userEmail.split("@")[0] || "Account";
 
     // ── Listen for auth changes ──────────────────────────
+    // Proactively refresh session when app returns from background (mobile PWA)
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        supabase.auth.getSession().then(({ data }) => {
+          if (!data?.session) return;
+          // Force refresh if token expires within 5 minutes
+          const expiresAt = data.session.expires_at;
+          if (expiresAt && expiresAt * 1000 - Date.now() < 300000) {
+            supabase.auth.refreshSession();
+          }
+        }).catch(() => {});
+      }
+    });
+
     supabase.auth.onAuthStateChange(async (event, sess) => {
       if (event === "SIGNED_OUT") { location.replace("/"); return; }
       if (!sess?.access_token) {
