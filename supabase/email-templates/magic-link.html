@@ -28,33 +28,23 @@
               Hi,<br><br>
               Let's continue where we left off.
             </p>
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="border-radius:14px;background:#2c2420;">
-                  <a href="{{ .ConfirmationURL }}"
-                     style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#faf9f6;text-decoration:none;border-radius:14px;">
-                    Continue conversation
-                  </a>
-                </td>
-              </tr>
-            </table>
 
-            <!-- OTP Code — for iOS PWA where magic link opens in Safari (isolated storage) -->
-            <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;">
+            <!-- OTP Code -->
+            <table cellpadding="0" cellspacing="0" width="100%">
               <tr>
-                <td style="border-top:1px solid #e8e2da;padding-top:24px;" align="center">
-                  <p style="margin:0;font-size:13px;color:#a09080;line-height:1.55;">
-                    Or enter this code in the app:
+                <td align="center">
+                  <p style="margin:0;font-size:14px;color:#6a5a4a;line-height:1.55;font-weight:600;">
+                    Enter this code in the app:
                   </p>
-                  <p style="margin:12px 0 0;font-size:34px;font-weight:700;letter-spacing:10px;color:#2c2420;font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;">
+                  <p style="margin:16px 0 0;font-size:38px;font-weight:700;letter-spacing:10px;color:#2c2420;font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;">
                     {{ .Token }}
                   </p>
                 </td>
               </tr>
             </table>
 
-            <p style="margin:24px 0 0;font-size:13px;color:#a09080;line-height:1.55;">
-              This link expires in 24 hours. If you didn't request this, you can safely ignore this email.
+            <p style="margin:28px 0 0;font-size:13px;color:#a09080;line-height:1.55;">
+              This code expires in 24 hours. If you didn't request this, you can safely ignore this email.
             </p>
           </td>
         </tr>

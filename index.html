@@ -3487,7 +3487,7 @@
       wrap.className = "chat-msg sophie";
       const form = document.createElement("div");
       form.style.cssText = "display:flex;flex-direction:column;gap:10px;margin-top:6px;max-width:220px;";
-      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:3px;font-size:18px;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.95);color:#1a1210;outline:none;font-family:inherit;box-sizing:border-box;width:100%" /><button type="button" style="padding:10px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:#2c2420;color:white;cursor:pointer;width:100%">${otpLabels.verifyBtn}</button>`;
+      form.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="${otpLabels.codePlaceholder}" style="text-align:center;letter-spacing:3px;font-size:18px;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.95);color:#1a1210;outline:none;font-family:inherit;box-sizing:border-box;width:100%" /><button type="button" style="padding:10px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:#2c2420;color:white;cursor:pointer;width:100%">${otpLabels.verifyBtn}</button>`;
       wrap.appendChild(form);
       parentEl.appendChild(wrap);
       parentEl.scrollTop = parentEl.scrollHeight;
@@ -4954,14 +4954,10 @@
 
         if (!error) {
           wrap.remove();
-          if (method === "otp") {
-            showOTPInput(email, messagesEl, () => {
-              _authReady(true);
-              goToVoiceFromChat();
-            });
-          } else {
-            appendBubble("sophie", labels.sent(email));
-          }
+          showOTPInput(email, messagesEl, () => {
+            _authReady(true);
+            goToVoiceFromChat();
+          });
         } else {
           sendBtnEl.disabled = false;
           emailInput.disabled = false;
@@ -5001,15 +4997,10 @@
         const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
         if (!error) {
           wrap.remove();
-          if (method === "otp") {
-            showOTPInput(email, messagesEl, () => {
-              _authReady(true);
-              goToVoiceFromChat();
-            });
-          } else {
-            const sentMsg = t.chat_auth_sent_msg || "Got it. I just sent you an invitation.\nCheck your inbox — I'll wait here.";
-            appendBubble("sophie", sentMsg);
-          }
+          showOTPInput(email, messagesEl, () => {
+            _authReady(true);
+            goToVoiceFromChat();
+          });
           inputEl.disabled = false;
           sendBtn.disabled = false;
         } else {
@@ -5358,22 +5349,11 @@
         inputEl.disabled = false;
         sendBtn.disabled = false;
         if (!error) {
-          if (method === "otp") {
-            chatState = "otp_capture";
-            showOTPInput(text, messagesEl, () => {
-              _authReady(true);
-              goToVoiceFromChat();
-            });
-          } else {
-            chatState = "email_capture";
-            inputEl.placeholder = t.chat_email_placeholder || "different email...";
-            const sentMsg = currentLang === "de"
-              ? `Danke. Ich habe dir gerade eine Einladung an ${text} geschickt.\nSie sollte in wenigen Sekunden da sein. Falsche Adresse? Einfach eine neue eingeben.`
-              : currentLang === "fr"
-              ? `Merci. Je viens de t'envoyer une invitation à ${text}.\nElle devrait arriver dans quelques secondes. Mauvaise adresse ? Entre-en une autre.`
-              : `Got it. I just sent an invitation to ${text}.\nCheck your inbox — it should be there in a few seconds. Wrong address? Just type a new one.`;
-            appendBubble("sophie", sentMsg);
-          }
+          chatState = "otp_capture";
+          showOTPInput(text, messagesEl, () => {
+            _authReady(true);
+            goToVoiceFromChat();
+          });
         } else {
           chatState = "email_capture";
           inputEl.placeholder = t.chat_email_placeholder || "your email";
@@ -5883,19 +5863,11 @@
       const redirectUrl = window.location.origin + "/auth/callback?mode=" + encodeURIComponent(modeForAuthBtn) + "&lang=" + encodeURIComponent(currentLang);
       const { error, method } = await sendAuthEmail(supabase, email, redirectUrl);
       if (!error) {
-        if (method === "otp") {
-          hide(authEl);
-          showOTPInput(email, messagesEl, () => {
-            _authReady(true);
-            goToVoiceFromChat();
-          });
-        } else {
-          // Keep email visible so user can verify, just disable editing
-          authEmail.readOnly = true;
-          authBtn.textContent = "✓ Sent";
-          const sentMsg = t.chat_auth_sent_msg || "Got it. Thank you.\nI just sent an invitation to your email.\nIt should be there in a few seconds. I'll wait here for you.";
-          appendBubble("sophie", sentMsg);
-        }
+        hide(authEl);
+        showOTPInput(email, messagesEl, () => {
+          _authReady(true);
+          goToVoiceFromChat();
+        });
         saveChatState();
       } else {
         authBtn.disabled = false;
