@@ -47,12 +47,16 @@ export default async function handler(req, res) {
   // Determine report language: user profile (truth) > explicit param (UI lang) > fallback "en"
   // body.language comes from localStorage (UI language) and can differ from the user's
   // actual content-language preference stored in user_profile.preferred_language.
+  // NOTE: preferred_language in DB is only written by memory-update.js during Talk sessions.
+  // Users who only use Meeting mode may have null → hasExplicitPref = false → auto-detect from transcript.
   let reportLang = null;
+  let hasExplicitPref = false; // true only when user_profile.preferred_language is non-null
   try {
     const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
     if (sess?.user_id) {
       const { data: prof } = await supabase.from('user_profile').select('preferred_language').eq('user_id', sess.user_id).maybeSingle();
       reportLang = prof?.preferred_language || null;
+      hasExplicitPref = !!prof?.preferred_language;
     }
   } catch (_) {}
   if (!reportLang) reportLang = body.language || null;
@@ -61,7 +65,11 @@ export default async function handler(req, res) {
   if (!reportLang || (!['en', 'de', 'fr'].includes(reportLang))) reportLang = 'en';
   const isEN = reportLang === 'en';
   const isFR = reportLang === 'fr';
-  console.log(`[report] ${session_id} — language: ${reportLang}${unsupportedLang ? ` (requested: ${unsupportedLang}, using EN prompt + lang override)` : ''}`);
+  // Meeting auto-detect: if no explicit DB preference, detect language from transcript content.
+  // This handles users who speak German/French in meetings but never did a Talk session that
+  // would have written their preferred_language to the DB.
+  const meetingAutoLang = session_mode === 'meeting' && !hasExplicitPref;
+  console.log(`[report] ${session_id} — language: ${meetingAutoLang ? 'auto-detect (no explicit pref)' : reportLang}${unsupportedLang ? ` (requested: ${unsupportedLang}, using EN prompt + lang override)` : ''}`);
 
   // Resolve user_id for cost tracking + eco mode
   let reportUserId = null;
