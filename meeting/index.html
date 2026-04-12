@@ -986,7 +986,22 @@ async function emergencyFlush() {
 }
 
 // pagehide = primary, visibilitychange = fallback
-window.addEventListener("pagehide", () => { if (meetingPhase === "live") emergencyFlush(); });
+window.addEventListener("pagehide", () => {
+  if (meetingPhase === "live") {
+    emergencyFlush();
+    // Best-effort: mark meeting as post so it doesn't stay "live" forever (zombie)
+    // sendBeacon works even as the page unloads
+    if (meetingId && accessToken) {
+      try {
+        const payload = JSON.stringify({ meeting_id: meetingId, phase: "post", source: "pagehide" });
+        navigator.sendBeacon(
+          `/api/meeting?action=phase`,
+          new Blob([payload], { type: "application/json" })
+        );
+      } catch (_) {}
+    }
+  }
+});
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && meetingPhase === "live") emergencyFlush();
 });
