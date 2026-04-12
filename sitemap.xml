@@ -32,9 +32,15 @@
   </url>
   <url>
     <loc>https://www.meet-sophie.com/blog/</loc>
-    <lastmod>2026-04-07</lastmod>
+    <lastmod>2026-04-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.meet-sophie.com/blog/how-to-prepare-for-a-client-meeting-with-ai/</loc>
+    <lastmod>2026-04-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.meet-sophie.com/blog/what-is-an-ai-thinking-partner/</loc>
