@@ -3518,7 +3518,7 @@
             resendBtn.style.cssText = "font-size:14px;padding:8px 16px";
             resendBtn.onclick = async () => {
               resendBtn.disabled = true;
-              await sendAuthEmail(supabase, email, "");
+              await sendAuthEmail(supabase, email, "", { forceResend: true });
               appendBubble("sophie", otpLabels.resent);
               resendWrap.remove();
             };

@@ -434,7 +434,7 @@
         const now = Date.now();
         if (now < sendCooldownUntil) return;
         resendBtn.disabled = true;
-        await sendAuthEmail(supabase, email, "");
+        await sendAuthEmail(supabase, email, "", { forceResend: true });
         setStatus(t.sentOtp);
         // 30s cooldown — previous code is now invalid
         sendCooldownUntil = Date.now() + 30000;
