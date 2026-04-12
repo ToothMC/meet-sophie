@@ -1038,6 +1038,7 @@
     const bsPillMain = document.getElementById("bsPillMain");
     const bsSeg = document.getElementById("bsSeg");
 
+    let _heroModeResetTimer = null;
     function applyHeroMode(mode) {
       // Update CTA button class + text
       ctaBtn.classList.remove("mode-brainstorm", "mode-meeting", "mode-salespitch");
@@ -1057,6 +1058,16 @@
       } else {
         bsPillMain.style.display = "";
         bsSeg.style.display = "none";
+      }
+
+      // Auto-reset to default (blue) after 5s — 1:1 landing page behavior
+      clearTimeout(_heroModeResetTimer);
+      if (mode) {
+        _heroModeResetTimer = setTimeout(() => {
+          selectedMode = "";
+          localStorage.removeItem("sophie_session_mode");
+          applyHeroMode("");
+        }, 5000);
       }
     }
 
