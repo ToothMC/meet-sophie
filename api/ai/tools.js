@@ -44,6 +44,7 @@ export default async function handler(req, res) {
         const calResult = await getCalendarEventsForUser(userId, {
           days: params.days || 7,
           language: params.language || 'de',
+          forceRefresh: !!params.forceRefresh,
         });
         result = calResult?.text || 'Kalender nicht verbunden. Bitte in den Einstellungen verbinden.';
         break;
