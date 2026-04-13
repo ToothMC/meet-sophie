@@ -964,6 +964,7 @@ export default async function handler(req, res) {
         `\n- search_emails: Search emails using Gmail syntax (is:unread, from:name, subject:topic, newer_than:7d). Returns list with message IDs.` +
         `\n- read_email: Read full email content. MUST call search_emails first to get the messageId.` +
         `\n- send_email: Send an email. CRITICAL SAFETY RULE: ALWAYS read the complete draft back to the user BEFORE calling this tool. Say: "Ich wuerde folgende Email senden: An [to], Betreff: [subject], Text: [body]. Soll ich absenden?" ONLY proceed after explicit yes/ja. NEVER send without confirmation.` +
+        `\nIMPORTANT: If the user says "schreib Max eine Email" but you don't know Max's email address, use search_contacts FIRST to look up the email address. Never ask the user for an email address if you can look it up in their contacts.` +
         `\nSay "Moment, ich schaue in deine Emails..." before searching.`
       : "";
 
