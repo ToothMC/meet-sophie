@@ -13,6 +13,12 @@ const REDIRECT_URI      = `${process.env.BASE_URL}/api/oauth-google`;
 
 const SCOPES = {
   google_calendar: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/contacts.readonly',
+  google_mail: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
+};
+
+const PROVIDER_TYPES = {
+  google_calendar: 'calendar',
+  google_mail: 'email',
 };
 
 function getSupabase() {
@@ -119,7 +125,7 @@ export default async function handler(req, res) {
     await supabase.from('user_integrations').upsert({
       user_id:          userId,
       provider,
-      provider_type:    'calendar',
+      provider_type:    PROVIDER_TYPES[provider] || 'other',
       account_email:    userInfo.email || null,
       access_token:     encrypt(tokens.access_token),
       refresh_token:    tokens.refresh_token ? encrypt(tokens.refresh_token) : null,

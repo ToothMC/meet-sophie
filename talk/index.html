@@ -5302,6 +5302,43 @@ function attachChannel(ch) {
           }
         }, {
           type: "function",
+          name: "search_emails",
+          description: "Search the user's Gmail inbox. Use Gmail search syntax: 'is:unread' for unread, 'from:max' for sender, 'subject:invoice' for subject. Returns a list of matching emails with IDs for reading.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Gmail search query (e.g. 'is:unread', 'from:max@example.com', 'subject:meeting newer_than:7d')" },
+              maxResults: { type: "number", description: "Max results (default: 5, max: 10)" }
+            },
+            required: ["query"]
+          }
+        }, {
+          type: "function",
+          name: "read_email",
+          description: "Read the full content of a specific email. You MUST first call search_emails to get the messageId.",
+          parameters: {
+            type: "object",
+            properties: {
+              messageId: { type: "string", description: "The email message ID from search_emails results" }
+            },
+            required: ["messageId"]
+          }
+        }, {
+          type: "function",
+          name: "send_email",
+          description: "Send an email via Gmail. CRITICAL: ALWAYS read the full draft back to the user first: 'Ich wuerde folgende Email senden: An: [to], Betreff: [subject], Text: [body]. Soll ich absenden?' ONLY call this function AFTER the user explicitly confirms with yes/ja.",
+          parameters: {
+            type: "object",
+            properties: {
+              to:      { type: "string", description: "Recipient email address" },
+              subject: { type: "string", description: "Email subject line" },
+              body:    { type: "string", description: "Email body text (plain text)" },
+              cc:      { type: "string", description: "Optional CC recipient" }
+            },
+            required: ["to", "subject", "body"]
+          }
+        }, {
+          type: "function",
           name: "send_chat_note",
           description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
           parameters: {
@@ -5719,11 +5756,11 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       // ── Realtime Tools: Weather, Search, News ──
       if (msg?.type === "response.function_call_arguments.done" &&
-          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures", "get_calendar_events", "create_calendar_event", "update_calendar_event", "delete_calendar_event", "search_contacts"].includes(msg?.name)) {
+          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures", "get_calendar_events", "create_calendar_event", "update_calendar_event", "delete_calendar_event", "search_contacts", "search_emails", "read_email", "send_email"].includes(msg?.name)) {
         try {
           const args = JSON.parse(msg.arguments || "{}");
-          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures", get_calendar_events: "calendar", create_calendar_event: "calendar_create", update_calendar_event: "calendar_update", delete_calendar_event: "calendar_delete", search_contacts: "contacts" };
-          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata }, get_calendar_events: { days: args.days || 7, language: _uiLang || "de" }, create_calendar_event: { title: args.title, start: args.start, end: args.end, description: args.description, location: args.location, allDay: args.allDay }, update_calendar_event: { eventId: args.eventId, title: args.title, start: args.start, end: args.end, description: args.description, location: args.location }, delete_calendar_event: { eventId: args.eventId }, search_contacts: { query: args.query, language: _uiLang || "de" } };
+          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures", get_calendar_events: "calendar", create_calendar_event: "calendar_create", update_calendar_event: "calendar_update", delete_calendar_event: "calendar_delete", search_contacts: "contacts", search_emails: "gmail_search", read_email: "gmail_read", send_email: "gmail_send" };
+          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata }, get_calendar_events: { days: args.days || 7, language: _uiLang || "de" }, create_calendar_event: { title: args.title, start: args.start, end: args.end, description: args.description, location: args.location, allDay: args.allDay }, update_calendar_event: { eventId: args.eventId, title: args.title, start: args.start, end: args.end, description: args.description, location: args.location }, delete_calendar_event: { eventId: args.eventId }, search_contacts: { query: args.query, language: _uiLang || "de" }, search_emails: { query: args.query, maxResults: args.maxResults, language: _uiLang || "de" }, read_email: { messageId: args.messageId, language: _uiLang || "de" }, send_email: { to: args.to, subject: args.subject, body: args.body, cc: args.cc } };
           console.log(`[${runId}] [tools] ${msg.name} called:`, JSON.stringify(args));
           showResearchIndicator();
 

@@ -3,9 +3,10 @@
 // Open-Meteo for weather (kostenlos, kein Key)
 // Wikipedia REST API (kostenlos, kein Key)
 
-// Dynamic imports fuer calendar + contacts (vermeidet crypto-Chain beim Cold-Start)
+// Dynamic imports (vermeidet crypto-Chain beim Cold-Start)
 async function getCalendarModule() { return import('../../lib/calendar-fetch.js'); }
 async function getContactsModule() { return import('../../lib/contacts-fetch.js'); }
+async function getGmailModule() { return import('../../lib/gmail-fetch.js'); }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -85,6 +86,43 @@ export default async function handler(req, res) {
         result = dr.success
           ? 'Termin geloescht.'
           : `Fehler beim Loeschen: ${dr.error}`;
+        break;
+      }
+      case 'gmail_search': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        const { searchEmailsForUser } = await getGmailModule();
+        const sr = await searchEmailsForUser(userId, params.query || 'is:unread', {
+          maxResults: params.maxResults || 5,
+          language: params.language || 'de',
+        });
+        result = sr.text;
+        break;
+      }
+      case 'gmail_read': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        if (!params.messageId) { result = 'Keine Message-ID angegeben.'; break; }
+        const { getEmailForUser } = await getGmailModule();
+        const er = await getEmailForUser(userId, params.messageId, { language: params.language || 'de' });
+        result = er.text;
+        break;
+      }
+      case 'gmail_send': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        if (!params.to || !params.subject || !params.body) {
+          result = 'Empfaenger (to), Betreff (subject) und Text (body) sind erforderlich.';
+          break;
+        }
+        const { sendEmailForUser } = await getGmailModule();
+        const sendResult = await sendEmailForUser(userId, {
+          to: params.to,
+          subject: params.subject,
+          body: params.body,
+          cc: params.cc,
+          replyTo: params.replyTo,
+        });
+        result = sendResult.success
+          ? `Email gesendet an ${params.to}: "${params.subject}"`
+          : `Fehler beim Senden: ${sendResult.error}`;
         break;
       }
       default:

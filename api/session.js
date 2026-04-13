@@ -182,11 +182,12 @@ export default async function handler(req, res) {
     // ---------------------------
     const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
-    const [subResult, usageResult, lockResult, calIntResult] = await Promise.all([
+    const [subResult, usageResult, lockResult, calIntResult, gmailIntResult] = await Promise.all([
       supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
       supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
       supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google_calendar").eq("is_active", true).maybeSingle(),
+      supabase.from("user_integrations").select("id").eq("user_id", user.id).eq("provider", "google_mail").eq("is_active", true).maybeSingle(),
     ]);
 
     // --- Process lock result (fail-fast) ---
@@ -958,7 +959,15 @@ export default async function handler(req, res) {
         `\n- Say "Moment, ich schaue nach..." before calling.`
       : "";
 
-    const researchInstruction = toolInstructions + calendarToolInstruction + contactsToolInstruction + chatInstruction;
+    const gmailToolInstruction = gmailIntResult?.data
+      ? `\n\nEMAIL TOOLS: You have access to the user's Gmail.` +
+        `\n- search_emails: Search emails using Gmail syntax (is:unread, from:name, subject:topic, newer_than:7d). Returns list with message IDs.` +
+        `\n- read_email: Read full email content. MUST call search_emails first to get the messageId.` +
+        `\n- send_email: Send an email. CRITICAL SAFETY RULE: ALWAYS read the complete draft back to the user BEFORE calling this tool. Say: "Ich wuerde folgende Email senden: An [to], Betreff: [subject], Text: [body]. Soll ich absenden?" ONLY proceed after explicit yes/ja. NEVER send without confirmation.` +
+        `\nSay "Moment, ich schaue in deine Emails..." before searching.`
+      : "";
+
+    const researchInstruction = toolInstructions + calendarToolInstruction + contactsToolInstruction + gmailToolInstruction + chatInstruction;
 
     // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
     // This block just tells the model not to self-generate a greeting from the system prompt alone.
