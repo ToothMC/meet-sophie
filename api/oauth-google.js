@@ -150,8 +150,15 @@ export default async function handler(req, res) {
       console.warn('[oauth] userInfo fetch failed:', e?.message);
     }
 
-    // Upsert in user_integrations — zukunftssicher mit account_email im UNIQUE
-    await supabase.from('user_integrations').upsert({
+    // Deaktiviere vorherige Verbindung (nur eine aktive pro User+Provider)
+    await supabase.from('user_integrations')
+      .update({ is_active: false })
+      .eq('user_id', userId)
+      .eq('provider', provider)
+      .eq('is_active', true);
+
+    // Neue Verbindung einfuegen
+    await supabase.from('user_integrations').insert({
       user_id:          userId,
       provider,
       provider_type:    'google',
@@ -163,7 +170,7 @@ export default async function handler(req, res) {
       is_active:        true,
       connected_at:     new Date().toISOString(),
       last_error:       null,
-    }, { onConflict: 'user_id,provider,account_email' });
+    });
 
     return res.send(callbackHtml('success', provider, process.env.BASE_URL));
   }
