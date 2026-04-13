@@ -563,7 +563,6 @@ export default async function handler(req, res) {
 
     // ── Calendar + Contacts Context Injection (immer wenn Integration aktiv) ──
     let calendarContext = "";
-    let contactsContext = "";
     if (calIntResult?.data) {
       try {
         const { getCalendarEventsForUser } = await import("../lib/calendar-fetch.js");
@@ -578,21 +577,9 @@ export default async function handler(req, res) {
         console.warn("[session] Calendar context error:", e?.message);
       }
 
-      // Contacts context (wenn Scope contacts.readonly vorhanden)
-      const hasContactsScope = (calIntResult.data.scopes || []).some(s => s.includes('contacts'));
-      if (hasContactsScope) {
-        try {
-          const { getContactsForUser } = await import("../lib/contacts-fetch.js");
-          const contactsResult = await getContactsForUser(user.id, {
-            language: preferredLanguage || 'de',
-          });
-          if (contactsResult?.text) {
-            contactsContext = "\n\n" + contactsResult.text;
-          }
-        } catch (e) {
-          console.warn("[session] Contacts context error:", e?.message);
-        }
-      }
+      // Contacts: kein Context-Injection noetig.
+      // Geburtstage kommen ueber den Google Calendar Geburtstags-Kalender.
+      // Kontakt-Lookups laufen ueber das search_contacts Voice-Tool.
     }
 
     // ── Meeting Context: Load previous meeting's decisions, actions, open points ──
@@ -1026,7 +1013,7 @@ After the opening turn, all the rules above apply normally.`;
       }
     }
 
-    const fullPrompt = sophiePrompt + calendarContext + contactsContext + importedContext + burstContext + researchInstruction + startupGuard;
+    const fullPrompt = sophiePrompt + calendarContext + importedContext + burstContext + researchInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create

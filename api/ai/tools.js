@@ -72,15 +72,10 @@ export default async function handler(req, res) {
       }
       case 'contacts': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
-        const { getContactsForUser, searchContacts, formatContactResults } = await getContactsModule();
-        const contactsData = await getContactsForUser(userId, { language: params.language || 'de' });
-        if (!contactsData?.contacts) { result = 'Kontakte nicht verfuegbar. Bitte Google neu verbinden.'; break; }
-        if (params.query) {
-          const found = searchContacts(contactsData.contacts, params.query);
-          result = formatContactResults(found, params.language || 'de');
-        } else {
-          result = contactsData.text || 'Keine Kontakte gefunden.';
-        }
+        if (!params.query) { result = 'Bitte einen Suchbegriff angeben (Name, Email oder Telefon).'; break; }
+        const { searchContactsForUser } = await getContactsModule();
+        const contactsResult = await searchContactsForUser(userId, params.query, { language: params.language || 'de' });
+        result = contactsResult?.text || 'Kontakte nicht verfuegbar. Bitte Google neu verbinden.';
         break;
       }
       case 'calendar_delete': {
