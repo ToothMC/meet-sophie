@@ -3,8 +3,9 @@
 // Open-Meteo for weather (kostenlos, kein Key)
 // Wikipedia REST API (kostenlos, kein Key)
 
-import { getCalendarEventsForUser, calendarWrite } from '../../lib/calendar-fetch.js';
-import { getContactsForUser, searchContacts, formatContactResults } from '../../lib/contacts-fetch.js';
+// Dynamic imports fuer calendar + contacts (vermeidet crypto-Chain beim Cold-Start)
+async function getCalendarModule() { return import('../../lib/calendar-fetch.js'); }
+async function getContactsModule() { return import('../../lib/contacts-fetch.js'); }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -42,6 +43,7 @@ export default async function handler(req, res) {
         break;
       case 'calendar': {
         if (!userId) { result = 'Kalender nicht verfuegbar (nicht angemeldet).'; break; }
+        const { getCalendarEventsForUser } = await getCalendarModule();
         const calResult = await getCalendarEventsForUser(userId, {
           days: params.days || 7,
           language: params.language || 'de',
@@ -52,7 +54,8 @@ export default async function handler(req, res) {
       }
       case 'calendar_create': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
-        const cr = await calendarWrite(userId, 'create', params);
+        const { calendarWrite: cwCreate } = await getCalendarModule();
+        const cr = await cwCreate(userId, 'create', params);
         result = cr.success
           ? `Termin erstellt: "${cr.event.title}" am ${cr.event.start}`
           : `Fehler beim Erstellen: ${cr.error}`;
@@ -60,7 +63,8 @@ export default async function handler(req, res) {
       }
       case 'calendar_update': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
-        const ur = await calendarWrite(userId, 'update', params);
+        const { calendarWrite: cwUpdate } = await getCalendarModule();
+        const ur = await cwUpdate(userId, 'update', params);
         result = ur.success
           ? `Termin aktualisiert: "${ur.event.title}" — ${ur.event.start}`
           : `Fehler beim Aktualisieren: ${ur.error}`;
@@ -68,6 +72,7 @@ export default async function handler(req, res) {
       }
       case 'contacts': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
+        const { getContactsForUser, searchContacts, formatContactResults } = await getContactsModule();
         const contactsData = await getContactsForUser(userId, { language: params.language || 'de' });
         if (!contactsData?.contacts) { result = 'Kontakte nicht verfuegbar. Bitte Google neu verbinden.'; break; }
         if (params.query) {
@@ -80,7 +85,8 @@ export default async function handler(req, res) {
       }
       case 'calendar_delete': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
-        const dr = await calendarWrite(userId, 'delete', params);
+        const { calendarWrite: cwDelete } = await getCalendarModule();
+        const dr = await cwDelete(userId, 'delete', params);
         result = dr.success
           ? 'Termin geloescht.'
           : `Fehler beim Loeschen: ${dr.error}`;
