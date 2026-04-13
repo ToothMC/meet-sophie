@@ -12,13 +12,13 @@ const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const REDIRECT_URI      = `${process.env.BASE_URL}/api/oauth-google`;
 
 const SCOPES = {
-  google_calendar: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
-  google_mail: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
-};
-
-const PROVIDER_TYPES = {
-  google_calendar: 'calendar',
-  google_mail: 'email',
+  google: [
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/contacts.readonly',
+    'https://www.googleapis.com/auth/contacts.other.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
+  ].join(' '),
 };
 
 function getSupabase() {
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     const userId = await getUserId(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const provider = req.query.provider || 'google_calendar';
+    const provider = req.query.provider || 'google';
     if (!SCOPES[provider]) return res.status(400).json({ error: 'Unknown provider' });
 
     // Opportunistisches Cleanup abgelaufener States
@@ -80,21 +80,19 @@ export default async function handler(req, res) {
       return res.send(callbackHtml('error', 'oauth_failed', process.env.BASE_URL));
     }
 
-    // State validieren: einmalig, nicht abgelaufen
-    const { data: stateRow } = await supabase
+    // State validieren + atomar als used markieren (one-time use, race-safe)
+    const { data: stateRows } = await supabase
       .from('oauth_states')
-      .select('*')
+      .update({ used: true })
       .eq('state', state)
       .eq('used', false)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .select('user_id, provider');
 
+    const stateRow = stateRows?.[0];
     if (!stateRow) {
       return res.send(callbackHtml('error', 'invalid_state', process.env.BASE_URL));
     }
-
-    // State sofort als used markieren (one-time use)
-    await supabase.from('oauth_states').update({ used: true }).eq('state', state);
 
     const { user_id: userId, provider } = stateRow;
 
@@ -108,6 +106,7 @@ export default async function handler(req, res) {
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         redirect_uri:  REDIRECT_URI,
       }),
+      signal: AbortSignal.timeout(10000),
     });
 
     const tokens = await tokenRes.json();
@@ -116,16 +115,22 @@ export default async function handler(req, res) {
     }
 
     // Account-Email holen fuer Anzeige + UNIQUE-Constraint
-    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const userInfo = await userInfoRes.json();
+    let userInfo = {};
+    try {
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (userInfoRes.ok) userInfo = await userInfoRes.json();
+    } catch (e) {
+      console.warn('[oauth] userInfo fetch failed:', e?.message);
+    }
 
     // Upsert in user_integrations — zukunftssicher mit account_email im UNIQUE
     await supabase.from('user_integrations').upsert({
       user_id:          userId,
       provider,
-      provider_type:    PROVIDER_TYPES[provider] || 'other',
+      provider_type:    'google',
       account_email:    userInfo.email || null,
       access_token:     encrypt(tokens.access_token),
       refresh_token:    tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
@@ -157,13 +162,18 @@ export default async function handler(req, res) {
 
     const { data: integration } = await query.single();
 
-    // Google-seitig revoken
+    // Google-seitig revoken (decrypt kann fehlschlagen bei korrupten Tokens)
     if (integration) {
-      const tokenToRevoke = integration.refresh_token
-        ? decrypt(integration.refresh_token)
-        : integration.access_token
-          ? decrypt(integration.access_token)
-          : null;
+      let tokenToRevoke = null;
+      try {
+        tokenToRevoke = integration.refresh_token
+          ? decrypt(integration.refresh_token)
+          : integration.access_token
+            ? decrypt(integration.access_token)
+            : null;
+      } catch (e) {
+        console.warn('[oauth] decrypt for revoke failed (proceeding with local cleanup):', e?.message);
+      }
 
       if (tokenToRevoke) {
         try {

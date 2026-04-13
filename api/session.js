@@ -182,13 +182,15 @@ export default async function handler(req, res) {
     // ---------------------------
     const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
-    const [subResult, usageResult, lockResult, calIntResult, gmailIntResult] = await Promise.all([
+    const [subResult, usageResult, lockResult, googleIntResult] = await Promise.all([
       supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
       supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
-      supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google_calendar").eq("is_active", true).maybeSingle(),
-      supabase.from("user_integrations").select("id").eq("user_id", user.id).eq("provider", "google_mail").eq("is_active", true).maybeSingle(),
+      supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google").eq("is_active", true).maybeSingle(),
     ]);
+    // Scope-basierte Feature-Flags aus dem einen Google-Provider
+    const calIntResult = googleIntResult;
+    const gmailIntResult = { data: (googleIntResult?.data?.scopes || []).some(s => s.includes('gmail')) ? googleIntResult.data : null };
 
     // --- Process lock result (fail-fast) ---
     const lockAllowed = Array.isArray(lockResult.data) && lockResult.data[0]?.allowed === true;

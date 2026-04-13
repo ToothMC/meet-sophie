@@ -514,12 +514,9 @@ if (!session?.user) {
 
 // ── Integrations Section ──
 const INTEGRATIONS = [
-  { id: 'google_calendar', name: 'Google',
-    description: 'Kalender, Kontakte & Geburtstage',
+  { id: 'google', name: 'Google',
+    description: 'Kalender, Kontakte, Email',
     iconBg: '#E6F1FB', iconColor: '#378ADD', available: true },
-  { id: 'google_mail', name: 'Google Mail',
-    description: 'Emails lesen & senden',
-    iconBg: '#FAEEDA', iconColor: '#BA7517', available: true },
 ];
 
 async function loadIntegrations() {
