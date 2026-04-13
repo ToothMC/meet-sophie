@@ -1,7 +1,6 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
-import { getCalendarEventsForUser } from "../lib/calendar-fetch.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from "../lib/billing-constants.js";
 
@@ -563,9 +562,11 @@ export default async function handler(req, res) {
     }
 
     // ── Calendar Context Injection (immer wenn Integration aktiv) ──
+    // Dynamic import um den Import-Chain (crypto.js) nicht bei jedem Session-Start zu laden
     let calendarContext = "";
     if (calIntResult?.data) {
       try {
+        const { getCalendarEventsForUser } = await import("../lib/calendar-fetch.js");
         const calResult = await getCalendarEventsForUser(user.id, {
           days: 7,
           language: preferredLanguage || 'de',
