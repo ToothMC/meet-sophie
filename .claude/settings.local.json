@@ -134,7 +134,8 @@
       "Bash(curl -s \"https://meet-sophie.com/api/integrations?action=status\")",
       "Bash(curl -s -L \"https://meet-sophie.com/api/integrations?action=status\")",
       "Bash(curl -s \"https://meet-sophie-git-feature-calen-8c5e81-michaels-projects-674b8d24.vercel.app/api/integrations?action=status\")",
-      "Bash(curl -s \"https://meet-sophie-git-feature-calen-8c5e81-michaels-projects-674b8d24.vercel.app/api/oauth-google?action=connect&provider=google_calendar\")"
+      "Bash(curl -s \"https://meet-sophie-git-feature-calen-8c5e81-michaels-projects-674b8d24.vercel.app/api/oauth-google?action=connect&provider=google_calendar\")",
+      "Bash(git ls-tree:*)"
     ]
   },
   "hooks": {

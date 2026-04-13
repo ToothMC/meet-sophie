@@ -5238,6 +5238,16 @@ function attachChannel(ch) {
           }
         }, {
           type: "function",
+          name: "get_calendar_events",
+          description: "Get the user's upcoming calendar events from Google Calendar. Use when the user asks about their schedule, appointments, what's coming up, or when they are free/busy.",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number", description: "Number of days to look ahead (default: 7, max: 30)" }
+            }
+          }
+        }, {
+          type: "function",
           name: "send_chat_note",
           description: "Send a short text note to the user's chat panel visible during the voice session. Use ONLY to show structured info that is better read than heard: numbered lists, key points, names, URLs, numbers, or brief summaries. NEVER send your full spoken response — only the condensed essence. Keep it very short (max 2-3 lines). The user can read this while you keep talking.",
           parameters: {
@@ -5655,11 +5665,11 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       // ── Realtime Tools: Weather, Search, News ──
       if (msg?.type === "response.function_call_arguments.done" &&
-          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures"].includes(msg?.name)) {
+          ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures", "get_calendar_events"].includes(msg?.name)) {
         try {
           const args = JSON.parse(msg.arguments || "{}");
-          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures" };
-          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata } };
+          const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures", get_calendar_events: "calendar" };
+          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata }, get_calendar_events: { days: args.days || 7, language: _uiLang || "de" } };
           console.log(`[${runId}] [tools] ${msg.name} called:`, JSON.stringify(args));
           showResearchIndicator();
 
@@ -5667,7 +5677,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           const toolRes = await fetch("/api/ai/tools", {
             method: "POST",
             headers: toolHeaders,
-            body: JSON.stringify({ tool: toolMap[msg.name], params: paramMap[msg.name] }),
+            body: JSON.stringify({ tool: toolMap[msg.name], params: paramMap[msg.name], userId: session?.user?.id }),
           });
 
           hideResearchIndicator();

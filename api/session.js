@@ -1,6 +1,7 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { getCalendarEventsForUser } from "../lib/calendar-fetch.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from "../lib/billing-constants.js";
 
@@ -182,10 +183,11 @@ export default async function handler(req, res) {
     // ---------------------------
     const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
-    const [subResult, usageResult, lockResult] = await Promise.all([
+    const [subResult, usageResult, lockResult, calIntResult] = await Promise.all([
       supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
       supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
+      supabase.from("user_integrations").select("id").eq("user_id", user.id).eq("provider", "google_calendar").eq("is_active", true).maybeSingle(),
     ]);
 
     // --- Process lock result (fail-fast) ---
@@ -560,6 +562,22 @@ export default async function handler(req, res) {
       console.warn("Import context load error:", e?.message);
     }
 
+    // ── Calendar Context Injection (immer wenn Integration aktiv) ──
+    let calendarContext = "";
+    if (calIntResult?.data) {
+      try {
+        const calResult = await getCalendarEventsForUser(user.id, {
+          days: 7,
+          language: preferredLanguage || 'de',
+        });
+        if (calResult?.text) {
+          calendarContext = "\n\n" + calResult.text;
+        }
+      } catch (e) {
+        console.warn("[session] Calendar context error:", e?.message);
+      }
+    }
+
     // ── Meeting Context: Load previous meeting's decisions, actions, open points ──
     let meetingContext = null;
     if (sessionMode === "meeting" && meetingId) {
@@ -918,7 +936,14 @@ export default async function handler(req, res) {
       `Send short text notes to the chat panel for structured info better READ than heard. ` +
       `Keep notes very short (max 2-3 lines, max 280 chars). Only when visual text genuinely helps.`;
 
-    const researchInstruction = toolInstructions + chatInstruction;
+    const calendarToolInstruction = calIntResult?.data
+      ? `\n\nCALENDAR TOOL (get_calendar_events): You have access to the user's Google Calendar. ` +
+        `Use this tool when the user asks about their schedule, appointments, availability, or what's coming up. ` +
+        `Say "Moment, ich schaue in deinen Kalender..." before calling. ` +
+        `The calendar context above shows current upcoming events, but use the tool for specific date queries.`
+      : "";
+
+    const researchInstruction = toolInstructions + calendarToolInstruction + chatInstruction;
 
     // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
     // This block just tells the model not to self-generate a greeting from the system prompt alone.
@@ -973,7 +998,7 @@ After the opening turn, all the rules above apply normally.`;
       }
     }
 
-    const fullPrompt = sophiePrompt + importedContext + burstContext + researchInstruction + startupGuard;
+    const fullPrompt = sophiePrompt + calendarContext + importedContext + burstContext + researchInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create

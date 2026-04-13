@@ -3,6 +3,8 @@
 // Open-Meteo for weather (kostenlos, kein Key)
 // Wikipedia REST API (kostenlos, kein Key)
 
+import { getCalendarEventsForUser } from '../../lib/calendar-fetch.js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -10,7 +12,7 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === 'object' ? body : {};
 
-  const { tool, params } = body;
+  const { tool, params, userId } = body;
   if (!tool || !params) return res.status(400).json({ error: 'Missing tool or params' });
 
   try {
@@ -37,6 +39,15 @@ export default async function handler(req, res) {
       case 'departures':
         result = await getAirportFlights(params.airport_iata, 'dep');
         break;
+      case 'calendar': {
+        if (!userId) { result = 'Kalender nicht verfuegbar (nicht angemeldet).'; break; }
+        const calResult = await getCalendarEventsForUser(userId, {
+          days: params.days || 7,
+          language: params.language || 'de',
+        });
+        result = calResult?.text || 'Kalender nicht verbunden. Bitte in den Einstellungen verbinden.';
+        break;
+      }
       default:
         return res.status(400).json({ error: `Unknown tool: ${tool}` });
     }
