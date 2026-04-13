@@ -938,10 +938,12 @@ export default async function handler(req, res) {
       `Keep notes very short (max 2-3 lines, max 280 chars). Only when visual text genuinely helps.`;
 
     const calendarToolInstruction = calIntResult?.data
-      ? `\n\nCALENDAR TOOL (get_calendar_events): You have access to the user's Google Calendar. ` +
-        `Use this tool when the user asks about their schedule, appointments, availability, or what's coming up. ` +
-        `Say "Moment, ich schaue in deinen Kalender..." before calling. ` +
-        `The calendar context above shows current upcoming events, but use the tool for specific date queries.`
+      ? `\n\nCALENDAR TOOLS: You have full access to the user's Google Calendar.` +
+        `\n- get_calendar_events: Read upcoming events. Say "Moment, ich schaue in deinen Kalender..." The calendar context above shows current events, but use this tool for specific date queries.` +
+        `\n- create_calendar_event: Create a new event. ALWAYS repeat the details back first: "Ich erstelle: [title] am [date] um [time]. Passt das?" Wait for confirmation before calling.` +
+        `\n- update_calendar_event: Update an existing event. MUST call get_calendar_events first to get the eventId. Only change what the user asks for.` +
+        `\n- delete_calendar_event: Delete an event. ALWAYS ask for explicit confirmation: "Soll ich [title] wirklich loeschen?" Only proceed after clear yes/ja.` +
+        `\nIMPORTANT: For create/update, always include timezone offset in datetime strings (e.g. 2026-04-14T14:00:00+03:00). Infer the user's timezone from existing calendar events.`
       : "";
 
     const researchInstruction = toolInstructions + calendarToolInstruction + chatInstruction;

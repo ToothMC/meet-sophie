@@ -3,7 +3,7 @@
 // Open-Meteo for weather (kostenlos, kein Key)
 // Wikipedia REST API (kostenlos, kein Key)
 
-import { getCalendarEventsForUser } from '../../lib/calendar-fetch.js';
+import { getCalendarEventsForUser, calendarWrite } from '../../lib/calendar-fetch.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -47,6 +47,30 @@ export default async function handler(req, res) {
           forceRefresh: !!params.forceRefresh,
         });
         result = calResult?.text || 'Kalender nicht verbunden. Bitte in den Einstellungen verbinden.';
+        break;
+      }
+      case 'calendar_create': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        const cr = await calendarWrite(userId, 'create', params);
+        result = cr.success
+          ? `Termin erstellt: "${cr.event.title}" am ${cr.event.start}`
+          : `Fehler beim Erstellen: ${cr.error}`;
+        break;
+      }
+      case 'calendar_update': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        const ur = await calendarWrite(userId, 'update', params);
+        result = ur.success
+          ? `Termin aktualisiert: "${ur.event.title}" — ${ur.event.start}`
+          : `Fehler beim Aktualisieren: ${ur.error}`;
+        break;
+      }
+      case 'calendar_delete': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        const dr = await calendarWrite(userId, 'delete', params);
+        result = dr.success
+          ? 'Termin geloescht.'
+          : `Fehler beim Loeschen: ${dr.error}`;
         break;
       }
       default:

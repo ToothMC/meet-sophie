@@ -12,7 +12,7 @@ const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const REDIRECT_URI      = `${process.env.BASE_URL}/api/oauth-google`;
 
 const SCOPES = {
-  google_calendar: 'https://www.googleapis.com/auth/calendar.readonly',
+  google_calendar: 'https://www.googleapis.com/auth/calendar.events',
 };
 
 function getSupabase() {
