@@ -2073,13 +2073,20 @@ function showVoiceChat(show) {
     voiceChatSendBtn.disabled = false;
     if (wrap) wrap.classList.add("vc-active");
   } else {
-    voiceChatEl.style.display = "none";
-    // NICHT mehr leeren — Notes bleiben sichtbar nach Disconnect.
-    // Nur Input zuruecksetzen.
+    // Notes bleiben sichtbar nach Disconnect — Panel nur verstecken wenn leer
+    const hasNotes = voiceChatMessages && voiceChatMessages.children.length > 0;
+    if (hasNotes) {
+      // Panel sichtbar lassen aber Input deaktivieren (Session ist beendet)
+      voiceChatInput.disabled = true;
+      voiceChatSendBtn.disabled = true;
+      voiceChatInput.placeholder = "Session beendet";
+    } else {
+      voiceChatEl.style.display = "none";
+      if (wrap) wrap.classList.remove("vc-active");
+    }
     voiceChatInput.value = "";
     vcPendingFiles = [];
     vcRenderPreview();
-    if (wrap) wrap.classList.remove("vc-active");
   }
 }
 
