@@ -644,6 +644,9 @@ async function disconnectIntegration(provider, integrationId) {
   }
 }
 
+window.connectIntegration = connectIntegration;
+window.disconnectIntegration = disconnectIntegration;
+
 // Integration-Status aus URL-Parametern (Fallback wenn Popup geblockt)
 (function checkIntegrationParams() {
   const params = new URLSearchParams(window.location.search);
