@@ -972,7 +972,14 @@ export default async function handler(req, res) {
         `\nSay "Moment, ich schaue in deine Emails..." before searching.`
       : "";
 
-    const researchInstruction = toolInstructions + calendarToolInstruction + contactsToolInstruction + gmailToolInstruction + chatInstruction;
+    const mapsToolInstruction = process.env.GOOGLE_MAPS_API_KEY
+      ? `\n\nMAPS TOOLS: You have access to Google Maps.` +
+        `\n- search_places: Find restaurants, shops, services, points of interest. Use when the user asks "find a good restaurant", "where is the nearest pharmacy", etc.` +
+        `\n- get_route: Calculate travel time and distance. Use when the user asks "how long to get from A to B", "how far is it". Supports modes: DRIVE, WALK, BICYCLE, TRANSIT.` +
+        `\n- get_timezone: Get timezone for a city. Use when the user asks "what time is it in Tokyo" or "what timezone is Sydney".`
+      : "";
+
+    const researchInstruction = toolInstructions + calendarToolInstruction + contactsToolInstruction + gmailToolInstruction + mapsToolInstruction + chatInstruction;
 
     // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
     // This block just tells the model not to self-generate a greeting from the system prompt alone.

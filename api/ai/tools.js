@@ -7,6 +7,7 @@
 async function getCalendarModule() { return import('../../lib/calendar-fetch.js'); }
 async function getContactsModule() { return import('../../lib/contacts-fetch.js'); }
 async function getGmailModule() { return import('../../lib/gmail-fetch.js'); }
+async function getMapsModule() { return import('../../lib/maps-fetch.js'); }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -123,6 +124,39 @@ export default async function handler(req, res) {
         result = sendResult.success
           ? `Email gesendet an ${params.to}: "${params.subject}"`
           : `Fehler beim Senden: ${sendResult.error}`;
+        break;
+      }
+      case 'places': {
+        const { searchPlaces, formatPlacesResult } = await getMapsModule();
+        const places = await searchPlaces(params.query, { location: params.location, radius: params.radius });
+        result = formatPlacesResult(places);
+        break;
+      }
+      case 'route': {
+        const { getRoute, formatRouteResult } = await getMapsModule();
+        if (!params.origin || !params.destination) { result = 'Start und Ziel angeben.'; break; }
+        const route = await getRoute(params.origin, params.destination, params.mode || 'DRIVE');
+        result = formatRouteResult(route);
+        break;
+      }
+      case 'geocode': {
+        const { geocodeAddress, formatGeocodeResult } = await getMapsModule();
+        if (!params.address) { result = 'Adresse angeben.'; break; }
+        const geo = await geocodeAddress(params.address);
+        result = formatGeocodeResult(geo);
+        break;
+      }
+      case 'timezone': {
+        const { geocodeAddress, getTimezone, formatTimezoneResult } = await getMapsModule();
+        // Akzeptiert Ortsname oder Koordinaten
+        let lat = params.lat, lng = params.lng;
+        if (!lat && params.location) {
+          const geo = await geocodeAddress(params.location);
+          if (geo) { lat = geo.lat; lng = geo.lng; }
+        }
+        if (!lat || !lng) { result = 'Ort oder Koordinaten angeben.'; break; }
+        const tz = await getTimezone(lat, lng);
+        result = formatTimezoneResult(tz);
         break;
       }
       default:
