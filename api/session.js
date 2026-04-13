@@ -94,15 +94,31 @@ export default async function handler(req, res) {
       if (authErr || !user) return res.status(401).json({ error: "Invalid token" });
       const { sessionId, role, text } = req.body || {};
       if (!sessionId || !text) return res.status(400).json({ error: "sessionId and text required" });
+
+      // user_sessions Zeile erstellen falls noch nicht vorhanden (FK Constraint)
+      // Voice Sessions werden client-seitig mit crypto.randomUUID() erstellt,
+      // die DB-Zeile kommt erst bei memory-update am Session-Ende.
+      await supabase.from('user_sessions').upsert({
+        id: sessionId,
+        user_id: user.id,
+        session_date: new Date().toISOString(),
+        session_type: 'voice',
+        has_output: false,
+      }, { onConflict: 'id', ignoreDuplicates: true });
+
       // Naechste seq ermitteln
       const { data: maxRow } = await supabase.from('conversation_messages')
         .select('seq').eq('session_id', sessionId).order('seq', { ascending: false }).limit(1).maybeSingle();
       const nextSeq = (maxRow?.seq || 0) + 1;
-      await supabase.from('conversation_messages').insert({
+      const { error: insertErr } = await supabase.from('conversation_messages').insert({
         session_id: sessionId, seq: nextSeq,
         role: role === 'user' ? 'user' : 'assistant',
         text: text.slice(0, 2000),
       });
+      if (insertErr) {
+        console.error('[chat_note] insert failed:', insertErr.message);
+        return res.status(500).json({ error: insertErr.message });
+      }
       return res.json({ ok: true, seq: nextSeq });
     }
 
