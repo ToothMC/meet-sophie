@@ -79,35 +79,55 @@ ${l.talkIntro}`;
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== "GET") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
-
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) {
-      return res.status(401).json({ error: "Missing Authorization Bearer token" });
+    if (!token) return res.status(401).json({ error: "Missing Authorization Bearer token" });
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ error: "Missing env vars" });
+
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+
+    // ── Chat Notes (POST/GET) — leichter CRUD fuer Voice Chat Panel ──
+    const action = req.query?.action;
+
+    if (action === 'chat_note' && req.method === 'POST') {
+      if (authErr || !user) return res.status(401).json({ error: "Invalid token" });
+      const { sessionId, role, text } = req.body || {};
+      if (!sessionId || !text) return res.status(400).json({ error: "sessionId and text required" });
+      // Naechste seq ermitteln
+      const { data: maxRow } = await supabase.from('conversation_messages')
+        .select('seq').eq('session_id', sessionId).order('seq', { ascending: false }).limit(1).maybeSingle();
+      const nextSeq = (maxRow?.seq || 0) + 1;
+      await supabase.from('conversation_messages').insert({
+        session_id: sessionId, seq: nextSeq,
+        role: role === 'user' ? 'user' : 'assistant',
+        text: text.slice(0, 2000),
+      });
+      return res.json({ ok: true, seq: nextSeq });
     }
 
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars" });
+    if (action === 'chat_notes' && req.method === 'GET') {
+      if (authErr || !user) return res.status(401).json({ error: "Invalid token" });
+      const sessionId = req.query?.sessionId;
+      if (!sessionId) return res.status(400).json({ error: "sessionId required" });
+      const { data } = await supabase.from('conversation_messages')
+        .select('role, text, created_at')
+        .eq('session_id', sessionId)
+        .order('seq');
+      return res.json({ notes: data || [] });
+    }
+
+    // ── Realtime Session (GET only) ──
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
     }
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser(token);
-
-    if (userErr || !user) {
+    // User bereits oben authentifiziert (chat_note/chat_notes Pfad)
+    if (authErr || !user) {
       return res.status(401).json({ error: "Invalid token" });
     }
 

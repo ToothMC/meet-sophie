@@ -2074,11 +2074,46 @@ function showVoiceChat(show) {
     if (wrap) wrap.classList.add("vc-active");
   } else {
     voiceChatEl.style.display = "none";
-    voiceChatMessages.innerHTML = "";
+    // NICHT mehr leeren — Notes bleiben sichtbar nach Disconnect.
+    // Nur Input zuruecksetzen.
     voiceChatInput.value = "";
     vcPendingFiles = [];
     vcRenderPreview();
     if (wrap) wrap.classList.remove("vc-active");
+  }
+}
+
+// ── Chat Notes Persistenz ──────────────────────────────
+
+function persistChatNote(sid, role, text) {
+  if (!sid || !text) return;
+  const token = session?.access_token;
+  if (!token) return;
+  // Fire-and-forget — darf Voice nicht blockieren
+  fetch("/api/session?action=chat_note", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({ sessionId: sid, role, text: text.slice(0, 2000) }),
+  }).catch(e => console.warn("[chat-note] persist failed:", e?.message));
+}
+
+async function loadChatNotes(sid) {
+  if (!sid || !voiceChatMessages) return;
+  const token = session?.access_token;
+  if (!token) return;
+  try {
+    const res = await fetch(`/api/session?action=chat_notes&sessionId=${sid}`, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    const { notes = [] } = await res.json();
+    // Nur laden wenn Panel noch leer ist (kein doppeltes Laden)
+    if (voiceChatMessages.children.length === 0 && notes.length > 0) {
+      for (const n of notes) {
+        appendVoiceChatBubble(n.role === 'user' ? 'user' : 'sophie', n.text);
+      }
+    }
+  } catch (e) {
+    console.warn("[chat-note] load failed:", e?.message);
   }
 }
 
@@ -2131,9 +2166,10 @@ function sendVoiceChatMessage() {
     voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
   }
 
-  // Track in convoLog
+  // Track in convoLog + persist to DB
   const logText = text || (imageFiles.length ? "(Bild)" : filesToSend.map(f => f.name).join(", "));
   convoLog.push({ role: "user", text: "[chat] " + logText });
+  persistChatNote(sessionId, 'user', logText);
 
   // Build content array for Realtime API
   const content = [];
@@ -5830,6 +5866,8 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
             if (voiceChatEl && voiceChatEl.style.display !== "none") {
               appendVoiceChatBubble("sophie", note);
             }
+            // Sofort in DB persistieren (fire-and-forget)
+            persistChatNote(sessionId, 'assistant', note);
             // Track in convoLog so it appears in the report
             convoLog.push({ role: "assistant", text: "[chat note] " + note });
           }
@@ -6292,6 +6330,8 @@ async function startVoice(){
   // Generate sessionId client-side so report can fire without waiting for memory-update response
   sessionId = crypto.randomUUID();
   cs.sessionId = sessionId;
+  // Chat-Panel leeren fuer neue Session (alte Notes bleiben nach Disconnect sichtbar)
+  if (voiceChatMessages) voiceChatMessages.innerHTML = "";
   hidePostCallResults();
 
   limitTriggered = false;
@@ -6579,6 +6619,8 @@ async function startVoice(){
     updateSessionBarMode(selectedVoiceMode || "talk");
     document.querySelector(".wrap")?.classList.add("session-active");
     showVoiceChat(true);
+    // Vorherige Chat-Notes laden (Resume oder gleiche Session)
+    if (sessionId) loadChatNotes(sessionId);
 
     // Start hyper visualizer
     startHyperWave();
