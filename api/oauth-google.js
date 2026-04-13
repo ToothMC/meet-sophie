@@ -11,15 +11,35 @@ const GOOGLE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const REDIRECT_URI      = `${process.env.BASE_URL}/api/oauth-google`;
 
-const SCOPES = {
-  google: [
-    'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/contacts.readonly',
-    'https://www.googleapis.com/auth/contacts.other.readonly',
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.send',
-  ].join(' '),
+// Service → OAuth Scopes (User waehlt per Checkbox welche Services)
+const SERVICE_SCOPES = {
+  calendar: ['https://www.googleapis.com/auth/calendar.events'],
+  contacts: ['https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/contacts.other.readonly'],
+  email:    ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send'],
+  tasks:    ['https://www.googleapis.com/auth/tasks'],
 };
+
+// Scope → Service-Name (fuer Status-Anzeige)
+const SCOPE_TO_SERVICE = {};
+for (const [svc, scopes] of Object.entries(SERVICE_SCOPES)) {
+  for (const s of scopes) SCOPE_TO_SERVICE[s] = svc;
+}
+
+function buildScopeString(services) {
+  const scopes = new Set();
+  for (const svc of services) {
+    for (const s of (SERVICE_SCOPES[svc] || [])) scopes.add(s);
+  }
+  return [...scopes].join(' ');
+}
+
+function scopesToServices(scopes) {
+  const services = new Set();
+  for (const s of (scopes || [])) {
+    if (SCOPE_TO_SERVICE[s]) services.add(SCOPE_TO_SERVICE[s]);
+  }
+  return [...services];
+}
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -46,8 +66,12 @@ export default async function handler(req, res) {
     const userId = await getUserId(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const provider = req.query.provider || 'google';
-    if (!SCOPES[provider]) return res.status(400).json({ error: 'Unknown provider' });
+    // Services aus Query: ?services=calendar,contacts,email
+    const servicesParam = req.query.services || 'calendar,contacts';
+    const services = servicesParam.split(',').filter(s => SERVICE_SCOPES[s]);
+    if (!services.length) return res.status(400).json({ error: 'No valid services selected' });
+
+    const scopeString = buildScopeString(services);
 
     // Opportunistisches Cleanup abgelaufener States
     await supabase.from('oauth_states').delete()
@@ -55,7 +79,7 @@ export default async function handler(req, res) {
 
     const state = crypto.randomBytes(32).toString('hex');
     await supabase.from('oauth_states').insert({
-      state, user_id: userId, provider,
+      state, user_id: userId, provider: 'google',
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     });
 
@@ -63,13 +87,13 @@ export default async function handler(req, res) {
     url.searchParams.set('client_id',             process.env.GOOGLE_CLIENT_ID);
     url.searchParams.set('redirect_uri',           REDIRECT_URI);
     url.searchParams.set('response_type',          'code');
-    url.searchParams.set('scope',                  SCOPES[provider]);
+    url.searchParams.set('scope',                  scopeString);
     url.searchParams.set('access_type',            'offline');
     url.searchParams.set('prompt',                 'consent');
     url.searchParams.set('include_granted_scopes', 'true');
     url.searchParams.set('state',                  state);
 
-    return res.json({ url: url.toString() });
+    return res.json({ url: url.toString(), services });
   }
 
   // ── Callback ────────────────────────────────────────────

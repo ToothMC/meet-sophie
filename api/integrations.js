@@ -22,6 +22,26 @@ export default async function handler(req, res) {
   // ── GET: Status — alle aktiven Integrationen des Users ──
   // Normalisierte Antwort: Client sieht keine Scopes/Token-Details.
   // "Sophie sitzt davor."
+  // Scope → Service Mapping (muss mit oauth-google.js SERVICE_SCOPES uebereinstimmen)
+  const SCOPE_SERVICE_MAP = {
+    'calendar.events': 'calendar',
+    'contacts.readonly': 'contacts',
+    'contacts.other.readonly': 'contacts',
+    'gmail.readonly': 'email',
+    'gmail.send': 'email',
+    'tasks': 'tasks',
+  };
+
+  function scopesToServices(scopes) {
+    const services = new Set();
+    for (const s of (scopes || [])) {
+      for (const [key, svc] of Object.entries(SCOPE_SERVICE_MAP)) {
+        if (s.includes(key)) services.add(svc);
+      }
+    }
+    return [...services];
+  }
+
   if (action === 'status' && req.method === 'GET') {
     const { data, error } = await supabase
       .from('user_integrations')
@@ -30,11 +50,12 @@ export default async function handler(req, res) {
         'provider',
         'provider_type',
         'account_email',
+        'scopes',
         'is_active',
         'connected_at',
         'last_used_at',
         'last_error',
-        // NIEMALS: access_token, refresh_token, scopes
+        // NIEMALS: access_token, refresh_token
       ].join(', '))
       .eq('user_id', user.id)
       .eq('is_active', true);
@@ -51,6 +72,7 @@ export default async function handler(req, res) {
         connectedAt: row.connected_at,
         lastUsed:    row.last_used_at,
         hasError:    !!row.last_error,
+        services:    scopesToServices(row.scopes),
       })),
     });
   }

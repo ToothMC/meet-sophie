@@ -515,8 +515,14 @@ if (!session?.user) {
 // ── Integrations Section ──
 const INTEGRATIONS = [
   { id: 'google', name: 'Google',
-    description: 'Kalender, Kontakte, Email',
-    iconBg: '#E6F1FB', iconColor: '#378ADD', available: true },
+    iconBg: '#E6F1FB', iconColor: '#378ADD', available: true,
+    services: [
+      { key: 'calendar', label: 'Kalender', desc: 'Termine lesen & erstellen', default: true },
+      { key: 'contacts', label: 'Kontakte', desc: 'Suche & Geburtstage', default: true },
+      { key: 'email',    label: 'Email',    desc: 'Lesen & Senden', default: false },
+      { key: 'tasks',    label: 'Tasks',    desc: 'Aufgaben lesen & erstellen', default: false },
+    ],
+  },
 ];
 
 async function loadIntegrations() {
@@ -541,28 +547,41 @@ async function loadIntegrations() {
     for (const cfg of INTEGRATIONS) {
       const status = statusMap[cfg.id];
       const state = !status ? 'disconnected' : (status.hasError ? 'needs_reconnect' : 'connected');
+      const activeServices = status?.services || [];
 
-      html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0ece6">
+      // Header-Zeile
+      html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0">
         <div style="width:36px;height:36px;border-radius:10px;background:${cfg.iconBg};display:flex;align-items:center;justify-content:center">
           <span style="font-size:16px;font-weight:700;color:${cfg.iconColor}">${cfg.name[0]}</span>
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:#2a2420">${cfg.name}</div>
-          <div style="font-size:11px;color:#a09080">${cfg.description}</div>
-          ${status?.label ? `<div style="font-size:10px;color:#7a6a5a;margin-top:2px">${status.label}</div>` : ''}
-        </div>`;
+          ${state === 'connected'
+            ? `<div style="font-size:11px;color:#7a6a5a">${status.label} &middot; ${activeServices.map(s => {
+                const svc = cfg.services?.find(x => x.key === s);
+                return svc?.label || s;
+              }).join(', ')}</div>`
+            : `<div style="font-size:11px;color:#a09080">Nicht verbunden</div>`}
+        </div>
+        ${state === 'connected'
+          ? `<button class="btn btn-secondary btn-sm" onclick="disconnectIntegration('${cfg.id}','${status?.id || ''}')" style="font-size:11px;padding:4px 10px">Trennen</button>`
+          : ''}
+      </div>`;
 
-      if (!cfg.available) {
-        html += `<span style="font-size:10px;color:#c4b8a8;font-weight:500">Bald</span>`;
-      } else if (state === 'connected') {
-        html += `<button class="btn btn-secondary btn-sm" onclick="disconnectIntegration('${cfg.id}','${status?.id || ''}')" style="font-size:11px;padding:4px 10px">Trennen</button>`;
-      } else if (state === 'needs_reconnect') {
-        html += `<button class="btn btn-primary btn-sm" onclick="connectIntegration('${cfg.id}')" style="font-size:11px;padding:4px 10px;background:#d4760a;border-color:#d4760a">Neu verbinden</button>`;
-      } else {
-        html += `<button class="btn btn-primary btn-sm" onclick="connectIntegration('${cfg.id}')" style="font-size:11px;padding:4px 10px">Verbinden</button>`;
+      // Service-Checkboxen
+      if (cfg.services) {
+        html += `<div id="services-${cfg.id}" style="padding:0 0 10px 48px;border-bottom:1px solid #f0ece6">`;
+        for (const svc of cfg.services) {
+          const checked = state === 'disconnected' ? svc.default : activeServices.includes(svc.key);
+          html += `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:#2a2420">
+            <input type="checkbox" data-service="${svc.key}" ${checked ? 'checked' : ''} style="accent-color:#378ADD;width:16px;height:16px">
+            <span><b>${svc.label}</b> <span style="color:#a09080">${svc.desc}</span></span>
+          </label>`;
+        }
+        html += `<button class="btn btn-primary btn-sm" onclick="connectWithServices('${cfg.id}')" style="font-size:11px;padding:5px 14px;margin-top:6px">
+          ${state === 'connected' ? 'Services aktualisieren' : 'Verbinden'}
+        </button></div>`;
       }
-
-      html += `</div>`;
     }
     container.innerHTML = html;
   } catch (e) {
@@ -570,9 +589,16 @@ async function loadIntegrations() {
   }
 }
 
-async function connectIntegration(provider) {
+async function connectWithServices(providerId) {
+  // Checkboxen auslesen
+  const container = document.getElementById(`services-${providerId}`);
+  if (!container) return;
+  const checks = container.querySelectorAll('input[data-service]:checked');
+  const services = [...checks].map(c => c.dataset.service);
+  if (!services.length) { alert('Bitte mindestens einen Service auswählen.'); return; }
+
   try {
-    const res = await fetch(`/api/oauth-google?action=connect&provider=${provider}`, {
+    const res = await fetch(`/api/oauth-google?action=connect&services=${services.join(',')}`, {
       headers: { Authorization: "Bearer " + session.access_token },
     });
     const { url, error } = await res.json();
@@ -614,6 +640,8 @@ async function connectIntegration(provider) {
     alert('Verbindung fehlgeschlagen');
   }
 }
+// Legacy alias
+async function connectIntegration(provider) { connectWithServices(provider); }
 
 async function disconnectIntegration(provider, integrationId) {
   if (!confirm('Verbindung zu ' + provider.replace('_', ' ') + ' trennen?')) return;
@@ -633,6 +661,7 @@ async function disconnectIntegration(provider, integrationId) {
 }
 
 window.connectIntegration = connectIntegration;
+window.connectWithServices = connectWithServices;
 window.disconnectIntegration = disconnectIntegration;
 
 // Integration-Status aus URL-Parametern (Fallback wenn Popup geblockt)
