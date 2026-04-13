@@ -77,8 +77,9 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── POST: Disconnect — Integration deaktivieren ──
-  // Soft-Delete: is_active = false, Tokens loeschen.
+  // ── POST: Disconnect — Generischer Fallback ──
+  // Fuer Google: Settings UI nutzt /api/oauth-google?action=disconnect (mit Revoke).
+  // Dieser Endpoint ist der Fallback fuer non-Google Provider oder direkte API-Calls.
   if (action === 'disconnect' && req.method === 'POST') {
     const { integrationId } = req.body || {};
     if (!integrationId) return res.status(400).json({ error: 'Missing integrationId' });

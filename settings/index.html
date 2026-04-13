@@ -588,13 +588,21 @@ async function loadIntegrations() {
   }
 }
 
+let _connecting = false;
 async function connectWithServices(providerId) {
+  if (_connecting) return;
+  _connecting = true;
+
   // Checkboxen auslesen
   const container = document.getElementById(`services-${providerId}`);
-  if (!container) return;
+  if (!container) { _connecting = false; return; }
   const checks = container.querySelectorAll('input[data-service]:checked');
   const services = [...checks].map(c => c.dataset.service);
-  if (!services.length) { alert('Bitte mindestens einen Service auswählen.'); return; }
+  if (!services.length) { _connecting = false; alert('Bitte mindestens einen Service auswählen.'); return; }
+
+  // Button deaktivieren
+  const btn = container.querySelector('button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verbinde...'; }
 
   try {
     const res = await fetch(`/api/oauth-google?action=connect&services=${services.join(',')}`, {
@@ -632,10 +640,12 @@ async function connectWithServices(providerId) {
       window.removeEventListener('message', onMessage);
       clearInterval(pollTimer);
       clearTimeout(timeoutTimer);
+      _connecting = false;
     }
 
     window.addEventListener('message', onMessage);
   } catch (e) {
+    _connecting = false;
     alert('Verbindung fehlgeschlagen');
   }
 }

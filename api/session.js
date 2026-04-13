@@ -189,6 +189,7 @@ export default async function handler(req, res) {
       supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google").eq("is_active", true).maybeSingle(),
     ]);
     // Scope-basierte Feature-Flags aus dem einen Google-Provider
+    if (googleIntResult?.error) console.warn('[session] Google integration query error:', googleIntResult.error.message);
     const calIntResult = googleIntResult;
     const gmailIntResult = { data: (googleIntResult?.data?.scopes || []).some(s => s.includes('gmail')) ? googleIntResult.data : null };
 
