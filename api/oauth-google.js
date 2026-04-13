@@ -16,7 +16,6 @@ const SERVICE_SCOPES = {
   calendar: ['https://www.googleapis.com/auth/calendar.events'],
   contacts: ['https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/contacts.other.readonly'],
   email:    ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send'],
-  tasks:    ['https://www.googleapis.com/auth/tasks'],
 };
 
 // Scope → Service-Name (fuer Status-Anzeige)
