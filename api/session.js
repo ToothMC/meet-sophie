@@ -955,8 +955,10 @@ export default async function handler(req, res) {
     const contactsToolInstruction = hasContactsScope
       ? `\n\nCONTACTS TOOL (search_contacts): You have access to the user's Google Contacts.` +
         `\n- Use when the user asks about a person's phone number, email, birthday, or organization.` +
-        `\n- The contacts context above shows upcoming birthdays. Use the tool for specific lookups.` +
-        `\n- Say "Moment, ich schaue nach..." before calling.`
+        `\n- Say "Moment, ich schaue nach..." before calling.` +
+        `\n- SMART SEARCH STRATEGY: If searching for a full name returns nothing, try JUST the last name or JUST the first name in a second call.` +
+        `\n- If still nothing found: do NOT just say "not found". Instead ask the user: "Ich konnte [name] nicht in deinen Kontakten finden. Hast du die Email-Adresse oder Telefonnummer?" The user can then give it directly.` +
+        `\n- Some contacts (e.g. imported from Outlook) may not be searchable via API. This is a known limitation. Be transparent about it.`
       : "";
 
     const gmailToolInstruction = gmailIntResult?.data
