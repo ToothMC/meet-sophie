@@ -186,7 +186,7 @@ export default async function handler(req, res) {
       supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
       supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
-      supabase.from("user_integrations").select("id").eq("user_id", user.id).eq("provider", "google_calendar").eq("is_active", true).maybeSingle(),
+      supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google_calendar").eq("is_active", true).maybeSingle(),
     ]);
 
     // --- Process lock result (fail-fast) ---
@@ -561,9 +561,9 @@ export default async function handler(req, res) {
       console.warn("Import context load error:", e?.message);
     }
 
-    // ── Calendar Context Injection (immer wenn Integration aktiv) ──
-    // Dynamic import um den Import-Chain (crypto.js) nicht bei jedem Session-Start zu laden
+    // ── Calendar + Contacts Context Injection (immer wenn Integration aktiv) ──
     let calendarContext = "";
+    let contactsContext = "";
     if (calIntResult?.data) {
       try {
         const { getCalendarEventsForUser } = await import("../lib/calendar-fetch.js");
@@ -576,6 +576,22 @@ export default async function handler(req, res) {
         }
       } catch (e) {
         console.warn("[session] Calendar context error:", e?.message);
+      }
+
+      // Contacts context (wenn Scope contacts.readonly vorhanden)
+      const hasContactsScope = (calIntResult.data.scopes || []).some(s => s.includes('contacts'));
+      if (hasContactsScope) {
+        try {
+          const { getContactsForUser } = await import("../lib/contacts-fetch.js");
+          const contactsResult = await getContactsForUser(user.id, {
+            language: preferredLanguage || 'de',
+          });
+          if (contactsResult?.text) {
+            contactsContext = "\n\n" + contactsResult.text;
+          }
+        } catch (e) {
+          console.warn("[session] Contacts context error:", e?.message);
+        }
       }
     }
 
@@ -937,6 +953,8 @@ export default async function handler(req, res) {
       `Send short text notes to the chat panel for structured info better READ than heard. ` +
       `Keep notes very short (max 2-3 lines, max 280 chars). Only when visual text genuinely helps.`;
 
+    const hasContactsScope = (calIntResult?.data?.scopes || []).some(s => s.includes('contacts'));
+
     const calendarToolInstruction = calIntResult?.data
       ? `\n\nCALENDAR TOOLS: You have full access to the user's Google Calendar.` +
         `\n- get_calendar_events: Read upcoming events. Say "Moment, ich schaue in deinen Kalender..." The calendar context above shows current events, but use this tool for specific date queries.` +
@@ -946,7 +964,14 @@ export default async function handler(req, res) {
         `\nIMPORTANT: For create/update, always include timezone offset in datetime strings (e.g. 2026-04-14T14:00:00+03:00). Infer the user's timezone from existing calendar events.`
       : "";
 
-    const researchInstruction = toolInstructions + calendarToolInstruction + chatInstruction;
+    const contactsToolInstruction = hasContactsScope
+      ? `\n\nCONTACTS TOOL (search_contacts): You have access to the user's Google Contacts.` +
+        `\n- Use when the user asks about a person's phone number, email, birthday, or organization.` +
+        `\n- The contacts context above shows upcoming birthdays. Use the tool for specific lookups.` +
+        `\n- Say "Moment, ich schaue nach..." before calling.`
+      : "";
+
+    const researchInstruction = toolInstructions + calendarToolInstruction + contactsToolInstruction + chatInstruction;
 
     // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
     // This block just tells the model not to self-generate a greeting from the system prompt alone.
@@ -1001,7 +1026,7 @@ After the opening turn, all the rules above apply normally.`;
       }
     }
 
-    const fullPrompt = sophiePrompt + calendarContext + importedContext + burstContext + researchInstruction + startupGuard;
+    const fullPrompt = sophiePrompt + calendarContext + contactsContext + importedContext + burstContext + researchInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create

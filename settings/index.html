@@ -514,21 +514,12 @@ if (!session?.user) {
 
 // ── Integrations Section ──
 const INTEGRATIONS = [
-  { id: 'google_calendar', name: 'Google Calendar',
-    description: 'Termine lesen \u00b7 Kontext f\u00fcr Meetings',
+  { id: 'google_calendar', name: 'Google',
+    description: 'Kalender, Kontakte & Geburtstage',
     iconBg: '#E6F1FB', iconColor: '#378ADD', available: true },
-  { id: 'google_contacts', name: 'Google Contacts',
-    description: 'Kontakte & Geburtstage',
-    iconBg: '#F1EFE8', iconColor: '#888780', available: false },
   { id: 'google_mail', name: 'Google Mail',
     description: 'E-Mail-Kontext f\u00fcr Sophie',
     iconBg: '#FAEEDA', iconColor: '#BA7517', available: false },
-  { id: 'slack', name: 'Slack',
-    description: 'Nachrichten & Kontext',
-    iconBg: '#EEEDFE', iconColor: '#7F77DD', available: false },
-  { id: 'notion', name: 'Notion',
-    description: 'Notizen & Dokumente',
-    iconBg: '#F1EFE8', iconColor: '#888780', available: false },
 ];
 
 async function loadIntegrations() {

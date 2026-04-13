@@ -4,6 +4,7 @@
 // Wikipedia REST API (kostenlos, kein Key)
 
 import { getCalendarEventsForUser, calendarWrite } from '../../lib/calendar-fetch.js';
+import { getContactsForUser, searchContacts, formatContactResults } from '../../lib/contacts-fetch.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -63,6 +64,18 @@ export default async function handler(req, res) {
         result = ur.success
           ? `Termin aktualisiert: "${ur.event.title}" — ${ur.event.start}`
           : `Fehler beim Aktualisieren: ${ur.error}`;
+        break;
+      }
+      case 'contacts': {
+        if (!userId) { result = 'Nicht angemeldet.'; break; }
+        const contactsData = await getContactsForUser(userId, { language: params.language || 'de' });
+        if (!contactsData?.contacts) { result = 'Kontakte nicht verfuegbar. Bitte Google neu verbinden.'; break; }
+        if (params.query) {
+          const found = searchContacts(contactsData.contacts, params.query);
+          result = formatContactResults(found, params.language || 'de');
+        } else {
+          result = contactsData.text || 'Keine Kontakte gefunden.';
+        }
         break;
       }
       case 'calendar_delete': {
