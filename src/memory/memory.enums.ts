@@ -13,6 +13,7 @@ export enum SophieMode {
   MEETING     = 'meeting',
   BRAINSTORM  = 'brainstorm',
   SALES_PITCH = 'sales_pitch',
+  CALENDAR    = 'calendar',
 }
 
 // ── Memory-Tiefe ───────────────────────────────────────────

@@ -75,6 +75,16 @@ export const MODE_CONFIG: Record<SophieMode, ModeConfig> = {
     crossModeRead:    [SophieMode.BRAINSTORM],
     label:            'Sales Pitch',
   },
+
+  [SophieMode.CALENDAR]: {
+    depth:            MemoryDepth.SCOPED,
+    security:         SecurityLevel.CONFIDENTIAL,
+    isWorkspace:      true,
+    shortTermTTLDays: 90,
+    historyScope:     'personal',              // Kalender-Kontext fliesst in persoenliche Historie
+    crossModeRead:    [SophieMode.MEETING, SophieMode.BRAINSTORM],  // darf Meeting- und Brainstorm-Refs sehen
+    label:            'Calendar',
+  },
 }
 
 // ── Depth -> was gespeichert werden darf ───────────────────
