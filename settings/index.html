@@ -286,6 +286,18 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
+  <!-- Section: Integrationen -->
+  <div class="section collapsed" id="sectionIntegrations">
+    <div class="section-toggle" onclick="toggleSection('sectionIntegrations')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Verbindungen</span>
+      <span class="s-sub" id="integrationsSub">Kalender &amp; Dienste</span>
+    </div>
+    <div class="section-body">
+      <div id="integrationsContent"><p class="msg">Laden...</p></div>
+    </div>
+  </div>
+
   <!-- Section 1: KI-Import -->
   <div class="section collapsed" id="sectionImport">
     <div class="section-toggle" onclick="toggleSection('sectionImport')">
@@ -497,7 +509,153 @@ if (!session?.user) {
   loadCosts();
   loadAccount();
   loadUsage();
+  loadIntegrations();
 }
+
+// ── Integrations Section ──
+const INTEGRATIONS = [
+  { id: 'google_calendar', name: 'Google Calendar',
+    description: 'Termine lesen \u00b7 Kontext f\u00fcr Meetings',
+    iconBg: '#E6F1FB', iconColor: '#378ADD', available: true },
+  { id: 'google_contacts', name: 'Google Contacts',
+    description: 'Kontakte & Geburtstage',
+    iconBg: '#F1EFE8', iconColor: '#888780', available: false },
+  { id: 'google_mail', name: 'Google Mail',
+    description: 'E-Mail-Kontext f\u00fcr Sophie',
+    iconBg: '#FAEEDA', iconColor: '#BA7517', available: false },
+  { id: 'slack', name: 'Slack',
+    description: 'Nachrichten & Kontext',
+    iconBg: '#EEEDFE', iconColor: '#7F77DD', available: false },
+  { id: 'notion', name: 'Notion',
+    description: 'Notizen & Dokumente',
+    iconBg: '#F1EFE8', iconColor: '#888780', available: false },
+];
+
+async function loadIntegrations() {
+  const container = document.getElementById("integrationsContent");
+  const subEl = document.getElementById("integrationsSub");
+  try {
+    const res = await fetch("/api/integrations?action=status", {
+      headers: { Authorization: "Bearer " + session.access_token },
+    });
+    const { integrations = [] } = await res.json();
+
+    // Status-Map: provider → integration
+    const statusMap = {};
+    integrations.forEach(i => { statusMap[i.provider] = i; });
+
+    const connectedCount = integrations.length;
+    subEl.textContent = connectedCount > 0
+      ? connectedCount + " verbunden"
+      : "Kalender & Dienste";
+
+    let html = '';
+    for (const cfg of INTEGRATIONS) {
+      const status = statusMap[cfg.id];
+      const state = !status ? 'disconnected' : (status.hasError ? 'needs_reconnect' : 'connected');
+
+      html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0ece6">
+        <div style="width:36px;height:36px;border-radius:10px;background:${cfg.iconBg};display:flex;align-items:center;justify-content:center">
+          <span style="font-size:16px;font-weight:700;color:${cfg.iconColor}">${cfg.name[0]}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#2a2420">${cfg.name}</div>
+          <div style="font-size:11px;color:#a09080">${cfg.description}</div>
+          ${status?.label ? `<div style="font-size:10px;color:#7a6a5a;margin-top:2px">${status.label}</div>` : ''}
+        </div>`;
+
+      if (!cfg.available) {
+        html += `<span style="font-size:10px;color:#c4b8a8;font-weight:500">Bald</span>`;
+      } else if (state === 'connected') {
+        html += `<button class="btn btn-secondary btn-sm" onclick="disconnectIntegration('${cfg.id}','${status?.id || ''}')" style="font-size:11px;padding:4px 10px">Trennen</button>`;
+      } else if (state === 'needs_reconnect') {
+        html += `<button class="btn btn-primary btn-sm" onclick="connectIntegration('${cfg.id}')" style="font-size:11px;padding:4px 10px;background:#d4760a;border-color:#d4760a">Neu verbinden</button>`;
+      } else {
+        html += `<button class="btn btn-primary btn-sm" onclick="connectIntegration('${cfg.id}')" style="font-size:11px;padding:4px 10px">Verbinden</button>`;
+      }
+
+      html += `</div>`;
+    }
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<p class="msg" style="color:#c44">Fehler beim Laden</p>';
+  }
+}
+
+async function connectIntegration(provider) {
+  try {
+    const res = await fetch(`/api/oauth-google?action=connect&provider=${provider}`, {
+      headers: { Authorization: "Bearer " + session.access_token },
+    });
+    const { url, error } = await res.json();
+    if (error) { alert(error); return; }
+
+    const popup = window.open(url, 'sophie-oauth', 'width=500,height=650,left=200,top=100');
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      window.location.href = url;
+      return;
+    }
+
+    function onMessage(event) {
+      if (event.origin !== window.location.origin) return;
+      if (!event.data?.type?.startsWith('sophie-oauth-')) return;
+      cleanup();
+      if (event.data.type === 'sophie-oauth-success') loadIntegrations();
+      else alert(event.data.error || 'Verbindung fehlgeschlagen');
+    }
+
+    const pollTimer = setInterval(() => {
+      if (popup.closed) { cleanup(); loadIntegrations(); }
+    }, 500);
+
+    const timeoutTimer = setTimeout(() => {
+      cleanup();
+      if (!popup.closed) popup.close();
+      loadIntegrations();
+    }, 60000);
+
+    function cleanup() {
+      window.removeEventListener('message', onMessage);
+      clearInterval(pollTimer);
+      clearTimeout(timeoutTimer);
+    }
+
+    window.addEventListener('message', onMessage);
+  } catch (e) {
+    alert('Verbindung fehlgeschlagen');
+  }
+}
+
+async function disconnectIntegration(provider, integrationId) {
+  if (!confirm('Verbindung zu ' + provider.replace('_', ' ') + ' trennen?')) return;
+  try {
+    await fetch('/api/oauth-google?action=disconnect', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify({ provider, integrationId }),
+    });
+    loadIntegrations();
+  } catch (e) {
+    alert('Trennen fehlgeschlagen');
+  }
+}
+
+// Integration-Status aus URL-Parametern (Fallback wenn Popup geblockt)
+(function checkIntegrationParams() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('integration_success')) {
+    loadIntegrations();
+    history.replaceState(null, '', window.location.pathname);
+  }
+  if (params.has('integration_error')) {
+    alert('Verbindung fehlgeschlagen: ' + params.get('integration_error'));
+    history.replaceState(null, '', window.location.pathname);
+  }
+})();
 
 // ── Account Section ──
 async function loadAccount() {

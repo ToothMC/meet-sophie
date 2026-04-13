@@ -128,7 +128,8 @@
       "Bash(grep -rn \"ALTER TABLE meetings.*session_id\\\\|ADD COLUMN.*session_id\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -rn \"meetings.*session_id\\\\|session_id.*meetings\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
       "Bash(grep -r \"CREATE TABLE.*meetings\\\\|REFERENCES meetings\\\\|ON DELETE\\\\|CASCADE\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/supabase/migrations/*.sql)",
-      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_advisors"
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_advisors",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__list_extensions"
     ]
   },
   "hooks": {

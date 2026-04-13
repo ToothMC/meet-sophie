@@ -64,18 +64,20 @@ export default async function handler(req, res) {
     // Sicherstellen, dass die Integration dem User gehoert
     const { data: existing } = await supabase
       .from('user_integrations')
-      .select('id')
+      .select('id, provider')
       .eq('id', integrationId)
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (!existing) return res.status(404).json({ error: 'Integration not found' });
 
+    // Provider-spezifische Revocation ueber den jeweiligen OAuth-Endpoint empfohlen.
+    // Dieser generische Endpoint deaktiviert nur lokal.
     const { error } = await supabase
       .from('user_integrations')
       .update({
         is_active:     false,
-        access_token:  null,
+        access_token:  '',
         refresh_token: null,
         last_error:    null,
       })
