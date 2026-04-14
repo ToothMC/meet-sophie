@@ -109,7 +109,7 @@
       margin:0;
       padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       font-family:'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif;
-      background:linear-gradient(180deg, #a0c4f5 0%, #b8d4fa 20%, #cee0fc 40%, #e2ecfe 60%, #f2f6ff 80%, #ffffff 100%);
+      background:#f0f4ff url('/hero-bg.png') top center / 100% auto no-repeat;
       overflow-x:hidden;
       color:var(--text);
       line-height:1.5;
@@ -192,60 +192,60 @@
       width:100%;height:100%;display:block;
     }
     .hero-tagline{
-      font-size:18px;color:rgba(255,255,255,.75);
+      font-size:20px;color:rgba(255,255,255,.8);
       margin:0 0 4px;line-height:1.5;
       font-family:'DM Sans',sans-serif;
     }
     .hero-headline{
-      font-size:clamp(42px,8vw,60px);font-weight:800;
-      color:#ffffff;margin:0 0 20px;line-height:1.05;
+      font-size:clamp(48px,9vw,72px);font-weight:800;
+      color:#ffffff;margin:0 0 16px;line-height:1.0;
       letter-spacing:-.03em;
-      text-shadow:0 2px 20px rgba(0,40,120,.12);
+      text-shadow:0 2px 30px rgba(0,40,120,.15);
     }
     .hero-modes{
-      display:flex;align-items:center;gap:8px;
-      margin-bottom:40px;flex-wrap:wrap;justify-content:center;
+      display:flex;align-items:center;gap:10px;
+      margin-bottom:36px;flex-wrap:wrap;justify-content:center;
     }
     .hero-modes span.separator{
-      color:rgba(255,255,255,.35);font-size:14px;
+      color:rgba(255,255,255,.35);font-size:16px;
     }
     .hero-mode-link{
-      font-size:15px;color:rgba(255,255,255,.7);
+      font-size:16px;color:rgba(255,255,255,.7);
       text-decoration:none;cursor:pointer;
-      transition:color .2s;font-weight:500;
-      background:none;border:none;font-family:inherit;
-      padding:4px 2px;
+      transition:color .2s;font-weight:400;
+      background:none;border:none;font-family:'DM Sans',sans-serif;
+      padding:4px 2px;letter-spacing:.01em;
     }
     .hero-mode-link:hover{color:#ffffff}
     .hero-email-form{
       display:flex;align-items:center;
-      background:rgba(255,255,255,.75);
+      background:rgba(255,255,255,.65);
       backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-      border:1px solid rgba(255,255,255,.5);
-      border-radius:999px;padding:5px 5px 5px 18px;
-      max-width:420px;width:100%;
-      box-shadow:0 4px 24px rgba(0,40,120,.08);
+      border:1px solid rgba(255,255,255,.45);
+      border-radius:999px;padding:3px 3px 3px 14px;
+      max-width:360px;width:100%;
+      box-shadow:0 2px 16px rgba(0,40,120,.06);
       transition:border-color .2s,box-shadow .2s;
     }
     .hero-email-form:focus-within{
-      border-color:rgba(255,255,255,.8);
-      box-shadow:0 4px 28px rgba(0,40,120,.14);
+      border-color:rgba(255,255,255,.7);
+      box-shadow:0 3px 20px rgba(0,40,120,.10);
     }
     .hero-email-icon{
-      flex-shrink:0;width:22px;height:22px;
-      color:rgba(80,110,160,.5);margin-right:10px;
+      flex-shrink:0;width:18px;height:18px;
+      color:rgba(80,110,160,.45);margin-right:8px;
     }
     .hero-email-input{
       flex:1;border:none;background:transparent;
-      font-size:15px;color:#1a2340;outline:none;
-      font-family:inherit;padding:12px 0;min-width:0;
+      font-size:14px;color:#1a2340;outline:none;
+      font-family:inherit;padding:10px 0;min-width:0;
     }
-    .hero-email-input::placeholder{color:rgba(80,110,160,.5)}
+    .hero-email-input::placeholder{color:rgba(80,110,160,.45)}
     .hero-email-submit{
       flex-shrink:0;border:none;
       background:linear-gradient(135deg,#4a9aff,#1a6dff);
-      color:#fff;font-size:15px;font-weight:700;
-      padding:14px 32px;border-radius:999px;
+      color:#fff;font-size:14px;font-weight:700;
+      padding:11px 24px;border-radius:999px;
       cursor:pointer;font-family:inherit;
       transition:transform .15s,filter .15s;
     }
@@ -2061,22 +2061,6 @@
       }, { passive: true });
       canvas.parentElement.addEventListener('touchend', function() { isHovering = false; });
 
-      // Sparkle particles around waveform
-      var particles = [];
-      for (var i = 0; i < 40; i++) {
-        particles.push({
-          x: 0.15 + Math.random() * 0.7,
-          y: 0.2 + Math.random() * 0.6,
-          size: Math.random() * 2.5 + 0.5,
-          speed: Math.random() * 0.4 + 0.15,
-          phase: Math.random() * Math.PI * 2,
-          opacity: Math.random() * 0.6 + 0.2
-        });
-      }
-
-      // Dotted arc points (top arc of dots)
-      var dotCount = 60;
-
       var time = 0, running = false;
       function draw() {
         if (!running) return;
@@ -2084,47 +2068,55 @@
         ctx.clearRect(0, 0, W, H);
 
         var cx = W / 2, cy = H / 2;
-        var interactAmp = isHovering ? 1.4 + Math.abs(mouseY - 0.5) * 1.5 : 1.0;
-        var interactFreq = isHovering ? mouseX * 3 : 0;
+        var interactAmp = isHovering ? 1.3 + Math.abs(mouseY - 0.5) : 1.0;
+        var interactFreq = isHovering ? mouseX * 2.5 : 0;
 
-        // === Center glow (bright cyan/white) ===
-        var glowR = W * 0.28;
+        // === Outer glow halo ===
+        var glowR = W * 0.38;
         var glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-        var glowPulse = 0.25 + Math.sin(time * 1.2) * 0.08;
-        glowGrad.addColorStop(0, 'rgba(180,240,255,' + glowPulse + ')');
-        glowGrad.addColorStop(0.3, 'rgba(100,200,240,' + (glowPulse * 0.5) + ')');
-        glowGrad.addColorStop(0.6, 'rgba(60,160,220,' + (glowPulse * 0.15) + ')');
-        glowGrad.addColorStop(1, 'rgba(40,120,200,0)');
+        var pulse = 0.18 + Math.sin(time * 0.8) * 0.05;
+        glowGrad.addColorStop(0, 'rgba(160,220,255,' + (pulse * 1.2) + ')');
+        glowGrad.addColorStop(0.35, 'rgba(120,200,250,' + (pulse * 0.5) + ')');
+        glowGrad.addColorStop(0.7, 'rgba(80,170,240,' + (pulse * 0.12) + ')');
+        glowGrad.addColorStop(1, 'rgba(60,140,220,0)');
         ctx.fillStyle = glowGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // === Waveform lines (thin vertical bars like audio waveform) ===
-        var bars = 80;
-        var totalWidth = W * 0.65;
+        // === Waveform bars ===
+        var bars = 64;
+        var totalWidth = W * 0.58;
         var startX = (W - totalWidth) / 2;
         var gap = totalWidth / bars;
-        var barW = Math.max(1.5, gap * 0.35);
-        var maxAmp = H * 0.32;
+        var barW = Math.max(1.8, gap * 0.4);
+        var maxAmp = H * 0.34;
 
         for (var b = 0; b < bars; b++) {
           var x = startX + (b + 0.5) * gap;
-          var normDist = (b - bars / 2) / (bars / 2); // -1 to 1
-          var envelope = Math.exp(-normDist * normDist * 3); // gaussian
+          var normDist = (b - bars / 2) / (bars / 2);
+          var envelope = Math.exp(-normDist * normDist * 2.5);
 
-          var w1 = Math.sin(time * 2.5 + b * 0.12) * 0.45;
-          var w2 = Math.sin(time * 3.8 + b * 0.19 + interactFreq) * 0.30;
-          var w3 = Math.sin(time * 1.5 + b * 0.07) * 0.25;
+          var w1 = Math.sin(time * 2.2 + b * 0.14) * 0.5;
+          var w2 = Math.sin(time * 3.3 + b * 0.21 + interactFreq) * 0.3;
+          var w3 = Math.sin(time * 1.4 + b * 0.09) * 0.2;
           var amp = (w1 + w2 + w3) * envelope * maxAmp * interactAmp;
-          var absAmp = Math.max(Math.abs(amp), 1.5);
+          var absAmp = Math.max(Math.abs(amp), 1.2);
 
-          // Color: bright cyan-white center, fading to teal at edges
           var brightness = envelope;
-          var r = Math.round(140 + brightness * 115);
-          var g = Math.round(210 + brightness * 45);
-          var bCol = Math.round(235 + brightness * 20);
-          var alpha = 0.3 + brightness * 0.65;
 
-          ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + bCol + ',' + alpha + ')';
+          // Soft glow behind each bar
+          if (brightness > 0.2) {
+            ctx.strokeStyle = 'rgba(140,210,255,' + (brightness * 0.12) + ')';
+            ctx.lineWidth = barW + 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x, cy - absAmp * 0.8);
+            ctx.lineTo(x, cy + absAmp * 0.8);
+            ctx.stroke();
+          }
+
+          // Main bar — white-cyan core
+          var alpha = 0.35 + brightness * 0.6;
+          ctx.strokeStyle = 'rgba(200,235,255,' + alpha + ')';
           ctx.lineWidth = barW;
           ctx.lineCap = 'round';
           ctx.beginPath();
@@ -2132,59 +2124,15 @@
           ctx.lineTo(x, cy + absAmp);
           ctx.stroke();
 
-          // Glow layer for bright bars
-          if (brightness > 0.3) {
-            ctx.strokeStyle = 'rgba(200,245,255,' + (brightness * 0.2) + ')';
-            ctx.lineWidth = barW + 3;
+          // Bright white center for high-energy bars
+          if (brightness > 0.5) {
+            ctx.strokeStyle = 'rgba(240,252,255,' + (brightness * 0.4) + ')';
+            ctx.lineWidth = barW * 0.5;
             ctx.beginPath();
-            ctx.moveTo(x, cy - absAmp * 0.7);
-            ctx.lineTo(x, cy + absAmp * 0.7);
+            ctx.moveTo(x, cy - absAmp * 0.6);
+            ctx.lineTo(x, cy + absAmp * 0.6);
             ctx.stroke();
           }
-        }
-
-        // === Dotted arcs above and below waveform ===
-        var arcRadius = W * 0.36;
-        ctx.fillStyle = 'rgba(180,230,255,0.25)';
-        for (var d = 0; d < dotCount; d++) {
-          var angle = -Math.PI * 0.85 + (d / dotCount) * Math.PI * 0.7;
-          var dx = cx + Math.cos(angle) * arcRadius;
-          var dy = cy + Math.sin(angle) * arcRadius * 0.5 - H * 0.05;
-          var dotPulse = (Math.sin(time * 2 + d * 0.3) + 1) * 0.5;
-          ctx.globalAlpha = 0.15 + dotPulse * 0.25;
-          ctx.beginPath();
-          ctx.arc(dx, dy, 1.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-
-        // === Sparkle particles ===
-        for (var j = 0; j < particles.length; j++) {
-          var p = particles[j];
-          var px = p.x * W;
-          var py = p.y * H;
-          var sparkle = (Math.sin(time * p.speed * 5 + p.phase) + 1) * 0.5;
-          var sz = p.size * (0.3 + sparkle * 0.9);
-          var op = p.opacity * sparkle * (isHovering ? 1.5 : 0.8);
-
-          // Star-shaped sparkle for larger particles
-          if (p.size > 1.8) {
-            ctx.save();
-            ctx.translate(px, py);
-            ctx.rotate(time * p.speed);
-            ctx.strokeStyle = 'rgba(220,250,255,' + (op * 0.6) + ')';
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(-sz * 1.5, 0); ctx.lineTo(sz * 1.5, 0);
-            ctx.moveTo(0, -sz * 1.5); ctx.lineTo(0, sz * 1.5);
-            ctx.stroke();
-            ctx.restore();
-          }
-
-          ctx.beginPath();
-          ctx.arc(px, py, sz * 0.6, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(220,250,255,' + op + ')';
-          ctx.fill();
         }
 
         requestAnimationFrame(draw);
