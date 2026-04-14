@@ -75,7 +75,12 @@
       "Read(//opt/homebrew/bin/**)",
       "Read(//usr/local/bin/**)",
       "Bash(avconvert --help)",
-      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1280x720 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4 --replace --progress)"
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1280x720 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4 --replace --progress)",
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1280x720 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4 --start 10 --duration 20 --replace --progress)",
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p PresetAppleM4V720pHD -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.m4v --start 10 --duration 20 --replace --progress)",
+      "Bash(brew install:*)",
+      "Bash(npm install:*)",
+      "Bash(npx ffmpeg-static:*)"
     ]
   },
   "hooks": {
