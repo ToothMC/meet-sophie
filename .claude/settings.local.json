@@ -85,7 +85,12 @@
       "Bash(/opt/homebrew/bin/ffmpeg -version)",
       "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1280x720 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.mp4 --duration 120 --replace --progress)",
       "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1920x1080 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.mp4 --duration 120 --replace --progress)",
-      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p PresetAppleM4V720pHD -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.m4v --duration 120 --replace --progress)"
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p PresetAppleM4V720pHD -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.m4v --duration 120 --replace --progress)",
+      "Bash(node -e ':*)",
+      "Bash(curl -L -o /tmp/ffmpeg.zip \"https://evermeet.cx/ffmpeg/getrelease/zip\")",
+      "Bash(unzip -o /tmp/ffmpeg.zip -d /tmp/)",
+      "Bash(/tmp/ffmpeg -version)",
+      "Bash(swift -e ':*)"
     ]
   },
   "hooks": {
