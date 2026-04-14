@@ -64,7 +64,18 @@
       "Bash(node -e \"import\\('./lib/calendar-fetch.js'\\).then\\(\\(\\) => console.log\\('OK'\\)\\).catch\\(e => console.error\\('FAIL:', e.message\\)\\)\")",
       "Bash(curl -sL 'https://meet-sophie.com/api/chat?action=start' -X POST -H 'Content-Type: application/json' -d '{\"message\":\"Hi\"}')",
       "Bash(xargs ls:*)",
-      "Bash(cwebp -q 85 hero-bg.png -o hero-bg.webp)"
+      "Bash(cwebp -q 85 hero-bg.png -o hero-bg.webp)",
+      "WebSearch",
+      "WebFetch(domain:pixabay.com)",
+      "WebFetch(domain:mixkit.co)",
+      "WebFetch(domain:www.pexels.com)",
+      "WebFetch(domain:www.videezy.com)",
+      "WebFetch(domain:www.vecteezy.com)",
+      "Bash(ffmpeg -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -c:v libx264 -crf 28 -preset slow -an -movflags +faststart -vf \"scale=1920:-2\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(avconvert --help)",
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1280x720 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4 --replace --progress)"
     ]
   },
   "hooks": {
