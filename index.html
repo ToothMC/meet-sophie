@@ -3688,18 +3688,16 @@
     // ── Video Demo Modal ─────────────────────────────────
     const VIDEOS_READY = { talk: true, brainstorm: true, meeting: true, salespitch: true };
 
-    // Preload videos via fetch() so browser caches them — videoEl.src then hits cache
-    // Sequential loading with low priority to not block page navigation
+    // Preload videos for current language
     const _videoBlobs = {};
-    setTimeout(() => {
+    function _preloadVideos() {
+      const lang = currentLang === "de" ? "de" : "en"; // FR uses EN
       const srcs = [
-        ["talk", "/videos/demo-talk.mp4"],
-        ["brainstorm", "/videos/demo-brainstorm.mp4"],
-        ["meeting", "/videos/demo-meeting.mp4"],
-        ["salespitch", "/videos/demo-salespitch.mp4"],
+        ["talk", "/video/demo-talk_" + lang + ".mp4"],
+        ["brainstorm", "/video/demo-brainstorming_" + lang + ".mp4"],
+        ["meeting", "/video/demo-meeting_" + lang + ".mp4"],
+        ["salespitch", "/video/demo-salespitch_" + lang + ".mp4"],
       ].filter(([mode]) => VIDEOS_READY[mode]);
-
-      // Load one at a time so navigation stays fast
       (async function loadNext(i) {
         if (i >= srcs.length) return;
         const [mode, src] = srcs[i];
@@ -3710,11 +3708,17 @@
         } catch {}
         loadNext(i + 1);
       })(0);
-    }, 4000); // Wait 4s so initial page render + navigation is unblocked
+    }
+    setTimeout(_preloadVideos, 4000);
+
+    function _getVideoSrc(mode) {
+      const lang = currentLang === "de" ? "de" : "en";
+      const names = { talk: "demo-talk", brainstorm: "demo-brainstorming", meeting: "demo-meeting", salespitch: "demo-salespitch" };
+      return "/video/" + (names[mode] || names.talk) + "_" + lang + ".mp4";
+    }
 
     const MODE_VIDEOS = {
       talk: {
-        src: "/videos/demo-talk.mp4",
         icon: "\u25CF",
         title: { de: "So funktioniert ein Gespr\u00e4ch mit Sophie", en: "How a conversation with Sophie works" },
         desc: {
@@ -3725,7 +3729,6 @@
         ctaClass: "",
       },
       brainstorm: {
-        src: "/videos/demo-brainstorm.mp4",
         icon: "\u2726",
         title: { de: "Brainstorming mit Sophie + Scorecard", en: "Brainstorming with Sophie + Scorecard" },
         desc: {
@@ -3736,7 +3739,6 @@
         ctaClass: "mode-brainstorm",
       },
       meeting: {
-        src: "/videos/demo-meeting.mp4",
         icon: "\u25D9",
         title: { de: "Meeting mit Sophie: Report & Lean Check", en: "Meeting with Sophie: Report & Lean Check" },
         desc: {
@@ -3747,7 +3749,6 @@
         ctaClass: "mode-meeting",
       },
       salespitch: {
-        src: "/videos/demo-salespitch.mp4",
         icon: "\u25B2",
         title: { de: "Sales Pitch mit Sophie trainieren", en: "Practice your Sales Pitch with Sophie" },
         desc: {
@@ -3818,7 +3819,7 @@
 
       if (VIDEOS_READY[videoCurrentMode]) {
         // Use preloaded blob URL if available, otherwise fall back to network
-        videoEl.src = _videoBlobs[videoCurrentMode] || v.src;
+        videoEl.src = _videoBlobs[videoCurrentMode] || _getVideoSrc(videoCurrentMode);
         videoEl.muted = false;
         videoEl.style.display = "";
         videoPlaceholder.style.display = "none";
