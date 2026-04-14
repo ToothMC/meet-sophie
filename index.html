@@ -2025,26 +2025,6 @@
       </div>
     </section>
 
-    <!-- Smooth video loop crossfade -->
-    <script>
-    (function(){
-      var v = document.getElementById('heroVideo');
-      if (!v) return;
-      var fadeTime = 1.5; // seconds to fade
-      v.style.transition = 'opacity ' + fadeTime + 's ease';
-      v.addEventListener('timeupdate', function() {
-        if (v.duration && v.currentTime > v.duration - fadeTime) {
-          v.style.opacity = '0';
-        } else if (v.style.opacity === '0' && v.currentTime < 0.5) {
-          v.style.opacity = '1';
-        }
-      });
-      v.addEventListener('seeked', function() {
-        if (v.currentTime < 1) v.style.opacity = '1';
-      });
-    })();
-    </script>
-
     <!-- Chat card (moved out of hero, kept in DOM for JS) -->
     <div class="chat-card" id="sophieChat">
       <div class="chat-card-header">
