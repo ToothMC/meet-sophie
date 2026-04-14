@@ -90,7 +90,18 @@
       "Bash(curl -L -o /tmp/ffmpeg.zip \"https://evermeet.cx/ffmpeg/getrelease/zip\")",
       "Bash(unzip -o /tmp/ffmpeg.zip -d /tmp/)",
       "Bash(/tmp/ffmpeg -version)",
-      "Bash(swift -e ':*)"
+      "Bash(swift -e ':*)",
+      "Bash(curl -sI \"https://meet-sophie-l48fdnwxg-michaels-projects-674b8d24.vercel.app/video/hero-bg.mp4\")",
+      "Bash(/tmp/ffmpeg -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4)",
+      "WebFetch(domain:www.istockphoto.com)",
+      "Bash(ls -lt /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/*.mp4)",
+      "Bash(/tmp/ffmpeg -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
+      "Bash(/tmp/ffmpeg -i /tmp/landingpage_orig.mp4)",
+      "Bash(/tmp/ffmpeg -y -i /tmp/landingpage_orig.mp4 -filter_complex \"[0:v]reverse[r];[0:v][r]concat=n=2:v=1[out]\" -map \"[out]\" -c:v libx264 -crf 26 -preset slow -an -movflags +faststart -vf \"scale=1280:-2\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
+      "Bash(/tmp/ffmpeg -y -i /tmp/landingpage_orig.mp4 -filter_complex \"[0:v]scale=1280:-2[s];[s]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[out]\" -map \"[out]\" -c:v libx264 -crf 26 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
+      "Bash(/tmp/ffmpeg -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4)",
+      "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -filter_complex \"[0:v]scale=1280:-2[s];[s]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[out]\" -map \"[out]\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
+      "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -vf \"scale=1280:-2\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)"
     ]
   },
   "hooks": {
