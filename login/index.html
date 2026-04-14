@@ -320,9 +320,16 @@
       }
     });
 
-    // Pre-fill email from last successful login
+    // Pre-fill email from URL param (landing page) or last successful login
     const emailInput = document.getElementById("email");
-    try { const savedEmail = localStorage.getItem("sophie_login_email"); if (savedEmail && emailInput) emailInput.value = savedEmail; } catch (_) {}
+    const urlEmail = new URLSearchParams(window.location.search).get("email");
+    if (urlEmail && emailInput) {
+      emailInput.value = urlEmail;
+      // Auto-submit after short delay so user sees the page
+      setTimeout(() => { if (btn && emailInput.value) btn.click(); }, 400);
+    } else {
+      try { const savedEmail = localStorage.getItem("sophie_login_email"); if (savedEmail && emailInput) emailInput.value = savedEmail; } catch (_) {}
+    }
 
     // Enter key submits email
     if (emailInput) emailInput.addEventListener("keydown", (e) => {

@@ -55,7 +55,14 @@
       "Read(//tmp/**)",
       "Bash(node scripts/build-demo-decision.mjs)",
       "Bash(git merge feature/export-harmonize --no-ff -m ':*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(curl -s \"https://meet-sophie.com/api/chat\")",
+      "Bash(curl -sL \"https://meet-sophie.com/api/chat\")",
+      "Bash(curl -sL \"https://meet-sophie.com/api/chat?action=start\" -H \"Content-Type: application/json\" -X POST -d '{}')",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__get_logs",
+      "Bash(curl -sL \"https://meet-sophie.com/api/chat?action=context\" -H \"Authorization: Bearer test\")",
+      "Bash(node -e \"import\\('./lib/calendar-fetch.js'\\).then\\(\\(\\) => console.log\\('OK'\\)\\).catch\\(e => console.error\\('FAIL:', e.message\\)\\)\")",
+      "Bash(curl -sL 'https://meet-sophie.com/api/chat?action=start' -X POST -H 'Content-Type: application/json' -d '{\"message\":\"Hi\"}')"
     ]
   },
   "hooks": {
