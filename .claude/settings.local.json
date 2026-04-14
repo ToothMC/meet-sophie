@@ -81,7 +81,11 @@
       "Bash(brew install:*)",
       "Bash(npm install:*)",
       "Bash(npx ffmpeg-static:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(/opt/homebrew/bin/ffmpeg -version)",
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1280x720 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.mp4 --duration 120 --replace --progress)",
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p Preset1920x1080 -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.mp4 --duration 120 --replace --progress)",
+      "Bash(avconvert -s /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/landingpage.mp4 -p PresetAppleM4V720pHD -o /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-loop.m4v --duration 120 --replace --progress)"
     ]
   },
   "hooks": {
