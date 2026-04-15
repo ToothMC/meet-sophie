@@ -151,9 +151,12 @@ body::after{
 .sv-status-text{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(125,249,170,.8);font-weight:500}
 .sv-timer{font-size:12px;color:rgba(140,120,200,.55);font-variant-numeric:tabular-nums;font-weight:500}
 
-/* ── Sophie Face (emotion visualizer) ── */
+/* ── Sophie Face (emotion visualizer) ──
+   Default: hidden. The face only appears when a real emotion is detected
+   (non-neutral). In neutral mode the existing Knight-Rider bars stand
+   alone, exactly as before. Visibility is toggled from JS on setEmotion. */
 .sophie-face-wrap{
-  display:flex;align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;
   margin:2px 0 10px;
   opacity:.95;
   pointer-events:none;
