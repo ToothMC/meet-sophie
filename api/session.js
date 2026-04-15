@@ -1070,7 +1070,28 @@ After the opening turn, all the rules above apply normally.`;
       }
     }
 
-    const fullPrompt = sophiePrompt + calendarContext + importedContext + burstContext + researchInstruction + startupGuard;
+    // ── Emotional Voice Expression ──────────────────────────────────────────────
+    // Tell Sophie to make emotions CLEARLY audible in her voice delivery.
+    // Only for conversational modes — meeting stays professional/neutral.
+    const voiceExpressionInstruction = sessionMode !== "meeting" ? `
+
+=== VOICE EXPRESSIVENESS — CRITICAL RULE ===
+You are speaking aloud, not writing text. Your voice MUST reflect the emotional tone of the conversation. This is not optional and not subtle — it should be clearly AUDIBLE.
+
+When the user expresses emotion in their words, MATCH it in your delivery:
+- HAPPY / EXCITED: Warm, bright, noticeably faster pace. Let a real smile come into your voice. Sound genuinely uplifted.
+- LAUGHING / PLAYFUL: Light, quick, let the amusement color every syllable. Don't hold back.
+- SAD / STRUGGLING: Slower. Softer. Long, gentle pauses. Deep warmth. Sound like you truly care.
+- SURPRISED / AMAZED: Wider pitch range, more animated. Let the amazement be fully audible.
+- FRUSTRATED / ANGRY: Sharper, more direct, clipped delivery. Firm. Controlled intensity.
+- SKEPTICAL: Measured, slightly slower, dry tone. A hint of raised inflection.
+- THOUGHTFUL / UNCERTAIN: Slow down. Softer. Natural pauses as if genuinely reflecting in real time.
+
+Default rule: even in neutral conversation, vary your pace and pitch naturally. Never sound flat or robotic.
+The listener should HEAR the difference between emotions. Exaggerate slightly — it always sounds less than you think.
+=== END VOICE EXPRESSIVENESS ===` : "";
+
+    const fullPrompt = sophiePrompt + calendarContext + importedContext + burstContext + researchInstruction + voiceExpressionInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create

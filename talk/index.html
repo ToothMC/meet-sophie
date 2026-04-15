@@ -5843,14 +5843,10 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
           // Emotion visualizer: detect emotion from user transcript (debounced).
           // The bars change color + mouth shape; brows fade in.
-          // Also inject voice style into session.update so Sophie's speech matches.
           if (window.__emoController && window.SophieEmotion) {
             window.SophieEmotion.detectEmotionDelayed(
               text,
-              (emo) => {
-                window.__emoController.setEmotion(emo);
-                _updateSessionVoiceStyle(emo);
-              },
+              (emo) => window.__emoController.setEmotion(emo),
               200
             );
           }
@@ -6195,13 +6191,10 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           if (!sophieIsResponding) setHyperVoiceMode('silent');
         }, 1500);
         // Lerp the emotion back to neutral 2s after Sophie finishes
-        // (bars turn blue + brows fade out). Also restore base session instructions.
+        // (bars turn blue + brows fade out).
         if (window.__emoController && window.SophieEmotion) {
           window.SophieEmotion.resetEmotion(
-            (emo) => {
-              window.__emoController.setEmotion(emo);
-              _updateSessionVoiceStyle(emo);
-            },
+            (emo) => window.__emoController.setEmotion(emo),
             2000
           );
         }
