@@ -2897,6 +2897,37 @@ try {
   console.warn('[emoController] init failed', _e);
 }
 
+// ── Voice Emotion Styles ──────────────────────────────────────────────────────
+// English prosody instructions, injected as session.update suffix when emotion
+// is detected. Resets to base instructions when emotion returns to neutral.
+const _VOICE_STYLES = {
+  neutral:   null,
+  happy:     "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright energy, a real smile in your voice, slightly faster pace. Let the happiness come through clearly. Make it audible.",
+  laughing:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely amused and playful — let laughter color every word, lighter and faster tone, contagious energy. Don't hold back, let it show.",
+  sad:       "VOICE STYLE FOR THIS RESPONSE: Sound empathetic and tender — speak notably slower, softer, with gentle long pauses. Let warmth and deep care come through in every single word.",
+  surprised: "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch range, more animated delivery, lean fully into the amazement. Let the surprise be very audible.",
+  angry:     "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, more direct, clipped delivery, stronger emphasis on key words. Firm but controlled. Edge in your voice.",
+  skeptical: "VOICE STYLE FOR THIS RESPONSE: Sound measured and skeptical — slightly slower, notably drier tone, raised inflection on key words. Sound like one eyebrow is literally raised.",
+  wink:      "VOICE STYLE FOR THIS RESPONSE: Sound playfully knowing — light, slightly teasing, a warm mischievous quality. Like you're letting them in on a secret with a smile.",
+  thinking:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely thoughtful — slower pace, softer, natural pauses as if truly reflecting in real time. Curious and open."
+};
+
+// Update session instructions = base prompt + current voice style.
+// Called whenever detected emotion changes or resets to neutral.
+function _updateSessionVoiceStyle(emoKey) {
+  try {
+    var baseInstr = _voiceSessionData && _voiceSessionData.instructions;
+    if (!baseInstr || typeof dcSend !== 'function') return;
+    var style = _VOICE_STYLES[emoKey] || null;
+    dcSend({
+      type: "session.update",
+      session: { instructions: style ? (baseInstr + "\n\n" + style) : baseInstr }
+    });
+  } catch (_ve) {
+    console.warn('[voiceStyle] session.update failed', _ve);
+  }
+}
+
 function _krDrawBrow(cx, cy, angleDeg, width, hue, op, closed) {
   if (!_krCtx || op <= 0.01) return;
   const BROW_H = 5;
@@ -5812,10 +5843,14 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
           // Emotion visualizer: detect emotion from user transcript (debounced).
           // The bars change color + mouth shape; brows fade in.
+          // Also inject voice style into session.update so Sophie's speech matches.
           if (window.__emoController && window.SophieEmotion) {
             window.SophieEmotion.detectEmotionDelayed(
               text,
-              (emo) => window.__emoController.setEmotion(emo),
+              (emo) => {
+                window.__emoController.setEmotion(emo);
+                _updateSessionVoiceStyle(emo);
+              },
               200
             );
           }
@@ -6160,10 +6195,13 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           if (!sophieIsResponding) setHyperVoiceMode('silent');
         }, 1500);
         // Lerp the emotion back to neutral 2s after Sophie finishes
-        // (bars turn blue + brows fade out).
+        // (bars turn blue + brows fade out). Also restore base session instructions.
         if (window.__emoController && window.SophieEmotion) {
           window.SophieEmotion.resetEmotion(
-            (emo) => window.__emoController.setEmotion(emo),
+            (emo) => {
+              window.__emoController.setEmotion(emo);
+              _updateSessionVoiceStyle(emo);
+            },
             2000
           );
         }
