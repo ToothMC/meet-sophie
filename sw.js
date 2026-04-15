@@ -1,6 +1,6 @@
-// Service Worker v4 — HTML: always fresh, assets: respect HTTP cache,
+// Service Worker v5 — HTML: always fresh, assets: respect HTTP cache,
 // cross-origin: pass through untouched. Auto-reload clients on update.
-const CACHE = "sophie-v4";
+const CACHE = "sophie-v5";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
@@ -29,6 +29,7 @@ self.addEventListener("fetch", (e) => {
 
   if (url.pathname.startsWith("/api/")) return;
   if (url.pathname.startsWith("/auth/")) return;
+  if (url.pathname === "/site.webmanifest") return; // never cache — auth-protected on preview deploys
 
   // HTML navigations must never be stale — force network, bypass HTTP cache.
   // This was the original reason for SW v2's cache:no-store.
