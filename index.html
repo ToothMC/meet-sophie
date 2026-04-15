@@ -175,8 +175,8 @@
       display:flex;align-items:center;
     }
     .hero-video{
-      position:fixed;top:0;left:0;z-index:0;
-      width:100%;height:100vh;
+      position:absolute;inset:0;z-index:0;
+      width:100%;height:100%;
       object-fit:cover;
       pointer-events:none;
     }
@@ -652,7 +652,7 @@
       .lang-short{display:inline}
 
       /* --- New hero responsive --- */
-      .hero{padding:20px 0 40px;min-height:calc(100svh - 58px)}
+      .hero{padding:20px 0 40px;min-height:calc(100svh - 58px);overflow:hidden}
       .hero-subtitle{font-size:15px;letter-spacing:.16em;margin-bottom:20px}
       .hero-tagline{font-size:16px}
       .hero-headline{font-size:40px;margin-bottom:16px}
