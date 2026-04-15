@@ -151,19 +151,12 @@ body::after{
 .sv-status-text{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(125,249,170,.8);font-weight:500}
 .sv-timer{font-size:12px;color:rgba(140,120,200,.55);font-variant-numeric:tabular-nums;font-weight:500}
 
-/* ── Sophie Face (emotion visualizer) ──
-   Default: hidden. The face only appears when a real emotion is detected
-   (non-neutral). In neutral mode the existing Knight-Rider bars stand
-   alone, exactly as before. Visibility is toggled from JS on setEmotion. */
-.sophie-face-wrap{
-  display:none;align-items:center;justify-content:center;
-  margin:2px 0 10px;
-  opacity:.95;
-  pointer-events:none;
-}
-#sophieFace{display:block}
-
-/* ── Waveform Canvas ── */
+/* ── Waveform Canvas ──
+   Canvas is 160px tall: top 50px is reserved brow area (invisible in
+   neutral mode — brows fade in when a real emotion is detected), bottom
+   100px is the bar area. Bars stay centered in their 100px region and
+   render identical to the previous DOM bars when the emotion controller
+   is in neutral state (hue 218, sat 88, flat envelope). */
 .wave-card{
   position:relative;border-radius:14px;overflow:hidden;
   background:rgba(255,255,255,.018);border:.5px solid rgba(100,80,200,.2);
@@ -174,8 +167,7 @@ body::after{
 }
 .wave-card::before{left:0;background:linear-gradient(to right,rgba(4,4,10,1),transparent)}
 .wave-card::after{right:0;background:linear-gradient(to left,rgba(4,4,10,1),transparent)}
-.kr-bars{display:flex;align-items:center;justify-content:center;gap:5px;height:100px;width:100%;padding:0 12px;box-sizing:border-box}
-.kr-bar{width:6px;height:4px;border-radius:3px;background:hsl(218,88%,45%);transform-origin:center}
+#krBars{display:block;width:100%;height:160px}
 .wave-meta{position:absolute;top:8px;left:12px;right:12px;z-index:3;display:flex;justify-content:space-between;pointer-events:none}
 .wave-label{font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(140,120,255,.6);animation:fade-label 3s ease-in-out infinite}
 .wave-hz{font-size:10px;color:rgba(120,200,255,.55);font-family:'SF Mono','Fira Code',monospace;font-weight:500}
@@ -1323,18 +1315,13 @@ body::after{
       <div class="v-conn" id="vConn"></div>
     </div>
 
-    <!-- Sophie Face (emotion visualizer) -->
-    <div class="sophie-face-wrap">
-      <canvas id="sophieFace" aria-hidden="true"></canvas>
-    </div>
-
-    <!-- Voice Visualizer (Knight Rider bars) -->
+    <!-- Voice Visualizer (Knight Rider bars + optional brows above) -->
     <div class="wave-card">
       <div class="wave-meta">
         <span class="wave-label" id="waveLabel">Stimme · Live</span>
         <span class="wave-hz" id="waveHz">&ndash;</span>
       </div>
-      <div class="kr-bars" id="krBars"></div>
+      <canvas id="krBars" aria-hidden="true"></canvas>
     </div>
   </div>
 
@@ -2883,33 +2870,88 @@ const _globeSvgMini = document.getElementById('globeSvgMini');
 if (_globeSvgMini) _buildGlobe(_globeSvgMini, 64, 27);
 
 // ── Knight Rider Bar Visualizer (real audio driven) ──
+// Canvas-based. Bars react to the real audio analyser (unchanged behaviour).
+// The emotion controller (if loaded) adds a per-bar envelope (smile/frown/
+// open/neutral) and hue/sat shift on top, plus brows above the bars when
+// a non-neutral emotion is active.
 const _KR_NUM = 20;
-const _KR_MAX_H = 92;
-const _KR_MIN_H = 4;
+// Canvas geometry — brow area on top, bar area on bottom.
+const _KR_BAR_W  = 6;
+const _KR_BAR_GAP = 5;
+const _KR_CENTER_Y = 110;   // bars are centered vertically on this y
+const _KR_MAX_HALF = 46;    // max half-height of a bar (total max = 92, like before)
+const _KR_MIN_HALF = 2;     // idle half-height (total min = 4, like before)
+const _KR_BROW_Y   = 28;    // brow baseline in the top 50px area
 
-// Build bar DOM elements
-const _krContainer = document.getElementById('krBars');
-const _krBars = [];
-if (_krContainer) {
-  for (let i = 0; i < _KR_NUM; i++) {
-    const bar = document.createElement('div');
-    bar.className = 'kr-bar';
-    _krContainer.appendChild(bar);
-    _krBars.push(bar);
-  }
-}
+const _krCanvas = document.getElementById('krBars');
+const _krCtx = _krCanvas ? _krCanvas.getContext('2d') : null;
 
-// ── Sophie Face (emotion visualizer) ──
-// Globals: window.SophieEmotion, window.SophieFaceVisualizer (loaded via /lib/*.js).
-// `window.__sophieFace` is the instance used by transcript / response hooks below.
+// Emotion controller — holds interpolated style (hue/sat, per-bar envelope,
+// brow angles + opacity). In neutral it returns flat envelopes + op=0,
+// so the canvas renders bars exactly like the old DOM implementation.
 try {
-  const _faceCanvas = document.getElementById('sophieFace');
-  if (_faceCanvas && window.SophieFaceVisualizer) {
-    window.__sophieFace = window.SophieFaceVisualizer.create(_faceCanvas);
+  if (window.SophieEmotionController) {
+    window.__emoController = window.SophieEmotionController.create({ barCount: _KR_NUM });
   }
 } catch (_e) {
-  console.warn('[sophieFace] init failed', _e);
+  console.warn('[emoController] init failed', _e);
 }
+
+function _krDrawBrow(cx, cy, angleDeg, width, hue, op, closed) {
+  if (!_krCtx || op <= 0.01) return;
+  const BROW_H = 5;
+  _krCtx.save();
+  _krCtx.translate(cx, cy);
+  _krCtx.rotate(angleDeg * Math.PI / 180);
+  if (closed) {
+    // wink: closed-eye arc in place of the right brow
+    _krCtx.strokeStyle = `hsla(${hue|0},85%,55%,${op.toFixed(3)})`;
+    _krCtx.lineWidth = BROW_H;
+    _krCtx.lineCap = 'round';
+    _krCtx.beginPath();
+    _krCtx.arc(0, 4, 14, Math.PI, 0);
+    _krCtx.stroke();
+  } else {
+    _krCtx.fillStyle = `hsla(${hue|0},75%,52%,${op.toFixed(3)})`;
+    _krCtx.beginPath();
+    if (_krCtx.roundRect) {
+      _krCtx.roundRect(-width / 2, -BROW_H / 2, width, BROW_H, 2);
+    } else {
+      _krCtx.rect(-width / 2, -BROW_H / 2, width, BROW_H);
+    }
+    _krCtx.fill();
+  }
+  _krCtx.restore();
+}
+
+function _krDrawIdleBars() {
+  // Used by stopHyperWave — flat idle bars (level=0), neutral color.
+  if (!_krCtx || !_krCanvas) return;
+  const W = _krCanvas.clientWidth  || 340;
+  const H = _krCanvas.clientHeight || 160;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const physW = Math.round(W * dpr), physH = Math.round(H * dpr);
+  if (_krCanvas.width !== physW || _krCanvas.height !== physH) {
+    _krCanvas.width = physW; _krCanvas.height = physH;
+    _krCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  _krCtx.clearRect(0, 0, W, H);
+  const totalBarW = _KR_NUM * _KR_BAR_W + (_KR_NUM - 1) * _KR_BAR_GAP;
+  const startX = (W - totalBarW) / 2;
+  _krCtx.fillStyle = 'hsl(218,88%,45%)';
+  for (let i = 0; i < _KR_NUM; i++) {
+    const x = startX + i * (_KR_BAR_W + _KR_BAR_GAP);
+    _krCtx.beginPath();
+    if (_krCtx.roundRect) {
+      _krCtx.roundRect(x, _KR_CENTER_Y - _KR_MIN_HALF, _KR_BAR_W, _KR_MIN_HALF * 2, 3);
+    } else {
+      _krCtx.rect(x, _KR_CENTER_Y - _KR_MIN_HALF, _KR_BAR_W, _KR_MIN_HALF * 2);
+    }
+    _krCtx.fill();
+  }
+}
+
+_krDrawIdleBars();
 
 let _hyperVoiceMode = 'silent';
 let _waveRunning = false;
@@ -2931,7 +2973,7 @@ function _krDrawFrame(now) {
   _lastFrameTime = now;
 
   // ── Read real frequency data from analyser — no smoothing, no filters ──
-  let barLevels = new Float64Array(_KR_NUM); // 0..1 per bar
+  const barLevels = new Float64Array(_KR_NUM); // 0..1 per bar
 
   if (_hyperAnalyser && _krFreqData) {
     _hyperAnalyser.getByteFrequencyData(_krFreqData);
@@ -2958,14 +3000,61 @@ function _krDrawFrame(now) {
     }
   }
 
-  _krBars.forEach((bar, i) => {
-    if (!bar) return;
+  // ── Advance emotion lerp (gives hue/sat/envelope/brows for this frame) ──
+  // In neutral the controller returns flat envelopes (=1) + op=0 + hue=218 +
+  // sat=88, so the bar rendering is pixel-equivalent to the old DOM bars.
+  const st = window.__emoController ? window.__emoController.step() : null;
+  const hue = st ? st.hue : 218;
+  const sat = st ? st.sat : 88;
+
+  if (!_krCtx || !_krCanvas) {
+    _krAnimId = requestAnimationFrame(_krDrawFrame);
+    return;
+  }
+
+  // Canvas size (track DPR + any resize)
+  const W = _krCanvas.clientWidth  || 340;
+  const H = _krCanvas.clientHeight || 160;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const physW = Math.round(W * dpr), physH = Math.round(H * dpr);
+  if (_krCanvas.width !== physW || _krCanvas.height !== physH) {
+    _krCanvas.width = physW; _krCanvas.height = physH;
+    _krCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  _krCtx.clearRect(0, 0, W, H);
+
+  // ── Brows (only drawn if opacity > threshold, i.e. non-neutral) ──
+  if (st && st.op > 0.01) {
+    const cxL = W * 0.30;
+    const cxR = W * 0.70;
+    const BROW_W = 54;
+    _krDrawBrow(cxL, _KR_BROW_Y + st.lY, st.lA, BROW_W * st.lW, hue, st.op, false);
+    _krDrawBrow(cxR, _KR_BROW_Y + st.rY, st.rA, BROW_W * st.rW, hue, st.op, st.wink);
+  }
+
+  // ── Mouth bars ──
+  const totalBarW = _KR_NUM * _KR_BAR_W + (_KR_NUM - 1) * _KR_BAR_GAP;
+  const startX = (W - totalBarW) / 2;
+
+  for (let i = 0; i < _KR_NUM; i++) {
     const level = barLevels[i];
-    const h = _KR_MIN_H + (_KR_MAX_H - _KR_MIN_H) * level;
+    // Envelopes are both 1 in neutral → bar is symmetric, height = today's formula
+    const tSh = st ? st.tShape[i] : 1;
+    const bSh = st ? st.bShape[i] : 1;
+    const topH = _KR_MIN_HALF + (_KR_MAX_HALF - _KR_MIN_HALF) * level * tSh;
+    const botH = _KR_MIN_HALF + (_KR_MAX_HALF - _KR_MIN_HALF) * level * bSh;
+    const x = startX + i * (_KR_BAR_W + _KR_BAR_GAP);
+
     const lightness = Math.round(32 + level * 35);
-    bar.style.height = h + 'px';
-    bar.style.background = 'hsl(218,88%,' + lightness + '%)';
-  });
+    _krCtx.fillStyle = `hsl(${hue|0},${sat|0}%,${lightness}%)`;
+    _krCtx.beginPath();
+    if (_krCtx.roundRect) {
+      _krCtx.roundRect(x, _KR_CENTER_Y - topH, _KR_BAR_W, topH + botH, 3);
+    } else {
+      _krCtx.rect(x, _KR_CENTER_Y - topH, _KR_BAR_W, topH + botH);
+    }
+    _krCtx.fill();
+  }
 
   _krAnimId = requestAnimationFrame(_krDrawFrame);
 }
@@ -2987,12 +3076,9 @@ function startHyperWave() {
 function stopHyperWave() {
   _waveRunning = false;
   if (_krAnimId) { cancelAnimationFrame(_krAnimId); _krAnimId = null; }
-  // Reset bars to idle
-  _krBars.forEach(bar => {
-    if (!bar) return;
-    bar.style.height = _KR_MIN_H + 'px';
-    bar.style.background = 'hsl(218,88%,45%)';
-  });
+  // Reset emotion + redraw idle bars (flat, blue, no brows)
+  if (window.__emoController) window.__emoController.setEmotion('neutral');
+  _krDrawIdleBars();
 }
 
 // ── Sync sv-timer with existing timer ──
@@ -5724,11 +5810,12 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           cs.metrics.turnCount++;
           convoLog.push({ role: "user", text });
 
-          // Sophie face: detect emotion from user transcript (debounced).
-          if (window.__sophieFace && window.SophieEmotion) {
+          // Emotion visualizer: detect emotion from user transcript (debounced).
+          // The bars change color + mouth shape; brows fade in.
+          if (window.__emoController && window.SophieEmotion) {
             window.SophieEmotion.detectEmotionDelayed(
               text,
-              (emo) => window.__sophieFace.setEmotion(emo),
+              (emo) => window.__emoController.setEmotion(emo),
               200
             );
           }
@@ -6023,7 +6110,8 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           // First transcript delta = Sophie is actually speaking now
           if (!_hyperSophieSpeaking) {
             setHyperVoiceMode('sophie');
-            if (window.__sophieFace) window.__sophieFace.setActive(true);
+            // (Bars react to the real audio analyser — no explicit "active"
+            // signal needed for the emotion visualizer.)
           }
           partialAssistant += chunk;
           if (closingResponseActive) closingHasSpoken = true;
@@ -6069,15 +6157,13 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         // Delay visualizer switch: response.done fires before WebRTC buffer finishes playing.
         // Keep "sophie" mode for 1.5s so the last words don't look/feel cut off.
         setTimeout(() => {
-          if (!sophieIsResponding) {
-            setHyperVoiceMode('silent');
-            if (window.__sophieFace) window.__sophieFace.setActive(false);
-          }
+          if (!sophieIsResponding) setHyperVoiceMode('silent');
         }, 1500);
-        // Fade the face back to neutral 2s after Sophie finishes.
-        if (window.__sophieFace && window.SophieEmotion) {
+        // Lerp the emotion back to neutral 2s after Sophie finishes
+        // (bars turn blue + brows fade out).
+        if (window.__emoController && window.SophieEmotion) {
           window.SophieEmotion.resetEmotion(
-            (emo) => window.__sophieFace.setEmotion(emo),
+            (emo) => window.__emoController.setEmotion(emo),
             2000
           );
         }
