@@ -211,14 +211,24 @@
     .hero-modes span.separator{
       color:rgba(255,255,255,.3);font-size:16px;
     }
+    @keyframes mode-pulse{
+      0%,100%{opacity:.55}
+      50%{opacity:.9}
+    }
     .hero-mode-link{
-      font-size:15px;color:rgba(255,255,255,.6);
+      font-size:15px;color:rgba(255,255,255,.7);
       text-decoration:none;cursor:pointer;
       transition:color .2s;font-weight:400;
       background:none;border:none;font-family:'DM Sans',sans-serif;
       padding:4px 2px;letter-spacing:.01em;
+      animation:mode-pulse 2.5s ease-in-out infinite;
+      text-decoration:underline;text-decoration-color:rgba(196,168,130,.3);
+      text-underline-offset:4px;
     }
-    .hero-mode-link:hover{color:rgba(220,200,170,1)}
+    .hero-mode-link:nth-child(2){animation-delay:.3s}
+    .hero-mode-link:nth-child(3){animation-delay:.6s}
+    .hero-mode-link:nth-child(4){animation-delay:.9s}
+    .hero-mode-link:hover{color:rgba(220,200,170,1);animation:none;opacity:1;text-decoration-color:rgba(196,168,130,.6)}
     .hero-email-form{
       display:flex;align-items:center;
       background:rgba(255,255,255,.08);
