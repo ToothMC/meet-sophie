@@ -151,6 +151,15 @@ body::after{
 .sv-status-text{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(125,249,170,.8);font-weight:500}
 .sv-timer{font-size:12px;color:rgba(140,120,200,.55);font-variant-numeric:tabular-nums;font-weight:500}
 
+/* ── Sophie Face (emotion visualizer) ── */
+.sophie-face-wrap{
+  display:flex;align-items:center;justify-content:center;
+  margin:2px 0 10px;
+  opacity:.95;
+  pointer-events:none;
+}
+#sophieFace{display:block}
+
 /* ── Waveform Canvas ── */
 .wave-card{
   position:relative;border-radius:14px;overflow:hidden;
@@ -1311,6 +1320,11 @@ body::after{
       <div class="v-conn" id="vConn"></div>
     </div>
 
+    <!-- Sophie Face (emotion visualizer) -->
+    <div class="sophie-face-wrap">
+      <canvas id="sophieFace" aria-hidden="true"></canvas>
+    </div>
+
     <!-- Voice Visualizer (Knight Rider bars) -->
     <div class="wave-card">
       <div class="wave-meta">
@@ -1526,6 +1540,8 @@ body::after{
 </div>
 
 <script src="/lib/sophie-export.js"></script>
+<script src="/lib/sophie-emotion.js"></script>
+<script src="/lib/sophie-face-visualizer.js"></script>
 <script type="module">
 // Catch auth errors in URL hash (e.g. expired magic link) — redirect immediately
 const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -2878,6 +2894,18 @@ if (_krContainer) {
     _krContainer.appendChild(bar);
     _krBars.push(bar);
   }
+}
+
+// ── Sophie Face (emotion visualizer) ──
+// Globals: window.SophieEmotion, window.SophieFaceVisualizer (loaded via /lib/*.js).
+// `window.__sophieFace` is the instance used by transcript / response hooks below.
+try {
+  const _faceCanvas = document.getElementById('sophieFace');
+  if (_faceCanvas && window.SophieFaceVisualizer) {
+    window.__sophieFace = window.SophieFaceVisualizer.create(_faceCanvas);
+  }
+} catch (_e) {
+  console.warn('[sophieFace] init failed', _e);
 }
 
 let _hyperVoiceMode = 'silent';
@@ -5692,6 +5720,15 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           cs.metrics.userTranscriptReceived = true;
           cs.metrics.turnCount++;
           convoLog.push({ role: "user", text });
+
+          // Sophie face: detect emotion from user transcript (debounced).
+          if (window.__sophieFace && window.SophieEmotion) {
+            window.SophieEmotion.detectEmotionDelayed(
+              text,
+              (emo) => window.__sophieFace.setEmotion(emo),
+              200
+            );
+          }
         }
         return;
       }
@@ -5981,7 +6018,10 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         const chunk = String(msg?.delta || "");
         if (chunk) {
           // First transcript delta = Sophie is actually speaking now
-          if (!_hyperSophieSpeaking) setHyperVoiceMode('sophie');
+          if (!_hyperSophieSpeaking) {
+            setHyperVoiceMode('sophie');
+            if (window.__sophieFace) window.__sophieFace.setActive(true);
+          }
           partialAssistant += chunk;
           if (closingResponseActive) closingHasSpoken = true;
         }
@@ -6025,7 +6065,19 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         sophieIsResponding = false;
         // Delay visualizer switch: response.done fires before WebRTC buffer finishes playing.
         // Keep "sophie" mode for 1.5s so the last words don't look/feel cut off.
-        setTimeout(() => { if (!sophieIsResponding) setHyperVoiceMode('silent'); }, 1500);
+        setTimeout(() => {
+          if (!sophieIsResponding) {
+            setHyperVoiceMode('silent');
+            if (window.__sophieFace) window.__sophieFace.setActive(false);
+          }
+        }, 1500);
+        // Fade the face back to neutral 2s after Sophie finishes.
+        if (window.__sophieFace && window.SophieEmotion) {
+          window.SophieEmotion.resetEmotion(
+            (emo) => window.__sophieFace.setEmotion(emo),
+            2000
+          );
+        }
         // Sophie finished speaking — reset inactivity timestamp (but not during grace period)
         if (!inactivityWarningFired) touchActivity();
         // NO inactivity timer on response.done — user may pause mid-pitch to think.
