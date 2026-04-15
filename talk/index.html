@@ -2904,15 +2904,15 @@ try {
 // English prosody instructions, injected as session.update suffix when emotion
 // is detected. Resets to base instructions when emotion returns to neutral.
 const _VOICE_STYLES = {
-  neutral:   null,
-  happy:     "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright energy, a real smile in your voice, slightly faster pace. Let the happiness come through clearly. Make it audible.",
-  laughing:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely amused and playful — let laughter color every word, lighter and faster tone, contagious energy. Don't hold back, let it show.",
-  sad:       "VOICE STYLE FOR THIS RESPONSE: Sound empathetic and tender — speak notably slower, softer, with gentle long pauses. Let warmth and deep care come through in every single word.",
-  surprised: "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch range, more animated delivery, lean fully into the amazement. Let the surprise be very audible.",
-  angry:     "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, more direct, clipped delivery, stronger emphasis on key words. Firm but controlled. Edge in your voice.",
-  skeptical: "VOICE STYLE FOR THIS RESPONSE: Sound measured and skeptical — slightly slower, notably drier tone, raised inflection on key words. Sound like one eyebrow is literally raised.",
-  wink:      "VOICE STYLE FOR THIS RESPONSE: Sound playfully knowing — light, slightly teasing, a warm mischievous quality. Like you're letting them in on a secret with a smile.",
-  thinking:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely thoughtful — slower pace, softer, natural pauses as if truly reflecting in real time. Curious and open."
+  neutral:   "VOICE STYLE FOR THIS RESPONSE: Breathe naturally and audibly — a clear breath intake before you start, soft natural breathing between sentences. Sound fully human and alive.",
+  happy:     "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright, real smile in your voice, slightly faster. Breathe with energy — an audible excited inhale before you begin. Let the happiness be fully audible.",
+  laughing:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely amused — let laughter color every word, lighter and faster, contagious energy. After the laugh: an audible breath before continuing. Don't hold back.",
+  sad:       "VOICE STYLE FOR THIS RESPONSE: Sound empathetic and tender — slower, softer, long gentle pauses. Take a slow, soft breath between sentences. Let the warmth and care come through in every word.",
+  surprised: "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch, more animated, lean into the amazement. Start with an audible sharp intake of breath — like you're actually surprised. Very audible.",
+  angry:     "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, clipped, strong emphasis on key words. Firm, controlled intensity. A tight breath before you start — held energy.",
+  skeptical: "VOICE STYLE FOR THIS RESPONSE: Sound measured and skeptical — slightly slower, drier tone, raised inflection on key words. A slow exhale or sigh before you begin — like you're not quite convinced.",
+  wink:      "VOICE STYLE FOR THIS RESPONSE: Sound playfully knowing — light, teasing, warm mischief. A little amused breath before you start — like you're smiling.",
+  thinking:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely thoughtful — slower, softer, natural pauses as if truly reflecting. A soft 'Hmm...' with an audible breath, then continue. Curious and open."
 };
 
 // Update session instructions = base prompt + current voice style.
@@ -3122,12 +3122,29 @@ function _krDrawFrame(now) {
     _krDrawBrow(cxR, _KR_BROW_Y + st.rY, st.rA, BROW_W * st.rW, hue, st.op, st.wink);
   }
 
+  // ── Breathing ──
+  // A slow sine wave (one breath ~4.5 s) adds a gentle idle animation when silent.
+  // The Gaussian envelope makes center bars move more, outer bars barely —
+  // exactly like lips parting slightly when breathing.
+  // As soon as audio arrives (level > 0) the breath contribution fades out
+  // naturally: breathContrib = breathAmp * gaussEnv * max(0, 1 - level * 6).
+  const _BREATH_CYCLE_MS = 4500; // one inhale+exhale in ms
+  const breathRaw = Math.sin(now * (2 * Math.PI / _BREATH_CYCLE_MS));
+  const breathVal = (breathRaw * 0.5 + 0.5) * 0.18; // 0..0.18 of max height
+
   // ── Mouth bars ──
   const totalBarW = _KR_NUM * _KR_BAR_W + (_KR_NUM - 1) * _KR_BAR_GAP;
   const startX = (W - totalBarW) / 2;
 
   for (let i = 0; i < _KR_NUM; i++) {
-    const level = barLevels[i];
+    const rawLevel = barLevels[i];
+    // Breathing contribution: Gaussian center envelope, fades out with audio
+    const norm = _KR_NUM > 1 ? i / (_KR_NUM - 1) : 0.5;
+    const d = norm * 2 - 1;                          // -1..+1
+    const gaussEnv = Math.exp(-d * d * 4);            // center≈1.0, edges≈0.02
+    const breathContrib = breathVal * gaussEnv * Math.max(0, 1 - rawLevel * 6);
+    const level = Math.min(1, rawLevel + breathContrib);
+
     // Envelopes are both 1 in neutral → bar is symmetric, height = today's formula
     const tSh = st ? st.tShape[i] : 1;
     const bSh = st ? st.bShape[i] : 1;
