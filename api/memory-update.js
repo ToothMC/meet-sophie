@@ -1995,6 +1995,22 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
         .eq("id", insertedSession.id);
 
       if (sessFlagErr) console.error("user_sessions has_output update failed:", sessFlagErr);
+
+      // Trigger Tier-N recap generation (non-fatal if it fails; memory-update still returns OK).
+      // The recap (~150 tokens) is loaded verbatim into the NEXT session's system prompt.
+      try {
+        const baseUrl = (process.env.APP_BASE_URL || `https://${process.env.VERCEL_URL || "www.meet-sophie.com"}`).replace(/\/+$/, "");
+        await fetch(`${baseUrl}/api/memory-recap`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: insertedSession.id }),
+        });
+      } catch (e) {
+        console.warn("[memory-update] recap trigger failed:", e?.message || e);
+      }
     }
 
     const { error: sessTranscriptFlagErr } = await supabase

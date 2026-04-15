@@ -453,17 +453,27 @@ export default async function handler(req, res) {
         const [ltmRes, stmRes, reportsRes, recentMsgsRes] = await Promise.all([
           supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
           supabase.from("sophie_short_term_memory").select("summary,open_topics,pending_decisions,next_steps,importance_score,mode,created_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("importance_score", { ascending: false }).limit(5),
-          supabase.from("conversation_outputs").select("title,short_summary,report_html,report_style,created_at,session_id,user_sessions!inner(user_id)").eq("user_sessions.user_id", user.id).not("report_html", "is", null).order("created_at", { ascending: false }).limit(3),
+          // Tier N + K source: load up to 12 recent outputs with recap_text if present.
+          // No longer filtered by report_html — recap_text is the primary Tier N payload,
+          // short_summary is the Tier K one-liner + Tier N fallback.
+          supabase.from("conversation_outputs").select("title,short_summary,recap_text,recap_generated_at,report_style,created_at,session_id,user_sessions!inner(user_id,session_mode,session_type,duration_seconds,session_date)").eq("user_sessions.user_id", user.id).order("created_at", { ascending: false }).limit(12),
           supabase.from("conversation_messages").select("text,role,created_at,session_id,user_sessions!inner(user_id,session_date)").eq("user_sessions.user_id", user.id).eq("role", "user").order("created_at", { ascending: false }).limit(30),
         ]);
         structuredMemory = ltmRes?.data || null;
         recentMemories = stmRes?.data || [];
-        recentReports = (reportsRes?.data || []).map(r => ({
-          title: r.title || "Report",
-          summary: r.short_summary || (r.report_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
-          mode: r.report_style || null,
-          date: r.created_at,
-        }));
+        recentReports = (reportsRes?.data || []).map(r => {
+          const us = r.user_sessions || {};
+          return {
+            title: r.title || "Session",
+            summary: r.short_summary || (r.report_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
+            recap_text: r.recap_text || null,
+            recap_generated_at: r.recap_generated_at || null,
+            mode: us.session_mode || r.report_style || null,
+            session_type: us.session_type || null,
+            duration_seconds: Number.isFinite(us.duration_seconds) ? us.duration_seconds : null,
+            date: us.session_date || r.created_at,
+          };
+        });
         recentConversations = recentMsgsRes?.data || [];
       } catch (e) {
         console.warn("Structured memory lookup crashed:", e?.message || e);
