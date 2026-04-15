@@ -3690,8 +3690,13 @@
 
     // Preload videos for current language
     const _videoBlobs = {};
+    let _preloadedLang = null;
     function _preloadVideos() {
       const lang = currentLang === "de" ? "de" : "en"; // FR uses EN
+      if (_preloadedLang === lang) return; // already loaded for this lang
+      // Clear old blobs
+      Object.keys(_videoBlobs).forEach(k => { try { URL.revokeObjectURL(_videoBlobs[k]); } catch {} delete _videoBlobs[k]; });
+      _preloadedLang = lang;
       const srcs = [
         ["talk", "/video/demo-talk_" + lang + ".mp4"],
         ["brainstorm", "/video/demo-brainstorming_" + lang + ".mp4"],
@@ -4349,6 +4354,7 @@
       t = (T[currentLang] || T["en"]) || {};           // refresh translation table
       if (window.setLang) window.setLang(currentLang); // applyTranslations + closeLangMenu
       writeUxFlags({ lastLanguage: currentLang });
+      _preloadVideos(); // reload videos for new language
       if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
       deactivateVoiceAttention();
       sessionId      = null;
