@@ -1800,6 +1800,8 @@ let pausedElapsedMs = 0;        // elapsed session time before pause
 let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
 let _voiceSessionData = null; // session API response, shared with dc.onopen callback
+let _talkManualMode = false;  // true after talk-mode kickoff: speech_stopped triggers response.create manually
+let _curVoiceStyle = "";      // voice style string from last emotion detection (empty = neutral)
 
 // ── Brainstorm segmented control logic ─────────────────────
 let _bsMode = "solo";
@@ -2925,6 +2927,32 @@ function _updateSessionVoiceStyle(emoKey) {
     });
   } catch (_ve) {
     console.warn('[voiceStyle] session.update failed', _ve);
+  }
+}
+
+// Send response.create for a normal user turn in talk-manual mode.
+// When a voice style is active, the full session instructions + style are
+// passed as per-response instructions so Sophie speaks with the right emotion.
+// Falls back to plain response.create (session defaults) when no style is set.
+function _sendEmotionTurnResponse() {
+  try {
+    const base = _voiceSessionData && _voiceSessionData.instructions;
+    const style = _curVoiceStyle || "";
+    if (base && style) {
+      dcSend({
+        type: "response.create",
+        response: {
+          modalities: ["audio", "text"],
+          instructions: base + "\n\n" + style
+        }
+      });
+      console.log(`[${runId}] [emoVoice] response.create +style: ${style.slice(0, 60)}`);
+    } else {
+      dcSend({ type: "response.create" });
+      console.log(`[${runId}] [emoVoice] response.create neutral`);
+    }
+  } catch (e) {
+    console.warn('[emoVoice] response.create failed', e);
   }
 }
 
@@ -4475,6 +4503,10 @@ function cleanupLiveSession() {
 
   softEndFinalizing = false;
   resetClosingState();
+
+  // Emotion voice mode — reset on every new session
+  _talkManualMode = false;
+  _curVoiceStyle = "";
 }
 
 // ── Pause / Resume ─────────────────────────────────────────────────────────
@@ -5721,9 +5753,17 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           });
         } catch(e) { console.log(`[${runId}] [kickoff] failed`, e); }
       }
-      // Meeting mode: no kickoff sent, just enable auto-responses for user speech
       kickoffSent = true; // mark as ready even for silent-start modes
-      await setAutoResponses(true);
+      if (!selectedVoiceMode) {
+        // Regular talk: stay in manual response mode.
+        // response.create is sent on speech_stopped (see handler below),
+        // with emotion voice style injected per-turn via instructions.
+        _talkManualMode = true;
+        console.log(`[${runId}] [kickoff] manual response mode active (emotion voice)`);
+      } else {
+        // Meeting / salespitch / brainstorm: auto-responses as before.
+        await setAutoResponses(true);
+      }
     }
   });
 
@@ -5765,6 +5805,12 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           clearClosingTimers();
           console.log(`[${runId}] [softend] silence after speech — ending session`);
           void handleTimeLimitReached();
+          return;
+        }
+        // Talk manual mode: trigger response.create with optional emotion voice style.
+        // Guards: kickoff must be complete, no active response, session alive.
+        if (_talkManualMode && kickoffSent && !kickoffInProgress && !sophieIsResponding && !limitTriggered && !isPaused && !softEndFinalizing) {
+          _sendEmotionTurnResponse();
         }
         return;
       }
@@ -5843,10 +5889,15 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
           // Emotion visualizer: detect emotion from user transcript (debounced).
           // The bars change color + mouth shape; brows fade in.
+          // In talk-manual mode: also update _curVoiceStyle for the NEXT response.create
+          // (emotion from this turn applies to Sophie's next spoken response).
           if (window.__emoController && window.SophieEmotion) {
             window.SophieEmotion.detectEmotionDelayed(
               text,
-              (emo) => window.__emoController.setEmotion(emo),
+              (emo) => {
+                window.__emoController.setEmotion(emo);
+                if (_talkManualMode) _curVoiceStyle = _VOICE_STYLES[emo] || "";
+              },
               200
             );
           }
@@ -6191,10 +6242,13 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           if (!sophieIsResponding) setHyperVoiceMode('silent');
         }, 1500);
         // Lerp the emotion back to neutral 2s after Sophie finishes
-        // (bars turn blue + brows fade out).
+        // (bars turn blue + brows fade out). Also clear voice style for next turn.
         if (window.__emoController && window.SophieEmotion) {
           window.SophieEmotion.resetEmotion(
-            (emo) => window.__emoController.setEmotion(emo),
+            (emo) => {
+              window.__emoController.setEmotion(emo);
+              if (_talkManualMode) _curVoiceStyle = "";
+            },
             2000
           );
         }
@@ -6297,6 +6351,18 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           return;
         }
       }
+
+      // ── response.cancelled — Sophie interrupted by user speech ─────────────
+      // response.done does NOT fire for cancelled responses, so we must clear
+      // sophieIsResponding here to avoid blocking the next response.create.
+      if (msg?.type === "response.cancelled") {
+        sophieIsResponding = false;
+        kickoffInProgress = false; // kickoff interrupted — user took over
+        setHyperVoiceMode('silent');
+        console.log(`[${runId}] [emoVoice] response.cancelled — cleared sophieIsResponding`);
+        return;
+      }
+
     } catch (_) {}
   });
 }
