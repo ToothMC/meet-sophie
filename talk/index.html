@@ -1801,7 +1801,8 @@ let selectedVoiceMode = null;
 let brainstormVoiceConfig = null;
 let _voiceSessionData = null; // session API response, shared with dc.onopen callback
 let _talkManualMode = false;  // true after talk-mode kickoff: speech_stopped triggers response.create manually
-let _curVoiceStyle = "";      // voice style string from last emotion detection (empty = neutral)
+let _curVoiceStyle = "";      // voice style string for next response.create (empty = neutral)
+let _noEmotionTurnCount = 0;  // consecutive turns with no emotion detected → triggers neutral drift
 
 // ── Brainstorm segmented control logic ─────────────────────
 let _bsMode = "solo";
@@ -2927,6 +2928,36 @@ function _updateSessionVoiceStyle(emoKey) {
     });
   } catch (_ve) {
     console.warn('[voiceStyle] session.update failed', _ve);
+  }
+}
+
+// ── Emotion Persistence ──────────────────────────────────────────────────────
+// Central handler for all emotion updates (from user text AND Sophie's text).
+//
+// Instead of auto-resetting to neutral after every turn, emotions persist until
+// the conversation genuinely moves on. Logic:
+//   - Non-neutral detected → set immediately, reset neutral-turn counter
+//   - Neutral detected → increment counter; only fade to neutral after
+//     _NEUTRAL_TURN_THRESHOLD consecutive turns with no detected emotion
+//
+// This means: if Sophie says "Hm, interessant…" she stays in thinking mode
+// until something new drives a change. Happy stays happy until something shifts.
+const _NEUTRAL_TURN_THRESHOLD = 3;
+
+function _handleEmotionUpdate(emo) {
+  if (!window.__emoController) return;
+  if (emo && emo !== 'neutral') {
+    _noEmotionTurnCount = 0;
+    window.__emoController.setEmotion(emo);
+    if (_talkManualMode) _curVoiceStyle = _VOICE_STYLES[emo] || "";
+  } else {
+    _noEmotionTurnCount++;
+    if (_noEmotionTurnCount >= _NEUTRAL_TURN_THRESHOLD) {
+      _noEmotionTurnCount = 0;
+      window.__emoController.setEmotion('neutral');
+      if (_talkManualMode) _curVoiceStyle = "";
+    }
+    // below threshold: keep current emotion — don't change anything
   }
 }
 
@@ -4507,6 +4538,7 @@ function cleanupLiveSession() {
   // Emotion voice mode — reset on every new session
   _talkManualMode = false;
   _curVoiceStyle = "";
+  _noEmotionTurnCount = 0;
 }
 
 // ── Pause / Resume ─────────────────────────────────────────────────────────
@@ -5891,13 +5923,12 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           // The bars change color + mouth shape; brows fade in.
           // In talk-manual mode: also update _curVoiceStyle for the NEXT response.create
           // (emotion from this turn applies to Sophie's next spoken response).
-          if (window.__emoController && window.SophieEmotion) {
+          // Emotion from USER transcript — secondary signal.
+          // Routes through _handleEmotionUpdate for persistence logic.
+          if (window.SophieEmotion) {
             window.SophieEmotion.detectEmotionDelayed(
               text,
-              (emo) => {
-                window.__emoController.setEmotion(emo);
-                if (_talkManualMode) _curVoiceStyle = _VOICE_STYLES[emo] || "";
-              },
+              (emo) => _handleEmotionUpdate(emo),
               200
             );
           }
@@ -6206,6 +6237,17 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         if (full) {
           partialAssistant = full;
           if (closingResponseActive) closingHasSpoken = true;
+
+          // Emotion from SOPHIE's transcript — PRIMARY signal.
+          // Sophie's own words drive her face and future voice style.
+          // e.g. "Hmm, interessant…" → thinking, "Wow!" → surprised, "Haha!" → laughing
+          if (window.SophieEmotion && !closingResponseActive && !softEndSummaryTriggered) {
+            window.SophieEmotion.detectEmotionDelayed(
+              full,
+              (emo) => _handleEmotionUpdate(emo),
+              0  // immediate — transcript is already complete
+            );
+          }
         }
         return;
       }
@@ -6241,17 +6283,10 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         setTimeout(() => {
           if (!sophieIsResponding) setHyperVoiceMode('silent');
         }, 1500);
-        // Lerp the emotion back to neutral 2s after Sophie finishes
-        // (bars turn blue + brows fade out). Also clear voice style for next turn.
-        if (window.__emoController && window.SophieEmotion) {
-          window.SophieEmotion.resetEmotion(
-            (emo) => {
-              window.__emoController.setEmotion(emo);
-              if (_talkManualMode) _curVoiceStyle = "";
-            },
-            2000
-          );
-        }
+        // Emotion persistence: Sophie's emotion now stays until the conversation
+        // genuinely moves on (_handleEmotionUpdate tracks neutral-turn count).
+        // No hard reset here — drift to neutral happens after _NEUTRAL_TURN_THRESHOLD
+        // consecutive turns with no emotion detected from either source.
         // Sophie finished speaking — reset inactivity timestamp (but not during grace period)
         if (!inactivityWarningFired) touchActivity();
         // NO inactivity timer on response.done — user may pause mid-pitch to think.
