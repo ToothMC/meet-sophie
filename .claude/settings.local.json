@@ -101,7 +101,8 @@
       "Bash(/tmp/ffmpeg -y -i /tmp/landingpage_orig.mp4 -filter_complex \"[0:v]scale=1280:-2[s];[s]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[out]\" -map \"[out]\" -c:v libx264 -crf 26 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
       "Bash(/tmp/ffmpeg -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4)",
       "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -filter_complex \"[0:v]scale=1280:-2[s];[s]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[out]\" -map \"[out]\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
-      "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -vf \"scale=1280:-2\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)"
+      "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -vf \"scale=1280:-2\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
+      "Bash(git merge feature/landing-page-redesign --no-ff -m ':*)"
     ]
   },
   "hooks": {
