@@ -1803,6 +1803,9 @@ function attachChannel(ch) {
             type: "server_vad",
             create_response: true,
             interrupt_response: true
+          },
+          input_audio_noise_reduction: {
+            type: "far_field"
           }
         }
       });

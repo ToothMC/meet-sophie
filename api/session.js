@@ -1200,6 +1200,9 @@ Exaggerate slightly — it always sounds less than you think.
           create_response: false,
           interrupt_response: true,
         },
+        input_audio_noise_reduction: {
+          type: "far_field",
+        },
       }),
     });
 

@@ -254,10 +254,10 @@ body::after{
   min-height:100dvh;
   min-height:100vh;
 }
-/* Hide headline, status, mode-indicator during active session (visualizer header replaces them) */
+/* Hide headline, status, timer during active session (visualizer header replaces them).
+   Noise filter toggle stays visible so the user can tune it live. */
 .wrap.session-active #headline,
 .wrap.session-active #status,
-.wrap.session-active .mode-indicator,
 .wrap.session-active #timer{ display:none; }
 .wrap.session-active .session-spacer{
   height:4px;
@@ -331,18 +331,6 @@ body::after{
   display:flex;align-items:center;justify-content:space-between;
   box-sizing:border-box;gap:8px;
 }
-.session-bar-modes{
-  display:flex;gap:4px;flex:1;min-width:0;
-}
-.sb-mode{
-  font-size:10px;font-weight:500;color:rgba(255,255,255,.35);
-  padding:4px 8px;border-radius:8px;white-space:nowrap;
-  transition:all .2s;
-}
-.sb-mode.active{
-  font-weight:600;color:#3f8cff;
-  background:rgba(63,140,255,.15);
-}
 .sb-report-toggle{
   display:flex;align-items:center;gap:5px;
   flex-shrink:0;cursor:pointer;
@@ -378,19 +366,19 @@ body::after{
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
 .status{ margin-bottom:6px; opacity:.88; }
-.mode-indicator{
-  font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
-  margin-bottom:12px;opacity:0;transition:opacity .4s ease;
+.noise-toggle{
+  font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 10px;flex-shrink:0;
+  background:transparent;border:1px solid rgba(255,255,255,.18);border-radius:999px;
+  color:rgba(255,255,255,.7);cursor:pointer;font-family:inherit;
+  transition:color .2s ease,border-color .2s ease,background .2s ease;
+  -webkit-tap-highlight-color:transparent;
 }
-.mode-indicator.visible{ opacity:.55; }
-.mode-indicator[data-mode="chill"]{ color:#3f8cff; }
-.mode-indicator[data-mode="talk"]{ color:#3f8cff; }
-.mode-indicator[data-mode="explorer"]{ color:#3f8cff; }
-.mode-indicator[data-mode="reflect"]{ color:#3f8cff; }
-.mode-indicator[data-mode="decide"]{ color:#3f8cff; }
-.mode-indicator[data-mode="brainstorm"]{ color:#f5c842; }
-.mode-indicator[data-mode="meeting"]{ color:#34c47a; }
-.mode-indicator[data-mode="salespitch"]{ color:#ff5252; }
+.noise-toggle:hover{ color:rgba(255,255,255,.95); border-color:rgba(255,255,255,.38); }
+.noise-toggle:active{ background:rgba(255,255,255,.06); }
+.noise-toggle[data-state="off"]{ color:#9aa0a6; border-color:rgba(154,160,166,.35); }
+.noise-toggle[data-state="low"]{ color:#3f8cff; border-color:rgba(63,140,255,.38); }
+.noise-toggle[data-state="strong"]{ color:#f5c842; border-color:rgba(245,200,66,.42); }
 .research-indicator{
   display:flex;align-items:center;gap:6px;justify-content:center;
   margin-bottom:10px;opacity:0;transition:opacity .3s ease;
@@ -1276,7 +1264,6 @@ body::after{
 <div class="wrap" style="display:none">
   <h2 id="headline"></h2>
   <div class="status" id="status"></div>
-  <div class="mode-indicator" id="modeIndicator" aria-hidden="true"></div>
   <!-- Research indicator removed — Globe is the visual indicator now -->
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
@@ -1360,19 +1347,14 @@ body::after{
   <button id="pauseBtn" class="btn btn-pause" style="display:none"><span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">Pause</span></button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 
-  <!-- Session bar (mode + report toggle) -->
+  <!-- Session bar (report toggle + noise filter toggle) -->
   <div class="session-bar" id="sessionBar" style="display:none">
-    <div class="session-bar-modes" id="sessionBarModes">
-      <span class="sb-mode active" data-mode="talk">Talk</span>
-      <span class="sb-mode" data-mode="explorer">Explore</span>
-      <span class="sb-mode" data-mode="decide">Decide</span>
-      <span class="sb-mode" data-mode="reflect">Reflect</span>
-    </div>
     <label class="sb-report-toggle">
       <input type="checkbox" id="sessionBarReportToggle">
       <span class="sb-report-slider"></span>
       <span class="sb-report-text">Report</span>
     </label>
+    <button class="noise-toggle" id="noiseToggle" type="button" aria-label="Noise filter"></button>
   </div>
 
   <!-- Live chat input during voice session -->
@@ -1779,14 +1761,10 @@ const sessionBar = document.getElementById("sessionBar");
 function showSessionBar(on) {
   if (sessionBar) sessionBar.style.display = on ? "flex" : "none";
 }
-function updateSessionBarMode(mode) {
+function updateSessionBarMode(_mode) {
+  // Mode pills removed — this function now only keeps the report-toggle
+  // show/hide logic (the toggle is hidden for modes where a report is mandatory).
   if (!sessionBar) return;
-  // map chill/talk both to "talk", null clears nothing (keep last)
-  const mapped = (!mode || mode === "chill" || mode === "talk") ? "talk" : mode;
-  sessionBar.querySelectorAll(".sb-mode").forEach(el => {
-    el.classList.toggle("active", el.dataset.mode === mapped);
-  });
-  // Hide session bar report toggle for modes where report is mandatory
   const sbReportToggle = sessionBar.querySelector(".sb-report-toggle");
   if (sbReportToggle) {
     sbReportToggle.style.display = (selectedVoiceMode === "salespitch" || selectedVoiceMode === "brainstorm") ? "none" : "";
@@ -2501,6 +2479,7 @@ const _vcSendLabels = { en: "Send", de: "Senden", fr: "Envoyer" };
 document.documentElement.style.setProperty("--vc-send-label", `"${_vcSendLabels[_uiLang] || _vcSendLabels.en}"`);
 
 const _i18n = {
+  noise_filter:       { en: "Noise filter",                  de: "Geräuschfilter",                    fr: "Filtre de bruit" },
   ready:              { en: "Whenever you're ready.",        de: "Wann immer du bereit bist.",        fr: "Quand tu es prête." },
   start:              { en: "Start conversation",            de: "Gespräch starten",                  fr: "Démarrer la conversation" },
   end:                { en: "End conversation",              de: "Gespräch beenden",                  fr: "Terminer la conversation" },
@@ -2777,17 +2756,57 @@ async function releaseVoiceWakeLock() {
   }
 }
 
-const modeIndicatorEl = document.getElementById("modeIndicator");
-const modeIndicatorLabels = { chill: "◆ Talk", talk: "◆ Talk", explorer: "◆ Explore", reflect: "◆ Reflect", decide: "◆ Decide", brainstorm: "◆ Brainstorm", meeting: "◆ Meeting", salespitch: "◆ Sales Pitch" };
-function updateModeIndicator(mode) {
-  if (!modeIndicatorEl) return;
-  if (!mode) { modeIndicatorEl.classList.remove("visible"); return; }
-  modeIndicatorEl.textContent = modeIndicatorLabels[mode] || ("◆ " + mode);
-  modeIndicatorEl.dataset.mode = mode;
-  modeIndicatorEl.classList.add("visible");
-  updateSessionBarMode(mode);
+// Noise filter toggle — replaces the old mode-indicator at this position.
+// 3 states: off / low (far_field) / strong (near_field). Default: low.
+// Live-switchable via session.update while a session is running.
+const NOISE_STATES = ["off", "low", "strong"];
+let noiseState = localStorage.getItem("noiseReduction");
+if (!NOISE_STATES.includes(noiseState)) noiseState = "low";
+
+const noiseToggleEl = document.getElementById("noiseToggle");
+
+function noiseStateToPayload(state) {
+  if (state === "low")    return { type: "far_field" };
+  if (state === "strong") return { type: "near_field" };
+  return null; // "off" → send null to disable server-side noise reduction
 }
-function clearModeIndicator() { updateModeIndicator(null); }
+
+function renderNoiseToggle() {
+  if (!noiseToggleEl) return;
+  noiseToggleEl.textContent = `${t("noise_filter")}: ${noiseState}`;
+  noiseToggleEl.dataset.state = noiseState;
+}
+
+async function applyNoiseReduction(state, { sendUpdate = true } = {}) {
+  if (!NOISE_STATES.includes(state)) state = "low";
+  noiseState = state;
+  try { localStorage.setItem("noiseReduction", state); } catch (_) {}
+  renderNoiseToggle();
+  if (!sendUpdate) return;
+  try {
+    await sendWhenChannelOpen({
+      type: "session.update",
+      session: { input_audio_noise_reduction: noiseStateToPayload(state) }
+    }, 2000);
+    console.log(`[${runId}] [noise] ${state}`);
+  } catch (_) {
+    // DataChannel not open yet — will be applied at next channel-open
+  }
+}
+
+function cycleNoiseReduction() {
+  const i = NOISE_STATES.indexOf(noiseState);
+  const next = NOISE_STATES[(i + 1) % NOISE_STATES.length];
+  applyNoiseReduction(next);
+}
+
+renderNoiseToggle();
+if (noiseToggleEl) noiseToggleEl.addEventListener("click", cycleNoiseReduction);
+
+// Old mode-indicator API — kept as no-ops so existing callers (signal_mode tool,
+// session start, etc.) don't crash. Visual indicator removed intentionally.
+function updateModeIndicator(_mode) {}
+function clearModeIndicator() {}
 
 // Research indicator — shows which providers are being queried
 const researchEl = document.getElementById("researchIndicator");
@@ -5446,7 +5465,10 @@ function attachChannel(ch) {
             prefix_padding_ms: 300,
             create_response: false,
             interrupt_response: true
-          }
+          },
+          // Noise reduction driven by the live noise-toggle state (localStorage).
+          // null payload = "off" → server-side reduction disabled.
+          input_audio_noise_reduction: noiseStateToPayload(noiseState)
         }
       };
       // Mode indicator defaults to "chill" (displayed as "Talk") for normal conversations
@@ -6725,7 +6747,7 @@ async function startVoice(){
     if (modeBarEl) modeBarEl.style.display = "none";
     const reportToggleLabel = document.getElementById("reportToggleLabel");
     if (reportToggleLabel) reportToggleLabel.style.display = "none";
-    if (modeIndicatorEl) modeIndicatorEl.style.display = "none";
+    // modeIndicatorEl removed — noise-filter toggle replaced it and stays visible during session
 
     const tokenRes = await fetch("/api/session", {
       headers: {
