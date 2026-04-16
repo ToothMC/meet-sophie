@@ -368,7 +368,7 @@ body::after{
 .status{ margin-bottom:6px; opacity:.88; }
 .noise-toggle{
   font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
-  margin-bottom:12px;padding:4px 10px;
+  padding:4px 10px;flex-shrink:0;
   background:transparent;border:1px solid rgba(255,255,255,.18);border-radius:999px;
   color:rgba(255,255,255,.7);cursor:pointer;font-family:inherit;
   transition:color .2s ease,border-color .2s ease,background .2s ease;
@@ -1264,7 +1264,6 @@ body::after{
 <div class="wrap" style="display:none">
   <h2 id="headline"></h2>
   <div class="status" id="status"></div>
-  <button class="noise-toggle" id="noiseToggle" type="button" aria-label="Noise filter"></button>
   <!-- Research indicator removed — Globe is the visual indicator now -->
   <div id="liveBadge" class="live-badge" aria-hidden="true">
     <span class="live-dot"></span>
@@ -1348,13 +1347,14 @@ body::after{
   <button id="pauseBtn" class="btn btn-pause" style="display:none"><span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">Pause</span></button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 
-  <!-- Session bar (report toggle; mode pills removed) -->
+  <!-- Session bar (report toggle + noise filter toggle) -->
   <div class="session-bar" id="sessionBar" style="display:none">
     <label class="sb-report-toggle">
       <input type="checkbox" id="sessionBarReportToggle">
       <span class="sb-report-slider"></span>
       <span class="sb-report-text">Report</span>
     </label>
+    <button class="noise-toggle" id="noiseToggle" type="button" aria-label="Noise filter"></button>
   </div>
 
   <!-- Live chat input during voice session -->
