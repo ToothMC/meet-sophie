@@ -6,6 +6,7 @@ import { trackCost } from "../lib/ai/cost-tracker.js";
 import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
 import { mapPlanToTier } from "../lib/sophie-core.js";
 import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
+import { runRecapForSession } from "../lib/memory-recap-core.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
@@ -1995,6 +1996,27 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
         .eq("id", insertedSession.id);
 
       if (sessFlagErr) console.error("user_sessions has_output update failed:", sessFlagErr);
+
+      // Trigger Tier-N recap generation via direct import (no self-HTTP).
+      // The recap (~150 tokens) is loaded verbatim into the NEXT session's system prompt.
+      // Non-fatal if it fails; memory-update still returns OK.
+      try {
+        const recapResult = await runRecapForSession({
+          supabase,
+          sessionId: insertedSession.id,
+          userId: user.id,
+          force: false,
+        });
+        if (!recapResult.ok) {
+          console.warn("[memory-update] recap failed:", recapResult.error);
+        } else if (recapResult.skipped) {
+          console.log("[memory-update] recap skipped:", recapResult.skipped);
+        } else {
+          console.log("[memory-update] recap generated", { cached: recapResult.cached, chars: recapResult.recap_text?.length || 0 });
+        }
+      } catch (e) {
+        console.warn("[memory-update] recap threw:", e?.message || e);
+      }
     }
 
     const { error: sessTranscriptFlagErr } = await supabase
