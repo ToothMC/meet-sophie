@@ -1198,7 +1198,7 @@ Exaggerate slightly — it always sounds less than you think.
           interrupt_response: true,
         },
         input_audio_noise_reduction: {
-          type: "near_field",
+          type: "far_field",
         },
       }),
     });
