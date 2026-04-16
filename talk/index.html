@@ -4829,23 +4829,23 @@ function fadeAudioVolume(target, durationMs = 150) {
   }, 16);
 }
 
-// Sensitivity modes for turn detection (semantic_vad — no threshold, uses eagerness + flags):
-// "normal"  — default conversation (user can interrupt, auto-responses on)
-// "guarded" — Sophie says something important (user CANNOT interrupt)
-// "locked"  — no interruption, no auto-response (demo pitch, closing)
+// Sensitivity modes for turn detection:
+// "normal"  — default conversation (threshold 0.75, ignores small noises/breathing)
+// "guarded" — Sophie says something important (threshold 0.85, only deliberate loud interruption)
+// "locked"  — no interruption possible (demo pitch, closing)
 async function setMicSensitivity(mode = "normal") {
   const configs = {
-    normal:  { create_response: true,  interrupt_response: true  },
-    guarded: { create_response: true,  interrupt_response: false },
-    locked:  { create_response: false, interrupt_response: false },
+    normal:  { threshold: 0.75, silence_duration_ms: 500,  create_response: true,  interrupt_response: true },
+    guarded: { threshold: 0.85, silence_duration_ms: 800,  create_response: true,  interrupt_response: false },
+    locked:  { threshold: 0.95, silence_duration_ms: 1200, create_response: false, interrupt_response: false },
   };
   const cfg = configs[mode] || configs.normal;
   try {
     await sendWhenChannelOpen({
       type: "session.update",
-      session: { turn_detection: { type: "semantic_vad", eagerness: "auto", ...cfg } }
+      session: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } }
     }, 2000);
-    console.log(`[${runId}] [mic] sensitivity → ${mode} (eagerness: auto, interrupt=${cfg.interrupt_response})`);
+    console.log(`[${runId}] [mic] sensitivity → ${mode} (threshold: ${cfg.threshold})`);
   } catch (_) {}
 }
 
@@ -4870,8 +4870,10 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
       type: "session.update",
       session: {
         turn_detection: {
-          type: "semantic_vad",
-          eagerness: "auto",
+          type: "server_vad",
+          silence_duration_ms: 500,
+          threshold: 0.75,
+          prefix_padding_ms: 300,
           create_response: !!createResponse,
           interrupt_response: !!interruptResponse
         }
@@ -5456,10 +5458,11 @@ function attachChannel(ch) {
         session: {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: _uiLang || "en" },
           turn_detection: {
-            type: "semantic_vad",
-            // "low" eagerness handles both conversational flow and salespitch pauses —
-            // model waits until user is semantically done instead of reacting to silence / noise
-            eagerness: "auto",
+            type: "server_vad",
+            // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
+            silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 500,
+            threshold: selectedVoiceMode === "salespitch" ? 0.65 : 0.75,
+            prefix_padding_ms: 300,
             create_response: false,
             interrupt_response: true
           },
