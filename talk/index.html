@@ -4843,9 +4843,9 @@ async function setMicSensitivity(mode = "normal") {
   try {
     await sendWhenChannelOpen({
       type: "session.update",
-      session: { turn_detection: { type: "semantic_vad", eagerness: "low", ...cfg } }
+      session: { turn_detection: { type: "semantic_vad", eagerness: "auto", ...cfg } }
     }, 2000);
-    console.log(`[${runId}] [mic] sensitivity → ${mode} (eagerness: low, interrupt=${cfg.interrupt_response})`);
+    console.log(`[${runId}] [mic] sensitivity → ${mode} (eagerness: auto, interrupt=${cfg.interrupt_response})`);
   } catch (_) {}
 }
 
@@ -4871,7 +4871,7 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
       session: {
         turn_detection: {
           type: "semantic_vad",
-          eagerness: "low",
+          eagerness: "auto",
           create_response: !!createResponse,
           interrupt_response: !!interruptResponse
         }
@@ -5459,7 +5459,7 @@ function attachChannel(ch) {
             type: "semantic_vad",
             // "low" eagerness handles both conversational flow and salespitch pauses —
             // model waits until user is semantically done instead of reacting to silence / noise
-            eagerness: "low",
+            eagerness: "auto",
             create_response: false,
             interrupt_response: true
           },

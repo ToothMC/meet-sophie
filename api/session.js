@@ -1193,7 +1193,7 @@ Exaggerate slightly — it always sounds less than you think.
         input_audio_format: "pcm16",
         turn_detection: {
           type: "semantic_vad",
-          eagerness: "low",
+          eagerness: "auto",
           create_response: false,
           interrupt_response: true,
         },

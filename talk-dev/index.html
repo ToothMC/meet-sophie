@@ -1495,7 +1495,7 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
       session: {
         turn_detection: {
           type: "semantic_vad",
-          eagerness: "low",
+          eagerness: "auto",
           create_response: !!createResponse,
           interrupt_response: !!interruptResponse
         }
@@ -1802,7 +1802,7 @@ function attachChannel(ch) {
           input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: {
             type: "semantic_vad",
-            eagerness: "low",
+            eagerness: "auto",
             create_response: true,
             interrupt_response: true
           },
