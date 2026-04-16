@@ -6744,7 +6744,7 @@ async function startVoice(){
     if (modeBarEl) modeBarEl.style.display = "none";
     const reportToggleLabel = document.getElementById("reportToggleLabel");
     if (reportToggleLabel) reportToggleLabel.style.display = "none";
-    if (modeIndicatorEl) modeIndicatorEl.style.display = "none";
+    // modeIndicatorEl removed — noise-filter toggle replaced it and stays visible during session
 
     const tokenRes = await fetch("/api/session", {
       headers: {
