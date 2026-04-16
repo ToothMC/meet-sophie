@@ -464,6 +464,7 @@ export default async function handler(req, res) {
         recentReports = (reportsRes?.data || []).map(r => {
           const us = r.user_sessions || {};
           return {
+            session_id: r.session_id,
             title: r.title || "Session",
             summary: r.short_summary || (r.report_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
             recap_text: r.recap_text || null,
@@ -475,6 +476,51 @@ export default async function handler(req, res) {
           };
         });
         recentConversations = recentMsgsRes?.data || [];
+
+        // Race-condition fallback: most recent session may have ended <20s ago.
+        // memory-update still running → conversation_outputs row not yet present.
+        // Pull raw last turns so Tier N still has something to show.
+        try {
+          const cutoffIso = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+          const { data: pendingSessions } = await supabase
+            .from("user_sessions")
+            .select("id, title, session_mode, session_type, session_date, duration_seconds")
+            .eq("user_id", user.id)
+            .gt("session_date", cutoffIso)
+            .order("session_date", { ascending: false })
+            .limit(3);
+
+          if (pendingSessions?.length) {
+            const knownIds = new Set(recentReports.map(r => r.session_id));
+            for (const ps of pendingSessions) {
+              if (knownIds.has(ps.id)) continue;
+              const { data: msgs } = await supabase
+                .from("conversation_messages")
+                .select("role, text, seq")
+                .eq("session_id", ps.id)
+                .order("seq", { ascending: false })
+                .limit(8);
+              if (!msgs?.length) continue;
+              const turns = msgs.reverse()
+                .map(m => `${m.role === "user" ? "User" : "Sophie"}: ${String(m.text || "").slice(0, 120)}`)
+                .join("\n");
+              recentReports.unshift({
+                session_id: ps.id,
+                title: ps.title || "Just ended",
+                summary: turns,
+                recap_text: null,
+                recap_generated_at: null,
+                mode: ps.session_mode || null,
+                session_type: ps.session_type || null,
+                duration_seconds: Number.isFinite(ps.duration_seconds) ? ps.duration_seconds : null,
+                date: ps.session_date,
+                _pending: true,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("Pending-session fallback crashed:", e?.message || e);
+        }
       } catch (e) {
         console.warn("Structured memory lookup crashed:", e?.message || e);
       }
