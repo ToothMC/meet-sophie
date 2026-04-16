@@ -2902,18 +2902,73 @@ try {
 
 // ── Voice Emotion Styles ──────────────────────────────────────────────────────
 // English prosody instructions, injected as session.update suffix when emotion
-// is detected. Resets to base instructions when emotion returns to neutral.
+// is detected. Each emotion has a POOL of variants — one is picked at random per
+// turn so Sophie's delivery stays varied (the same laugh / surprise / sigh
+// doesn't repeat verbatim across a long conversation).
 const _VOICE_STYLES = {
-  neutral:   "VOICE STYLE FOR THIS RESPONSE: Breathe naturally and audibly — a clear breath intake before you start, soft natural breathing between sentences. Sound fully human and alive.",
-  happy:     "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright, real smile in your voice, slightly faster. Breathe with energy — an audible excited inhale before you begin. Let the happiness be fully audible.",
-  laughing:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely amused — let laughter color every word, lighter and faster, contagious energy. After the laugh: an audible breath before continuing. Don't hold back.",
-  sad:       "VOICE STYLE FOR THIS RESPONSE: Sound empathetic and tender — slower, softer, long gentle pauses. Take a slow, soft breath between sentences. Let the warmth and care come through in every word.",
-  surprised: "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch, more animated, lean into the amazement. Start with an audible sharp intake of breath — like you're actually surprised. Very audible.",
-  angry:     "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, clipped, strong emphasis on key words. Firm, controlled intensity. A tight breath before you start — held energy.",
-  skeptical: "VOICE STYLE FOR THIS RESPONSE: Sound measured and skeptical — slightly slower, drier tone, raised inflection on key words. A slow exhale or sigh before you begin — like you're not quite convinced.",
-  wink:      "VOICE STYLE FOR THIS RESPONSE: Sound playfully knowing — light, teasing, warm mischief. A little amused breath before you start — like you're smiling.",
-  thinking:  "VOICE STYLE FOR THIS RESPONSE: Sound genuinely thoughtful — slower, softer, natural pauses as if truly reflecting. A soft 'Hmm...' with an audible breath, then continue. Curious and open."
+  neutral: [
+    "VOICE STYLE FOR THIS RESPONSE: Breathe naturally and audibly — a clear breath intake before you start, soft natural breathing between sentences. Sound fully human and alive.",
+    "VOICE STYLE FOR THIS RESPONSE: Soft and grounded — a quiet breath before you begin, even pacing, no rush. Let the words have space.",
+    "VOICE STYLE FOR THIS RESPONSE: Easy and lived-in — a small natural inhale, slight warmth in your tone, the rhythm of someone comfortable in the conversation."
+  ],
+  happy: [
+    "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright, real smile in your voice, slightly faster. An audible excited inhale before you begin.",
+    "VOICE STYLE FOR THIS RESPONSE: Quiet glow — soft smile in your voice, gentle warmth rather than burst, a contented breath before you start.",
+    "VOICE STYLE FOR THIS RESPONSE: Bubbly and energetic — quick, bright, a touch breathless, like you can barely contain it. Light fast inhale.",
+    "VOICE STYLE FOR THIS RESPONSE: Warm and amused — a small laugh-edge under the words, slight chuckle in the breath, easy joy."
+  ],
+  laughing: [
+    "VOICE STYLE FOR THIS RESPONSE: Genuine belly laugh — let it crack through your voice, faster, contagious, breathless after. Take an audible breath before continuing.",
+    "VOICE STYLE FOR THIS RESPONSE: Soft snort or giggle — a quick involuntary laugh-burst, then back to words still colored by it. Light and unguarded.",
+    "VOICE STYLE FOR THIS RESPONSE: Dry chuckle — almost ironic, low and brief, a single 'huh' of amusement before the words. Knowing, not loud.",
+    "VOICE STYLE FOR THIS RESPONSE: Breath-laugh — laughter mostly exhaled, a soft 'pff' or 'haha' under your breath, words still smiling.",
+    "VOICE STYLE FOR THIS RESPONSE: Stifled amused laugh — like trying not to laugh and failing, voice catching, lighter and faster, audible breath after."
+  ],
+  sad: [
+    "VOICE STYLE FOR THIS RESPONSE: Empathetic and tender — slower, softer, long gentle pauses. A slow soft breath between sentences. Warmth in every word.",
+    "VOICE STYLE FOR THIS RESPONSE: Quiet care — almost a near-whisper, very gentle pacing, small held breaths. Like you're sitting next to them, not across the room.",
+    "VOICE STYLE FOR THIS RESPONSE: Steady warmth — slower delivery, lower register, calm and grounded. A soft sigh before you begin. Hold the space."
+  ],
+  surprised: [
+    "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch, more animated, lean into the amazement. Sharp audible inhale to start.",
+    "VOICE STYLE FOR THIS RESPONSE: Wide-eyed bright — fast and lifted, almost a small gasp before words, real wonder in the tone.",
+    "VOICE STYLE FOR THIS RESPONSE: Breathless wow — slower hushed amazement, a soft 'oh' or held breath before you continue. Quiet astonishment."
+  ],
+  angry: [
+    "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, clipped, strong emphasis on key words. A tight breath before you start.",
+    "VOICE STYLE FOR THIS RESPONSE: Cold and steady — lower register, controlled, slower than normal, every word weighted. Quiet exhale before you begin.",
+    "VOICE STYLE FOR THIS RESPONSE: Sharp dry edge — clipped and quick, sarcastic bite under the words. Short sharp inhale."
+  ],
+  skeptical: [
+    "VOICE STYLE FOR THIS RESPONSE: Measured and skeptical — slightly slower, drier tone, raised inflection on key words. A slow exhale or sigh before you begin.",
+    "VOICE STYLE FOR THIS RESPONSE: Dry raised brow — half-amused, half-doubtful, words slightly drawn out. A small 'mhm' or audible doubt before you continue.",
+    "VOICE STYLE FOR THIS RESPONSE: Quiet pushback — lower register, slower pacing, weight on the word that doesn't add up. Calm but unconvinced."
+  ],
+  wink: [
+    "VOICE STYLE FOR THIS RESPONSE: Playfully knowing — light, teasing, warm mischief. An amused little breath before you start.",
+    "VOICE STYLE FOR THIS RESPONSE: Sly and warm — soft chuckle hiding under the words, slight stretch on the joke-word, smiling delivery.",
+    "VOICE STYLE FOR THIS RESPONSE: Cheeky lift — quick and light, a tiny laugh-catch in your voice, like you're enjoying the setup."
+  ],
+  thinking: [
+    "VOICE STYLE FOR THIS RESPONSE: Genuinely thoughtful — slower, softer, natural pauses as if truly reflecting. A soft 'Hmm...' with audible breath, then continue.",
+    "VOICE STYLE FOR THIS RESPONSE: Reflective and quiet — drawn-out start, small 'oh' or murmur of consideration, careful pacing as you work through it.",
+    "VOICE STYLE FOR THIS RESPONSE: Curious and open — slower, lifting tone, a small wondering breath. Like the answer is forming as you speak."
+  ]
 };
+
+// Track last picked variant per emotion to avoid back-to-back repeats.
+const _lastVoiceStyleIdx = {};
+
+function _pickVoiceStyle(emoKey) {
+  const pool = _VOICE_STYLES[emoKey];
+  if (!pool || !pool.length) return "";
+  if (pool.length === 1) return pool[0];
+  const lastIdx = _lastVoiceStyleIdx[emoKey];
+  let idx;
+  do { idx = Math.floor(Math.random() * pool.length); } while (idx === lastIdx);
+  _lastVoiceStyleIdx[emoKey] = idx;
+  return pool[idx];
+}
 
 // Update session instructions = base prompt + current voice style.
 // Called whenever detected emotion changes or resets to neutral.
@@ -2921,7 +2976,7 @@ function _updateSessionVoiceStyle(emoKey) {
   try {
     var baseInstr = _voiceSessionData && _voiceSessionData.instructions;
     if (!baseInstr || typeof dcSend !== 'function') return;
-    var style = _VOICE_STYLES[emoKey] || null;
+    var style = emoKey ? _pickVoiceStyle(emoKey) : "";
     dcSend({
       type: "session.update",
       session: { instructions: style ? (baseInstr + "\n\n" + style) : baseInstr }
@@ -2949,7 +3004,7 @@ function _handleEmotionUpdate(emo) {
   if (emo && emo !== 'neutral') {
     _noEmotionTurnCount = 0;
     window.__emoController.setEmotion(emo);
-    if (_talkManualMode) _curVoiceStyle = _VOICE_STYLES[emo] || "";
+    if (_talkManualMode) _curVoiceStyle = _pickVoiceStyle(emo);
   } else {
     _noEmotionTurnCount++;
     if (_noEmotionTurnCount >= _NEUTRAL_TURN_THRESHOLD) {
