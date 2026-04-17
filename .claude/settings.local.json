@@ -103,7 +103,25 @@
       "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -filter_complex \"[0:v]scale=1280:-2[s];[s]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[out]\" -map \"[out]\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
       "Bash(/tmp/ffmpeg -y -i /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero_bg.mp4 -vf \"scale=1280:-2\" -c:v libx264 -crf 28 -preset slow -an -movflags +faststart /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/video/hero-bg.mp4)",
       "Bash(git merge feature/landing-page-redesign --no-ff -m ':*)",
-      "Bash(grep -r \"VERCEL\\\\|Bearer\\\\|authorization\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.json)"
+      "Bash(grep -r \"VERCEL\\\\|Bearer\\\\|authorization\" /Users/michaelhammer/Projekte/meet-sophie/meet-sophie-code/*.json)",
+      "Bash(du -sh hero*.webp hero*.jpg sophie*.webp sophie*.jpg)",
+      "Bash(brew list:*)",
+      "Bash(mkdir -p ~/bin)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -sL -o ffmpeg.zip \"https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip\")",
+      "Bash(curl -sL -o ffprobe.zip \"https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip\")",
+      "Bash(unzip -o ffmpeg.zip -d ~/bin/)",
+      "Bash(~/bin/ffprobe -version)",
+      "Bash(mkdir -p /tmp/video-test)",
+      "Bash(cp ~/Projekte/meet-sophie/meet-sophie-code/.claude/worktrees/stupefied-allen/video/demo-meeting_en.mp4 src.mp4)",
+      "Bash(~/bin/ffmpeg -y -i src.mp4 -vf \"scale=-2:1280\" -c:v libx264 -preset slow -crf 30 -tune stillimage -c:a aac -b:a 64k -movflags +faststart A.mp4 -loglevel error)",
+      "Bash(~/bin/ffmpeg -y -i src.mp4 -vf \"scale=-2:960\" -c:v libx264 -preset slow -crf 32 -tune stillimage -c:a aac -b:a 64k -movflags +faststart B.mp4 -loglevel error)",
+      "Bash(~/bin/ffmpeg -y -i src.mp4 -vf \"scale=-2:960\" -c:v libx264 -preset slower -crf 34 -tune stillimage -c:a aac -b:a 48k -movflags +faststart C.mp4 -loglevel error)",
+      "Bash(cp /tmp/video-out/demo-talk_de.mp4 video/demo-talk_de.mp4)",
+      "Bash(cp /tmp/video-out/demo-talk_en.mp4 video/demo-talk_en.mp4)",
+      "Bash(cp /tmp/video-out/demo-brainstorming_de.mp4 video/demo-brainstorming_de.mp4)",
+      "Bash(cp /tmp/video-out/demo-brainstorming_en.mp4 video/demo-brainstorming_en.mp4)",
+      "Bash(cp /tmp/video-out/demo-meeting_de.mp4 video/demo-meeting_de.mp4)"
     ]
   },
   "hooks": {
