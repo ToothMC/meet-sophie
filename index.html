@@ -3713,34 +3713,6 @@
     // ── Video Demo Modal ─────────────────────────────────
     const VIDEOS_READY = { talk: true, brainstorm: true, meeting: true, salespitch: true };
 
-    // Preload videos for current language
-    const _videoBlobs = {};
-    let _preloadedLang = null;
-    function _preloadVideos() {
-      const lang = currentLang === "de" ? "de" : "en"; // FR uses EN
-      if (_preloadedLang === lang) return; // already loaded for this lang
-      // Clear old blobs
-      Object.keys(_videoBlobs).forEach(k => { try { URL.revokeObjectURL(_videoBlobs[k]); } catch {} delete _videoBlobs[k]; });
-      _preloadedLang = lang;
-      const srcs = [
-        ["talk", "/video/demo-talk_" + lang + ".mp4"],
-        ["brainstorm", "/video/demo-brainstorming_" + lang + ".mp4"],
-        ["meeting", "/video/demo-meeting_" + lang + ".mp4"],
-        ["salespitch", "/video/demo-salespitch_" + lang + ".mp4"],
-      ].filter(([mode]) => VIDEOS_READY[mode]);
-      (async function loadNext(i) {
-        if (i >= srcs.length) return;
-        const [mode, src] = srcs[i];
-        try {
-          const r = await fetch(src, { priority: "low" });
-          const blob = await r.blob();
-          _videoBlobs[mode] = URL.createObjectURL(blob);
-        } catch {}
-        loadNext(i + 1);
-      })(0);
-    }
-    setTimeout(_preloadVideos, 4000);
-
     function _getVideoSrc(mode) {
       const lang = currentLang === "de" ? "de" : "en";
       const names = { talk: "demo-talk", brainstorm: "demo-brainstorming", meeting: "demo-meeting", salespitch: "demo-salespitch" };
@@ -3849,7 +3821,7 @@
 
       if (VIDEOS_READY[videoCurrentMode]) {
         // Use preloaded blob URL if available, otherwise fall back to network
-        videoEl.src = _videoBlobs[videoCurrentMode] || _getVideoSrc(videoCurrentMode);
+        videoEl.src = _getVideoSrc(videoCurrentMode);
         videoEl.muted = false;
         videoEl.style.display = "";
         videoPlaceholder.style.display = "none";
@@ -4379,7 +4351,6 @@
       t = (T[currentLang] || T["en"]) || {};           // refresh translation table
       if (window.setLang) window.setLang(currentLang); // applyTranslations + closeLangMenu
       writeUxFlags({ lastLanguage: currentLang });
-      _preloadVideos(); // reload videos for new language
       if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
       deactivateVoiceAttention();
       sessionId      = null;
