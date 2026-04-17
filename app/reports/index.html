@@ -445,7 +445,7 @@
         return merged.map(c => {
           const dateVal = c.last_message_at || c.session_date || c.started_at;
           const fallbackTitle = dateVal
-            ? new Date(dateVal).toLocaleDateString(currentLang || "en", { day: "2-digit", month: "2-digit" })
+            ? new Date(dateVal).toLocaleDateString(lang || "en", { day: "2-digit", month: "2-digit" })
             : "Chat";
           return {
             id: c.id,
@@ -465,12 +465,17 @@
       // Verlauf = alle Sessions mit oder ohne Report. Verlauf ist der Verlauf.
       const typeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "sales_pitch" };
       const sessionType = typeMap[key];
+      // Legacy: 7 Rows mit session_type='voice' existieren aus der Zeit, als chat_note
+      // die Row mit 'voice' anlegte und memory-update den Typ nicht korrigierte.
+      // Ab jetzt werden neue Sessions korrekt als 'talk' geschrieben; die alten zählen
+      // als Talks.
+      const typeFilter = sessionType === "talk" ? ["talk", "voice"] : [sessionType];
       // Join conversation_outputs for correct-language title/summary
       let query = supabase
         .from("user_sessions")
         .select("id, title, session_type, status, started_at, session_date, short_summary, duration_seconds, has_output, conversation_outputs(title, short_summary)")
         .eq("user_id", userId)
-        .eq("session_type", sessionType)
+        .in("session_type", typeFilter)
         .order("session_date", { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
@@ -479,10 +484,12 @@
         const co = Array.isArray(s.conversation_outputs) ? s.conversation_outputs[0] : s.conversation_outputs;
         const dateVal = s.started_at || s.session_date;
         const fallbackTitle = dateVal
-          ? new Date(dateVal).toLocaleDateString(currentLang || "en", { day: "2-digit", month: "2-digit" })
+          ? new Date(dateVal).toLocaleDateString(lang || "en", { day: "2-digit", month: "2-digit" })
           : key.slice(0, -1);
+        // Legacy 'voice' rows als 'talk' verbuchen (damit Resume-Logic greift)
+        const normalizedType = s.session_type === "voice" ? "talk" : s.session_type;
         return {
-        id: s.id, title: co?.title || s.title || fallbackTitle, type: sessionType,
+        id: s.id, title: co?.title || s.title || fallbackTitle, type: normalizedType,
         summary: co?.short_summary || s.short_summary || "",
         date: dateVal, status: s.status,
         continuable: ["active", "paused", "draft"].includes(s.status),

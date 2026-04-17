@@ -1455,11 +1455,12 @@
         // Fetch last activity from all sources.
         // Verlauf = alle Sessions. Prio hat das Gespräch, unabhängig von Report-Status.
         const [sessRes, chatRes, meetRes] = await Promise.all([
-          // Last talk/brainstorm/pitch — mit oder ohne Report
+          // Last talk/brainstorm/pitch — mit oder ohne Report.
+          // 'voice' ist Legacy (alte chat_note-Upserts), zählt als talk.
           supabase.from("user_sessions")
             .select("id, title, session_type, status, started_at, last_message_at, session_date, conversation_outputs(title)")
             .eq("user_id", userId)
-            .in("session_type", ["talk", "brainstorm", "sales_pitch"])
+            .in("session_type", ["talk", "brainstorm", "sales_pitch", "voice"])
             .order("session_date", { ascending: false })
             .limit(1)
             .maybeSingle(),
@@ -1498,7 +1499,9 @@
         if (entry) {
           const isMeeting = entry._src === "meeting";
           const isChat = entry._src === "chat";
-          const mode = isMeeting ? "meeting" : (entry.session_type || "talk");
+          // Legacy: 'voice' Rows zählen als 'talk' (chat_note-Upsert-Artefakt).
+          const rawType = entry.session_type || "talk";
+          const mode = isMeeting ? "meeting" : (rawType === "voice" ? "talk" : rawType);
           const modeLabel = (MODE_LABELS[currentLang] || MODE_LABELS.en)[mode] || mode;
           const icon = MODE_ICONS[mode] || MODE_ICONS.talk;
           const co = Array.isArray(entry.conversation_outputs) ? entry.conversation_outputs[0] : entry.conversation_outputs;
