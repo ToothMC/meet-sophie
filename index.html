@@ -12,7 +12,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap"></noscript>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f5f0eb">
   <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +27,7 @@
   <meta property="og:url" content="https://www.meet-sophie.com/">
   <meta property="og:title" content="Meet Sophie — Your AI Thinking Partner">
   <meta property="og:description" content="Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.">
-  <meta property="og:image" content="https://www.meet-sophie.com/hero.jpg">
+  <meta property="og:image" content="https://www.meet-sophie.com/hero-opt.jpg">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="de_DE">
 
@@ -34,7 +35,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Meet Sophie — Your AI Thinking Partner">
   <meta name="twitter:description" content="Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.">
-  <meta name="twitter:image" content="https://www.meet-sophie.com/hero.jpg">
+  <meta name="twitter:image" content="https://www.meet-sophie.com/hero-opt.jpg">
 
   <!-- Structured Data -->
   <script type="application/ld+json">
@@ -64,7 +65,7 @@
     "operatingSystem": "Web (PWA)",
     "url": "https://www.meet-sophie.com",
     "description": "Voice-first AI thinking partner for decisions, meetings, pitches, and brainstorming",
-    "image": "https://www.meet-sophie.com/hero.jpg",
+    "image": "https://www.meet-sophie.com/hero-opt.jpg",
     "offers": [
       {
         "@type": "Offer",
@@ -2028,7 +2029,7 @@
   </header>
   <main>
     <section class="hero">
-      <video class="hero-video" id="heroVideo" autoplay muted loop playsinline src="/video/hero-bg.mp4"></video>
+      <video class="hero-video" id="heroVideo" autoplay muted loop playsinline preload="metadata" poster="/hero-opt.jpg" src="/video/hero-bg.mp4"></video>
       <div class="wrap hero-grid">
         <div class="hero-subtitle" id="hero-subtitle">DEINE EXTRA INTELLIGENZ</div>
         <p class="hero-tagline" id="hero-tagline">Menschen sprechen. Menschen denken.</p>
