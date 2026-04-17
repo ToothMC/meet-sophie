@@ -12,7 +12,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap"></noscript>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f5f0eb">
   <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +27,7 @@
   <meta property="og:url" content="https://www.meet-sophie.com/">
   <meta property="og:title" content="Meet Sophie — Your AI Thinking Partner">
   <meta property="og:description" content="Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.">
-  <meta property="og:image" content="https://www.meet-sophie.com/hero.jpg">
+  <meta property="og:image" content="https://www.meet-sophie.com/hero-poster.jpg">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="de_DE">
 
@@ -34,7 +35,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Meet Sophie — Your AI Thinking Partner">
   <meta name="twitter:description" content="Voice conversations with Sophie — your AI thinking partner for exploring ideas, testing decisions, and reflecting on what matters.">
-  <meta name="twitter:image" content="https://www.meet-sophie.com/hero.jpg">
+  <meta name="twitter:image" content="https://www.meet-sophie.com/hero-poster.jpg">
 
   <!-- Structured Data -->
   <script type="application/ld+json">
@@ -64,7 +65,7 @@
     "operatingSystem": "Web (PWA)",
     "url": "https://www.meet-sophie.com",
     "description": "Voice-first AI thinking partner for decisions, meetings, pitches, and brainstorming",
-    "image": "https://www.meet-sophie.com/hero.jpg",
+    "image": "https://www.meet-sophie.com/hero-poster.jpg",
     "offers": [
       {
         "@type": "Offer",
@@ -2028,7 +2029,7 @@
   </header>
   <main>
     <section class="hero">
-      <video class="hero-video" id="heroVideo" autoplay muted loop playsinline src="/video/hero-bg.mp4"></video>
+      <video class="hero-video" id="heroVideo" autoplay muted loop playsinline preload="metadata" poster="/hero-poster.jpg" src="/video/hero-bg.mp4"></video>
       <div class="wrap hero-grid">
         <div class="hero-subtitle" id="hero-subtitle">DEINE EXTRA INTELLIGENZ</div>
         <p class="hero-tagline" id="hero-tagline">Menschen sprechen. Menschen denken.</p>
@@ -3713,34 +3714,6 @@
     // ── Video Demo Modal ─────────────────────────────────
     const VIDEOS_READY = { talk: true, brainstorm: true, meeting: true, salespitch: true };
 
-    // Preload videos for current language
-    const _videoBlobs = {};
-    let _preloadedLang = null;
-    function _preloadVideos() {
-      const lang = currentLang === "de" ? "de" : "en"; // FR uses EN
-      if (_preloadedLang === lang) return; // already loaded for this lang
-      // Clear old blobs
-      Object.keys(_videoBlobs).forEach(k => { try { URL.revokeObjectURL(_videoBlobs[k]); } catch {} delete _videoBlobs[k]; });
-      _preloadedLang = lang;
-      const srcs = [
-        ["talk", "/video/demo-talk_" + lang + ".mp4"],
-        ["brainstorm", "/video/demo-brainstorming_" + lang + ".mp4"],
-        ["meeting", "/video/demo-meeting_" + lang + ".mp4"],
-        ["salespitch", "/video/demo-salespitch_" + lang + ".mp4"],
-      ].filter(([mode]) => VIDEOS_READY[mode]);
-      (async function loadNext(i) {
-        if (i >= srcs.length) return;
-        const [mode, src] = srcs[i];
-        try {
-          const r = await fetch(src, { priority: "low" });
-          const blob = await r.blob();
-          _videoBlobs[mode] = URL.createObjectURL(blob);
-        } catch {}
-        loadNext(i + 1);
-      })(0);
-    }
-    setTimeout(_preloadVideos, 4000);
-
     function _getVideoSrc(mode) {
       const lang = currentLang === "de" ? "de" : "en";
       const names = { talk: "demo-talk", brainstorm: "demo-brainstorming", meeting: "demo-meeting", salespitch: "demo-salespitch" };
@@ -3849,7 +3822,7 @@
 
       if (VIDEOS_READY[videoCurrentMode]) {
         // Use preloaded blob URL if available, otherwise fall back to network
-        videoEl.src = _videoBlobs[videoCurrentMode] || _getVideoSrc(videoCurrentMode);
+        videoEl.src = _getVideoSrc(videoCurrentMode);
         videoEl.muted = false;
         videoEl.style.display = "";
         videoPlaceholder.style.display = "none";
@@ -4379,7 +4352,6 @@
       t = (T[currentLang] || T["en"]) || {};           // refresh translation table
       if (window.setLang) window.setLang(currentLang); // applyTranslations + closeLangMenu
       writeUxFlags({ lastLanguage: currentLang });
-      _preloadVideos(); // reload videos for new language
       if (chatOpeningEl) chatOpeningEl.textContent = CHAT_OPENING[currentLang] || CHAT_OPENING.en;
       deactivateVoiceAttention();
       sessionId      = null;
