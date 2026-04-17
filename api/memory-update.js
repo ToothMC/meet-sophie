@@ -1848,27 +1848,39 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
     if (existingSessionId) {
       const { data: existing } = await supabase
         .from("user_sessions")
-        .select("id, user_id")
+        .select("id, user_id, session_type")
         .eq("id", existingSessionId)
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (existing) {
         // UPDATE existing session (chat path) — messages already persisted per-turn via RPC
+        const updateFields = {
+          title: finalSessionTitle.slice(0, 120),
+          emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
+          stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
+          closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
+          short_summary: sessSummary.slice(0, 300),
+          status: "completed",
+          ended_at: sessionEndedAt || nowIso,
+          duration_seconds: secondsUsed || null,
+          has_transcript: true,
+          has_output: false,
+        };
+        // Voice sessions: chat_note upserted the row with session_type='voice' (placeholder).
+        // Now that memory-update knows the real mode, correct the type metadata.
+        // Chat sessions (session_type='chat') were created by /api/chat handleStart with
+        // the correct type — don't touch.
+        if (!existing.session_type || existing.session_type === "voice") {
+          updateFields.session_type = sessionType;
+          updateFields.session_mode = sessionMode || "voice";
+          updateFields.primary_modality = "voice";
+          updateFields.started_at = sessionStartedAt;
+          updateFields.session_date = sessionEndedAt || nowIso;
+        }
         const { error: updErr } = await supabase
           .from("user_sessions")
-          .update({
-            title: finalSessionTitle.slice(0, 120),
-            emotional_tone: clean(ss.emotional_tone).slice(0, 50) || "unknown",
-            stress_level: Number.isFinite(ss.stress_level) ? ss.stress_level : null,
-            closeness_level: Number.isFinite(ss.closeness_level) ? ss.closeness_level : null,
-            short_summary: sessSummary.slice(0, 300),
-            status: "completed",
-            ended_at: sessionEndedAt || nowIso,
-            duration_seconds: secondsUsed || null,
-            has_transcript: true,
-            has_output: false,
-          })
+          .update(updateFields)
           .eq("id", existingSessionId);
 
         if (updErr) {

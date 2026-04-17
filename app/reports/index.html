@@ -404,45 +404,90 @@
         }));
       }
       if (key === "chats") {
-        // Chats now stored in user_sessions with session_type='chat'
-        const { data } = await supabase
-          .from("user_sessions")
-          .select("id, title, status, turn_count, started_at, last_message_at, short_summary")
-          .eq("user_id", userId)
-          .eq("session_type", "chat")
-          .gt("turn_count", 0)
-          .order("last_message_at", { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1);
-        return (data || []).map(c => ({
-          id: c.id, title: c.title || c.short_summary || `Chat (${t("turns")(c.turn_count || 0)})`,
-          type: "chat", date: c.last_message_at || c.started_at, status: c.status,
-          continuable: ["active", "paused"].includes(c.status),
-          turnCount: c.turn_count,
-        }));
+        // Chats-Tab zeigt zwei Quellen:
+        //   (1) native Chat-Sessions (session_type='chat', turn_count > 0)
+        //   (2) Voice-Sessions (talk/brainstorm/sales_pitch/voice), die über send_chat_note
+        //       Einträge in conversation_messages erzeugt haben — !inner filtert auf "hat Notes".
+        //   Gespräch bleibt Primary im Talks-Tab, der Chat hier ist die zusätzliche Sicht.
+        const [chatNativeRes, voiceWithNotesRes] = await Promise.all([
+          supabase
+            .from("user_sessions")
+            .select("id, title, status, turn_count, started_at, last_message_at, session_date, short_summary, session_type")
+            .eq("user_id", userId)
+            .eq("session_type", "chat")
+            .gt("turn_count", 0)
+            .order("last_message_at", { ascending: false })
+            .range(offset, offset + PAGE_SIZE - 1),
+          supabase
+            .from("user_sessions")
+            .select("id, title, status, turn_count, started_at, last_message_at, session_date, short_summary, session_type, conversation_messages!inner(session_id)")
+            .eq("user_id", userId)
+            .in("session_type", ["talk", "brainstorm", "sales_pitch", "voice"])
+            .order("session_date", { ascending: false })
+            .range(offset, offset + PAGE_SIZE - 1),
+        ]);
+
+        // De-dupe (safety) and merge
+        const seen = new Set();
+        const merged = [];
+        for (const row of [...(chatNativeRes.data || []), ...(voiceWithNotesRes.data || [])]) {
+          if (seen.has(row.id)) continue;
+          seen.add(row.id);
+          merged.push(row);
+        }
+
+        merged.sort((a, b) => {
+          const da = a.last_message_at || a.session_date || a.started_at || 0;
+          const db = b.last_message_at || b.session_date || b.started_at || 0;
+          return new Date(db) - new Date(da);
+        });
+
+        return merged.map(c => {
+          const dateVal = c.last_message_at || c.session_date || c.started_at;
+          const fallbackTitle = dateVal
+            ? new Date(dateVal).toLocaleDateString(currentLang || "en", { day: "2-digit", month: "2-digit" })
+            : "Chat";
+          return {
+            id: c.id,
+            title: c.title || c.short_summary || (c.turn_count ? `Chat (${t("turns")(c.turn_count)})` : fallbackTitle),
+            type: "chat",
+            date: dateVal,
+            status: c.status,
+            continuable: ["active", "paused"].includes(c.status),
+            turnCount: c.turn_count,
+            // For voice-based rows the "chat" view is read-only — no resume to /chat,
+            // since the parent session lives in Talks. Click opens Chat-panel with notes.
+            sourceType: c.session_type,
+          };
+        });
       }
-      // talks, brainstorms, pitches — all from user_sessions via session_type
+      // talks, brainstorms, pitches — all from user_sessions via session_type.
+      // Verlauf = alle Sessions mit oder ohne Report. Verlauf ist der Verlauf.
       const typeMap = { talks: "talk", brainstorms: "brainstorm", pitches: "sales_pitch" };
       const sessionType = typeMap[key];
       // Join conversation_outputs for correct-language title/summary
       let query = supabase
         .from("user_sessions")
-        .select("id, title, session_type, status, started_at, short_summary, duration_seconds, conversation_outputs(title, short_summary)")
+        .select("id, title, session_type, status, started_at, session_date, short_summary, duration_seconds, has_output, conversation_outputs(title, short_summary)")
         .eq("user_id", userId)
         .eq("session_type", sessionType)
-        .eq("has_output", true)
-        .not("started_at", "is", null)
-        .order("started_at", { ascending: false })
+        .order("session_date", { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1);
 
       const { data } = await query;
       return (data || []).map(s => {
         const co = Array.isArray(s.conversation_outputs) ? s.conversation_outputs[0] : s.conversation_outputs;
+        const dateVal = s.started_at || s.session_date;
+        const fallbackTitle = dateVal
+          ? new Date(dateVal).toLocaleDateString(currentLang || "en", { day: "2-digit", month: "2-digit" })
+          : key.slice(0, -1);
         return {
-        id: s.id, title: co?.title || s.title || key.slice(0, -1), type: sessionType,
+        id: s.id, title: co?.title || s.title || fallbackTitle, type: sessionType,
         summary: co?.short_summary || s.short_summary || "",
-        date: s.started_at, status: s.status,
+        date: dateVal, status: s.status,
         continuable: ["active", "paused", "draft"].includes(s.status),
         duration: s.duration_seconds,
+        hasOutput: !!s.has_output,
       }; });
     }
 
@@ -609,6 +654,13 @@
 
     // ── Resume logic ─────────────────────────────
     async function resumeEntry(item) {
+      // Chat items (native oder Voice-mit-Notes) öffnen direkt das Chat-Panel.
+      // Das Report-Overlay wäre hier falsch: bei Voice-mit-Notes würde es den
+      // Talk-Report zeigen statt die Chat-Notes.
+      if (item.type === "chat") {
+        _navigateToResume(item);
+        return;
+      }
       // Report laden und im Overlay anzeigen
       if (window.SophieReportOverlay) {
         try {

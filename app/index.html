@@ -1452,16 +1452,15 @@
       // Last session — check both user_sessions AND meetings, show newest
       const sessionCard = document.getElementById("sessionCard");
       try {
-        // Fetch last activity from all sources
+        // Fetch last activity from all sources.
+        // Verlauf = alle Sessions. Prio hat das Gespräch, unabhängig von Report-Status.
         const [sessRes, chatRes, meetRes] = await Promise.all([
-          // Last talk/brainstorm/pitch with report
+          // Last talk/brainstorm/pitch — mit oder ohne Report
           supabase.from("user_sessions")
             .select("id, title, session_type, status, started_at, last_message_at, session_date, conversation_outputs(title)")
             .eq("user_id", userId)
             .in("session_type", ["talk", "brainstorm", "sales_pitch"])
-            .eq("has_output", true)
-            .not("started_at", "is", null)
-            .order("started_at", { ascending: false })
+            .order("session_date", { ascending: false })
             .limit(1)
             .maybeSingle(),
           // Last chat session
