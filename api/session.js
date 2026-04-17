@@ -95,9 +95,12 @@ export default async function handler(req, res) {
       const { sessionId, role, text } = req.body || {};
       if (!sessionId || !text) return res.status(400).json({ error: "sessionId and text required" });
 
-      // user_sessions Zeile erstellen falls noch nicht vorhanden (FK Constraint)
+      // user_sessions Zeile erstellen falls noch nicht vorhanden (FK Constraint).
       // Voice Sessions werden client-seitig mit crypto.randomUUID() erstellt,
       // die DB-Zeile kommt erst bei memory-update am Session-Ende.
+      // ignoreDuplicates: true -> bestehende Rows (z.B. echte 'talk' Session die
+      // schon läuft) bleiben unberührt. Neue Rows bekommen 'voice' als Platzhalter,
+      // memory-update korrigiert das am Session-Ende.
       await supabase.from('user_sessions').upsert({
         id: sessionId,
         user_id: user.id,
@@ -105,6 +108,16 @@ export default async function handler(req, res) {
         session_type: 'voice',
         has_output: false,
       }, { onConflict: 'id', ignoreDuplicates: true });
+
+      // Flag setzen: "diese Session enthält echte Chat-Nachrichten".
+      // Unterscheidet den chat_note-Pfad vom automatischen Voice-Transcript,
+      // den memory-update am Session-Ende in conversation_messages schreibt.
+      // Chats-Tab filtert darauf — Gespräche ohne send_chat_note erscheinen
+      // NICHT im Chats-Tab.
+      await supabase.from('user_sessions')
+        .update({ has_chat_notes: true })
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
 
       // Naechste seq ermitteln
       const { data: maxRow } = await supabase.from('conversation_messages')
@@ -114,6 +127,7 @@ export default async function handler(req, res) {
         session_id: sessionId, seq: nextSeq,
         role: role === 'user' ? 'user' : 'assistant',
         text: text.slice(0, 2000),
+        source: 'chat_note',
       });
       if (insertErr) {
         console.error('[chat_note] insert failed:', insertErr.message);
