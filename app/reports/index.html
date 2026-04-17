@@ -406,8 +406,10 @@
       if (key === "chats") {
         // Chats-Tab zeigt zwei Quellen:
         //   (1) native Chat-Sessions (session_type='chat', turn_count > 0)
-        //   (2) Voice-Sessions (talk/brainstorm/sales_pitch/voice), die über send_chat_note
-        //       Einträge in conversation_messages erzeugt haben — !inner filtert auf "hat Notes".
+        //   (2) Voice/Talk-Sessions mit has_chat_notes=true — nur Sessions, in denen
+        //       Sophie tatsächlich via send_chat_note etwas in den Chat geschickt hat.
+        //       Der automatische Voice-Transcript (memory-update am Session-Ende)
+        //       landet NICHT hier.
         //   Gespräch bleibt Primary im Talks-Tab, der Chat hier ist die zusätzliche Sicht.
         const [chatNativeRes, voiceWithNotesRes] = await Promise.all([
           supabase
@@ -420,8 +422,9 @@
             .range(offset, offset + PAGE_SIZE - 1),
           supabase
             .from("user_sessions")
-            .select("id, title, status, turn_count, started_at, last_message_at, session_date, short_summary, session_type, conversation_messages!inner(session_id)")
+            .select("id, title, status, turn_count, started_at, last_message_at, session_date, short_summary, session_type")
             .eq("user_id", userId)
+            .eq("has_chat_notes", true)
             .in("session_type", ["talk", "brainstorm", "sales_pitch", "voice"])
             .order("session_date", { ascending: false })
             .range(offset, offset + PAGE_SIZE - 1),

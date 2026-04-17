@@ -1533,8 +1533,17 @@
               openChat();
               (async () => {
                 try {
+                  // Nur echte Chat-Nachrichten laden, KEIN Voice-Transcript.
+                  // - Native Chat-Session (session_type='chat'): modality='text'
+                  //   → alle Rows sind Chat-Nachrichten.
+                  // - Voice-Session mit has_chat_notes: source='chat_note' markiert
+                  //   die via send_chat_note eingefügten Nachrichten. Voice-Transcript
+                  //   (source='transcript', modality='voice') wird ausgeschlossen.
                   const { data: msgs } = await supabase.from("conversation_messages")
-                    .select("role, text").eq("session_id", entry.id).order("seq", { ascending: true });
+                    .select("role, text, source, modality")
+                    .eq("session_id", entry.id)
+                    .or("source.eq.chat_note,modality.eq.text")
+                    .order("seq", { ascending: true });
                   if (msgs?.length) {
                     msgs.forEach(m => {
                       appendBubble(m.role === "user" ? "user" : "sophie", m.text);
@@ -1575,13 +1584,16 @@
       sessionStorage.removeItem("sophie_resume_chat");
       chatSessionId = resumeChatId;
       openChat();
-      // Load messages from DB (conversation_messages)
+      // Load messages from DB (conversation_messages).
+      // Nur echte Chat-Nachrichten: text-modality (native chat) ODER source=chat_note
+      // (Voice-Session mit send_chat_note). Voice-Transcript wird ausgeschlossen.
       (async () => {
         try {
           const { data: msgs } = await supabase
             .from("conversation_messages")
-            .select("role, text")
+            .select("role, text, source, modality")
             .eq("session_id", resumeChatId)
+            .or("source.eq.chat_note,modality.eq.text")
             .order("seq", { ascending: true });
           if (msgs && msgs.length > 0) {
             msgs.forEach(m => {
