@@ -197,8 +197,6 @@ let lastBufferText = "";
 let classifyTimer = null;
 let triggerCount = 0;
 let tokenCount = 0;
-let sophieSpeaking = false;   // true zwischen response.created und response.done
-let unmuteTimer = null;
 
 // ── DOM ──────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -458,44 +456,11 @@ function onDataChannelMessage(e) {
   let msg;
   try { msg = JSON.parse(e.data); } catch { return; }
 
-  // Sophie hat Antwort gestartet -> Mic stumm, Classifier pausieren
-  if (msg?.type === "response.created") {
-    setSpeaking(true);
-  }
-  // Sophie fertig -> kurzer Tail-Puffer, dann Mic wieder auf
-  if (msg?.type === "response.done" ||
-      msg?.type === "response.output_audio.done" ||
-      msg?.type === "response.audio.done") {
-    scheduleUnmute();
-  }
-
   if (msg?.type === "conversation.item.input_audio_transcription.completed") {
-    // Waehrend Sophie spricht: eigene Worte + Echo NICHT in den Buffer
-    if (sophieSpeaking) return;
     const text = String(msg.transcript || "").trim();
     if (text) pushToBuffer(text);
   }
-
   if (msg?.type === "error") console.warn("[xi] realtime error", msg.error);
-}
-
-function setSpeaking(on) {
-  sophieSpeaking = on;
-  // Mic-Track nur bei Mikrofon-Quelle muten — bei Tab-Audio gibt's kein Echo-Risiko,
-  // wir wuerden nur echte Gespraechsinhalte verpassen.
-  if (audioSource === "mic" && stream) {
-    stream.getAudioTracks().forEach(t => { t.enabled = !on; });
-  }
-  if (on) {
-    clearTimeout(unmuteTimer);
-  }
-}
-
-function scheduleUnmute() {
-  // 600ms Tail-Puffer: verhindert dass die letzten Worte von Sophie
-  // (ueber Speaker -> Mic Echo) noch als User-Speech ankommen
-  clearTimeout(unmuteTimer);
-  unmuteTimer = setTimeout(() => { setSpeaking(false); }, 600);
 }
 
 function pushToBuffer(text) {
@@ -503,9 +468,7 @@ function pushToBuffer(text) {
   const cutoff = Date.now() - BUFFER_MAX_MS;
   while (transcriptBuffer.length && transcriptBuffer[0].ts < cutoff) transcriptBuffer.shift();
   // Sofort classifieren — nicht auf den 2.5s-Timer warten
-  // (aber nicht waehrend Sophie antwortet)
-  if (!sophieSpeaking &&
-      Date.now() - (runClassifierStep._last || 0) > CLASSIFY_MIN_GAP_MS) {
+  if (Date.now() - (runClassifierStep._last || 0) > CLASSIFY_MIN_GAP_MS) {
     runClassifierStep();
   }
 }
@@ -518,8 +481,6 @@ function getRecentTranscript(windowMs) {
 // ── Classifier Loop ──────────────────────────────────────
 async function runClassifierStep() {
   if (!running) return;
-  // Sophie spricht gerade -> nichts neues anstossen
-  if (sophieSpeaking) return;
   const now = Date.now();
   if (now - (runClassifierStep._last || 0) < CLASSIFY_MIN_GAP_MS) return;
   runClassifierStep._last = now;
@@ -649,8 +610,6 @@ async function checkTokenCap() {
 async function stopSession(silent = false, byLimit = false) {
   if (classifyTimer) { clearInterval(classifyTimer); classifyTimer = null; }
   if (tokenCapTimer) { clearInterval(tokenCapTimer); tokenCapTimer = null; }
-  if (unmuteTimer)   { clearTimeout(unmuteTimer); unmuteTimer = null; }
-  sophieSpeaking = false;
   running = false;
   waveEl.classList.remove("active");
   sessionBar.classList.remove("active");
