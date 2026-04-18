@@ -853,6 +853,7 @@
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
     import { getSessionOrNull, redirectIfAnonymous } from "/lib/sophie-auth-helper.js";
+    import { recoverPendingTranscript } from "/lib/sophie-transcript-cache.js";
 
     const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
@@ -937,6 +938,13 @@
     // Auth confirmed — show the app
     document.body.classList.add("ready");
 
+    // Replay any transcript that was cached when a prior /talk session was
+    // interrupted by an auth failure. Fire-and-forget, user-scoped inside
+    // the helper so a different user cannot inherit the cache.
+    recoverPendingTranscript(supabase).then(result => {
+      if (result?.recovered) console.log("[recovery] pending transcript restored");
+    }).catch(() => {});
+
     // ── Subscription gate (locked overlay) ──────────────
     {
       const { data: sub, error: subErr } = await supabase
@@ -967,19 +975,11 @@
     profileBtn.textContent = userEmail.split("@")[0] || "Account";
 
     // ── Listen for auth changes ──────────────────────────
-    // Proactively refresh session when app returns from background (mobile PWA)
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        supabase.auth.getSession().then(({ data }) => {
-          if (!data?.session) return;
-          // Force refresh if token expires within 5 minutes
-          const expiresAt = data.session.expires_at;
-          if (expiresAt && expiresAt * 1000 - Date.now() < 300000) {
-            supabase.auth.refreshSession();
-          }
-        }).catch(() => {});
-      }
-    });
+    // NOTE: No manual refreshSession() on visibility change — Supabase's
+    // internal auto-refresh timer already handles rotation with its own lock.
+    // A manual call races with the timer on iOS after tab suspension and the
+    // replayed stale refresh_token gets the whole chain revoked (observed
+    // 2026-04-18 during a live /talk session).
 
     supabase.auth.onAuthStateChange(async (event, sess) => {
       if (event === "SIGNED_OUT") { location.replace("/"); return; }

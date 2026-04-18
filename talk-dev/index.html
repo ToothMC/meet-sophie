@@ -709,13 +709,35 @@ if (!session?.user) {
   window.location.href = "/login-dev";
 }
 
+// Logout-Flag: set by the logout button so the SIGNED_OUT handler can
+// distinguish a deliberate sign-out from a mid-session auth failure
+// (refresh_token 401). During an active voice session we keep the call
+// alive — the WebRTC connection is server-authenticated and does not
+// depend on Supabase auth.
+let userInitiatedLogout = false;
+
 // Session Watch (Logout / Session verloren)
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === "SIGNED_OUT") {
+    const activeVoice = !!(typeof pc !== "undefined" && pc)
+                     || !!(typeof dc !== "undefined" && dc)
+                     || !!(typeof talkStartedAt !== "undefined" && talkStartedAt);
+    if (activeVoice && !userInitiatedLogout) {
+      console.warn("[auth] SIGNED_OUT during active voice session — call kept alive");
+      return;
+    }
     window.location.href = "/login-dev";
     return;
   }
   if (!session?.user) {
+    // Don't kill an active voice session over a transient auth hiccup
+    const activeVoice = !!(typeof pc !== "undefined" && pc)
+                     || !!(typeof dc !== "undefined" && dc)
+                     || !!(typeof talkStartedAt !== "undefined" && talkStartedAt);
+    if (activeVoice) {
+      console.warn("[auth] token refresh failed during active session — ignoring");
+      return;
+    }
     // Token refresh can transiently fire with null — retry before redirecting
     for (let i = 0; i < 3; i++) {
       await new Promise(r => setTimeout(r, 500));
@@ -726,7 +748,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     }
     window.location.href = "/login-dev";
   }
-});  
+});
   
 const manageSubLink = document.getElementById("manageSubLink");
 const billingFooter = document.getElementById("billingFooter");
@@ -2390,6 +2412,9 @@ if (!hasRealConversation) {
 }
 
 logoutBtn.onclick = async () => {
+  // Mark the upcoming SIGNED_OUT as intentional so the auth-state handler
+  // redirects instead of treating it as a mid-session auth failure.
+  userInitiatedLogout = true;
   try {
     track("logout_clicked");
     if (pc || stream || talkStartedAt) {
