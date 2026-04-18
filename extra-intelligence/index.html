@@ -195,9 +195,10 @@ let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : 
 let triggerCount = 0;
 
 // Sophie-Tokens (App-Billing-Unit): 1 Token = 6 Sekunden Realtime-Session
-// Live via Ticker abgeleitet aus (jetzt - sessionStartedAt).
-// Zusaetzlich: Classifier-/Research-API-Tokens (gering) werden addiert.
-let extraApiTokens = 0;            // wird bei jedem /research Call aufaddiert
+// Live aus (jetzt - sessionStartedAt) / 6 abgeleitet. Das ist genau die
+// Formel die auch serverseitig abgerechnet wird (/api/user?action=usage).
+// Research-API-Kosten (gpt-4o-mini condense) sind vernachlaessigbar und
+// NICHT in der Sophie-Token-Abrechnung enthalten.
 let initialRemainingTokens = null; // aus /api/session remaining_seconds / 6
 let tickerTimer = null;
 
@@ -409,7 +410,6 @@ async function startSession() {
     running = true;
     sessionStartedAt = Date.now();
     triggerCount = 0;
-    extraApiTokens = 0;
     triggerCountEl.textContent = "0";
     startPanel.style.display = "none";
     sessionBar.classList.add("active");
@@ -786,10 +786,6 @@ async function handleFunctionCall(msg) {
     let payload = { text: "", source: null };
     if (res.ok) payload = await res.json();
 
-    // Research API-Tokens aufaddieren (meist 0 weil Skip-Condense-Shortcut greift)
-    extraApiTokens += Number(payload.tokens_used || 0);
-    updateTokenDisplay();
-
     // Tool-Ergebnis zurueck an Sophie
     dcSend({
       type: "conversation.item.create",
@@ -842,8 +838,8 @@ function appendChatMessage(text, opts = {}) {
 // ── Live-Display (Dauer + Sophie-Tokens + Trigger) ───────
 function sophieTokensUsedNow() {
   const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
-  // 1 Sophie-Token = 6 Sek Realtime + aufaddierte API-Tokens
-  return Math.ceil(sec / 6) + extraApiTokens;
+  // 1 Sophie-Token = 6 Sek Realtime-Session (wie im Talk-Modus abgerechnet)
+  return Math.ceil(sec / 6);
 }
 
 function formatMMSS(sec) {
@@ -894,7 +890,6 @@ async function stopSession(silent = false, byLimit = false) {
   voiceBusy = false;
   currentAssistantText = "";
   lastSessionModalities = null;
-  extraApiTokens = 0;
   initialRemainingTokens = null;
   setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
