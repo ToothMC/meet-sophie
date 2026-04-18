@@ -53,11 +53,15 @@
     .status-row { display: flex; gap: 20px; justify-content: center; margin: 20px 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
     .status-row .val { color: var(--fg); font-weight: 600; }
 
-    /* Output Mode Toggle */
-    .out-toggle { display: inline-flex; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: 3px; margin-bottom: 18px; gap: 2px; }
+    /* Toggles (Audio-Quelle + Ausgabe) */
+    .toggle-group { margin-bottom: 14px; }
+    .toggle-group:last-of-type { margin-bottom: 18px; }
+    .toggle-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+    .out-toggle { display: inline-flex; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: 3px; gap: 2px; }
     .out-toggle button { background: transparent; color: var(--muted); border: none; padding: 7px 14px; border-radius: 999px; font-size: 13px; cursor: pointer; transition: background .2s, color .2s; }
     .out-toggle button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-    .out-toggle button:hover:not(.active) { color: var(--fg); }
+    .out-toggle button:hover:not(.active):not(:disabled) { color: var(--fg); }
+    .out-toggle button:disabled { opacity: .35; cursor: not-allowed; }
 
     /* Chat-Log (replaces hint-box when text is involved) */
     .chat-log { margin-top: 12px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); max-height: 280px; overflow-y: auto; display: none; flex-direction: column; gap: 8px; text-align: left; }
@@ -108,10 +112,21 @@
       <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
     </div>
 
-    <div class="out-toggle" id="outToggle" role="tablist" aria-label="Ausgabe-Modus">
-      <button type="button" data-out="voice" role="tab">🔊 Voice</button>
-      <button type="button" data-out="text" role="tab">💬 Text</button>
-      <button type="button" data-out="both" class="active" role="tab">🔊💬 Voice + Text</button>
+    <div class="toggle-group">
+      <div class="toggle-label">Audio-Quelle</div>
+      <div class="out-toggle" id="srcToggle" role="tablist" aria-label="Audio-Quelle">
+        <button type="button" data-src="mic" class="active" role="tab">🎤 Mikrofon</button>
+        <button type="button" data-src="tab" role="tab" id="srcTabBtn">🖥 Tab / System</button>
+      </div>
+    </div>
+
+    <div class="toggle-group">
+      <div class="toggle-label">Ausgabe</div>
+      <div class="out-toggle" id="outToggle" role="tablist" aria-label="Ausgabe-Modus">
+        <button type="button" data-out="voice" role="tab">🔊 Voice</button>
+        <button type="button" data-out="text" role="tab">💬 Text</button>
+        <button type="button" data-out="both" class="active" role="tab">🔊💬 Voice + Text</button>
+      </div>
     </div>
 
     <div id="startPanel">
@@ -137,6 +152,7 @@
       <p style="color:var(--muted); margin:0 0 10px;">Bevor es losgeht, kurz zum Verständnis:</p>
       <ul>
         <li>Sophie transkribiert das Audio live, um zuzuhören.</li>
+        <li>Quelle wählbar: Mikrofon oder Tab-/System-Audio (nur Desktop).</li>
         <li>Für die Recherche werden kurze Ausschnitte (~15s) an OpenAI und Google/Gemini gesendet.</li>
         <li><strong>Keine Speicherung:</strong> Kein Transcript, kein Report, kein Memory. Alles wird nach der Session verworfen.</li>
         <li>Du kannst jederzeit stoppen.</li>
@@ -193,6 +209,8 @@ const triggerCountEl = $("triggerCount");
 const tokenCountEl   = $("tokenCount");
 const chatLog        = $("chatLog");
 const outToggle      = $("outToggle");
+const srcToggle      = $("srcToggle");
+const srcTabBtn      = $("srcTabBtn");
 const errorText      = $("errorText");
 const audioEl        = $("audioEl");
 const logoutBtn      = $("logoutBtn");
@@ -222,6 +240,40 @@ function applyOutputMode() {
   });
   // Chat-Log ist sichtbar sobald Text-Ausgabe im Spiel ist
   chatLog.classList.toggle("visible", outputMode !== "voice");
+}
+
+// ── Audio-Quelle Toggle ──────────────────────────────────
+// "mic" | "tab" — Tab-Audio braucht getDisplayMedia (Desktop-Chrome/Edge)
+const SRC_KEY = "xi_audio_source";
+const hasDisplayMediaAudio = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+const isIOSLike = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+
+let audioSource = localStorage.getItem(SRC_KEY) === "tab" && hasDisplayMediaAudio && !isIOSLike
+  ? "tab" : "mic";
+
+// Tab-Audio Option deaktivieren wenn nicht unterstuetzt
+if (!hasDisplayMediaAudio || isIOSLike) {
+  srcTabBtn.disabled = true;
+  srcTabBtn.title = isIOSLike
+    ? "Auf iPhone/iPad nicht verfügbar — Safari erlaubt keinen Zugriff auf System-/Call-Audio."
+    : "Browser unterstützt getDisplayMedia nicht.";
+  audioSource = "mic";
+}
+applySourceMode();
+
+srcToggle.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-src]");
+  if (!btn || btn.disabled) return;
+  audioSource = btn.dataset.src;
+  localStorage.setItem(SRC_KEY, audioSource);
+  applySourceMode();
+});
+
+function applySourceMode() {
+  srcToggle.querySelectorAll("button").forEach(b => {
+    b.classList.toggle("active", b.dataset.src === audioSource);
+  });
 }
 
 // ── Privacy Opt-In ───────────────────────────────────────
@@ -283,15 +335,8 @@ async function startSession() {
 
     // WebRTC setup
     pc = new RTCPeerConnection();
-    // Multi-Speaker: Browser-Filter AUS damit auch andere Stimmen im Raum durchkommen
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: false,    // nicht die Stimmen aus Lautsprechern filtern
-        noiseSuppression: false,    // nicht "Nicht-Primärstimme" raus­werfen
-        autoGainControl:  false,    // nicht die nächste Stimme hochpumpen
-      },
-    });
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    stream = await acquireAudioStream();
+    stream.getAudioTracks().forEach(t => pc.addTrack(t, stream));
     pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
     dc = pc.createDataChannel("oai-events");
@@ -330,6 +375,55 @@ async function startSession() {
     await stopSession(true);
     startBtn.disabled = false;
   }
+}
+
+// ── Audio-Stream-Acquire (Mic ODER Tab/System-Audio) ────
+async function acquireAudioStream() {
+  if (audioSource === "tab") {
+    // getDisplayMedia braucht video:true in der Request (Chrome-Zwang),
+    // wir verwerfen den Video-Track sofort.
+    // Audio-Track bekommen wir nur wenn User "Audio teilen" angehakt hat.
+    let dispStream;
+    try {
+      dispStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl:  false,
+        },
+      });
+    } catch (e) {
+      throw new Error("Tab-Audio-Freigabe abgebrochen oder nicht unterstützt.");
+    }
+
+    // Video-Track sofort stoppen — wir brauchen ihn nicht
+    dispStream.getVideoTracks().forEach(t => { try { t.stop(); } catch {} });
+
+    const audioTracks = dispStream.getAudioTracks();
+    if (!audioTracks.length) {
+      // User hat "Audio teilen" nicht angehakt — Stream hat kein Audio
+      throw new Error(
+        'Kein Audio erhalten. Im Browser-Dialog die Checkbox "Audio teilen" (oder "Share tab audio") aktivieren.'
+      );
+    }
+
+    // Wenn User via Browser-Banner "Freigabe beenden" klickt -> Session sauber beenden
+    audioTracks[0].addEventListener("ended", () => {
+      if (running) stopSession(false);
+    });
+
+    return dispStream;
+  }
+
+  // Mikrofon: Browser-Filter AUS fuer Multi-Speaker-Hoerfaehigkeit
+  return await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl:  false,
+    },
+  });
 }
 
 function onDataChannelOpen() {
