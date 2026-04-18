@@ -259,6 +259,15 @@ body::after{
 .wrap.session-active #headline,
 .wrap.session-active #status,
 .wrap.session-active #timer{ display:none; }
+/* Auto-connect flash guard — user just clicked "Gespräch starten" on /app and
+   landed here; we immediately auto-start. Hide the resting UI (Start button,
+   ready status, mode pills, report toggle) so they don't flash before
+   startVoice() finishes its awaits and flips the button to "Verbinde …". */
+.wrap.auto-connecting #start,
+.wrap.auto-connecting #status,
+.wrap.auto-connecting #modeBar,
+.wrap.auto-connecting #reportToggleLabel,
+.wrap.auto-connecting #headline{ display:none !important; }
 .wrap.session-active .session-spacer{
   height:4px;
 }
@@ -1617,6 +1626,10 @@ if (!session?.user) {
 
 // Auth fertig — show main UI immediately so start button / error states are visible.
 // startVoice() is auto-called below and will show "connecting" status.
+// Mark wrap as auto-connecting → CSS hides Start button / ready status / mode
+// pills / report toggle so the user doesn't see them flash before startVoice()
+// finishes its awaits. resetUI() removes the class on failure or post-call.
+document.querySelector(".wrap").classList.add("auto-connecting");
 document.getElementById("authLoading").style.display = "none";
 document.querySelector(".wrap").style.display = "";
 
@@ -2568,6 +2581,9 @@ function cleanupMediaResources() {
 
 // Pure UI reset — no state logic, used by all reset tiers
 function resetUI(message) {
+  // Remove auto-connect flash guard — resting UI (start button, status, mode
+  // pills, report toggle) must be visible again after a failure or post-call.
+  document.querySelector(".wrap")?.classList.remove("auto-connecting");
   startBtn.disabled = false;
   startBtn.style.display = "";
   startBtn.textContent = t("start");
@@ -6685,6 +6701,9 @@ async function startVoice(){
   
   await preloadLimitVideo();
 
+  // startVoice owns the UI now — drop the auto-connect flash guard so the
+  // "Verbinde …" button + "Sophie kommt …" headline become visible.
+  document.querySelector(".wrap")?.classList.remove("auto-connecting");
   startBtn.disabled = true;
   startBtn.textContent = t("connecting");
   logoutBtn.disabled = true;
