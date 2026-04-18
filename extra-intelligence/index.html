@@ -100,12 +100,12 @@
   </header>
 
   <main>
-    <span class="badge">Premium · Beta</span>
+    <span class="badge">Premium · Native Mode</span>
     <h1>Extra Intelligence</h1>
     <p class="lead">
-      Sophie hört still mit, erkennt unbekannte Begriffe und Fragen,
-      recherchiert im Hintergrund und sagt dir per Voice kurz Bescheid.
-      Keine Aufzeichnung, kein Transcript, kein Memory.
+      Sophie hört still mit und antwortet direkt per Realtime —
+      sie entscheidet selbst ob etwas recherche­würdig ist und nutzt
+      Web-Search als Tool. Keine Aufzeichnung, kein Transcript, kein Memory.
     </p>
 
     <div class="wave" id="wave" aria-hidden="true">
@@ -177,7 +177,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const { data: { session } } = await supabase.auth.getSession();
 if (!session?.user) { window.location.href = "/login"; }
 
-// ── State ────────────────────────────────────────────────
+// ── State (Native Mode) ──────────────────────────────────
+// Kein Classifier-Loop. Kein Transcript-Buffer. Die OpenAI Realtime-Session
+// hoert selbst zu und entscheidet ob/wann sie spricht. Wenn sie recherchieren
+// muss, ruft sie das web_search Tool auf — wir bedienen das per Function-Call.
 let pc = null;
 let dc = null;
 let stream = null;
@@ -185,22 +188,16 @@ let sessionStartedAt = 0;
 let running = false;
 let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";
 
-const transcriptBuffer = []; // { text, ts } — in-memory only, never persisted
-const BUFFER_MAX_MS = 60_000;
-const CLASSIFY_WINDOW_MS = 12_000;
-const CLASSIFY_INTERVAL_MS = 2_500;      // Poll-Fallback; echter Trigger kommt via pushToBuffer
-const CLASSIFY_MIN_GAP_MS = 1_200;       // min. Abstand zwischen Classifier-Calls
-const TRIGGER_COOLDOWN_MS = 15_000;
-
-let lastTriggerAt = 0;
-let lastBufferText = "";
-let classifyTimer = null;
 let triggerCount = 0;
 let tokenCount = 0;
-// Voice-Sperre: solange true, wird KEINE neue voice-response getriggert.
-// Nur Software-Flag — Mic-Track bleibt unangetastet (iOS-sicher).
+
+// Voice-Busy-Lock: waehrend Sophie spricht Mic stummschalten,
+// damit Server-VAD sie nicht unterbricht (bleibt wie im Pipeline-Mode).
 let voiceBusy = false;
 let voiceBusyTimeout = null;
+
+// Laufender Antwort-Transcript (fuer Chat-Log)
+let currentAssistantText = "";
 
 // ── DOM ──────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -236,6 +233,8 @@ outToggle.addEventListener("click", (e) => {
   outputMode = btn.dataset.out;
   localStorage.setItem(OUT_KEY, outputMode);
   applyOutputMode();
+  // Native Mode: Modalities live an Sophie senden falls Session laeuft
+  syncModalitiesToSession();
 });
 
 function applyOutputMode() {
@@ -244,6 +243,17 @@ function applyOutputMode() {
   });
   // Chat-Log ist sichtbar sobald Text-Ausgabe im Spiel ist
   chatLog.classList.toggle("visible", outputMode !== "voice");
+}
+
+function outputModalities() {
+  if (outputMode === "text")  return ["text"];
+  if (outputMode === "voice") return ["audio", "text"];  // Audio fuer Sprechen, Text fuer Transcript
+  return ["audio", "text"];
+}
+
+function syncModalitiesToSession() {
+  if (!running || !dc || dc.readyState !== "open") return;
+  dcSend({ type: "session.update", session: { modalities: outputModalities() } });
 }
 
 // ── Audio-Quelle Toggle ──────────────────────────────────
@@ -371,7 +381,7 @@ async function startSession() {
     sessionBar.classList.add("active");
     waveEl.classList.add("active");
 
-    classifyTimer = setInterval(runClassifierStep, CLASSIFY_INTERVAL_MS);
+    // Native Mode: kein Classifier-Loop noetig — Sophie hoert direkt via Realtime
     startTokenCapPoll(data.remaining_seconds || 0);
   } catch (e) {
     console.error("[xi] start failed", e);
@@ -431,23 +441,109 @@ async function acquireAudioStream() {
 }
 
 function onDataChannelOpen() {
-  // Transcription ON · Auto-Response OFF
-  // KEINE Noise-Reduction (filtert sonst Nebenstimmen),
-  // niedrige VAD-Schwelle damit auch leisere/entferntere Sprecher greifen.
+  // Native Mode: Sophie antwortet autonom (create_response: true),
+  // entscheidet selbst wann sie spricht, nutzt web_search Tool bei Bedarf.
   dcSend({
     type: "session.update",
     session: {
+      instructions: buildNativeSystemPrompt(lang),
+      modalities: outputModalities(),
+      voice: "alloy",
       input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
       turn_detection: {
         type: "server_vad",
-        threshold: 0.35,
-        silence_duration_ms: 600,
-        create_response: false,
-        interrupt_response: false,
+        threshold: 0.5,              // etwas strenger: VAD soll nicht auf jedes Raeuspern triggern
+        silence_duration_ms: 700,    // laenger warten bis Utterance als fertig gilt
+        create_response: true,       // AUTONOM: Sophie entscheidet selbst
+        interrupt_response: false,   // sie unterbricht sich nicht selbst
       },
-      modalities: ["text", "audio"],
+      tools: [{
+        type: "function",
+        name: "web_search",
+        description: "Search the web for a single factual fact. Use BEFORE answering any question about a name, book, film, place, date, or number that you are not 100% sure about. Do NOT use for opinions, smalltalk, or personal topics.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The search query — the entity or fact to look up. No quotes, no question marks.",
+            },
+          },
+          required: ["query"],
+        },
+      }],
+      tool_choice: "auto",
     },
   });
+}
+
+// ── System-Prompt fuer Native Mode ───────────────────────
+function buildNativeSystemPrompt(language) {
+  const isEN = language === "en";
+  if (isEN) {
+    return `You are Sophie in Extra Intelligence mode. You are silently listening to a conversation you are NOT part of.
+
+SPEAK ONLY when one of these is clearly true:
+1. A factual question is asked (Who/What/When/Where/How many)
+2. A proper name is mentioned (book, film, person, place) that a listener likely doesn't know
+3. A concept is mentioned that gains value from a one-sentence classification
+
+STAY COMPLETELY SILENT for:
+- Smalltalk, weather, mood expressions
+- Personal topics (relationships, health, finance)
+- Opinions, decisions, plans
+- Already-answered context
+- Anything you're unsure about
+
+When you DO speak:
+- Call web_search FIRST to get facts
+- Then: exactly ONE sentence, under 15 words
+- Direct fact, telegraph style
+- NO question repetition, NO preamble ("Actually", "Interesting", "Well")
+- NO opinions, NO follow-up questions, NO acknowledgments
+
+When silent: produce NO output at all. Not "mm", not "ok", not a space. Nothing.
+
+EXAMPLES:
+"Who wrote The Swarm?" → web_search("Der Schwarm author") → "Frank Schätzing, 2004, eco-thriller."
+"How tall is Everest?" → web_search("Mount Everest height") → "Mount Everest is 8849 metres."
+"Nice weather today." → (silent, no output)
+"I feel sad." → (silent, no output)
+"…like in The Eagle Has Landed…" → web_search("The Eagle Has Landed film") → "1976 WWII thriller with Michael Caine."
+
+If unsure: STAY SILENT. One missed fact is better than one interruption.`;
+  }
+  return `Du bist Sophie im Extra-Intelligence-Modus. Du hoerst still einem Gespraech zu, an dem du NICHT teilnimmst.
+
+SPRICH NUR wenn eines davon eindeutig zutrifft:
+1. Eine Faktenfrage wurde gestellt (Wer/Was/Wann/Wo/Wie viel)
+2. Ein Eigenname wurde genannt (Buch, Film, Person, Ort), den Hoerer wahrscheinlich nicht kennen
+3. Ein Konzept wurde erwaehnt, das von einer 1-Satz-Einordnung profitiert
+
+BLEIB KOMPLETT STILL bei:
+- Smalltalk, Wetter, Stimmung
+- Persoenlichen Themen (Beziehungen, Gesundheit, Finanzen)
+- Meinungen, Entscheidungen, Plaenen
+- Bereits im Kontext beantworteten Themen
+- Allem wobei du dir nicht sicher bist
+
+Wenn du sprichst:
+- Rufe ZUERST web_search auf um Fakten zu holen
+- Dann: genau EIN Satz, unter 15 Woertern
+- Direkter Fakt, Telegramm-Stil
+- KEINE Frage-Wiederholung, KEINE Einleitung ("Uebrigens", "Interessant", "Tatsaechlich")
+- KEINE Meinung, KEINE Rueckfragen, KEINE Bestaetigungen
+
+Wenn still: produziere NICHTS. Kein "mm", kein "ok", kein Leerzeichen. Nichts.
+
+BEISPIELE:
+"Wer hat 'Der Schwarm' geschrieben?" → web_search("Der Schwarm Autor") → "Frank Schaetzing, 2004, Oeko-Thriller."
+"Wie hoch ist der Everest?" → web_search("Mount Everest Hoehe") → "Der Mount Everest misst 8849 Meter."
+"Schoenes Wetter heute." → (still, keine Ausgabe)
+"Ich bin traurig." → (still, keine Ausgabe)
+"…wie damals bei Kepler-22b…" → web_search("Kepler-22b Exoplanet") → "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."
+
+Im Zweifel: STILL BLEIBEN. Eine verpasste Info ist besser als eine unerwuenschte Unterbrechung.`;
 }
 
 function dcSend(obj) {
@@ -467,86 +563,107 @@ function unlockVoice() {
   setMicMuted(false);
 }
 
-// ── DataChannel Handler ──────────────────────────────────
+// ── DataChannel Handler (Native Mode) ────────────────────
+// Wir lauschen auf:
+// - response.created                         -> Sophie beginnt Antwort: Mic muten
+// - response.audio_transcript.delta/.done    -> Antwort-Text (Chat-Log)
+// - response.function_call_arguments.done    -> Tool-Call von Sophie -> web_search
+// - response.done / .output_audio.done       -> Antwort fertig: Mic wieder auf
+// - response.cancelled                       -> selten, auch unmuten
 function onDataChannelMessage(e) {
   let msg;
   try { msg = JSON.parse(e.data); } catch { return; }
 
-  // Sophie fertig mit Sprechen -> 300ms Tail-Puffer, dann Mic wieder auf
-  if (msg?.type === "response.done" ||
-      msg?.type === "response.output_audio.done" ||
-      msg?.type === "response.audio.done") {
-    clearTimeout(voiceBusyTimeout);
-    voiceBusyTimeout = setTimeout(unlockVoice, 300);
-  }
+  switch (msg.type) {
 
-  // Transcripts kommen weiter in den Buffer rein (auch wenn wahrscheinlich
-  // leer waehrend Sophie spricht, weil Mic gemuted). KEINE Pipeline-Blockade.
-  if (msg?.type === "conversation.item.input_audio_transcription.completed") {
-    const text = String(msg.transcript || "").trim();
-    if (text) pushToBuffer(text);
-  }
-  if (msg?.type === "error") console.warn("[xi] realtime error", msg.error);
-}
+    case "response.created":
+      // Sophie fuehrt gleich eine Aktion aus (sprechen oder Tool-Call).
+      // Mic sofort stummschalten damit VAD sie nicht unterbricht.
+      voiceBusy = true;
+      setMicMuted(true);
+      currentAssistantText = "";
+      clearTimeout(voiceBusyTimeout);
+      voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
+      break;
 
-function pushToBuffer(text) {
-  transcriptBuffer.push({ text, ts: Date.now() });
-  const cutoff = Date.now() - BUFFER_MAX_MS;
-  while (transcriptBuffer.length && transcriptBuffer[0].ts < cutoff) transcriptBuffer.shift();
-  // Sofort classifieren — nicht auf den 2.5s-Timer warten
-  if (Date.now() - (runClassifierStep._last || 0) > CLASSIFY_MIN_GAP_MS) {
-    runClassifierStep();
-  }
-}
+    case "response.audio_transcript.delta":
+      // Sophies gesprochener Text streamt rein — fuer Chat-Log sammeln
+      if (typeof msg.delta === "string") currentAssistantText += msg.delta;
+      break;
 
-function getRecentTranscript(windowMs) {
-  const cutoff = Date.now() - windowMs;
-  return transcriptBuffer.filter(e => e.ts >= cutoff).map(e => e.text).join(" ").trim();
-}
-
-// ── Classifier Loop ──────────────────────────────────────
-async function runClassifierStep() {
-  if (!running) return;
-  const now = Date.now();
-  if (now - (runClassifierStep._last || 0) < CLASSIFY_MIN_GAP_MS) return;
-  runClassifierStep._last = now;
-
-  const windowText = getRecentTranscript(CLASSIFY_WINDOW_MS);
-  if (!windowText || windowText === lastBufferText || windowText.length < 20) return;
-  lastBufferText = windowText;
-
-  const lastTriggerAgoSec = Math.floor((now - (lastTriggerAt || 0)) / 1000);
-
-  try {
-    const res = await fetch("/api/extra-intelligence/classify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ text: windowText, language: lang, last_trigger_ago_sec: lastTriggerAgoSec }),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    tokenCount += Number(data.classifier_tokens || 0);
-    tokenCountEl.textContent = String(tokenCount);
-
-    if (data.action && data.action !== "no_action" && data.query) {
-      if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) return;
-      lastTriggerAt = now;
-      await runResearchAndSpeak(data.action, data.query);
+    case "response.audio_transcript.done": {
+      const t = String(msg.transcript || currentAssistantText || "").trim();
+      if (t) {
+        triggerCount += 1;
+        triggerCountEl.textContent = String(triggerCount);
+        if (outputMode !== "voice") appendChatMessage(t);
+      }
+      currentAssistantText = "";
+      break;
     }
-  } catch (e) {
-    console.warn("[xi] classify failed", e?.message);
+
+    case "response.text.delta":
+      // Text-Only-Pfad (falls modalities=["text"] genutzt wird)
+      if (typeof msg.delta === "string") currentAssistantText += msg.delta;
+      break;
+
+    case "response.text.done": {
+      const t = String(msg.text || currentAssistantText || "").trim();
+      if (t && outputMode !== "voice") {
+        triggerCount += 1;
+        triggerCountEl.textContent = String(triggerCount);
+        appendChatMessage(t);
+      }
+      currentAssistantText = "";
+      break;
+    }
+
+    case "response.function_call_arguments.done":
+      // Sophie moechte web_search aufrufen
+      handleFunctionCall(msg).catch(err => console.warn("[xi] tool call failed", err));
+      break;
+
+    case "response.done":
+    case "response.output_audio.done":
+    case "response.audio.done":
+    case "response.cancelled":
+      // Antwort fertig -> 300ms Tail dann Mic wieder auf
+      clearTimeout(voiceBusyTimeout);
+      voiceBusyTimeout = setTimeout(unlockVoice, 300);
+
+      if (msg?.response?.usage?.total_tokens) {
+        tokenCount += Number(msg.response.usage.total_tokens || 0);
+        tokenCountEl.textContent = String(tokenCount);
+      }
+      break;
+
+    case "error":
+      console.warn("[xi] realtime error", msg.error);
+      break;
   }
 }
 
-// ── Research + Voice Response ────────────────────────────
-async function runResearchAndSpeak(action, query) {
-  // Sofort-Placeholder im Chat-Log, damit der User merkt dass was laeuft
+// ── Tool-Call Handler ────────────────────────────────────
+// Sophie ruft web_search auf -> wir holen Fakten von /api/extra-intelligence/research
+// und schicken das Ergebnis als function_call_output zurueck + trigger response.create
+async function handleFunctionCall(msg) {
+  if (msg.name !== "web_search") {
+    console.warn("[xi] unknown tool call", msg.name);
+    return;
+  }
+
+  let args = {};
+  try { args = JSON.parse(msg.arguments || "{}"); } catch {}
+  const query = String(args.query || "").trim();
+  if (!query) return;
+
+  // Placeholder im Chat-Log (nur wenn Text-Ausgabe aktiv)
   let placeholderEl = null;
   if (outputMode !== "voice") {
-    placeholderEl = appendChatMessage(lang === "en" ? "Looking up…" : "Recherchiere…", { muted: true });
+    placeholderEl = appendChatMessage(
+      lang === "en" ? `Looking up: ${query}…` : `Recherchiere: ${query}…`,
+      { muted: true }
+    );
   }
 
   try {
@@ -556,57 +673,47 @@ async function runResearchAndSpeak(action, query) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ action, query, language: lang }),
+      // action=question_factual ist fuer den Shortcut-Prompt auf Backend-Seite ok
+      body: JSON.stringify({ action: "question_factual", query, language: lang }),
     });
-    if (!res.ok) { placeholderEl?.remove(); return; }
-    const data = await res.json();
-    tokenCount += Number(data.tokens_used || 0);
+
+    placeholderEl?.remove();
+
+    let payload = { text: "", source: null };
+    if (res.ok) payload = await res.json();
+
+    tokenCount += Number(payload.tokens_used || 0);
     tokenCountEl.textContent = String(tokenCount);
 
-    const text = String(data.text || "").trim();
-    if (!text) { placeholderEl?.remove(); return; }
+    // Tool-Ergebnis zurueck an Sophie
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: msg.call_id,
+        output: JSON.stringify({
+          text: String(payload.text || "").slice(0, 400) ||
+                (lang === "en" ? "No facts found." : "Keine Fakten gefunden."),
+          source: payload.source || null,
+        }),
+      },
+    });
 
-    triggerCount += 1;
-    triggerCountEl.textContent = String(triggerCount);
-
-    // Text-Ausgabe (Chat-Log) — Placeholder ersetzen bzw. neue Nachricht
-    if (outputMode !== "voice") {
-      if (placeholderEl) {
-        placeholderEl.classList.remove("muted");
-        const body = placeholderEl.querySelector(".body");
-        if (body) body.textContent = text;
-        else placeholderEl.firstChild && (placeholderEl.firstChild.textContent = text);
-      } else {
-        appendChatMessage(text);
-      }
-    }
-
-    // Voice-Ausgabe — bei "voice" oder "both"
-    // Voice-Sperre: wenn Sophie noch spricht, NICHT neu triggern
-    // (Text war schon oben appended, User sieht also zumindest die Info im Chat-Log)
-    if (outputMode !== "text" && !voiceBusy) {
-      const speakInstruction = lang === "en"
-        ? `Read the following text aloud in a calm, brief, factual voice. Do not add anything. Do not greet. Do not ask follow-ups. Text: "${text}"`
-        : `Lies den folgenden Text ruhig, knapp und sachlich vor. Füge nichts hinzu. Keine Begrüßung. Keine Nachfrage. Text: "${text}"`;
-
-      dcSend({
-        type: "response.create",
-        response: {
-          modalities: ["audio", "text"],
-          instructions: speakInstruction,
-        },
-      });
-
-      // Lock aktivieren: Mic stummschalten (damit OpenAI Server-VAD Sophie
-      // nicht unterbricht) + Safety-Timeout (25s), falls response.done ausfaellt
-      voiceBusy = true;
-      setMicMuted(true);
-      clearTimeout(voiceBusyTimeout);
-      voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
-    }
+    // Sophie soll jetzt mit dem Tool-Ergebnis antworten
+    dcSend({ type: "response.create" });
   } catch (e) {
-    console.warn("[xi] research failed", e?.message);
+    console.warn("[xi] research tool call failed", e?.message);
     placeholderEl?.remove();
+    // Leeres Ergebnis zurueckgeben damit Sophie weiss: nichts gefunden
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: msg.call_id,
+        output: JSON.stringify({ text: "", source: null }),
+      },
+    });
+    dcSend({ type: "response.create" });
   }
 }
 
@@ -643,10 +750,10 @@ async function checkTokenCap() {
 
 // ── Stop ─────────────────────────────────────────────────
 async function stopSession(silent = false, byLimit = false) {
-  if (classifyTimer)   { clearInterval(classifyTimer); classifyTimer = null; }
   if (tokenCapTimer)   { clearInterval(tokenCapTimer); tokenCapTimer = null; }
   if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
   voiceBusy = false;
+  currentAssistantText = "";
   setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
   waveEl.classList.remove("active");
@@ -676,8 +783,6 @@ async function stopSession(silent = false, byLimit = false) {
     } catch {}
   }
 
-  transcriptBuffer.length = 0;
-  lastBufferText = "";
   chatLog.innerHTML = "";
 
   if (byLimit && !silent) errorText.textContent = "Token-Limit erreicht — Session beendet.";
