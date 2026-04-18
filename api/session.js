@@ -179,19 +179,19 @@ export default async function handler(req, res) {
 
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
-    const sessionMode = ["brainstorm", "meeting", "salespitch", "stealth"].includes(rawSessionMode) ? rawSessionMode : null;
+    const sessionMode = ["brainstorm", "meeting", "salespitch", "extra_intelligence"].includes(rawSessionMode) ? rawSessionMode : null;
     const meetingId = String(req.headers["x-sophie-meeting-id"] || "").trim() || null;
 
-    // Stealth-Mode Feature-Flag + Privacy-Opt-in
+    // Extra-Intelligence Feature-Flag + Privacy-Opt-in
     // Premium-Gate wird weiter unten geprueft, sobald der Plan geladen ist.
-    const STEALTH_ENABLED = String(process.env.STEALTH_ENABLED || "false").toLowerCase() === "true";
-    const stealthPrivacyAck = String(req.headers["x-sophie-stealth-privacy-ack"] || "").trim() === "1";
-    if (sessionMode === "stealth") {
-      if (!STEALTH_ENABLED) {
-        return res.status(404).json({ error: "stealth_not_available" });
+    const EXTRA_INTELLIGENCE_ENABLED = String(process.env.EXTRA_INTELLIGENCE_ENABLED || "false").toLowerCase() === "true";
+    const xiPrivacyAck = String(req.headers["x-sophie-xi-privacy-ack"] || "").trim() === "1";
+    if (sessionMode === "extra_intelligence") {
+      if (!EXTRA_INTELLIGENCE_ENABLED) {
+        return res.status(404).json({ error: "extra_intelligence_not_available" });
       }
-      if (!stealthPrivacyAck) {
-        return res.status(400).json({ error: "stealth_privacy_ack_required" });
+      if (!xiPrivacyAck) {
+        return res.status(400).json({ error: "xi_privacy_ack_required" });
       }
     }
 
@@ -280,11 +280,11 @@ export default async function handler(req, res) {
     const sessionLimit = tier === "partner" ? 5 : tier === "friend" ? 3 : tier === "assistant" ? 1 : 0;
     const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion";
 
-    // Stealth-Mode ist Premium-only
-    if (sessionMode === "stealth" && String(plan || "").toLowerCase() !== "premium") {
+    // Extra Intelligence ist Premium-only
+    if (sessionMode === "extra_intelligence" && String(plan || "").toLowerCase() !== "premium") {
       return res.status(402).json({
-        error: "stealth_requires_premium",
-        message: "Stealth-Modus ist nur im Premium-Plan verfuegbar.",
+        error: "extra_intelligence_requires_premium",
+        message: "Extra Intelligence ist nur im Premium-Plan verfuegbar.",
       });
     }
 

@@ -16,7 +16,8 @@ export enum SophieMode {
   CALENDAR    = 'calendar',
 
   // Passiv-Modus (ephemeral, keine Persistenz)
-  STEALTH     = 'stealth',
+  // Produktname: "Extra Intelligence" — Sophie hoert mit und erklaert Unbekanntes
+  EXTRA_INTELLIGENCE = 'extra_intelligence',
 }
 
 // ── Memory-Tiefe ───────────────────────────────────────────

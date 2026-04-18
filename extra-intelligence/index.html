@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Extra Intelligence — Sophie</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07080c;
+      --fg: #eef0f6;
+      --muted: #8a8f9c;
+      --accent: #9d7bff;
+      --accent-soft: rgba(157, 123, 255, 0.16);
+      --danger: #ff6b6b;
+      --ok: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+    .topbar a, .topbar button { color: var(--muted); text-decoration: none; font-size: 14px; background: transparent; border: none; cursor: pointer; }
+    .topbar a:hover, .topbar button:hover { color: var(--fg); }
+
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; max-width: 560px; margin: 0 auto; width: 100%; }
+    h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    .badge { display: inline-block; padding: 4px 10px; font-size: 11px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+    p.lead { color: var(--muted); line-height: 1.6; margin: 0 0 28px; font-size: 15px; }
+
+    .wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 72px; margin: 24px 0 32px; opacity: 0.35; transition: opacity .3s; }
+    .wave.active { opacity: 1; }
+    .wave span { width: 4px; background: var(--accent); border-radius: 2px; animation: pulse 1.4s ease-in-out infinite; }
+    .wave span:nth-child(1) { height: 24%; animation-delay: 0s; }
+    .wave span:nth-child(2) { height: 55%; animation-delay: .15s; }
+    .wave span:nth-child(3) { height: 80%; animation-delay: .3s; }
+    .wave span:nth-child(4) { height: 100%; animation-delay: .45s; }
+    .wave span:nth-child(5) { height: 65%; animation-delay: .6s; }
+    .wave span:nth-child(6) { height: 40%; animation-delay: .75s; }
+    .wave span:nth-child(7) { height: 28%; animation-delay: .9s; }
+    @keyframes pulse { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+
+    button.primary, button.danger, button.ghost { font: inherit; cursor: pointer; border: none; border-radius: 999px; padding: 14px 28px; transition: transform .15s, background .2s; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    .primary { background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; min-width: 180px; }
+    .primary:hover:not(:disabled) { background: #8a63ff; }
+    .ghost { background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,.12); padding: 10px 22px; font-size: 14px; }
+    .danger { background: var(--danger); color: #fff; font-weight: 600; font-size: 15px; }
+
+    .status-row { display: flex; gap: 20px; justify-content: center; margin: 20px 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .status-row .val { color: var(--fg); font-weight: 600; }
+
+    .hint-box { margin-top: 16px; padding: 12px 16px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 13px; line-height: 1.5; min-height: 40px; opacity: 0; transition: opacity .3s; text-align: left; }
+    .hint-box.visible { opacity: 1; }
+
+    .session-bar { display: none; flex-direction: column; gap: 16px; width: 100%; }
+    .session-bar.active { display: flex; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+    .modal-backdrop.visible { display: flex; }
+    .modal { background: #12141b; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 28px; max-width: 480px; width: 100%; text-align: left; }
+    .modal h2 { margin: 0 0 8px; font-size: 20px; }
+    .modal ul { margin: 12px 0; padding-left: 20px; color: var(--muted); line-height: 1.6; font-size: 14px; }
+    .modal li { margin-bottom: 6px; }
+    .modal .ack { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; color: var(--fg); font-size: 14px; }
+    .modal .ack input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+
+    .error-text { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 12px; }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 24px; }
+      main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/app">&lsaquo; Zurück</a>
+    <button id="logoutBtn">Logout</button>
+  </header>
+
+  <main>
+    <span class="badge">Premium · Beta</span>
+    <h1>Extra Intelligence</h1>
+    <p class="lead">
+      Sophie hört still mit, erkennt unbekannte Begriffe und Fragen,
+      recherchiert im Hintergrund und sagt dir per Voice kurz Bescheid.
+      Keine Aufzeichnung, kein Transcript, kein Memory.
+    </p>
+
+    <div class="wave" id="wave" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div id="startPanel">
+      <button class="primary" id="startBtn">Jetzt starten</button>
+      <p class="error-text" id="errorText"></p>
+    </div>
+
+    <div class="session-bar" id="sessionBar">
+      <div class="status-row">
+        <span>Trigger: <span class="val" id="triggerCount">0</span></span>
+        <span>Tokens: <span class="val" id="tokenCount">0</span></span>
+      </div>
+      <div class="hint-box" id="hintBox"></div>
+      <button class="danger" id="stopBtn">Stoppen</button>
+    </div>
+  </main>
+
+  <audio id="audioEl" autoplay playsinline></audio>
+
+  <div class="modal-backdrop" id="privacyModal">
+    <div class="modal">
+      <h2>Privacy-Hinweis · Extra Intelligence</h2>
+      <p style="color:var(--muted); margin:0 0 10px;">Bevor es losgeht, kurz zum Verständnis:</p>
+      <ul>
+        <li>Sophie transkribiert das Audio live, um zuzuhören.</li>
+        <li>Für die Recherche werden kurze Ausschnitte (~15s) an OpenAI und Google/Gemini gesendet.</li>
+        <li><strong>Keine Speicherung:</strong> Kein Transcript, kein Report, kein Memory. Alles wird nach der Session verworfen.</li>
+        <li>Du kannst jederzeit stoppen.</li>
+      </ul>
+      <label class="ack">
+        <input type="checkbox" id="privacyAck" />
+        <span>Ich habe den Hinweis gelesen und stimme zu.</span>
+      </label>
+      <div class="modal-actions">
+        <button class="ghost" id="privacyCancel">Abbrechen</button>
+        <button class="primary" id="privacyContinue" disabled>Weiter</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { data: { session } } = await supabase.auth.getSession();
+if (!session?.user) { window.location.href = "/login"; }
+
+// ── State ────────────────────────────────────────────────
+let pc = null;
+let dc = null;
+let stream = null;
+let sessionStartedAt = 0;
+let running = false;
+let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";
+
+const transcriptBuffer = []; // { text, ts } — in-memory only, never persisted
+const BUFFER_MAX_MS = 60_000;
+const CLASSIFY_WINDOW_MS = 15_000;
+const CLASSIFY_INTERVAL_MS = 5_000;
+const TRIGGER_COOLDOWN_MS = 20_000;
+
+let lastTriggerAt = 0;
+let lastBufferText = "";
+let classifyTimer = null;
+let triggerCount = 0;
+let tokenCount = 0;
+
+// ── DOM ──────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const startBtn       = $("startBtn");
+const stopBtn        = $("stopBtn");
+const startPanel     = $("startPanel");
+const sessionBar     = $("sessionBar");
+const waveEl         = $("wave");
+const triggerCountEl = $("triggerCount");
+const tokenCountEl   = $("tokenCount");
+const hintBox        = $("hintBox");
+const errorText      = $("errorText");
+const audioEl        = $("audioEl");
+const logoutBtn      = $("logoutBtn");
+const privacyModal   = $("privacyModal");
+const privacyAck     = $("privacyAck");
+const privacyCancel  = $("privacyCancel");
+const privacyContinue = $("privacyContinue");
+
+// ── Privacy Opt-In ───────────────────────────────────────
+let privacyAccepted = false;
+privacyAck.addEventListener("change", () => { privacyContinue.disabled = !privacyAck.checked; });
+privacyCancel.addEventListener("click", () => {
+  privacyModal.classList.remove("visible");
+  privacyAck.checked = false;
+  privacyContinue.disabled = true;
+});
+privacyContinue.addEventListener("click", () => {
+  privacyAccepted = true;
+  privacyModal.classList.remove("visible");
+  startSession();
+});
+
+startBtn.addEventListener("click", () => {
+  errorText.textContent = "";
+  if (!privacyAccepted) { privacyModal.classList.add("visible"); return; }
+  startSession();
+});
+stopBtn.addEventListener("click", () => stopSession(false));
+logoutBtn.addEventListener("click", async () => {
+  await stopSession(true);
+  await supabase.auth.signOut();
+  window.location.href = "/";
+});
+
+// ── Session Start ────────────────────────────────────────
+async function startSession() {
+  if (running) return;
+  errorText.textContent = "";
+  startBtn.disabled = true;
+
+  try {
+    const tokenRes = await fetch("/api/session", {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "x-sophie-session-mode": "extra_intelligence",
+        "x-sophie-xi-privacy-ack": "1",
+      },
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.json().catch(() => ({}));
+      if (tokenRes.status === 402)      errorText.textContent = "Extra Intelligence ist nur im Premium-Plan verfügbar.";
+      else if (tokenRes.status === 404) errorText.textContent = "Extra Intelligence ist aktuell nicht freigeschaltet.";
+      else                              errorText.textContent = err?.message || err?.error || "Start fehlgeschlagen.";
+      startBtn.disabled = false;
+      return;
+    }
+
+    const data = await tokenRes.json();
+    if (typeof data?.remaining_seconds === "number" && data.remaining_seconds <= 0) {
+      errorText.textContent = "Kein Guthaben mehr verfügbar.";
+      startBtn.disabled = false;
+      return;
+    }
+
+    // WebRTC setup
+    pc = new RTCPeerConnection();
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+
+    dc = pc.createDataChannel("oai-events");
+    dc.addEventListener("open", onDataChannelOpen);
+    dc.addEventListener("message", onDataChannelMessage);
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const sdpRes = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime", {
+      method: "POST",
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${data.client_secret.value}`,
+        "Content-Type": "application/sdp",
+      },
+    });
+    if (!sdpRes.ok) {
+      const t = await sdpRes.text().catch(() => "");
+      throw new Error(`OpenAI SDP ${sdpRes.status}: ${t.slice(0, 200)}`);
+    }
+    const answer = { type: "answer", sdp: await sdpRes.text() };
+    await pc.setRemoteDescription(answer);
+
+    running = true;
+    sessionStartedAt = Date.now();
+    startPanel.style.display = "none";
+    sessionBar.classList.add("active");
+    waveEl.classList.add("active");
+
+    classifyTimer = setInterval(runClassifierStep, CLASSIFY_INTERVAL_MS);
+    startTokenCapPoll(data.remaining_seconds || 0);
+  } catch (e) {
+    console.error("[xi] start failed", e);
+    errorText.textContent = "Start fehlgeschlagen: " + (e?.message || String(e));
+    await stopSession(true);
+    startBtn.disabled = false;
+  }
+}
+
+function onDataChannelOpen() {
+  // Transcription ON · Auto-Response OFF · Noise Reduction
+  dcSend({
+    type: "session.update",
+    session: {
+      input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
+      turn_detection: {
+        type: "server_vad",
+        threshold: 0.6,
+        silence_duration_ms: 700,
+        create_response: false,
+        interrupt_response: false,
+      },
+      input_audio_noise_reduction: { type: "far_field" },
+      modalities: ["text", "audio"],
+    },
+  });
+}
+
+function dcSend(obj) {
+  if (!dc || dc.readyState !== "open") return;
+  try { dc.send(JSON.stringify(obj)); } catch (e) { console.warn("[xi] dc send failed", e); }
+}
+
+// ── DataChannel Handler ──────────────────────────────────
+function onDataChannelMessage(e) {
+  let msg;
+  try { msg = JSON.parse(e.data); } catch { return; }
+
+  if (msg?.type === "conversation.item.input_audio_transcription.completed") {
+    const text = String(msg.transcript || "").trim();
+    if (text) pushToBuffer(text);
+  }
+  if (msg?.type === "error") console.warn("[xi] realtime error", msg.error);
+}
+
+function pushToBuffer(text) {
+  transcriptBuffer.push({ text, ts: Date.now() });
+  const cutoff = Date.now() - BUFFER_MAX_MS;
+  while (transcriptBuffer.length && transcriptBuffer[0].ts < cutoff) transcriptBuffer.shift();
+}
+
+function getRecentTranscript(windowMs) {
+  const cutoff = Date.now() - windowMs;
+  return transcriptBuffer.filter(e => e.ts >= cutoff).map(e => e.text).join(" ").trim();
+}
+
+// ── Classifier Loop ──────────────────────────────────────
+async function runClassifierStep() {
+  if (!running) return;
+  const now = Date.now();
+  const windowText = getRecentTranscript(CLASSIFY_WINDOW_MS);
+  if (!windowText || windowText === lastBufferText || windowText.length < 20) return;
+  lastBufferText = windowText;
+
+  const lastTriggerAgoSec = Math.floor((now - (lastTriggerAt || 0)) / 1000);
+
+  try {
+    const res = await fetch("/api/extra-intelligence/classify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ text: windowText, language: lang, last_trigger_ago_sec: lastTriggerAgoSec }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    tokenCount += Number(data.classifier_tokens || 0);
+    tokenCountEl.textContent = String(tokenCount);
+
+    if (data.action && data.action !== "no_action" && data.query) {
+      if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) return;
+      lastTriggerAt = now;
+      await runResearchAndSpeak(data.action, data.query);
+    }
+  } catch (e) {
+    console.warn("[xi] classify failed", e?.message);
+  }
+}
+
+// ── Research + Voice Response ────────────────────────────
+async function runResearchAndSpeak(action, query) {
+  try {
+    const res = await fetch("/api/extra-intelligence/research", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action, query, language: lang }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    tokenCount += Number(data.tokens_used || 0);
+    tokenCountEl.textContent = String(tokenCount);
+
+    const text = String(data.text || "").trim();
+    if (!text) return;
+
+    triggerCount += 1;
+    triggerCountEl.textContent = String(triggerCount);
+    showHint(text);
+
+    const speakInstruction = lang === "en"
+      ? `Read the following text aloud in a calm, brief, factual voice. Do not add anything. Do not greet. Do not ask follow-ups. Text: "${text}"`
+      : `Lies den folgenden Text ruhig, knapp und sachlich vor. Füge nichts hinzu. Keine Begrüßung. Keine Nachfrage. Text: "${text}"`;
+
+    dcSend({
+      type: "response.create",
+      response: {
+        modalities: ["audio", "text"],
+        instructions: speakInstruction,
+      },
+    });
+  } catch (e) {
+    console.warn("[xi] research failed", e?.message);
+  }
+}
+
+function showHint(text) {
+  hintBox.textContent = text;
+  hintBox.classList.add("visible");
+  clearTimeout(showHint._t);
+  showHint._t = setTimeout(() => hintBox.classList.remove("visible"), 15_000);
+}
+
+// ── Token Cap Poll ───────────────────────────────────────
+let tokenCapTimer = null;
+let initialRemaining = 0;
+function startTokenCapPoll(remainingSeconds) {
+  initialRemaining = remainingSeconds;
+  tokenCapTimer = setInterval(checkTokenCap, 30_000);
+}
+async function checkTokenCap() {
+  const elapsedSec = Math.floor((Date.now() - sessionStartedAt) / 1000);
+  if (initialRemaining > 0 && elapsedSec >= initialRemaining) {
+    await stopSession(false, true);
+  }
+}
+
+// ── Stop ─────────────────────────────────────────────────
+async function stopSession(silent = false, byLimit = false) {
+  if (classifyTimer) { clearInterval(classifyTimer); classifyTimer = null; }
+  if (tokenCapTimer) { clearInterval(tokenCapTimer); tokenCapTimer = null; }
+  running = false;
+  waveEl.classList.remove("active");
+  sessionBar.classList.remove("active");
+  startPanel.style.display = "";
+  startBtn.disabled = false;
+
+  try { dc?.close(); } catch {}
+  try { pc?.getSenders().forEach(s => { try { s.track?.stop(); } catch {} }); } catch {}
+  try { pc?.close(); } catch {}
+  try { stream?.getTracks().forEach(t => t.stop()); } catch {}
+  dc = null; pc = null; stream = null;
+
+  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  if (sec > 0) {
+    try {
+      const tokens = Math.ceil(sec / 6);
+      await fetch("/api/user?action=usage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ tokens_used: tokens, source: "extra_intelligence" }),
+        keepalive: true,
+      });
+    } catch {}
+  }
+
+  transcriptBuffer.length = 0;
+  lastBufferText = "";
+
+  if (byLimit && !silent) errorText.textContent = "Token-Limit erreicht — Session beendet.";
+  sessionStartedAt = 0;
+}
+
+window.addEventListener("beforeunload", () => { if (running) stopSession(true); });
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ export interface ModeConfig {
   historyScope:     'personal' | 'meeting' | 'brainstorm' | 'sales_pitch' | 'ephemeral'
   crossModeRead:    SophieMode[]  // Modi, aus denen Refs gezogen werden duerfen
   label:            string
-  // Stealth / Listen-Modi: nichts wird persistiert, kein Transcript, kein Report
+  // Extra Intelligence / Listen-Modi: nichts wird persistiert, kein Transcript, kein Report
   ephemeral?:       boolean
   persistTranscript?: boolean
 }
@@ -89,14 +89,14 @@ export const MODE_CONFIG: Record<SophieMode, ModeConfig> = {
     label:            'Calendar',
   },
 
-  [SophieMode.STEALTH]: {
+  [SophieMode.EXTRA_INTELLIGENCE]: {
     depth:            MemoryDepth.SCOPED,
     security:         SecurityLevel.CONFIDENTIAL,
     isWorkspace:      false,
     shortTermTTLDays: 0,                       // nichts wird persistiert
     historyScope:     'ephemeral',
     crossModeRead:    [],                      // liest nichts, schreibt nichts
-    label:            'Stealth',
+    label:            'Extra Intelligence',
     ephemeral:        true,
     persistTranscript: false,
   },

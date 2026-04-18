@@ -314,6 +314,19 @@
       border-color: rgba(255,82,82,.45);
       color: #c62828;
     }
+    .mode-pill[data-mode="extra_intelligence"].active {
+      background: rgba(157,123,255,.12);
+      border-color: rgba(157,123,255,.5);
+      color: #6d4cd1;
+    }
+    .mode-pill.locked::before {
+      content: "🔒 ";
+      opacity: .7;
+      margin-right: 2px;
+    }
+    .mode-pill.locked {
+      opacity: .65;
+    }
 
     /* ── Brainstorm Solo/Team Segment ────────────────────────── */
     .bs-pill-wrap {
@@ -794,6 +807,7 @@
         </div>
         <button class="mode-pill" data-mode="meeting">Meeting</button>
         <button class="mode-pill" data-mode="salespitch">Sales Pitch</button>
+        <button class="mode-pill" data-mode="extra_intelligence" id="xiPill" data-premium="1">Extra Intelligence</button>
       </div>
 
       <!-- Last Session -->
@@ -949,7 +963,7 @@
     {
       const { data: sub, error: subErr } = await supabase
         .from("user_subscriptions")
-        .select("is_active")
+        .select("is_active, plan")
         .eq("user_id", session.user.id)
         .maybeSingle();
       // Only show overlay if we successfully queried and user has no active sub
@@ -965,6 +979,24 @@
             document.getElementById("lockedSub").textContent = "Then \u20AC9.90/month \u00B7 Cancel anytime";
           }
           overlay.classList.add("active");
+        }
+      }
+
+      // Extra Intelligence: Premium-only lock
+      const xiPill = document.getElementById("xiPill");
+      if (xiPill) {
+        const isPremium = String(sub?.plan || "").toLowerCase() === "premium";
+        if (!isPremium) {
+          xiPill.classList.add("locked");
+          xiPill.title = currentLang === "en"
+            ? "Extra Intelligence is a Premium feature"
+            : "Extra Intelligence ist ein Premium-Feature";
+          xiPill.addEventListener("click", (ev) => {
+            // Prevent the generic mode-pill handler from selecting it
+            ev.stopImmediatePropagation();
+            ev.preventDefault();
+            location.href = "/pricing";
+          }, true);
         }
       }
     }
@@ -1124,6 +1156,8 @@
     ctaBtn.addEventListener("click", () => {
       if (selectedMode === "meeting") {
         location.href = "/meeting/";
+      } else if (selectedMode === "extra_intelligence") {
+        location.href = "/extra-intelligence/";
       } else {
         if (selectedMode) localStorage.setItem("sophie_session_mode", selectedMode);
         location.href = "/talk";
