@@ -1017,7 +1017,7 @@
       langToggle.setAttribute("aria-expanded", "false");
     });
     langMenu.querySelectorAll("button").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         currentLang = btn.dataset.lang;
         localStorage.setItem("preferredLanguage", currentLang);
         updateLangLabel();
@@ -1025,6 +1025,19 @@
         langMenu.classList.remove("open");
         applyHeroMode(selectedMode); // refresh CTA label
         loadAndRender();
+
+        // Persist to DB so Voice/Chat server prompts use the correct language.
+        // Fire-and-forget — UI state already updated; DB sync must not block the click.
+        try {
+          const token = await getToken();
+          const headers = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          fetch("/api/settings?action=preferred-language", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ language: currentLang }),
+          }).catch(() => {}); // silent; localStorage still correct for next load
+        } catch {}
       });
     });
 

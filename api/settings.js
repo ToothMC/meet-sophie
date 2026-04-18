@@ -121,6 +121,17 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, eco_mode: ecoValue });
   }
 
+  // ── POST: Persist preferred language to DB (called by /app language toggle) ──
+  if (action === 'preferred-language' && req.method === 'POST') {
+    const raw = String(req.body?.language || '').toLowerCase().trim();
+    if (!['de', 'en', 'fr'].includes(raw)) {
+      return res.status(400).json({ error: 'language must be de|en|fr' });
+    }
+    const { error } = await supabase.from('user_profile').update({ preferred_language: raw }).eq('user_id', user.id);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ ok: true, preferred_language: raw });
+  }
+
   // ── GET: Sources ──
   if (action === 'sources' && req.method === 'GET') {
     const sources = await listSources(user.id);
