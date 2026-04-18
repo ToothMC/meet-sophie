@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Stealth — Meet Sophie</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0c10;
+      --fg: #e8eaf0;
+      --muted: #8a8f9c;
+      --accent: #9d7bff;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      min-height: 100vh;
+    }
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 48px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-height: 100vh;
+      justify-content: center;
+    }
+    h1 { font-size: 28px; margin: 0; letter-spacing: -0.02em; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 12px;
+      background: rgba(157, 123, 255, 0.15);
+      color: var(--accent);
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+    p { color: var(--muted); line-height: 1.6; margin: 0; }
+    .soon {
+      padding: 24px;
+      border: 1px dashed rgba(255,255,255,0.12);
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">Premium · In Entwicklung</span>
+    <h1>Stealth-Modus</h1>
+    <p>
+      Sophie hört still mit, recherchiert im Hintergrund und sagt dir nur Bescheid,
+      wenn sie etwas Relevantes weiß. Keine Aufzeichnung, kein Transcript, kein Memory.
+    </p>
+    <div class="soon">
+      Dieser Modus ist noch nicht aktiv. Die Freischaltung erfolgt schrittweise für
+      Premium-Accounts. Du wirst benachrichtigt, sobald Stealth für dich verfügbar ist.
+    </div>
+    <p><a href="/app">← Zurück zum Dashboard</a></p>
+  </main>
+</body>
+</html>

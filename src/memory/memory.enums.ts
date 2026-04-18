@@ -14,6 +14,9 @@ export enum SophieMode {
   BRAINSTORM  = 'brainstorm',
   SALES_PITCH = 'sales_pitch',
   CALENDAR    = 'calendar',
+
+  // Passiv-Modus (ephemeral, keine Persistenz)
+  STEALTH     = 'stealth',
 }
 
 // ── Memory-Tiefe ───────────────────────────────────────────
