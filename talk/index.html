@@ -6582,6 +6582,43 @@ function trackBeacon(name, meta = {}) {
 // Talk page viewed
 track("talk_page_viewed", { referrer_page: document.referrer || null });
 
+// Persisted mic-grant flag. Browser already persists the OS-level permission,
+// but we also store a hint in localStorage so iOS Safari / PWA (where
+// navigator.permissions.query for "microphone" is unreliable) can still skip
+// the "Gespräch starten"-Gate after the first successful grant.
+const MIC_GRANT_KEY = "sophie_mic_granted";
+function rememberMicGranted() { try { localStorage.setItem(MIC_GRANT_KEY, "1"); } catch(_) {} }
+function forgetMicGranted()  { try { localStorage.removeItem(MIC_GRANT_KEY); } catch(_) {} }
+
+// Returns "granted" | "prompt" | "denied". Combines the Permissions API
+// (authoritative when available) with a localStorage fallback for browsers
+// that return "prompt" even after the user granted (notably iOS Safari/PWA).
+async function getMicPermissionState() {
+  let apiState = null;
+  try {
+    if (navigator.permissions?.query) {
+      const status = await navigator.permissions.query({ name: "microphone" });
+      apiState = status.state;
+      if (!getMicPermissionState._wired) {
+        getMicPermissionState._wired = true;
+        try {
+          status.onchange = () => {
+            if (status.state === "granted") rememberMicGranted();
+            else if (status.state === "denied") forgetMicGranted();
+          };
+        } catch(_) {}
+      }
+    }
+  } catch(_) {}
+
+  if (apiState === "granted") { rememberMicGranted(); return "granted"; }
+  if (apiState === "denied")  { forgetMicGranted();  return "denied";  }
+
+  // apiState === "prompt" or null/undefined → trust localStorage flag.
+  const flagGranted = (() => { try { return localStorage.getItem(MIC_GRANT_KEY) === "1"; } catch(_) { return false; } })();
+  return flagGranted ? "granted" : "prompt";
+}
+
 function showMicDeniedOverlay() {
   const existing = document.querySelector(".mic-denied-overlay");
   if (existing) return;
@@ -6946,6 +6983,7 @@ async function startVoice(){
       setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
     stream = await Promise.race([micPromise, micTimeout]);
     track("mic_permission_granted");
+    rememberMicGranted();
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     // Single audio path: <audio> element for playback + browser AEC.
@@ -7076,6 +7114,8 @@ async function startVoice(){
     // Mic permission denied — show overlay instead of silent redirect
     if (err?.name === "NotAllowedError" || err?.name === "NotFoundError") {
       track("mic_permission_denied");
+      forgetMicGranted();
+      document.querySelector(".wrap")?.classList.remove("auto-connecting");
       showMicDeniedOverlay();
       return;
     }
@@ -7653,12 +7693,27 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 });
 
 // On mobile, getUserMedia requires a user gesture (tap/click) for first-time
-// permission. But if already granted, we can auto-start without a gesture.
-const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
+// permission. Once granted, the OS/browser persists the permission so we can
+// auto-start on every subsequent visit — no more "Gespräch starten"-Tap.
+//
+// We check the Permissions API (with a localStorage fallback for iOS Safari/
+// PWA where the API is unreliable for microphone). Only auto-call startVoice()
+// when the state is definitely "granted"; otherwise we drop the auto-connect
+// guard so the Start button (or denied overlay) becomes visible and the first
+// tap provides the gesture the browser needs to prompt.
 if (session?.user) {
-  startVoice();
+  const micState = await getMicPermissionState();
+  if (micState === "granted") {
+    startVoice();
+  } else if (micState === "denied") {
+    document.querySelector(".wrap")?.classList.remove("auto-connecting");
+    showMicDeniedOverlay();
+  } else {
+    // "prompt" — show Start button; user's tap will request mic in a valid
+    // gesture context. After a successful grant, rememberMicGranted() flips
+    // the flag so the next visit auto-connects.
+    document.querySelector(".wrap")?.classList.remove("auto-connecting");
+  }
 }
 </script>
 
