@@ -807,17 +807,21 @@ let accessToken = null;
 let _lastTokenRefresh = 0;
 
 // Refresh Supabase access token — safe to call frequently (throttled to 30s)
+//
+// We intentionally do NOT call supabase.auth.refreshSession() here. Supabase's
+// internal auto-refresh timer already rotates the token and uses its own lock
+// to serialize concurrent refreshes. Calling refreshSession() manually races
+// with that timer on iOS after tab suspension — the stale refresh_token gets
+// replayed and reuse-detection invalidates the whole chain (observed in a
+// live /talk session on 2026-04-18, fired SIGNED_OUT and killed the call).
+// getSession() just reads the current token; if it is near-expiry, Supabase's
+// next internal refresh tick picks it up.
 async function refreshAccessToken() {
   const now = Date.now();
   if (now - _lastTokenRefresh < 30000) return; // max once per 30s
   _lastTokenRefresh = now;
   try {
-    let { data: { session: s } } = await supabase.auth.getSession();
-    // If token is expired or about to expire, force refresh
-    if (s?.expires_at && s.expires_at * 1000 - now < 120000) {
-      const { data: refreshed } = await supabase.auth.refreshSession();
-      if (refreshed?.session) s = refreshed.session;
-    }
+    const { data: { session: s } } = await supabase.auth.getSession();
     if (s?.access_token) accessToken = s.access_token;
   } catch (_) {}
 }

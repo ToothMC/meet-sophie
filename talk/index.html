@@ -1523,10 +1523,21 @@ if (hashParams.get("error")) {
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SophieTabManager } from "/lib/sophie-tab-manager.js";
+import { cacheTranscript, recoverPendingTranscript } from "/lib/sophie-transcript-cache.js";
 
 const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Voice-session auth guard:
+//   - userInitiatedLogout is set to true by the logout button. The SIGNED_OUT
+//     handler uses it to distinguish a deliberate sign-out (→ redirect) from
+//     a mid-session refresh_token failure (→ keep the call alive, cache
+//     transcript locally for later recovery).
+//   - currentUserId is captured on sign-in and used when caching so only the
+//     same user can recover the transcript after re-auth.
+let userInitiatedLogout = false;
+let currentUserId = null;
 
 // ── Tab Manager: single-primary + realtime lock ──────────────────
 let _dupTabShown = false;
@@ -1615,6 +1626,18 @@ if (!session?.user) {
   window.location.href = "/login";
 }
 
+// Capture the signed-in user for transcript-cache ownership checks.
+currentUserId = session?.user?.id || null;
+
+// If a prior voice session was interrupted by auth failure, its transcript
+// was cached in localStorage. Replay it now (fire-and-forget, user-scoped).
+recoverPendingTranscript(supabase).then(result => {
+  if (result?.recovered) {
+    try { track("transcript_recovered"); } catch (_) {}
+    console.log("[recovery] pending transcript restored");
+  }
+}).catch(() => {});
+
 // Auth fertig — show main UI immediately so start button / error states are visible.
 // startVoice() is auto-called below and will show "connecting" status.
 document.getElementById("authLoading").style.display = "none";
@@ -1644,11 +1667,44 @@ document.querySelector(".wrap").style.display = "";
 }
 
 // Session Watch (Logout / Session verloren)
-// CRITICAL: Do NOT redirect during active voice session — token refresh
-// can temporarily fire with null session on mobile. Only redirect on
-// explicit SIGNED_OUT or if session is still null after retry.
+// CRITICAL: Do NOT redirect during active voice session — an iOS refresh-token
+// race (visibility-triggered manual refresh + internal auto-refresh) can make
+// Supabase invalidate the chain mid-call and fire SIGNED_OUT. We keep the
+// WebRTC call alive (it is server-authenticated and does not need Supabase
+// auth), cache the transcript locally, and redirect only for user-initiated
+// logouts or when no call is active.
 supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "SIGNED_IN" && session?.user) {
+    currentUserId = session.user.id;
+  }
   if (event === "SIGNED_OUT") {
+    const activeVoice = !!(pc || dc || talkStartedAt);
+    if (activeVoice && !userInitiatedLogout) {
+      // Preserve work — cache transcript, log the incident, keep the call alive.
+      try {
+        cacheTranscript({
+          userId: currentUserId,
+          sessionId: sessionId || null,
+          sessionMode: selectedVoiceMode || null,
+          startedAt: talkStartedAt ? new Date(talkStartedAt).toISOString() : null,
+          transcript: (convoLog || []).slice(-200),
+          realtimeUsage: (realtimeUsage && realtimeUsage.response_count > 0) ? { ...realtimeUsage } : null,
+          runId,
+        });
+      } catch (_) {}
+      try {
+        trackBeacon("auth_signed_out_mid_session", {
+          runId,
+          sessionId: sessionId || null,
+          sessionMode: selectedVoiceMode || null,
+          sessionDurationMs: talkStartedAt ? Date.now() - talkStartedAt : null,
+          convoLen: (convoLog || []).length,
+          ua: (navigator.userAgent || "").slice(0, 120),
+        });
+      } catch (_) {}
+      console.warn("[auth] SIGNED_OUT during active voice session — call kept alive, transcript cached");
+      return;
+    }
     window.location.href = "/login";
     return;
   }
@@ -7473,6 +7529,9 @@ if (!hasRealConversation) {
 }
 
 logoutBtn.onclick = async () => {
+  // Mark the upcoming SIGNED_OUT as intentional so the auth-state handler
+  // redirects instead of treating it as a mid-session auth failure.
+  userInitiatedLogout = true;
   try {
     track("logout_clicked");
     if (pc || stream || talkStartedAt) {
@@ -7488,17 +7547,14 @@ logoutBtn.onclick = async () => {
   window.location.replace("/login");
 };
 
+// On visibility → visible:
+//   Do NOT call supabase.auth.refreshSession() manually here. Supabase's
+//   internal auto-refresh timer already handles token rotation and uses its
+//   own lock. A manual call can race with the internal one on iOS Safari /
+//   Brave after the tab was suspended — the stale refresh_token gets replayed
+//   and reuse-detection invalidates the whole chain (observed 2026-04-18).
+//   The wake-lock re-acquire remains — iOS releases it on tab switch.
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    // Proactively refresh session when app returns from background (mobile PWA)
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data?.session) return;
-      const expiresAt = data.session.expires_at;
-      if (expiresAt && expiresAt * 1000 - Date.now() < 300000) {
-        supabase.auth.refreshSession();
-      }
-    }).catch(() => {});
-  }
   if (document.visibilityState === "visible" && voiceWakeLockWanted) {
     void acquireVoiceWakeLock({ silent: true });
   }
