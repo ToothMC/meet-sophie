@@ -7706,13 +7706,16 @@ if (session?.user) {
   if (micState === "granted") {
     startVoice();
   } else if (micState === "denied") {
-    document.querySelector(".wrap")?.classList.remove("auto-connecting");
+    // resetUI wires startBtn.onclick = startVoice so the overlay's
+    // "Erneut versuchen" → startVoice cycle still works after close.
+    resetUI();
     showMicDeniedOverlay();
   } else {
     // "prompt" — show Start button; user's tap will request mic in a valid
-    // gesture context. After a successful grant, rememberMicGranted() flips
-    // the flag so the next visit auto-connects.
-    document.querySelector(".wrap")?.classList.remove("auto-connecting");
+    // gesture context. resetUI wires startBtn.onclick = startVoice which is
+    // NOT set elsewhere on initial load. After a successful grant,
+    // rememberMicGranted() flips the flag so the next visit auto-connects.
+    resetUI();
   }
 }
 </script>
