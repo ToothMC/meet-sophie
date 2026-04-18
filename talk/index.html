@@ -6582,6 +6582,14 @@ function trackBeacon(name, meta = {}) {
 // Talk page viewed
 track("talk_page_viewed", { referrer_page: document.referrer || null });
 
+// Tracks whether the current startVoice() run was triggered by the auto-call
+// on page load (vs a user tap on the Start button / overlay retry). iOS
+// Safari requires a user gesture for getUserMedia every page load, so the
+// auto-call fails with NotAllowedError even when the permission is persisted.
+// We use this flag to distinguish that case from a real denial and fall back
+// to showing the Start button instead of the heavy "mic denied" overlay.
+let _isAutoConnectAttempt = false;
+
 // Persisted mic-grant flag. Browser already persists the OS-level permission,
 // but we also store a hint in localStorage so iOS Safari / PWA (where
 // navigator.permissions.query for "microphone" is unreliable) can still skip
@@ -6726,6 +6734,11 @@ async function finalizeSessionAfterSummary() {
 }
 
 async function startVoice(){
+
+  // Consume the auto-connect flag for exactly this call. Early returns
+  // and subsequent user-initiated taps should not inherit it.
+  const wasAutoConnectAttempt = _isAutoConnectAttempt;
+  _isAutoConnectAttempt = false;
 
   // Pre-load ready sound during user gesture context (iOS Safari requires this)
   preloadReadySound();
@@ -7113,9 +7126,24 @@ async function startVoice(){
 
     // Mic permission denied — show overlay instead of silent redirect
     if (err?.name === "NotAllowedError" || err?.name === "NotFoundError") {
-      track("mic_permission_denied");
-      forgetMicGranted();
+      track("mic_permission_denied", { auto_connect_attempt: wasAutoConnectAttempt });
       document.querySelector(".wrap")?.classList.remove("auto-connecting");
+
+      if (wasAutoConnectAttempt) {
+        // iOS Safari/WebKit: getUserMedia auto-call on page load fails
+        // because there is no user gesture — even when the mic permission
+        // was previously granted. Don't clear the grant flag and don't
+        // scare the user with the "mic denied" overlay — just show the
+        // Start button so the user's tap can provide the gesture. The
+        // browser still remembers the grant, so no re-prompt appears.
+        cs.state = S.IDLE;
+        resetUI();
+        return;
+      }
+
+      // User tapped Start (or retry) and the browser still said no — real
+      // denial. Forget the grant and show the overlay with help text.
+      forgetMicGranted();
       showMicDeniedOverlay();
       return;
     }
@@ -7692,30 +7720,32 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
   window.location.href = "/app";
 });
 
-// On mobile, getUserMedia requires a user gesture (tap/click) for first-time
-// permission. Once granted, the OS/browser persists the permission so we can
-// auto-start on every subsequent visit — no more "Gespräch starten"-Tap.
+// Auto-connect strategy that works across all browsers:
 //
-// We check the Permissions API (with a localStorage fallback for iOS Safari/
-// PWA where the API is unreliable for microphone). Only auto-call startVoice()
-// when the state is definitely "granted"; otherwise we drop the auto-connect
-// guard so the Start button (or denied overlay) becomes visible and the first
-// tap provides the gesture the browser needs to prompt.
+//   Desktop Chrome/Edge/Firefox/Safari:
+//     - If mic already granted, getUserMedia succeeds silently → conversation
+//       starts without any prompt or tap.
+//     - If never granted, the browser prompts, user grants, conversation
+//       starts.
+//
+//   iOS Safari / Brave / PWA (WebKit):
+//     - getUserMedia requires a user gesture every page load. Auto-call
+//       WILL fail with NotAllowedError even if the permission was previously
+//       granted. We detect this in the catch block and gracefully fall back
+//       to the Start button (NO scary "mic denied" overlay). The user's tap
+//       then runs getUserMedia in a valid gesture context and — because the
+//       permission is remembered — succeeds WITHOUT a second prompt.
+//
+// If permissions.query upfront says "denied", we skip the auto-call and
+// show the overlay immediately. Everything else goes through startVoice().
 if (session?.user) {
   const micState = await getMicPermissionState();
-  if (micState === "granted") {
-    startVoice();
-  } else if (micState === "denied") {
-    // resetUI wires startBtn.onclick = startVoice so the overlay's
-    // "Erneut versuchen" → startVoice cycle still works after close.
+  if (micState === "denied") {
     resetUI();
     showMicDeniedOverlay();
   } else {
-    // "prompt" — show Start button; user's tap will request mic in a valid
-    // gesture context. resetUI wires startBtn.onclick = startVoice which is
-    // NOT set elsewhere on initial load. After a successful grant,
-    // rememberMicGranted() flips the flag so the next visit auto-connects.
-    resetUI();
+    _isAutoConnectAttempt = true;
+    startVoice();
   }
 }
 </script>
