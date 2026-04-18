@@ -9,62 +9,6 @@ import { groundedSearch, webSearch, getWikipedia } from "../ai/tools.js";
 
 const XI_ENABLED = String(process.env.EXTRA_INTELLIGENCE_ENABLED || "false").toLowerCase() === "true";
 
-// ── Perplexity Sonar: schnelle Live-Web-Antworten (nur fuer XI, nicht geteilt) ──
-async function perplexitySearch(query, language) {
-  const apiKey = process.env.PERPLEXITY_API_KEY;
-  if (!apiKey) return { facts: [], sources: [] };
-
-  const isEN = language === "en";
-  const systemPrompt = isEN
-    ? "Answer in ONE short sentence. Under 20 words. Just the fact. No preamble."
-    : "Antworte in EINEM kurzen Satz. Unter 20 Woertern. Nur der Fakt. Keine Einleitung.";
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
-
-  try {
-    const resp = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "sonar",
-        temperature: 0.2,
-        max_tokens: 80,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user",   content: query },
-        ],
-      }),
-    });
-    clearTimeout(timeout);
-
-    if (!resp.ok) {
-      console.warn("[xi/research] perplexity HTTP", resp.status);
-      return { facts: [], sources: [] };
-    }
-
-    const data = await resp.json();
-    let text = String(data?.choices?.[0]?.message?.content || "").trim();
-
-    // Zitier-Marker [1][2][3] rausstreichen — Sophie soll keine Fußnoten vorlesen
-    text = text.replace(/\s*\[\d+\](?:\[\d+\])*/g, "").trim();
-
-    const citations = Array.isArray(data?.citations) ? data.citations : [];
-    const sources = citations.map(url => ({ title: "Perplexity", url }));
-
-    return { facts: text ? [text] : [], sources };
-  } catch (e) {
-    clearTimeout(timeout);
-    if (e.name === "AbortError") console.warn("[xi/research] perplexity timeout 6s");
-    else console.warn("[xi/research] perplexity error", e?.message);
-    return { facts: [], sources: [] };
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "method_not_allowed" });
@@ -123,11 +67,9 @@ export default async function handler(req, res) {
     }).catch(e => Promise.reject(e));
 
   const racers = [
-    // Perplexity zuerst — liefert meist schon 1-Satz-Antwort in ~1.5-2s
-    wrap(perplexitySearch(query, language),       "perplexity", r => r?.facts || []),
-    wrap(groundedSearch(query),                   "grounded",   r => r?.facts || []),
-    wrap(getWikipedia(query),                     "wiki",       r => r?.summary ? [r.summary] : []),
-    wrap(webSearch(query),                        "web",        r => (r?.results || []).slice(0, 2).map(x => x.description || x.title).filter(Boolean)),
+    wrap(groundedSearch(query),                   "grounded", r => r?.facts || []),
+    wrap(getWikipedia(query),                     "wiki",     r => r?.summary ? [r.summary] : []),
+    wrap(webSearch(query),                        "web",      r => (r?.results || []).slice(0, 2).map(x => x.description || x.title).filter(Boolean)),
   ];
 
   try {
