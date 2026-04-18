@@ -50,40 +50,59 @@ export default async function handler(req, res) {
 
   if (!query) return res.status(400).json({ error: "query_required" });
 
-  // --- Research ---
+  // --- Research: parallele Quellen, erste mit Fakten gewinnt ---
+  // Alle drei Quellen gleichzeitig starten. Wer zuerst nicht-leere Fakten
+  // liefert, wird genommen. Nachzuegler werden ignoriert (laufen zu Ende,
+  // aber wir warten nicht mehr). Das spart 1-3s wenn Wikipedia/Brave
+  // schneller ist als Gemini (grounded_search).
   let facts = [];
   let sources = [];
+  let winner = null;
+
+  const wrap = (p, name, extract) =>
+    p.then(r => {
+      const f = extract(r);
+      if (f && f.length) return { name, facts: f, sources: r?.sources || [] };
+      return Promise.reject(new Error(`${name}: empty`));
+    }).catch(e => Promise.reject(e));
+
+  const racers = [
+    wrap(groundedSearch(query),                   "grounded", r => r?.facts || []),
+    wrap(getWikipedia(query),                     "wiki",     r => r?.summary ? [r.summary] : []),
+    wrap(webSearch(query),                        "web",      r => (r?.results || []).slice(0, 2).map(x => x.description || x.title).filter(Boolean)),
+  ];
 
   try {
-    const g = await groundedSearch(query);
-    if (g?.facts?.length) {
-      facts = g.facts;
-      sources = g.sources || [];
-    }
-  } catch (e) {
-    console.warn("[xi/research] groundedSearch failed", e?.message);
-  }
-
-  // Fallback: Wikipedia
-  if (!facts.length) {
-    try {
-      const wiki = await getWikipedia(query);
-      if (wiki?.summary) facts = [wiki.summary];
-    } catch {}
-  }
-
-  // Letzter Fallback: webSearch
-  if (!facts.length) {
-    try {
-      const ws = await webSearch(query);
-      if (ws?.results?.length) {
-        facts = ws.results.slice(0, 2).map(r => r.description || r.title).filter(Boolean);
-      }
-    } catch {}
-  }
-
-  if (!facts.length) {
+    // Promise.any: erster Erfolg gewinnt. Alle Rejects -> AggregateError -> catch
+    const first = await Promise.any(racers);
+    facts   = first.facts;
+    sources = first.sources;
+    winner  = first.name;
+  } catch {
+    // Alle Quellen leer/fehlgeschlagen
     return res.status(200).json({ text: "", reason: "no_facts" });
+  }
+
+  // --- Shortcut: wenn Quelle bereits knapp + komplett, Condense-LLM sparen ---
+  // Spart 0.5-1s wenn Wikipedia/grounded einen sauberen 1-Satz-Treffer liefert.
+  {
+    const f0 = String(facts[0] || "").trim();
+    // Kriterien: kurz genug, hat ein Satzende, enthaelt nicht nur die Query
+    const shortEnough = f0.length > 20 && f0.length <= 180;
+    const hasSentenceEnd = /[.!?]/.test(f0);
+    const notJustQuery = f0.toLowerCase() !== query.toLowerCase();
+    if (shortEnough && hasSentenceEnd && notJustQuery) {
+      // Nur auf den 1. Satz beschneiden und direkt zurueck
+      const oneSentence = (f0.split(/(?<=[.!?])\s+/)[0] || f0).trim();
+      return res.status(200).json({
+        text: oneSentence,
+        language,
+        sources_count: sources.length,
+        tokens_used: 0,
+        source: winner,
+        skipped_condense: true,
+      });
+    }
   }
 
   // --- Ultra-knappe Kondensation: 1 Satz, Telegramm-Stil ---
@@ -175,5 +194,6 @@ Frage: "Kepler-22b?"  ->  "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewoh
     language,
     sources_count: sources.length,
     tokens_used: condenseTokens,
+    source: winner,
   });
 }
