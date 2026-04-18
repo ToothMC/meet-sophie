@@ -280,7 +280,14 @@ async function startSession() {
 
     // WebRTC setup
     pc = new RTCPeerConnection();
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Multi-Speaker: Browser-Filter AUS damit auch andere Stimmen im Raum durchkommen
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,    // nicht die Stimmen aus Lautsprechern filtern
+        noiseSuppression: false,    // nicht "Nicht-Primärstimme" raus­werfen
+        autoGainControl:  false,    // nicht die nächste Stimme hochpumpen
+      },
+    });
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
     pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
@@ -323,19 +330,20 @@ async function startSession() {
 }
 
 function onDataChannelOpen() {
-  // Transcription ON · Auto-Response OFF · Noise Reduction
+  // Transcription ON · Auto-Response OFF
+  // KEINE Noise-Reduction (filtert sonst Nebenstimmen),
+  // niedrige VAD-Schwelle damit auch leisere/entferntere Sprecher greifen.
   dcSend({
     type: "session.update",
     session: {
       input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
       turn_detection: {
         type: "server_vad",
-        threshold: 0.6,
-        silence_duration_ms: 700,
+        threshold: 0.35,
+        silence_duration_ms: 600,
         create_response: false,
         interrupt_response: false,
       },
-      input_audio_noise_reduction: { type: "far_field" },
       modalities: ["text", "audio"],
     },
   });
