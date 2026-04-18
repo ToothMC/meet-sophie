@@ -251,9 +251,28 @@ function outputModalities() {
   return ["audio", "text"];
 }
 
+// Cache der aktuell an Sophie gesendeten modalities — damit wir Aenderungen erkennen
+let lastSessionModalities = null;
+
 function syncModalitiesToSession() {
   if (!running || !dc || dc.readyState !== "open") return;
-  dcSend({ type: "session.update", session: { modalities: outputModalities() } });
+
+  const newMods = outputModalities();
+  const hadAudio = !!lastSessionModalities?.includes("audio");
+  const hasAudio = newMods.includes("audio");
+
+  // Wechsel weg von Audio waehrend Sophie gerade spricht -> sofort abbrechen
+  if (hadAudio && !hasAudio && voiceBusy) {
+    dcSend({ type: "response.cancel" });
+    // Audio-Element kurz stummschalten fuer sofortige User-Erfahrung
+    try {
+      audioEl.muted = true;
+      setTimeout(() => { audioEl.muted = false; }, 500);
+    } catch {}
+  }
+
+  dcSend({ type: "session.update", session: { modalities: newMods } });
+  lastSessionModalities = newMods;
 }
 
 // ── Audio-Quelle Toggle ──────────────────────────────────
@@ -443,11 +462,12 @@ async function acquireAudioStream() {
 function onDataChannelOpen() {
   // Native Mode: Sophie antwortet autonom (create_response: true),
   // entscheidet selbst wann sie spricht, nutzt web_search Tool bei Bedarf.
+  lastSessionModalities = outputModalities();
   dcSend({
     type: "session.update",
     session: {
       instructions: buildNativeSystemPrompt(lang),
-      modalities: outputModalities(),
+      modalities: lastSessionModalities,
       voice: "alloy",
       input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
       turn_detection: {
@@ -827,6 +847,7 @@ async function stopSession(silent = false, byLimit = false) {
   if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
   voiceBusy = false;
   currentAssistantText = "";
+  lastSessionModalities = null;
   setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
   waveEl.classList.remove("active");
