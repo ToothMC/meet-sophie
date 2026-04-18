@@ -272,6 +272,11 @@
       color: #ffffff;
       box-shadow: 0 6px 20px rgba(198,40,40,.25);
     }
+    .cta-primary.mode-extra_intelligence {
+      background: linear-gradient(180deg, #6366f1 0%, #4338ca 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(67,56,202,.3);
+    }
 
     /* ── Mode Bar ────────────────────────────────────────────── */
     .mode-bar {
@@ -315,9 +320,9 @@
       color: #c62828;
     }
     .mode-pill[data-mode="extra_intelligence"].active {
-      background: rgba(157,123,255,.12);
-      border-color: rgba(157,123,255,.5);
-      color: #6d4cd1;
+      background: rgba(99,102,241,.12);
+      border-color: rgba(99,102,241,.55);
+      color: #4f46e5;
     }
     .mode-pill.locked::before {
       content: "🔒 ";
@@ -807,7 +812,7 @@
         </div>
         <button class="mode-pill" data-mode="meeting">Meeting</button>
         <button class="mode-pill" data-mode="salespitch">Sales Pitch</button>
-        <button class="mode-pill" data-mode="extra_intelligence" id="xiPill" data-premium="1">Extra Intelligence</button>
+        <button class="mode-pill" data-mode="extra_intelligence" id="xiPill" data-premium="1">+Intelligence</button>
       </div>
 
       <!-- Last Session -->
@@ -914,9 +919,9 @@
 
     // Mode-specific CTA labels (from landing page)
     const CTA_MODE_LABELS = {
-      en: { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch" },
-      de: { brainstorm: "Brainstorming starten", meeting: "Meeting starten", salespitch: "Pitch starten" },
-      fr: { brainstorm: "Lancer le brainstorming", meeting: "Lancer la réunion", salespitch: "Lancer le pitch" },
+      en: { brainstorm: "Start Brainstorming", meeting: "Start Meeting", salespitch: "Start Sales Pitch", extra_intelligence: "Start +Intelligence" },
+      de: { brainstorm: "Brainstorming starten", meeting: "Meeting starten", salespitch: "Pitch starten", extra_intelligence: "+Intelligence starten" },
+      fr: { brainstorm: "Lancer le brainstorming", meeting: "Lancer la réunion", salespitch: "Lancer le pitch", extra_intelligence: "Lancer +Intelligence" },
     };
 
     function t(key) {
@@ -1087,7 +1092,7 @@
     let _heroModeResetTimer = null;
     function applyHeroMode(mode) {
       // Update CTA button class + text
-      ctaBtn.classList.remove("mode-brainstorm", "mode-meeting", "mode-salespitch");
+      ctaBtn.classList.remove("mode-brainstorm", "mode-meeting", "mode-salespitch", "mode-extra_intelligence");
       if (mode) ctaBtn.classList.add("mode-" + mode);
       const labels = CTA_MODE_LABELS[currentLang] || CTA_MODE_LABELS.en;
       ctaLabel.textContent = mode ? (labels[mode] || t("start_talk")) : t("start_talk");
