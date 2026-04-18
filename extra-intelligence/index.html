@@ -471,8 +471,9 @@ function onDataChannelMessage(e) {
 
   if (msg?.type === "conversation.item.input_audio_transcription.completed") {
     // Waehrend Sophie spricht: eigene Worte + Echo NICHT in den Buffer
-    if (sophieSpeaking) return;
+    if (sophieSpeaking) { console.log("[xi] transcript IGNORED (speaking)"); return; }
     const text = String(msg.transcript || "").trim();
+    console.log("[xi] transcript:", text);
     if (text) pushToBuffer(text);
   }
 
@@ -481,13 +482,19 @@ function onDataChannelMessage(e) {
 
 function setSpeaking(on) {
   sophieSpeaking = on;
+  console.log("[xi] speaking =", on);
   // Mic-Track nur bei Mikrofon-Quelle muten — bei Tab-Audio gibt's kein Echo-Risiko,
   // wir wuerden nur echte Gespraechsinhalte verpassen.
   if (audioSource === "mic" && stream) {
     stream.getAudioTracks().forEach(t => { t.enabled = !on; });
   }
+  clearTimeout(unmuteTimer);
   if (on) {
-    clearTimeout(unmuteTimer);
+    // Safety-Net: falls response.done nie kommt, nach max 20s zwangsweise ent-locken
+    unmuteTimer = setTimeout(() => {
+      console.warn("[xi] speaking-lock safety timeout -> unmute");
+      setSpeaking(false);
+    }, 20_000);
   }
 }
 
@@ -543,9 +550,13 @@ async function runClassifierStep() {
     const data = await res.json();
     tokenCount += Number(data.classifier_tokens || 0);
     tokenCountEl.textContent = String(tokenCount);
+    console.log("[xi] classify ->", data.action, data.reason || "", data.query || "");
 
     if (data.action && data.action !== "no_action" && data.query) {
-      if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) return;
+      if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) {
+        console.log("[xi] trigger suppressed (cooldown)");
+        return;
+      }
       lastTriggerAt = now;
       await runResearchAndSpeak(data.action, data.query);
     }

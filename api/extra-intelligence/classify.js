@@ -62,22 +62,24 @@ export default async function handler(req, res) {
 
   // --- Classifier-Prompt ---
   const systemPrompt = `Du bist ein Classifier fuer Sophies Extra-Intelligence-Modus. Sophie hoert ein Gespraech mit, an dem sie NICHT teilnimmt.
-Deine Aufgabe: Entscheide ob Sophie recherchieren und kurz etwas erklaeren soll.
+Deine Aufgabe: Triggere wenn eine knappe Fakten-Antwort dem Gespraech hilft.
 
 CLASSES:
-- "question_factual": Jemand stellt eine konkrete Faktenfrage (z.B. "Wer hat X geschrieben?", "Wann war Y?", "Was ist Z?")
-- "reference_unknown": Ein Eigenname/Buch/Film/Person/Fachbegriff wurde genannt, den Hoerer wahrscheinlich nicht kennen oder nicht einordnen koennen (z.B. "wie bei Kepler-22b", "war wie in 'Der Schwarm'")
-- "concept_worth_explaining": Ein Konzept/Theorie wurde erwaehnt dessen kurze Einordnung dem Gespraech hilft
-- "no_action": Smalltalk, Alltagskonversation, bereits im Kontext erklaert, persoenliche Themen, emotionale Inhalte, oder nichts Recherche-Wuerdiges
+- "question_factual": Konkrete Faktenfrage (Wer/Wann/Was/Wo/Wie viel).
+  Beispiele: "Wer schreibt 'Der Schwarm'?", "Wie hoch ist der Mount Everest?", "Wann war D-Day?"
+- "reference_unknown": Eigenname/Buch/Film/Person/Fachbegriff, bei dem eine kurze Einordnung hilft.
+  Beispiele: "wie bei Kepler-22b", "klingt wie in 'The Eagle has Landed'", "Schumpeters Theorie"
+- "concept_worth_explaining": Konzept/Begriff, dessen kurze Definition das Gespraech klarer macht.
+- "no_action": Smalltalk, Alltag, persoenliche Themen (Beziehungen/Gesundheit/Finanzen),
+  Meinungsfragen, Entscheidungen, Plaene, oder bereits im Kontext beantwortet.
 
 REGELN:
-- Bevorzuge "no_action" im Zweifel. Lieber einmal zu wenig als einmal zu viel.
-- KEINE persoenlichen Themen (Beziehungen, Gesundheit, Finanzen) triggern.
-- KEINE Meinungsfragen, Entscheidungen, Plaene.
-- NUR triggern wenn eine KNAPPE (1 Satz) Fakten-Antwort dem Gespraech hilft.
-${inCooldown ? '- COOLDOWN AKTIV (<20s seit letztem Trigger): Setze Schwelle HOCH, fast immer "no_action".' : ''}
+- Bei erkennbarer Faktenfrage oder Eigennamen: TRIGGERE. Nicht ueberdenken.
+- Sei nicht uebertrieben vorsichtig — wenn eine 1-Satz-Antwort nuetzlich ist, triggere.
+- Nur bei wirklich persoenlichen Themen oder Smalltalk: no_action.
+${inCooldown ? '- Cooldown aktiv (<20s seit letztem Trigger): nur triggern wenn eindeutig neue Fakten-Frage.' : ''}
 
-OUTPUT (strikt JSON, keine Erklaerung):
+OUTPUT (strikt JSON, keine Erklaerung, keine Markdown):
 {"action":"<class>","query":"<praezise Suchanfrage oder leer>","confidence":<0..1>}`;
 
   const userPrompt = `Transkript-Fragment (Sprache: ${language}):
@@ -134,7 +136,7 @@ Entscheide. Nur JSON.`;
     }
 
     // Fail-safe: niedrige Confidence im Cooldown = nichts tun
-    if (inCooldown && confidence < 0.85) {
+    if (inCooldown && confidence < 0.6) {
       return res.status(200).json({ action: "no_action", reason: "cooldown_low_conf" });
     }
 
