@@ -6693,25 +6693,34 @@ async function startVoice(){
   // Pre-load ready sound during user gesture context (iOS Safari requires this)
   preloadReadySound();
 
+  // Helper — drops the auto-connect flash guard so the resting UI (start
+  // button, status, mode pills, report toggle) is visible again. Called on
+  // every early-return path and on the normal "Verbinde …" transition.
+  const dropAutoConnectGuard = () =>
+    document.querySelector(".wrap")?.classList.remove("auto-connecting");
+
   // Session state guard — only start from IDLE or FAILED
   if (cs.state !== S.IDLE && cs.state !== S.FAILED) {
     console.log(`[state] startVoice blocked — state=${cs.state}`);
+    dropAutoConnectGuard();
     return;
   }
 
   // Create fresh session object — old session data becomes irrelevant
   cs = createSession();
-  if (!setState(S.STARTING)) return;
+  if (!setState(S.STARTING)) { dropAutoConnectGuard(); return; }
 
   // Acquire realtime lock (primary must be held first — enforced by tab manager)
   if (!sophieTabManager.isPrimary) {
     console.log("Not primary tab → cannot start voice");
+    dropAutoConnectGuard();
     showDuplicateTabOverlay();
     return;
   }
   const gotRealtime = await sophieTabManager.acquireRealtime();
   if (!gotRealtime) {
     console.log("Could not acquire realtime lock → another tab holds it");
+    dropAutoConnectGuard();
     showDuplicateTabOverlay();
     return;
   }
@@ -6720,7 +6729,7 @@ async function startVoice(){
 
   // startVoice owns the UI now — drop the auto-connect flash guard so the
   // "Verbinde …" button + "Sophie kommt …" headline become visible.
-  document.querySelector(".wrap")?.classList.remove("auto-connecting");
+  dropAutoConnectGuard();
   startBtn.disabled = true;
   startBtn.textContent = t("connecting");
   logoutBtn.disabled = true;
