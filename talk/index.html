@@ -1269,16 +1269,10 @@ body::after{
   <!-- ══════════════════════════════════════════
        HYPER VOICE VISUALIZER (shown during session)
   ══════════════════════════════════════════ -->
-  <div id="hyperVisualizer" style="margin-top:24px">
-    <!-- Header: Avatar + Status -->
+  <div id="hyperVisualizer" style="margin-top:8px">
+    <!-- Header: Status only -->
     <div class="sv-header">
-      <div class="avatar-wrap">
-        <div class="avatar">
-          <span class="avatar-letter">S</span>
-        </div>
-      </div>
       <div class="sv-header-info">
-        <div class="sv-name">Sophie</div>
         <div class="sv-status">
           <div class="sv-status-dot" id="svStatusDot"></div>
           <span class="sv-status-text" id="svStatusText">verbunden</span>
@@ -1298,10 +1292,6 @@ body::after{
 
     <!-- Voice Visualizer (Knight Rider bars + optional brows above) -->
     <div class="wave-card">
-      <div class="wave-meta">
-        <span class="wave-label" id="waveLabel">Stimme · Live</span>
-        <span class="wave-hz" id="waveHz">&ndash;</span>
-      </div>
       <canvas id="krBars" aria-hidden="true"></canvas>
     </div>
   </div>
