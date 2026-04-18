@@ -455,19 +455,33 @@ function dcSend(obj) {
   try { dc.send(JSON.stringify(obj)); } catch (e) { console.warn("[xi] dc send failed", e); }
 }
 
+// ── Mic Mute (nur Mikro-Quelle; Tab-Audio braucht's nicht) ──
+function setMicMuted(muted) {
+  if (audioSource !== "mic") return;
+  if (!stream) return;
+  stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+}
+
+function unlockVoice() {
+  voiceBusy = false;
+  setMicMuted(false);
+}
+
 // ── DataChannel Handler ──────────────────────────────────
 function onDataChannelMessage(e) {
   let msg;
   try { msg = JSON.parse(e.data); } catch { return; }
 
-  // Sophie fertig mit Sprechen -> Voice-Sperre nach kurzem Tail aufheben
+  // Sophie fertig mit Sprechen -> 300ms Tail-Puffer, dann Mic wieder auf
   if (msg?.type === "response.done" ||
       msg?.type === "response.output_audio.done" ||
       msg?.type === "response.audio.done") {
     clearTimeout(voiceBusyTimeout);
-    voiceBusyTimeout = setTimeout(() => { voiceBusy = false; }, 300);
+    voiceBusyTimeout = setTimeout(unlockVoice, 300);
   }
 
+  // Transcripts kommen weiter in den Buffer rein (auch wenn wahrscheinlich
+  // leer waehrend Sophie spricht, weil Mic gemuted). KEINE Pipeline-Blockade.
   if (msg?.type === "conversation.item.input_audio_transcription.completed") {
     const text = String(msg.transcript || "").trim();
     if (text) pushToBuffer(text);
@@ -583,10 +597,12 @@ async function runResearchAndSpeak(action, query) {
         },
       });
 
-      // Lock aktivieren + Safety-Timeout (25s), falls response.done nie eintrifft
+      // Lock aktivieren: Mic stummschalten (damit OpenAI Server-VAD Sophie
+      // nicht unterbricht) + Safety-Timeout (25s), falls response.done ausfaellt
       voiceBusy = true;
+      setMicMuted(true);
       clearTimeout(voiceBusyTimeout);
-      voiceBusyTimeout = setTimeout(() => { voiceBusy = false; }, 25_000);
+      voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
     }
   } catch (e) {
     console.warn("[xi] research failed", e?.message);
@@ -631,6 +647,7 @@ async function stopSession(silent = false, byLimit = false) {
   if (tokenCapTimer)   { clearInterval(tokenCapTimer); tokenCapTimer = null; }
   if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
   voiceBusy = false;
+  setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
   waveEl.classList.remove("active");
   sessionBar.classList.remove("active");
