@@ -63,7 +63,9 @@
     .chat-log { margin-top: 12px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); max-height: 280px; overflow-y: auto; display: none; flex-direction: column; gap: 8px; text-align: left; }
     .chat-log.visible { display: flex; }
     .chat-log:empty::before { content: "Noch keine Hinweise."; color: var(--muted); font-size: 13px; padding: 12px; display: block; text-align: center; }
-    .chat-msg { background: var(--accent-soft); color: var(--fg); padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.5; }
+    .chat-msg { background: var(--accent-soft); color: var(--fg); padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.5; transition: opacity .2s, background .2s; }
+    .chat-msg.muted { background: rgba(255,255,255,.03); color: var(--muted); font-style: italic; }
+    .chat-msg .body { word-wrap: break-word; }
     .chat-msg .ts { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
 
     .session-bar { display: none; flex-direction: column; gap: 16px; width: 100%; }
@@ -169,9 +171,10 @@ let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : 
 
 const transcriptBuffer = []; // { text, ts } — in-memory only, never persisted
 const BUFFER_MAX_MS = 60_000;
-const CLASSIFY_WINDOW_MS = 15_000;
-const CLASSIFY_INTERVAL_MS = 5_000;
-const TRIGGER_COOLDOWN_MS = 20_000;
+const CLASSIFY_WINDOW_MS = 12_000;
+const CLASSIFY_INTERVAL_MS = 2_500;      // Poll-Fallback; echter Trigger kommt via pushToBuffer
+const CLASSIFY_MIN_GAP_MS = 1_200;       // min. Abstand zwischen Classifier-Calls
+const TRIGGER_COOLDOWN_MS = 15_000;
 
 let lastTriggerAt = 0;
 let lastBufferText = "";
@@ -370,6 +373,10 @@ function pushToBuffer(text) {
   transcriptBuffer.push({ text, ts: Date.now() });
   const cutoff = Date.now() - BUFFER_MAX_MS;
   while (transcriptBuffer.length && transcriptBuffer[0].ts < cutoff) transcriptBuffer.shift();
+  // Sofort classifieren — nicht auf den 2.5s-Timer warten
+  if (Date.now() - (runClassifierStep._last || 0) > CLASSIFY_MIN_GAP_MS) {
+    runClassifierStep();
+  }
 }
 
 function getRecentTranscript(windowMs) {
@@ -381,6 +388,9 @@ function getRecentTranscript(windowMs) {
 async function runClassifierStep() {
   if (!running) return;
   const now = Date.now();
+  if (now - (runClassifierStep._last || 0) < CLASSIFY_MIN_GAP_MS) return;
+  runClassifierStep._last = now;
+
   const windowText = getRecentTranscript(CLASSIFY_WINDOW_MS);
   if (!windowText || windowText === lastBufferText || windowText.length < 20) return;
   lastBufferText = windowText;
@@ -413,6 +423,12 @@ async function runClassifierStep() {
 
 // ── Research + Voice Response ────────────────────────────
 async function runResearchAndSpeak(action, query) {
+  // Sofort-Placeholder im Chat-Log, damit der User merkt dass was laeuft
+  let placeholderEl = null;
+  if (outputMode !== "voice") {
+    placeholderEl = appendChatMessage(lang === "en" ? "Looking up…" : "Recherchiere…", { muted: true });
+  }
+
   try {
     const res = await fetch("/api/extra-intelligence/research", {
       method: "POST",
@@ -422,20 +438,27 @@ async function runResearchAndSpeak(action, query) {
       },
       body: JSON.stringify({ action, query, language: lang }),
     });
-    if (!res.ok) return;
+    if (!res.ok) { placeholderEl?.remove(); return; }
     const data = await res.json();
     tokenCount += Number(data.tokens_used || 0);
     tokenCountEl.textContent = String(tokenCount);
 
     const text = String(data.text || "").trim();
-    if (!text) return;
+    if (!text) { placeholderEl?.remove(); return; }
 
     triggerCount += 1;
     triggerCountEl.textContent = String(triggerCount);
 
-    // Text-Ausgabe (Chat-Log) — bei "text" oder "both"
+    // Text-Ausgabe (Chat-Log) — Placeholder ersetzen bzw. neue Nachricht
     if (outputMode !== "voice") {
-      appendChatMessage(text);
+      if (placeholderEl) {
+        placeholderEl.classList.remove("muted");
+        const body = placeholderEl.querySelector(".body");
+        if (body) body.textContent = text;
+        else placeholderEl.firstChild && (placeholderEl.firstChild.textContent = text);
+      } else {
+        appendChatMessage(text);
+      }
     }
 
     // Voice-Ausgabe — bei "voice" oder "both"
@@ -454,13 +477,15 @@ async function runResearchAndSpeak(action, query) {
     }
   } catch (e) {
     console.warn("[xi] research failed", e?.message);
+    placeholderEl?.remove();
   }
 }
 
-function appendChatMessage(text) {
+function appendChatMessage(text, opts = {}) {
   const msg = document.createElement("div");
-  msg.className = "chat-msg";
+  msg.className = "chat-msg" + (opts.muted ? " muted" : "");
   const body = document.createElement("div");
+  body.className = "body";
   body.textContent = text;
   const ts = document.createElement("span");
   ts.className = "ts";
@@ -470,6 +495,7 @@ function appendChatMessage(text) {
   msg.appendChild(ts);
   chatLog.appendChild(msg);
   chatLog.scrollTop = chatLog.scrollHeight;
+  return msg;
 }
 
 // ── Token Cap Poll ───────────────────────────────────────

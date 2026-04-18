@@ -86,43 +86,40 @@ export default async function handler(req, res) {
     return res.status(200).json({ text: "", reason: "no_facts" });
   }
 
-  // --- Kondensation zu 1-2 Saetzen, sprechbar ---
-  const languageHint = language === "en"
-    ? "Respond in natural English."
-    : language === "fr"
-    ? "Reponds en francais naturel."
-    : "Antworte auf natuerlichem Deutsch.";
+  // --- Ultra-knappe Kondensation: 1 Satz, Telegramm-Stil ---
+  // Die Frage wird NICHT wiederholt. Direkter Fakt, nichts drum herum.
+  const isDE = language !== "en" && language !== "fr";
+  const isEN = language === "en";
 
-  const actionHint = {
-    question_factual: language === "en"
-      ? "Someone asked a factual question. Give the direct answer."
-      : "Jemand hat eine Faktenfrage gestellt. Gib die direkte Antwort.",
-    reference_unknown: language === "en"
-      ? "Someone mentioned a name/reference listeners may not know. Identify it in one sentence."
-      : "Jemand hat einen Namen/eine Referenz genannt, die Zuhoerer vielleicht nicht kennen. Ordne sie in einem Satz ein.",
-    concept_worth_explaining: language === "en"
-      ? "A concept was mentioned that benefits from a brief classification."
-      : "Ein Konzept wurde erwaehnt, das von einer kurzen Einordnung profitiert.",
-  }[action] || "";
+  const condenseSystem = isEN
+    ? `You turn research facts into a single ultra-short answer. HARD RULES:
+- Exactly ONE sentence. Under 15 words.
+- NEVER repeat the question. NEVER paraphrase it. Start with the answer.
+- Telegraph style. Just the fact.
+- No greetings, no "Interesting:", no "Actually", no "It turns out".
+- No opinions, no sources, no URLs.
 
-  const condenseSystem = `Du bist ein Formulierer fuer Sophies Extra-Intelligence-Modus.
-Sophie hoert einem Gespraech zu und sagt KURZ etwas Nuetzliches.
-Regeln:
-- 1 bis maximal 2 kurze Saetze. Nie laenger.
-- Natuerlich gesprochen, wie ein kurzer Hinweis.
-- Keine Einleitung ("Interessant...", "Uebrigens..."). Direkt Inhalt.
-- Kein "Ich denke", keine Meinung. Nur Fakt.
-- Keine Fragen am Ende. Keine Meta-Kommentare.
-- Keine Quellen-URLs.
-- ${languageHint}
-- Kontext: ${actionHint}`;
+EXAMPLES:
+Q: "What's the highest mountain?"  ->  "Mount Everest, 8849 metres."
+Q: "Who wrote 'The Swarm'?"  ->  "Frank Schätzing, 2004 eco-thriller."
+Q: "What's that movie with the eagle?"  ->  "'The Eagle Has Landed', 1976, WWII thriller."
+Q: "Kepler-22b?"  ->  "Exoplanet, ~620 light-years away, potentially habitable."`
+    : `Du formst Recherche-Fakten in EINE ultra-knappe Antwort. HARTE REGELN:
+- Genau EIN Satz. Unter 15 Woertern.
+- NIE die Frage wiederholen. NIE paraphrasieren. Starte direkt mit dem Fakt.
+- Telegramm-Stil. Nur der Fakt.
+- Keine Begruessung, kein "Interessant:", kein "Uebrigens", kein "Tatsaechlich".
+- Keine Meinung, keine Quellen, keine URLs.
 
-  const condenseUser = `Ausgangsfrage/Bezug: "${query}"
+BEISPIELE:
+Frage: "Wie heisst der hoechste Berg?"  ->  "Der Mount Everest, 8849 Meter."
+Frage: "Wer hat 'Der Schwarm' geschrieben?"  ->  "Frank Schaetzing, 2004, Oeko-Thriller."
+Frage: "Wie heisst der Film mit dem Adler?"  ->  "'Der Adler ist gelandet', 1976, Zweiter-Weltkriegs-Thriller."
+Frage: "Kepler-22b?"  ->  "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."`;
 
-Recherche-Fakten:
-${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}
-
-Formuliere JETZT den knappen Hinweis (1-2 Saetze, direkt vorlesbar):`;
+  const condenseUser = isEN
+    ? `Query: "${query}"\n\nFacts:\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOne-sentence answer:`
+    : `Frage/Bezug: "${query}"\n\nFakten:\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nEin-Satz-Antwort:`;
 
   let text = "";
   let condenseTokens = 0;
@@ -136,8 +133,8 @@ Formuliere JETZT den knappen Hinweis (1-2 Saetze, direkt vorlesbar):`;
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        temperature: 0.4,
-        max_tokens: 120,
+        temperature: 0.2,
+        max_tokens: 50,
         messages: [
           { role: "system", content: condenseSystem },
           { role: "user", content: condenseUser },
@@ -150,9 +147,17 @@ Formuliere JETZT den knappen Hinweis (1-2 Saetze, direkt vorlesbar):`;
       text = String(data?.choices?.[0]?.message?.content || "").trim();
       condenseTokens = data?.usage?.total_tokens || 0;
 
-      // Sanity: hart auf 2 Saetze clampen
-      const parts = text.split(/(?<=[.!?])\s+/).slice(0, 2);
-      text = parts.join(" ").trim();
+      // Hard-Clamp: genau 1 Satz
+      const firstSentence = text.split(/(?<=[.!?])\s+/)[0] || text;
+      text = firstSentence.trim();
+
+      // Anti-Wiederhol-Guard: wenn Antwort die Query fast 1:1 wiederholt, Query rausstreichen
+      const q = query.toLowerCase();
+      const t = text.toLowerCase();
+      if (q.length > 10 && t.includes(q)) {
+        text = text.replace(new RegExp(query, "i"), "").replace(/^[\s,:;-]+/, "").trim();
+        if (text) text = text.charAt(0).toUpperCase() + text.slice(1);
+      }
     }
   } catch (e) {
     console.warn("[xi/research] condense failed", e?.message);
