@@ -50,8 +50,11 @@
     .ghost { background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,.12); padding: 10px 22px; font-size: 14px; }
     .danger { background: var(--danger); color: #fff; font-weight: 600; font-size: 15px; }
 
-    .status-row { display: flex; gap: 20px; justify-content: center; margin: 20px 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .status-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; margin: 20px 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
     .status-row .val { color: var(--fg); font-weight: 600; }
+    .status-row .muted-tokens { color: var(--muted); font-weight: 400; margin-left: 2px; }
+    .status-row .warn { color: #ffb84d; }
+    .status-row .danger { color: var(--danger); }
 
     /* Toggles (Audio-Quelle + Ausgabe) */
     .toggle-group { margin-bottom: 14px; }
@@ -136,8 +139,9 @@
 
     <div class="session-bar" id="sessionBar">
       <div class="status-row">
-        <span>Trigger: <span class="val" id="triggerCount">0</span></span>
-        <span>Tokens: <span class="val" id="tokenCount">0</span></span>
+        <span>⏱ <span class="val" id="elapsedLabel">00:00</span></span>
+        <span>🪙 <span class="val" id="tokensUsedLabel">0</span><span class="muted-tokens" id="tokensRemainingLabel"></span></span>
+        <span>💬 <span class="val" id="triggerCount">0</span></span>
       </div>
       <div class="chat-log" id="chatLog"></div>
       <button class="danger" id="stopBtn">Stoppen</button>
@@ -189,7 +193,13 @@ let running = false;
 let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";
 
 let triggerCount = 0;
-let tokenCount = 0;
+
+// Sophie-Tokens (App-Billing-Unit): 1 Token = 6 Sekunden Realtime-Session
+// Live via Ticker abgeleitet aus (jetzt - sessionStartedAt).
+// Zusaetzlich: Classifier-/Research-API-Tokens (gering) werden addiert.
+let extraApiTokens = 0;            // wird bei jedem /research Call aufaddiert
+let initialRemainingTokens = null; // aus /api/session remaining_seconds / 6
+let tickerTimer = null;
 
 // Voice-Busy-Lock: waehrend Sophie spricht Mic stummschalten,
 // damit Server-VAD sie nicht unterbricht (bleibt wie im Pipeline-Mode).
@@ -207,7 +217,9 @@ const startPanel     = $("startPanel");
 const sessionBar     = $("sessionBar");
 const waveEl         = $("wave");
 const triggerCountEl = $("triggerCount");
-const tokenCountEl   = $("tokenCount");
+const elapsedLabel   = $("elapsedLabel");
+const tokensUsedLabel      = $("tokensUsedLabel");
+const tokensRemainingLabel = $("tokensRemainingLabel");
 const chatLog        = $("chatLog");
 const outToggle      = $("outToggle");
 const srcToggle      = $("srcToggle");
@@ -396,6 +408,9 @@ async function startSession() {
 
     running = true;
     sessionStartedAt = Date.now();
+    triggerCount = 0;
+    extraApiTokens = 0;
+    triggerCountEl.textContent = "0";
     startPanel.style.display = "none";
     sessionBar.classList.add("active");
     waveEl.classList.add("active");
@@ -724,10 +739,6 @@ function onDataChannelMessage(e) {
       clearTimeout(voiceBusyTimeout);
       voiceBusyTimeout = setTimeout(unlockVoice, 300);
 
-      if (msg?.response?.usage?.total_tokens) {
-        tokenCount += Number(msg.response.usage.total_tokens || 0);
-        tokenCountEl.textContent = String(tokenCount);
-      }
       break;
 
     case "error":
@@ -775,8 +786,9 @@ async function handleFunctionCall(msg) {
     let payload = { text: "", source: null };
     if (res.ok) payload = await res.json();
 
-    tokenCount += Number(payload.tokens_used || 0);
-    tokenCountEl.textContent = String(tokenCount);
+    // Research API-Tokens aufaddieren (meist 0 weil Skip-Condense-Shortcut greift)
+    extraApiTokens += Number(payload.tokens_used || 0);
+    updateTokenDisplay();
 
     // Tool-Ergebnis zurueck an Sophie
     dcSend({
@@ -827,27 +839,63 @@ function appendChatMessage(text, opts = {}) {
   return msg;
 }
 
-// ── Token Cap Poll ───────────────────────────────────────
-let tokenCapTimer = null;
-let initialRemaining = 0;
-function startTokenCapPoll(remainingSeconds) {
-  initialRemaining = remainingSeconds;
-  tokenCapTimer = setInterval(checkTokenCap, 30_000);
+// ── Live-Display (Dauer + Sophie-Tokens + Trigger) ───────
+function sophieTokensUsedNow() {
+  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  // 1 Sophie-Token = 6 Sek Realtime + aufaddierte API-Tokens
+  return Math.ceil(sec / 6) + extraApiTokens;
 }
-async function checkTokenCap() {
-  const elapsedSec = Math.floor((Date.now() - sessionStartedAt) / 1000);
-  if (initialRemaining > 0 && elapsedSec >= initialRemaining) {
-    await stopSession(false, true);
+
+function formatMMSS(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function updateTokenDisplay() {
+  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  const used = sophieTokensUsedNow();
+  elapsedLabel.textContent = formatMMSS(sec);
+  tokensUsedLabel.textContent = String(used);
+
+  if (initialRemainingTokens != null) {
+    const left = Math.max(0, initialRemainingTokens - used);
+    const pct = initialRemainingTokens > 0 ? left / initialRemainingTokens : 0;
+    tokensRemainingLabel.textContent = ` / ${left} frei`;
+    tokensRemainingLabel.className = "muted-tokens" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+  } else {
+    tokensRemainingLabel.textContent = "";
   }
+}
+
+// ── Token Cap Poll + Ticker ──────────────────────────────
+let tokenCapTimer = null;
+let initialRemainingSeconds = 0;
+function startTokenCapPoll(remainingSeconds) {
+  initialRemainingSeconds = remainingSeconds;
+  initialRemainingTokens = remainingSeconds > 0 ? Math.floor(remainingSeconds / 6) : null;
+  updateTokenDisplay();
+
+  // Ticker: jede Sekunde Display aktualisieren, jede 30s Cap pruefen
+  tickerTimer = setInterval(() => {
+    updateTokenDisplay();
+    const sec = Math.floor((Date.now() - sessionStartedAt) / 1000);
+    if (initialRemainingSeconds > 0 && sec >= initialRemainingSeconds) {
+      stopSession(false, true);
+    }
+  }, 1000);
 }
 
 // ── Stop ─────────────────────────────────────────────────
 async function stopSession(silent = false, byLimit = false) {
   if (tokenCapTimer)   { clearInterval(tokenCapTimer); tokenCapTimer = null; }
+  if (tickerTimer)     { clearInterval(tickerTimer); tickerTimer = null; }
   if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
   voiceBusy = false;
   currentAssistantText = "";
   lastSessionModalities = null;
+  extraApiTokens = 0;
+  initialRemainingTokens = null;
   setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
   waveEl.classList.remove("active");
