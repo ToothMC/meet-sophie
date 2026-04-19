@@ -26,20 +26,6 @@ async function safeTrack(supabase, userId, event_name, meta = {}) {
   }
 }
 
-async function alreadyProcessed(supabase, sessionId) {
-  const { data, error } = await supabase
-    .from("analytics_events")
-    .select("id")
-    .eq("event_name", "checkout_confirmed")
-    .contains("meta", { checkout_session_id: sessionId })
-    .limit(1);
-  if (error) {
-    console.warn("Idempotency lookup failed:", error.message);
-    return false;
-  }
-  return Array.isArray(data) && data.length > 0;
-}
-
 // ---------------------------------------------------------------------------
 // Action: checkout (create-checkout-session)
 // ---------------------------------------------------------------------------
@@ -373,9 +359,18 @@ async function handleConfirm(req, res) {
     const mode             = session.mode;
     const stripeCustomerId = session.customer || null;
 
-    const wasProcessed = await alreadyProcessed(supabase, sessionId);
-    if (wasProcessed) {
+    // Atomic idempotency claim — prevents double-grant when /api/billing?action=confirm
+    // and the Stripe webhook race on the same checkout.session. Only the winner of the
+    // INSERT writes user_usage/user_subscriptions.
+    const { error: claimErr } = await supabase
+      .from("billing_processed_sessions")
+      .insert({ stripe_session_id: sessionId, processed_by: "confirm", user_id: userId, mode });
+    if (claimErr?.code === "23505") {
       return res.status(200).json({ ok: true, already_processed: true, mode, session_id: sessionId });
+    }
+    if (claimErr) {
+      console.error("billing/confirm idempotency claim failed:", claimErr);
+      return res.status(500).json({ error: "Idempotency check failed", detail: claimErr.message });
     }
 
     if (mode === "subscription") {
@@ -406,13 +401,32 @@ async function handleConfirm(req, res) {
         return res.status(400).json({ error: "Could not resolve included tokens for subscription", plan });
       }
 
+      // Extract trial info from expanded subscription (matches webhook behavior
+      // so that confirm-first races don't drop trial tracking).
+      const subObj =
+        typeof session.subscription === "string"
+          ? null
+          : session.subscription;
+      const subStatus = subObj?.status || "active";
+      const isTrialing = subStatus === "trialing";
+      const trialEnd = subObj?.trial_end
+        ? new Date(subObj.trial_end * 1000).toISOString()
+        : null;
+      const currentPeriodEnd = subObj?.current_period_end
+        ? new Date(subObj.current_period_end * 1000).toISOString()
+        : null;
+
       const { error: subErr } = await supabase
         .from("user_subscriptions")
         .upsert(
           {
             user_id: userId, stripe_customer_id: stripeCustomerId,
             stripe_subscription_id: stripeSubscriptionId,
-            status: "active", is_active: true, plan: plan || null, current_period_end: null,
+            status: subStatus, is_active: true, plan: plan || null,
+            current_period_end: currentPeriodEnd,
+            trial_end: trialEnd,
+            trial_started_at: isTrialing ? new Date().toISOString() : null,
+            cancel_at_period_end: false,
           },
           { onConflict: "user_id" }
         );

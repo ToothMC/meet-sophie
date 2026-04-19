@@ -89,6 +89,21 @@ export default async function handler(req, res) {
       const mode = session?.mode; // "subscription" | "payment"
       const stripeCustomerId = session?.customer || null;
 
+      // Atomic idempotency claim — prevents double-grant when /api/billing?action=confirm
+      // and this webhook race on the same checkout.session. Only the winner of the
+      // INSERT writes user_usage/user_subscriptions.
+      const { error: claimErr } = await supabase
+        .from("billing_processed_sessions")
+        .insert({ stripe_session_id: session.id, processed_by: "webhook", user_id: userId, mode });
+      if (claimErr?.code === "23505") {
+        console.log("[webhook] Session already processed by confirm, skipping:", session.id);
+        return res.status(200).json({ received: true, already_processed: true });
+      }
+      if (claimErr) {
+        console.error("[webhook] Idempotency claim failed:", claimErr);
+        return res.status(500).send("Idempotency check failed");
+      }
+
       // A) Subscription
       if (mode === "subscription") {
         const stripeSubscriptionId = session?.subscription || null;
