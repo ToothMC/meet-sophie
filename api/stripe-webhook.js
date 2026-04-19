@@ -89,6 +89,21 @@ export default async function handler(req, res) {
       const mode = session?.mode; // "subscription" | "payment"
       const stripeCustomerId = session?.customer || null;
 
+      // Atomic idempotency claim — prevents double-grant when /api/billing?action=confirm
+      // and this webhook race on the same checkout.session. Only the winner of the
+      // INSERT writes user_usage/user_subscriptions.
+      const { error: claimErr } = await supabase
+        .from("billing_processed_sessions")
+        .insert({ stripe_session_id: session.id, processed_by: "webhook", user_id: userId, mode });
+      if (claimErr?.code === "23505") {
+        console.log("[webhook] Session already processed by confirm, skipping:", session.id);
+        return res.status(200).json({ received: true, already_processed: true });
+      }
+      if (claimErr) {
+        console.error("[webhook] Idempotency claim failed:", claimErr);
+        return res.status(500).send("Idempotency check failed");
+      }
+
       // A) Subscription
       if (mode === "subscription") {
         const stripeSubscriptionId = session?.subscription || null;
@@ -451,7 +466,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
-    // 4) Subscription Deleted -> deactivate (+ optional zero tokens)
+    // 4) Subscription Deleted -> deactivate
+    // Stripe fires this AFTER cancel_at_period_end has run out, so the user
+    // has already paid for the period. Existing paid_tokens stay until they
+    // expire naturally or get overwritten by a new checkout. Nulling them
+    // here would void tokens the user already paid for.
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -479,11 +498,6 @@ export default async function handler(req, res) {
         .eq("user_id", userId);
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
-
-      // Take away paid tokens immediately
-      await supabase.from("user_usage").update({
-        paid_tokens_total: 0,
-      }).eq("user_id", userId);
 
       await safeTrack(supabase, userId, "subscription_deleted", {
         stripe_subscription_id: stripeSubscriptionId,

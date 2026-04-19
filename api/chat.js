@@ -16,7 +16,7 @@ import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { getSecondOpinion } from "./ai/second-opinion.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
 import { buildSearchContext } from "../lib/search-context.js";
-import { TOKEN_COSTS } from "../lib/billing-constants.js";
+import { TOKEN_COSTS, DEFAULT_FREE_TOKENS } from "../lib/billing-constants.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
@@ -265,7 +265,7 @@ async function deductChatTokens(supabase, userId, amount = 1) {
       .from("user_usage")
       .upsert({
         user_id: userId,
-        free_tokens_total: 50, free_tokens_used: 0,
+        free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
         paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
       }, { onConflict: "user_id" })
       .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")

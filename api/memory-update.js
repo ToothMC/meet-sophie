@@ -31,15 +31,6 @@ function buildSessionTitle(value = "") {
     .replace(/^discussion about\s+/i, "")
     .trim();
 
-  const lower = cleaned.toLowerCase();
-
-  if (lower.includes("jobrad")) return "Jobrad";
-  if (lower.includes("iran")) return "Iran-Konflikt";
-  if (lower.includes("gehalt")) return "Gehalt";
-  if (lower.includes("salary")) return "Salary Negotiation";
-  if (lower.includes("meeting")) return "Meeting";
-  if (lower.includes("bewerbung")) return "Bewerbung";
-
   const firstChunk = cleaned
     .split(/[.!?]/)[0]
     .split(",")[0]
