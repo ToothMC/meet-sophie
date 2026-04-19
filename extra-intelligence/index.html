@@ -748,9 +748,13 @@ async function acquireAudioStream() {
     return dispStream;
   }
 
-  // Mikrofon: Browser-Filter AUS fuer Multi-Speaker-Hoerfaehigkeit
+  // Mikrofon: Browser-Filter AUS fuer Multi-Speaker-Hoerfaehigkeit.
+  // iOS-Ausnahme: Safari routet getUserMedia nicht zuverlaessig auf AirPods,
+  // wenn wir "no processing" verlangen — die AirPods-Pipeline hat EC/NS fest
+  // eingebaut, iOS faellt dann auf die iPhone-Mic zurueck, weil die "roh" kann.
+  // Auf iOS also Default-Constraints (EC/NS/AGC an), damit AirPods gewaehlt werden.
   return await navigator.mediaDevices.getUserMedia({
-    audio: {
+    audio: isIOSLike ? true : {
       echoCancellation: false,
       noiseSuppression: false,
       autoGainControl:  false,
