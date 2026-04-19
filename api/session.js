@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from "../lib/billing-constants.js";
+import { CURRENT_XI_PRIVACY_VERSION } from "../lib/xi-constants.js";
 
 // ── Resume: build structured prompt block per session type ──
 function buildResumeBlock(sessionType, data, lang) {
@@ -179,8 +180,16 @@ export default async function handler(req, res) {
 
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
-    const sessionMode = ["brainstorm", "meeting", "salespitch"].includes(rawSessionMode) ? rawSessionMode : null;
+    const sessionMode = ["brainstorm", "meeting", "salespitch", "extra_intelligence"].includes(rawSessionMode) ? rawSessionMode : null;
     const meetingId = String(req.headers["x-sophie-meeting-id"] || "").trim() || null;
+
+    // Extra-Intelligence (xi) feature-flag — fast fail bevor Subscription/Lock
+    // geladen werden. Premium-Check + DB-ACK-Check laufen weiter unten, sobald
+    // Plan bekannt ist.
+    const EXTRA_INTELLIGENCE_ENABLED = String(process.env.EXTRA_INTELLIGENCE_ENABLED || "false").toLowerCase() === "true";
+    if (sessionMode === "extra_intelligence" && !EXTRA_INTELLIGENCE_ENABLED) {
+      return res.status(404).json({ error: "extra_intelligence_not_available" });
+    }
 
     // Brainstorm config — base64-encoded JSON header, only relevant when sessionMode === "brainstorm"
     let brainstormConfig = null;
@@ -266,6 +275,35 @@ export default async function handler(req, res) {
     const tier = mapPlanToTier(plan, isPremium);
     const sessionLimit = tier === "partner" ? 5 : tier === "friend" ? 3 : tier === "assistant" ? 1 : 0;
     const mode = (tier === "friend" || tier === "partner") ? "best_friend" : "companion";
+
+    // Extra-Intelligence: Premium-only + persistente Privacy-Einwilligung (XI-2).
+    // Header allein reicht nicht — § 201 StGB / § 120 StGB verlangt Nachweis.
+    if (sessionMode === "extra_intelligence") {
+      if (String(plan || "").toLowerCase() !== "premium") {
+        return res.status(402).json({
+          error: "extra_intelligence_requires_premium",
+          message: "Extra Intelligence ist nur im Premium-Plan verfuegbar.",
+        });
+      }
+      const { data: xiAck, error: xiAckErr } = await supabase
+        .from("xi_privacy_acceptances")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("version", CURRENT_XI_PRIVACY_VERSION)
+        .order("accepted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (xiAckErr) {
+        console.warn("[session] xi privacy lookup error:", xiAckErr.message);
+        return res.status(500).json({ error: "xi_privacy_check_failed" });
+      }
+      if (!xiAck) {
+        return res.status(412).json({
+          error: "xi_privacy_ack_needed",
+          current_version: CURRENT_XI_PRIVACY_VERSION,
+        });
+      }
+    }
 
     // --- Process usage ---
     let usage = usageResult.data;
