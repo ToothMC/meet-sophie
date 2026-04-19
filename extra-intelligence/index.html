@@ -600,20 +600,16 @@ Only if ALL three conditions hold:
 
 ═══ EXAMPLES ═══
 
-INPUT: "Who wrote The Swarm?"
-OUTPUT: [web_search "Der Schwarm author"] → "Frank Schätzing, 2004, eco-thriller."
+SPEAK (PATTERN A — call tool, then say one fact sentence):
+  "Who wrote The Swarm?" → [web_search "Der Schwarm author"] → say: "Frank Schätzing, 2004, eco-thriller."
+  "…like in The Eagle Has Landed…" → [web_search "The Eagle Has Landed film"] → say: "1976 WWII thriller with Michael Caine."
 
-INPUT: "…like in The Eagle Has Landed…"
-OUTPUT: [web_search "The Eagle Has Landed film"] → "1976 WWII thriller with Michael Caine."
+STAY SILENT (PATTERN B — produce NOTHING: no tool call, no audio, no text, no transcript):
+  "Nice weather today." — smalltalk
+  "I need to think about this." — personal reflection
+  "Can you help me decide?" — opinion request
 
-INPUT: "Nice weather today."
-OUTPUT: (complete silence, no tool call, no speech)
-
-INPUT: "I need to think about this."
-OUTPUT: (complete silence)
-
-INPUT: "Can you help me decide?"
-OUTPUT: (complete silence — opinion request)
+Never emit the word "silence" or any description of what you're doing. Silence means zero output tokens.
 
 ONE violation rule: if you produce any forbidden phrase, the entire response is wrong. Better to be silent than to narrate.`;
   }
@@ -666,20 +662,16 @@ Nur wenn ALLE drei Bedingungen gelten:
 
 ═══ BEISPIELE ═══
 
-INPUT: "Wer hat 'Der Schwarm' geschrieben?"
-OUTPUT: [web_search "Der Schwarm Autor"] → "Frank Schaetzing, 2004, Oeko-Thriller."
+SPRECHEN (MUSTER A — Tool rufen, dann einen Fakt-Satz sagen):
+  "Wer hat 'Der Schwarm' geschrieben?" → [web_search "Der Schwarm Autor"] → sagt: "Frank Schaetzing, 2004, Oeko-Thriller."
+  "...wie damals bei Kepler-22b..." → [web_search "Kepler-22b Exoplanet"] → sagt: "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."
 
-INPUT: "...wie damals bei Kepler-22b..."
-OUTPUT: [web_search "Kepler-22b Exoplanet"] → "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."
+NICHT SPRECHEN (MUSTER B — produziere NICHTS: kein Tool-Call, kein Audio, kein Text, kein Transkript):
+  "Schoenes Wetter heute." — Smalltalk
+  "Ich muss darueber nachdenken." — persoenliche Reflexion
+  "Kannst du mir helfen zu entscheiden?" — Meinungs-Anfrage
 
-INPUT: "Schoenes Wetter heute."
-OUTPUT: (komplette Stille, kein Tool-Call, keine Rede)
-
-INPUT: "Ich muss darueber nachdenken."
-OUTPUT: (komplette Stille)
-
-INPUT: "Kannst du mir helfen zu entscheiden?"
-OUTPUT: (komplette Stille — Meinungs-Anfrage)
+Sage NIEMALS das Wort "Stille" oder beschreibe was du gerade machst. Stille bedeutet null Ausgabe-Tokens.
 
 EINE-VIOLATION-REGEL: produzierst du auch nur eines der verbotenen Wörter, ist die ganze Antwort falsch. Lieber still sein als erzaehlen.`;
 }
