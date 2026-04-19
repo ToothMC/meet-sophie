@@ -7,37 +7,11 @@ import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
 import { mapPlanToTier } from "../lib/sophie-core.js";
 import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
 import { runRecapForSession } from "../lib/memory-recap-core.js";
+import { cleanText, buildSessionTitle } from "../lib/session-title.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
   return createHash("sha256").update(ip).digest("hex").slice(0, 16);
-}
-
-function cleanText(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
-}
-
-function buildSessionTitle(value = "") {
-  const text = cleanText(value);
-
-  if (!text) return "Session";
-
-  const cleaned = text
-    .replace(/^der benutzer\s+/i, "")
-    .replace(/^the user\s+/i, "")
-    .replace(/^user\s+/i, "")
-    .replace(/^conversation about\s+/i, "")
-    .replace(/^meeting about\s+/i, "")
-    .replace(/^discussion about\s+/i, "")
-    .trim();
-
-  const firstChunk = cleaned
-    .split(/[.!?]/)[0]
-    .split(",")[0]
-    .trim()
-    .slice(0, 40);
-
-  return firstChunk || "Session";
 }
 
 function buildStructuredSummary({ shortSummary = "", emotionalTone = "", stressLevel = null, closenessLevel = null }) {

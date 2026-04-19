@@ -23,3 +23,6 @@ jobs:
 
       - name: RPC drift check
         run: node scripts/check-rpcs.mjs
+
+      - name: Smoke tests
+        run: node --test tests/smoke/*.test.mjs
