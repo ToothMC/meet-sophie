@@ -722,14 +722,34 @@ Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der ve
         const { data: mtg } = await supabase.from('meetings').select('id, session_id').eq('id', session_id).eq('user_id', user.id).maybeSingle();
         if (!mtg) return res.status(404).json({ error: 'Meeting not found' });
         if (mtg.session_id) {
-          await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
-          await supabase.from('user_sessions').delete().eq('id', mtg.session_id);
+          const { error: coErr } = await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
+          if (coErr) {
+            console.error('[delete-report] conversation_outputs delete failed:', coErr);
+            return res.status(500).json({ error: 'delete_failed', detail: coErr.message });
+          }
+          const { error: usErr } = await supabase.from('user_sessions').delete().eq('id', mtg.session_id);
+          if (usErr) {
+            console.error('[delete-report] user_sessions delete failed:', usErr);
+            return res.status(500).json({ error: 'delete_failed', detail: usErr.message });
+          }
         }
         // Delete the meeting row (cascades to context, notes, summary)
-        await supabase.from('meetings').delete().eq('id', session_id).eq('user_id', user.id);
+        const { error: mErr } = await supabase.from('meetings').delete().eq('id', session_id).eq('user_id', user.id);
+        if (mErr) {
+          console.error('[delete-report] meetings delete failed:', mErr);
+          return res.status(500).json({ error: 'delete_failed', detail: mErr.message });
+        }
       } else {
-        await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
-        await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);
+        const { error: coErr } = await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
+        if (coErr) {
+          console.error('[delete-report] conversation_outputs delete failed:', coErr);
+          return res.status(500).json({ error: 'delete_failed', detail: coErr.message });
+        }
+        const { error: usErr } = await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);
+        if (usErr) {
+          console.error('[delete-report] user_sessions delete failed:', usErr);
+          return res.status(500).json({ error: 'delete_failed', detail: usErr.message });
+        }
       }
 
       return res.status(200).json({ ok: true });

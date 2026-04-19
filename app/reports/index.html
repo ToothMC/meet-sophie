@@ -194,15 +194,25 @@
 
     /* ── Delete Button ────────────────────────────── */
     .entry-delete {
-      width: 28px; height: 28px; border-radius: 50%;
+      min-width: 28px; height: 28px; padding: 0 6px;
+      border-radius: 14px;
       border: none; background: transparent;
       color: var(--muted); font-size: 16px;
       cursor: pointer; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      transition: background .12s;
+      transition: background .12s, color .12s, min-width .12s;
       opacity: .4;
     }
     .entry-delete:hover { background: rgba(239,68,68,.10); color: #dc2626; opacity: 1; }
+    .entry-delete.arming {
+      background: rgba(239,68,68,.18);
+      color: #b91c1c;
+      opacity: 1;
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 92px;
+      padding: 0 10px;
+    }
 
     /* ── Load More ────────────────────────────────── */
     .load-more {
@@ -553,11 +563,34 @@
         <button class="entry-delete" title="${lang === "de" ? "Löschen" : "Delete"}">&times;</button>
         <span class="entry-arrow">&rsaquo;</span>
       `;
-      div.querySelector(".entry-delete").addEventListener("click", async (e) => {
+      // Two-step delete — first click arms the button, second confirms.
+      // Replaces native confirm() which fails silently on iOS PWAs.
+      const deleteBtn = div.querySelector(".entry-delete");
+      let armed = false;
+      let armTimer = null;
+      const resetArm = () => {
+        armed = false;
+        deleteBtn.classList.remove("arming");
+        deleteBtn.innerHTML = "&times;";
+        deleteBtn.title = lang === "de" ? "Löschen" : "Delete";
+        if (armTimer) { clearTimeout(armTimer); armTimer = null; }
+      };
+      deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const msg = lang === "de" ? "Diesen Eintrag löschen?" : "Delete this entry?";
-        if (!confirm(msg)) return;
-        await deleteEntry(item);
+        if (!armed) {
+          armed = true;
+          deleteBtn.classList.add("arming");
+          deleteBtn.innerHTML = lang === "de" ? "Wirklich?" : "Sure?";
+          deleteBtn.title = lang === "de" ? "Nochmal klicken zum Löschen" : "Click again to delete";
+          armTimer = setTimeout(resetArm, 3000);
+          return;
+        }
+        // Second click — execute.
+        if (armTimer) { clearTimeout(armTimer); armTimer = null; }
+        deleteBtn.disabled = true;
+        const ok = await deleteEntry(item);
+        deleteBtn.disabled = false;
+        if (!ok) { resetArm(); return; } // keep entry; alert already shown
         // Save references BEFORE removing from DOM
         const titleGroupEl = div.closest(".title-group");
         const typeGroupEl = div.closest(".type-group") || titleGroupEl?.closest(".type-group");
@@ -721,7 +754,8 @@
               _navigateToResume(item);
             },
             onDelete: async (rd) => {
-              await deleteEntry(item);
+              const ok = await deleteEntry(item);
+              if (!ok) return;
               SophieReportOverlay.close();
               loadAll();
             },
@@ -764,19 +798,29 @@
     }
 
     // ── Delete logic — uses Settings API (service role, bypasses RLS) ──
+    // Returns true only when the server confirmed the delete; false lets
+    // the caller keep the DOM entry visible instead of fake-removing it.
     async function deleteEntry(item) {
       try {
         const token = (await supabase.auth.getSession()).data?.session?.access_token;
-        if (!token) { console.error("No auth token"); return; }
+        if (!token) { console.error("No auth token"); return false; }
         const source = item.type === "meeting" ? "meeting" : "talk";
         const res = await fetch("/api/settings", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ action: "delete-report", session_id: item.id, source }),
         });
-        if (!res.ok) console.error("Delete failed:", await res.text());
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          console.error("Delete failed:", res.status, txt);
+          alert(lang === "de" ? "Löschen fehlgeschlagen. Bitte erneut versuchen." : "Delete failed. Please try again.");
+          return false;
+        }
+        return true;
       } catch (e) {
         console.error("Delete failed:", e);
+        alert(lang === "de" ? "Löschen fehlgeschlagen. Bitte erneut versuchen." : "Delete failed. Please try again.");
+        return false;
       }
     }
 
