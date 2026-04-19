@@ -334,48 +334,70 @@ if (!hasDisplayMediaAudio || isIOSLike) {
 }
 applySourceMode();
 
-srcToggle.addEventListener("click", async (e) => {
+srcToggle.addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-src]");
   if (!btn || btn.disabled) return;
   const newSource = btn.dataset.src;
   if (newSource === audioSource) return;
 
+  // WICHTIG: getDisplayMedia / getUserMedia brauchen eine frische User-Gesture.
+  // Wenn wir vorher awaits einbauen (auch nur State-Updates in async-Wrapper),
+  // verliert Chrome die Gesture und der Permission-Dialog kommt nicht mehr.
+  // Deshalb: getUserMedia / getDisplayMedia SYNCHRON aus dem Click-Handler heraus
+  // anstossen, erst dann den State anpassen.
+
+  // Ausserhalb einer Session: nur State aendern.
+  if (!running || !pc) {
+    audioSource = newSource;
+    localStorage.setItem(SRC_KEY, audioSource);
+    applySourceMode();
+    return;
+  }
+
+  // Waehrend Session: zuerst Stream im User-Gesture-Kontext anfordern.
   const oldSource = audioSource;
+  let streamPromise;
+  if (newSource === "tab") {
+    streamPromise = navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    }).then(dispStream => {
+      dispStream.getVideoTracks().forEach(t => { try { t.stop(); } catch {} });
+      const audioTracks = dispStream.getAudioTracks();
+      if (!audioTracks.length) throw new Error('Kein Audio erhalten. Im Browser-Dialog "Audio teilen" aktivieren.');
+      audioTracks[0].addEventListener("ended", () => { if (running) stopSession(false); });
+      return dispStream;
+    });
+  } else {
+    streamPromise = navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  }
+
+  // UI optimistisch aktualisieren; bei Fehler rollbacken.
   audioSource = newSource;
   localStorage.setItem(SRC_KEY, audioSource);
   applySourceMode();
 
-  // Ausserhalb einer Session reicht die State-Aenderung.
-  if (!running || !pc) return;
-
-  // Waehrend Session: echten Audio-Track live tauschen, sonst hoert Sophie
-  // weiter die alte Quelle (z.B. Tab), egal was der Toggle anzeigt.
-  try {
-    const newStream = await acquireAudioStream();
+  streamPromise.then(async (newStream) => {
     const newTrack = newStream.getAudioTracks()[0];
     if (!newTrack) throw new Error("kein Audio-Track im neuen Stream");
-
     const sender = pc.getSenders().find(s => s.track?.kind === "audio");
     if (!sender) throw new Error("kein Audio-Sender auf der PeerConnection");
-
     await sender.replaceTrack(newTrack);
-
-    // Alten Stream aufraeumen und Referenzen aktualisieren.
     try { stream?.getTracks().forEach(t => t.stop()); } catch {}
     stream = newStream;
-
-    // Mic-Mute-Zustand nach Source-Wechsel neutralisieren.
     voiceBusy = false;
     clearTimeout(voiceBusyTimeout);
     setMicMuted(false);
     errorText.textContent = "";
-  } catch (err) {
+  }).catch((err) => {
     console.warn("[xi] source switch failed:", err?.message || err);
     audioSource = oldSource;
     localStorage.setItem(SRC_KEY, audioSource);
     applySourceMode();
     errorText.textContent = "Quellen-Wechsel fehlgeschlagen: " + (err?.message || "Zugriff verweigert");
-  }
+  });
 });
 
 function applySourceMode() {
