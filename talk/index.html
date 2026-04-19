@@ -1746,6 +1746,7 @@ async function sendMemoryUpdate(secondsUsed) {
         session_id: sessionId,
         session_mode: selectedVoiceMode || null,
         realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
+        ui_language: _uiLang,
       }),
       keepalive: true,
     });
@@ -2295,6 +2296,7 @@ document.getElementById("reportStyleBar")?.addEventListener("click", async (e) =
       body: JSON.stringify({
         transcript: ctx.transcriptLog,
         reportStyle: newStyle,
+        ui_language: _uiLang,
       }),
     });
 
@@ -6296,6 +6298,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
                     session_id: sessionId,
                     session_mode: "salespitch",
                     realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
+                    ui_language: _uiLang,
                   }),
                 });
                 const memText = await memResp.text().catch(() => "");
@@ -7485,6 +7488,7 @@ if (!hasRealConversation) {
             session_id: sessionId,
             session_mode: selectedVoiceMode || null,
             realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
+            ui_language: _uiLang,
           },
         };
       }

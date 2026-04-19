@@ -1182,12 +1182,32 @@ export default async function handler(req, res) {
     const tier = mapPlanToTier(sub?.plan, isPremium);
     const memConfig = TIER_MEMORY_CONFIG[tier] || TIER_MEMORY_CONFIG.free;
 
+    // If user_profile.preferred_language is empty (never toggled), fall back
+    // to the UI-language hint the client includes in the payload (body.ui_language)
+    // and immediately persist it to the DB so every following report reads
+    // language from user_profile — which is how the source-of-truth should work.
+    const uiLangHint = String(body?.ui_language || "").trim().toLowerCase();
+    const validUiLang = /^(de|en|fr)$/.test(uiLangHint) ? uiLangHint : "";
+    let resolvedLang = String(prof?.preferred_language || "").trim().toLowerCase();
+    if (!resolvedLang && validUiLang) {
+      resolvedLang = validUiLang;
+      // Fire-and-forget: don't block report generation on this write.
+      supabase
+        .from("user_profile")
+        .update({ preferred_language: validUiLang })
+        .eq("user_id", user.id)
+        .then(({ error }) => {
+          if (error) console.error("[memory-update] preferred_language write failed:", error.message);
+          else console.log(`[memory-update] preferred_language set to '${validUiLang}' for ${user.id.slice(0, 8)}`);
+        });
+    }
+
     const existing = {
       first_name: String(prof?.first_name || "").trim(),
       preferred_name: String(prof?.preferred_name || "").trim(),
       preferred_addressing: String(prof?.preferred_addressing || "").trim(),
       preferred_pronoun: String(prof?.preferred_pronoun || "").trim(),
-      preferred_language: String(prof?.preferred_language || "").trim().toLowerCase(),
+      preferred_language: resolvedLang,
       notes: String(prof?.notes || "").trim(),
       age: Number.isFinite(Number(prof?.age)) ? Number(prof.age) : null,
       occupation: String(prof?.occupation || "").trim(),
