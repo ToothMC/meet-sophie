@@ -244,6 +244,12 @@ let voiceBusyTimeout = null;
 // sauber abgebildet werden — ein kurzes Zwischen-Done wirft uns nicht raus.
 let responsePendingCount = 0;
 
+// Queue fuer Client-getriggerte response.create: der Server akzeptiert keine
+// neue Response solange noch eine aktiv ist ("conversation_already_has_active_response").
+// Wenn wir nach web_search einen neuen Output anstossen wollen, warten wir bis
+// responsePendingCount==0 ist. Bei response.done flushen wir.
+let pendingResponseCreatePayload = null;
+
 // Client-VAD (lokale Lautstaerke-Messung, entscheidet Sleep/Wake).
 // AudioContext + AnalyserNode haengen am Mic-Stream und laufen DAUERHAFT —
 // auch im Standby, damit der erste Voice-Spike die Session wecken kann.
@@ -658,6 +664,7 @@ async function enterStandby() {
   clearTimeout(voiceBusyTimeout);
   voiceBusy = false;
   responsePendingCount = 0;            // Server-Session ist weg, alte Pending-Counts obsolet
+  pendingResponseCreatePayload = null; // alte Queue im neuen Server-Session kontext obsolet
   lastSessionModalities = null;
 
   waveEl.classList.remove("active");
@@ -688,6 +695,18 @@ async function wakeFromStandby() {
     dc = null; pc = null;
     sessionState = "standby";
   }
+}
+
+// Queued response.create sofort feuern, falls der Server wieder frei ist.
+// Wird aus handleFunctionCall (setzt den Payload) + response.done-Handler
+// (Count geht auf 0) aufgerufen.
+function maybeFlushPendingResponse() {
+  if (!pendingResponseCreatePayload) return;
+  if (responsePendingCount > 0) return;
+  if (!dc || dc.readyState !== "open") { pendingResponseCreatePayload = null; return; }
+  const rp = pendingResponseCreatePayload;
+  pendingResponseCreatePayload = null;
+  dcSend({ type: "response.create", response: rp });
 }
 
 // ── Audio-Stream-Acquire (Mic ODER Tab/System-Audio) ────
@@ -983,8 +1002,11 @@ function onDataChannelMessage(e) {
       // noch weiterlaufen (z.B. Text-Nachlauf). Nicht dekrementieren.
       if (msg.type === "response.done" || msg.type === "response.cancelled") {
         responsePendingCount = Math.max(0, responsePendingCount - 1);
+        // Queue flushen: wenn wir nach web_search eine Folge-Response geplant
+        // hatten und der Server gerade frei wurde, jetzt feuern.
+        maybeFlushPendingResponse();
       }
-      // Silence-Clock reset — User hat nach Sophies Antwort volle 6s Grace-Period
+      // Silence-Clock reset — User hat nach Sophies Antwort volle 12s Grace-Period
       // fuer Follow-up, bevor Standby triggert.
       lastVoiceAt = Date.now();
       // Antwort-Audio fertig -> 300ms Tail dann Mic wieder auf
@@ -1077,11 +1099,12 @@ async function handleFunctionCall(msg) {
     // Fakt vorhanden: Sophie soll ihn jetzt sprechen. Per-Response-Override
     // tool_choice=none entzieht ihr die Tools, damit sie einen Message-Output
     // erzeugt (sonst wuerde sie erneut web_search oder stay_silent callen).
+    // Queue statt direkt: Server lehnt response.create mit
+    // "conversation_already_has_active_response" ab, wenn die Tool-Call-Response
+    // noch nicht als done gemeldet wurde.
     allowNextMessageResponse = true;
-    dcSend({
-      type: "response.create",
-      response: { tool_choice: "none" },
-    });
+    pendingResponseCreatePayload = { tool_choice: "none" };
+    maybeFlushPendingResponse();
   } catch (e) {
     console.warn("[xi] research tool call failed", e?.message);
     placeholderEl?.remove();
@@ -1212,6 +1235,7 @@ async function stopSession(silent = false, byLimit = false) {
   teardownClientVAD();
   voiceBusy = false;
   responsePendingCount = 0;
+  pendingResponseCreatePayload = null;
   currentAssistantText = "";
   lastSessionModalities = null;
   initialRemainingTokens = null;
