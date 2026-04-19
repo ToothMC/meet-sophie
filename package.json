@@ -2,7 +2,11 @@
   "name": "meet-sophie",
   "private": true,
   "scripts": {
-    "build": "node scripts/build-blog.mjs && node scripts/strip-dev-routes.mjs"
+    "build": "node scripts/build-blog.mjs && node scripts/strip-dev-routes.mjs",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "check:rpcs": "node scripts/check-rpcs.mjs",
+    "check": "npm run check:syntax && npm run check:rpcs",
+    "test": "node --test tests/smoke/*.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",
