@@ -889,6 +889,8 @@ async function handleFunctionCall(msg) {
     let payload = { text: "", source: null };
     if (res.ok) payload = await res.json();
 
+    const factText = String(payload.text || "").trim();
+
     // Tool-Ergebnis zurueck an Sophie
     dcSend({
       type: "conversation.item.create",
@@ -896,20 +898,31 @@ async function handleFunctionCall(msg) {
         type: "function_call_output",
         call_id: msg.call_id,
         output: JSON.stringify({
-          text: String(payload.text || "").slice(0, 400) ||
-                (lang === "en" ? "No facts found." : "Keine Fakten gefunden."),
+          text: factText.slice(0, 400),
           source: payload.source || null,
         }),
       },
     });
 
-    // Sophie soll jetzt mit dem Tool-Ergebnis antworten — message-Output erlaubt.
+    if (!factText) {
+      // Keine Fakten gefunden → Sophie bleibt still. Kein response.create,
+      // sonst muesste sie mit tool_choice=required wieder ein Tool aufrufen
+      // oder (tool_choice=none) die Leere beklagen.
+      return;
+    }
+
+    // Fakt vorhanden: Sophie soll ihn jetzt sprechen. Per-Response-Override
+    // tool_choice=none entzieht ihr die Tools, damit sie einen Message-Output
+    // erzeugt (sonst wuerde sie erneut web_search oder stay_silent callen).
     allowNextMessageResponse = true;
-    dcSend({ type: "response.create" });
+    dcSend({
+      type: "response.create",
+      response: { tool_choice: "none" },
+    });
   } catch (e) {
     console.warn("[xi] research tool call failed", e?.message);
     placeholderEl?.remove();
-    // Leeres Ergebnis zurueckgeben damit Sophie weiss: nichts gefunden
+    // Tool-Output leer zurueck, keine Folge-Response triggern (Sophie still).
     dcSend({
       type: "conversation.item.create",
       item: {
@@ -918,7 +931,6 @@ async function handleFunctionCall(msg) {
         output: JSON.stringify({ text: "", source: null }),
       },
     });
-    dcSend({ type: "response.create" });
   }
 }
 
