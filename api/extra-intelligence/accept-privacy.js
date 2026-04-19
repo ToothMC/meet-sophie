@@ -33,6 +33,24 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "extra_intelligence_not_available" });
     }
 
+    // Premium-Gate — xi-Funktion ist kostenpflichtig (plan="premium"). Ohne
+    // diesen Check koennte ein Free-User sich ACK-Eintraege schreiben und die
+    // Tabelle zumuellen (Session wuerde er trotzdem nicht bekommen, aber die
+    // Regel "Kein Free-Tier" gilt auch fuer Hilfs-Endpoints).
+    const { data: sub, error: subErr } = await supabase
+      .from("user_subscriptions")
+      .select("is_active, status, plan")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (subErr) {
+      console.warn("[xi accept-privacy] subscription lookup failed:", subErr.message);
+      return res.status(500).json({ error: "subscription_lookup_failed" });
+    }
+    const isPremium = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
+    if (!isPremium || String(sub?.plan || "").toLowerCase() !== "premium") {
+      return res.status(402).json({ error: "extra_intelligence_requires_premium" });
+    }
+
     const rawVersion = String(req.body?.version || CURRENT_XI_PRIVACY_VERSION).trim();
     if (rawVersion !== CURRENT_XI_PRIVACY_VERSION) {
       return res.status(409).json({
