@@ -4623,12 +4623,14 @@ function renderTimer(){
 
 // Live-Balken: plan_left = remainingSeconds / secPerToken (serverseitige Formel).
 // Zeigt Rest-Guthaben vs Plan-Cap in Gruen/Gelb/Rot je Prozent.
+// ceil statt floor, damit der Balken nicht bei jeder Sekunde um 1 runterzaehlt
+// — soll nur in vollen secPerToken-Intervallen (3s Normal / 7.5s Eco) springen.
 function renderBalanceBar(){
   const wrap = document.getElementById("balanceWrap");
   if (!wrap) return;
   if (planTotalTokens <= 0 || remainingSeconds <= 0) { wrap.style.display = "none"; return; }
   const secPerToken = window._ecoMode ? 7.5 : 3;
-  const planLeft = Math.max(0, Math.floor(remainingSeconds / secPerToken));
+  const planLeft = Math.max(0, Math.ceil(remainingSeconds / secPerToken));
   const pct = Math.max(0, Math.min(1, planLeft / planTotalTokens));
   wrap.style.display = "block";
   const valEl = document.getElementById("balanceValLabel");

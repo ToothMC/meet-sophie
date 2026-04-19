@@ -974,8 +974,10 @@ function appendChatMessage(text, opts = {}) {
 // ── Live-Display (Dauer + Sophie-Tokens + Trigger) ───────
 function sophieTokensUsedNow() {
   const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
-  // Rate kommt vom Server (data.eco_mode) — gleich wie Server-Abrechnung.
-  return Math.ceil(sec / secPerToken);
+  // Fuer die Anzeige: floor, damit der Balken nicht sofort nach 1 Sek
+  // runterzaehlt. Tatsaechliche Abrechnung in stopSession nutzt ceil
+  // (kein Gratis-Abrunden am Session-Ende).
+  return Math.floor(sec / secPerToken);
 }
 
 function formatMMSS(sec) {
