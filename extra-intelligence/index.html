@@ -334,12 +334,48 @@ if (!hasDisplayMediaAudio || isIOSLike) {
 }
 applySourceMode();
 
-srcToggle.addEventListener("click", (e) => {
+srcToggle.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-src]");
   if (!btn || btn.disabled) return;
-  audioSource = btn.dataset.src;
+  const newSource = btn.dataset.src;
+  if (newSource === audioSource) return;
+
+  const oldSource = audioSource;
+  audioSource = newSource;
   localStorage.setItem(SRC_KEY, audioSource);
   applySourceMode();
+
+  // Ausserhalb einer Session reicht die State-Aenderung.
+  if (!running || !pc) return;
+
+  // Waehrend Session: echten Audio-Track live tauschen, sonst hoert Sophie
+  // weiter die alte Quelle (z.B. Tab), egal was der Toggle anzeigt.
+  try {
+    const newStream = await acquireAudioStream();
+    const newTrack = newStream.getAudioTracks()[0];
+    if (!newTrack) throw new Error("kein Audio-Track im neuen Stream");
+
+    const sender = pc.getSenders().find(s => s.track?.kind === "audio");
+    if (!sender) throw new Error("kein Audio-Sender auf der PeerConnection");
+
+    await sender.replaceTrack(newTrack);
+
+    // Alten Stream aufraeumen und Referenzen aktualisieren.
+    try { stream?.getTracks().forEach(t => t.stop()); } catch {}
+    stream = newStream;
+
+    // Mic-Mute-Zustand nach Source-Wechsel neutralisieren.
+    voiceBusy = false;
+    clearTimeout(voiceBusyTimeout);
+    setMicMuted(false);
+    errorText.textContent = "";
+  } catch (err) {
+    console.warn("[xi] source switch failed:", err?.message || err);
+    audioSource = oldSource;
+    localStorage.setItem(SRC_KEY, audioSource);
+    applySourceMode();
+    errorText.textContent = "Quellen-Wechsel fehlgeschlagen: " + (err?.message || "Zugriff verweigert");
+  }
 });
 
 function applySourceMode() {
