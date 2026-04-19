@@ -56,6 +56,15 @@
     .status-row .warn { color: #ffb84d; }
     .status-row .danger { color: var(--danger); }
 
+    /* Plan-Balance Bar: zeigt Gesamtkontingent live waehrend der Session. */
+    .balance-wrap { width: 100%; max-width: 360px; margin: 0 auto; }
+    .balance-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+    .balance-label .val { color: var(--fg); font-weight: 600; }
+    .balance-track { height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+    .balance-fill { height: 100%; width: 100%; background: var(--ok); transition: width .4s linear, background .3s; }
+    .balance-fill.warn { background: #ffb84d; }
+    .balance-fill.danger { background: var(--danger); }
+
     /* Toggles (Audio-Quelle + Ausgabe) */
     .toggle-group { margin-bottom: 14px; }
     .toggle-group:last-of-type { margin-bottom: 18px; }
@@ -143,6 +152,13 @@
         <span>🪙 <span class="val" id="tokensUsedLabel">0</span><span class="muted-tokens" id="tokensRemainingLabel"></span></span>
         <span>💬 <span class="val" id="triggerCount">0</span></span>
       </div>
+      <div class="balance-wrap" id="balanceWrap" style="display:none">
+        <div class="balance-label">
+          <span id="balanceLeftLabel">Guthaben</span>
+          <span><span class="val" id="balanceValLabel">0</span> / <span id="balanceMaxLabel">0</span></span>
+        </div>
+        <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
+      </div>
       <div class="chat-log" id="chatLog"></div>
       <button class="danger" id="stopBtn">Stoppen</button>
     </div>
@@ -202,6 +218,11 @@ let triggerCount = 0;
 let initialRemainingTokens = null;
 let secPerToken = 3;             // default Normal, wird nach /api/session gesetzt
 let tickerTimer = null;
+
+// Plan-Balance (fuer den Live-Balken): wie viele Tokens dem User pro Abo
+// maximal zustehen — bei Topups ggf. mehr. Kommt aus /api/session data.plan.
+const PLAN_TOKEN_CAPS = { premium: 2000, plus: 800, start: 300, starter: 300 };
+let planTotalTokens = 0;         // Kapazitaet fuer den Balken (0 = Bar versteckt)
 
 // Voice-Busy-Lock: waehrend Sophie spricht Mic stummschalten,
 // damit Server-VAD sie nicht unterbricht (bleibt wie im Pipeline-Mode).
@@ -424,6 +445,10 @@ async function startSession() {
     }
     // XI-1: Billing-Rate uebernehmen, damit Client- und Server-Rechnung identisch sind.
     secPerToken = data.eco_mode ? 7.5 : 3;
+    // Plan-Cap fuer den Balance-Balken — bei Topups mindestens das, was der User tatsaechlich hat.
+    const planKey = String(data.plan || "").toLowerCase();
+    const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
+    planTotalTokens = Math.max(planCap, data.remaining_tokens || 0);
 
     // WebRTC setup
     pc = new RTCPeerConnection();
@@ -954,8 +979,8 @@ function appendChatMessage(text, opts = {}) {
 // ── Live-Display (Dauer + Sophie-Tokens + Trigger) ───────
 function sophieTokensUsedNow() {
   const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
-  // 1 Sophie-Token = 6 Sek Realtime-Session (wie im Talk-Modus abgerechnet)
-  return Math.ceil(sec / 6);
+  // Rate kommt vom Server (data.eco_mode) — gleich wie Server-Abrechnung.
+  return Math.ceil(sec / secPerToken);
 }
 
 function formatMMSS(sec) {
@@ -977,6 +1002,23 @@ function updateTokenDisplay() {
     tokensRemainingLabel.className = "muted-tokens" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
   } else {
     tokensRemainingLabel.textContent = "";
+  }
+
+  // Plan-Balance-Balken live aktualisieren.
+  if (planTotalTokens > 0 && initialRemainingTokens != null) {
+    const planLeft = Math.max(0, initialRemainingTokens - used);
+    const pct = Math.max(0, Math.min(1, planLeft / planTotalTokens));
+    const balanceWrap = document.getElementById("balanceWrap");
+    const balanceFill = document.getElementById("balanceFill");
+    const balanceVal = document.getElementById("balanceValLabel");
+    const balanceMax = document.getElementById("balanceMaxLabel");
+    if (balanceWrap) balanceWrap.style.display = "block";
+    if (balanceVal) balanceVal.textContent = String(planLeft);
+    if (balanceMax) balanceMax.textContent = String(planTotalTokens);
+    if (balanceFill) {
+      balanceFill.style.width = (pct * 100).toFixed(1) + "%";
+      balanceFill.className = "balance-fill" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+    }
   }
 }
 
