@@ -592,6 +592,9 @@ async function buildRealtimeConnection(data) {
 function setupClientVAD(mediaStream) {
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS Safari startet den Context haeufig "suspended" auch nach User-Gesture —
+    // wir muessen explizit resumen, sonst liefert der Analyser nur Nullen.
+    audioContext.resume().catch(() => {});
     const src = audioContext.createMediaStreamSource(mediaStream);
     analyserNode = audioContext.createAnalyser();
     analyserNode.fftSize = 1024;
@@ -613,6 +616,12 @@ function teardownClientVAD() {
 
 function onVadTick() {
   if (!analyserNode) return;
+  // iOS Safari suspended den AudioContext nach pc.close() (und allgemein bei
+  // Idle) gerne auto. Solange suspended liefert der Analyser nur Nullen und
+  // der Wake triggert nie -> Session bleibt fuer immer in standby stecken.
+  if (audioContext && audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
   analyserNode.getFloatTimeDomainData(analyserBuf);
   let sumSq = 0;
   for (let i = 0; i < analyserBuf.length; i++) {
