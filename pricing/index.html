@@ -72,6 +72,7 @@ body{
 .plan-price{font-size:26px;font-weight:800;line-height:1;}
 .plan-per{font-size:10px;color:#a09080;margin-top:2px;}
 .plan-tokens{font-size:11px;color:#7a6a5a;margin-top:8px;font-weight:600;}
+.plan-feature{font-size:10px;color:#4f46e5;margin-top:4px;font-weight:700;letter-spacing:.02em;}
 .plan-spacer{flex:1;}
 
 /* All plan buttons look the same */
@@ -169,6 +170,7 @@ body{
       <div class="plan-price">&euro;39,90</div>
       <div class="plan-per" id="tPremiumPer"></div>
       <div class="plan-tokens">2.000 Tokens</div>
+      <div class="plan-feature" id="tPremiumFeature">✓ +Intelligence</div>
       <div class="plan-spacer"></div>
       <button class="plan-btn" id="btnPremium" disabled></button>
     </div>
@@ -219,6 +221,7 @@ const L={
     startTrial:"1. Monat gratis · jederzeit kündbar",
     bestStar:"★ Beste Wahl",
     startPer:"/ Monat",plusPer:"/ Monat",premiumPer:"/ Monat",
+    premiumFeature:"✓ +Intelligence (Live-Recherche)",
     selectPlan:"Plan wählen",
     topupLabel:"Ohne Abo · nutzen wann du willst",tuBtn:"Auftanken",
     currentBadge:"Dein Plan",
@@ -234,6 +237,7 @@ const L={
     startTrial:"1st month free · cancel anytime",
     bestStar:"★ Best Value",
     startPer:"/ month",plusPer:"/ month",premiumPer:"/ month",
+    premiumFeature:"✓ +Intelligence (live research)",
     selectPlan:"Select Plan",
     topupLabel:"No subscription · use whenever you want",tuBtn:"Refill",
     currentBadge:"Your plan",
@@ -291,6 +295,7 @@ function setLang(l){
   $("tStartPer").textContent=t.startPer;
   $("tPlusPer").textContent=t.plusPer;
   $("tPremiumPer").textContent=t.premiumPer;
+  $("tPremiumFeature").textContent=t.premiumFeature;
   // All plan buttons say the same thing
   btnStart.textContent=t.selectPlan;
   btnPlus.textContent=t.selectPlan;

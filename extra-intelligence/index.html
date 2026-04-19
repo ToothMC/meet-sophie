@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Extra Intelligence — Sophie</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07080c;
+      --fg: #eef0f6;
+      --muted: #8a8f9c;
+      --accent: #6366f1;
+      --accent-soft: rgba(99, 102, 241, 0.18);
+      --danger: #ff6b6b;
+      --ok: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+    .topbar a, .topbar button { color: var(--muted); text-decoration: none; font-size: 14px; background: transparent; border: none; cursor: pointer; }
+    .topbar a:hover, .topbar button:hover { color: var(--fg); }
+
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; max-width: 560px; margin: 0 auto; width: 100%; }
+    h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    .badge { display: inline-block; padding: 4px 10px; font-size: 11px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+    p.lead { color: var(--muted); line-height: 1.6; margin: 0 0 28px; font-size: 15px; }
+
+    .wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 72px; margin: 24px 0 32px; opacity: 0.35; transition: opacity .3s; }
+    .wave.active { opacity: 1; }
+    .wave span { width: 4px; background: var(--accent); border-radius: 2px; animation: pulse 1.4s ease-in-out infinite; }
+    .wave span:nth-child(1) { height: 24%; animation-delay: 0s; }
+    .wave span:nth-child(2) { height: 55%; animation-delay: .15s; }
+    .wave span:nth-child(3) { height: 80%; animation-delay: .3s; }
+    .wave span:nth-child(4) { height: 100%; animation-delay: .45s; }
+    .wave span:nth-child(5) { height: 65%; animation-delay: .6s; }
+    .wave span:nth-child(6) { height: 40%; animation-delay: .75s; }
+    .wave span:nth-child(7) { height: 28%; animation-delay: .9s; }
+    @keyframes pulse { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+
+    button.primary, button.danger, button.ghost { font: inherit; cursor: pointer; border: none; border-radius: 999px; padding: 14px 28px; transition: transform .15s, background .2s; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    .primary { background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; min-width: 180px; }
+    .primary:hover:not(:disabled) { background: #8a63ff; }
+    .ghost { background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,.12); padding: 10px 22px; font-size: 14px; }
+    .danger { background: var(--danger); color: #fff; font-weight: 600; font-size: 15px; }
+
+    .status-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; margin: 20px 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .status-row .val { color: var(--fg); font-weight: 600; }
+    .status-row .muted-tokens { color: var(--muted); font-weight: 400; margin-left: 2px; }
+    .status-row .warn { color: #ffb84d; }
+    .status-row .danger { color: var(--danger); }
+
+    /* Plan-Balance Bar: zeigt Gesamtkontingent live waehrend der Session. */
+    .balance-wrap { width: 100%; max-width: 360px; margin: 0 auto; }
+    .balance-label { display: none; }
+    .balance-track { height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+    .balance-fill { height: 100%; width: 100%; background: var(--ok); transition: width .4s linear, background .3s; }
+    .balance-fill.warn { background: #ffb84d; }
+    .balance-fill.danger { background: var(--danger); }
+
+    /* Toggles (Audio-Quelle + Ausgabe) */
+    .toggle-group { margin-bottom: 14px; }
+    .toggle-group:last-of-type { margin-bottom: 18px; }
+    .toggle-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+    .out-toggle { display: inline-flex; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: 3px; gap: 2px; }
+    .out-toggle button { background: transparent; color: var(--muted); border: none; padding: 7px 14px; border-radius: 999px; font-size: 13px; cursor: pointer; transition: background .2s, color .2s; }
+    .out-toggle button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .out-toggle button:hover:not(.active):not(:disabled) { color: var(--fg); }
+    .out-toggle button:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* Chat-Log (replaces hint-box when text is involved) */
+    .chat-log { margin-top: 12px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); max-height: 280px; overflow-y: auto; display: none; flex-direction: column; gap: 8px; text-align: left; }
+    .chat-log.visible { display: flex; }
+    .chat-log:empty::before { content: "Noch keine Hinweise."; color: var(--muted); font-size: 13px; padding: 12px; display: block; text-align: center; }
+    .chat-msg { background: var(--accent-soft); color: var(--fg); padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.5; transition: opacity .2s, background .2s; }
+    .chat-msg.muted { background: rgba(255,255,255,.03); color: var(--muted); font-style: italic; }
+    .chat-msg .body { word-wrap: break-word; }
+    .chat-msg .ts { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+    .session-bar { display: none; flex-direction: column; gap: 16px; width: 100%; }
+    .session-bar.active { display: flex; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+    .modal-backdrop.visible { display: flex; }
+    .modal { background: #12141b; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 28px; max-width: 480px; width: 100%; text-align: left; }
+    .modal h2 { margin: 0 0 8px; font-size: 20px; }
+    .modal ul { margin: 12px 0; padding-left: 20px; color: var(--muted); line-height: 1.6; font-size: 14px; }
+    .modal li { margin-bottom: 6px; }
+    .modal .ack { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; color: var(--fg); font-size: 14px; }
+    .modal .ack input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+
+    .error-text { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 12px; }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 24px; }
+      main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/app">&lsaquo; Zurück</a>
+    <button id="logoutBtn">Logout</button>
+  </header>
+
+  <main>
+    <span class="badge">Premium · Native Mode</span>
+    <h1>Extra Intelligence</h1>
+    <p class="lead">
+      Sophie hört still mit und antwortet direkt per Realtime —
+      sie entscheidet selbst ob etwas recherche­würdig ist und nutzt
+      Web-Search als Tool. Keine Aufzeichnung, kein Transcript, kein Memory.
+    </p>
+
+    <div class="wave" id="wave" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="toggle-group">
+      <div class="toggle-label">Audio-Quelle</div>
+      <div class="out-toggle" id="srcToggle" role="tablist" aria-label="Audio-Quelle">
+        <button type="button" data-src="mic" class="active" role="tab">🎤 Mikrofon</button>
+        <button type="button" data-src="tab" role="tab" id="srcTabBtn">🖥 Tab / System</button>
+      </div>
+    </div>
+
+    <div class="toggle-group">
+      <div class="toggle-label">Ausgabe</div>
+      <div class="out-toggle" id="outToggle" role="tablist" aria-label="Ausgabe-Modus">
+        <button type="button" data-out="voice" role="tab">🔊 Voice</button>
+        <button type="button" data-out="text" role="tab">💬 Text</button>
+        <button type="button" data-out="both" class="active" role="tab">🔊💬 Voice + Text</button>
+      </div>
+    </div>
+
+    <div id="startPanel">
+      <button class="primary" id="startBtn">Jetzt starten</button>
+      <p class="error-text" id="errorText"></p>
+    </div>
+
+    <div class="session-bar" id="sessionBar">
+      <div class="balance-wrap" id="balanceWrap" style="display:none">
+        <div class="balance-label">
+          <span id="balanceLeftLabel">Guthaben</span>
+          <span><span class="val" id="balanceValLabel">0</span> / <span id="balanceMaxLabel">0</span></span>
+        </div>
+        <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
+      </div>
+      <div class="chat-log" id="chatLog"></div>
+      <button class="danger" id="stopBtn">Stoppen</button>
+    </div>
+  </main>
+
+  <audio id="audioEl" autoplay playsinline></audio>
+
+  <div class="modal-backdrop" id="privacyModal">
+    <div class="modal">
+      <h2>Privacy-Hinweis · Extra Intelligence</h2>
+      <p style="color:var(--muted); margin:0 0 10px;">Bevor es losgeht, kurz zum Verständnis:</p>
+      <ul>
+        <li>Sophie transkribiert das Audio live, um zuzuhören.</li>
+        <li>Quelle wählbar: Mikrofon oder Tab-/System-Audio (nur Desktop).</li>
+        <li>Für die Recherche werden kurze Ausschnitte (~15s) an OpenAI und Google/Gemini gesendet.</li>
+        <li><strong>Keine Speicherung:</strong> Kein Transcript, kein Report, kein Memory. Alles wird nach der Session verworfen.</li>
+        <li>Du kannst jederzeit stoppen.</li>
+      </ul>
+      <label class="ack">
+        <input type="checkbox" id="privacyAck" />
+        <span>Ich habe den Hinweis gelesen und stimme zu.</span>
+      </label>
+      <div class="modal-actions">
+        <button class="ghost" id="privacyCancel">Abbrechen</button>
+        <button class="primary" id="privacyContinue" disabled>Weiter</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { data: { session } } = await supabase.auth.getSession();
+if (!session?.user) { window.location.href = "/login"; }
+
+// ── State (Native Mode) ──────────────────────────────────
+// Kein Classifier-Loop. Kein Transcript-Buffer. Die OpenAI Realtime-Session
+// hoert selbst zu und entscheidet ob/wann sie spricht. Wenn sie recherchieren
+// muss, ruft sie das web_search Tool auf — wir bedienen das per Function-Call.
+let pc = null;
+let dc = null;
+let stream = null;
+let sessionStartedAt = 0;
+let running = false;
+let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";
+
+let triggerCount = 0;
+
+// Sophie-Tokens: Billing-Rate kommt vom Server (data.eco_mode).
+// Eco-Mode: 1 Token = 7.5s / Normal: 1 Token = 3s (gleich wie talk/).
+// secPerToken wird nach /api/session aus data.eco_mode gesetzt und fuer
+// das Server-Reporting via /api/user?action=usage verwendet.
+// Research-Kosten (gpt-4o-mini condense) sind vernachlaessigbar und separat.
+let initialRemainingTokens = null;
+let secPerToken = 3;             // default Normal, wird nach /api/session gesetzt
+let tickerTimer = null;
+
+// Plan-Balance (fuer den Live-Balken): wie viele Tokens dem User pro Abo
+// maximal zustehen — bei Topups ggf. mehr. Kommt aus /api/session data.plan.
+const PLAN_TOKEN_CAPS = { premium: 2000, plus: 800, start: 300, starter: 300 };
+let planTotalTokens = 0;         // Kapazitaet fuer den Balken (0 = Bar versteckt)
+
+// Voice-Busy-Lock: waehrend Sophie spricht Mic stummschalten,
+// damit Server-VAD sie nicht unterbricht (bleibt wie im Pipeline-Mode).
+let voiceBusy = false;
+let voiceBusyTimeout = null;
+
+// Meta-Output-Suppression: mit create_response:true triggert server_vad
+// bei jedem VAD-Ende eine Antwort. Sophie "gehorcht" dem Passive-Listening
+// -Prompt mit Meta-Saetzen wie "(Keine Ausgabe)". Wir canceln jede Response,
+// die nur ein message-Item enthaelt (kein Tool-Call) und nicht von uns
+// nach einem Tool-Ergebnis explizit angefordert wurde.
+let allowNextMessageResponse = false;       // Client hat gerade response.create nach Tool-Output geschickt
+let currentResponseAllowsMessage = false;   // am response.created aus allowNext... gezogen
+let currentResponseCancelled = false;
+let currentResponseHadToolCall = false;
+
+// Laufender Antwort-Transcript (fuer Chat-Log)
+let currentAssistantText = "";
+
+// ── DOM ──────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const startBtn       = $("startBtn");
+const stopBtn        = $("stopBtn");
+const startPanel     = $("startPanel");
+const sessionBar     = $("sessionBar");
+const waveEl         = $("wave");
+const triggerCountEl = $("triggerCount");
+const elapsedLabel   = $("elapsedLabel");
+const tokensUsedLabel      = $("tokensUsedLabel");
+const tokensRemainingLabel = $("tokensRemainingLabel");
+const chatLog        = $("chatLog");
+const outToggle      = $("outToggle");
+const srcToggle      = $("srcToggle");
+const srcTabBtn      = $("srcTabBtn");
+const errorText      = $("errorText");
+const audioEl        = $("audioEl");
+const logoutBtn      = $("logoutBtn");
+const privacyModal   = $("privacyModal");
+const privacyAck     = $("privacyAck");
+const privacyCancel  = $("privacyCancel");
+const privacyContinue = $("privacyContinue");
+
+// ── Output Mode Toggle ───────────────────────────────────
+// "voice" | "text" | "both" — persistiert in localStorage
+const OUT_KEY = "xi_output_mode";
+let outputMode = ["voice", "text", "both"].includes(localStorage.getItem(OUT_KEY))
+  ? localStorage.getItem(OUT_KEY) : "both";
+applyOutputMode();
+
+outToggle.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-out]");
+  if (!btn) return;
+  outputMode = btn.dataset.out;
+  localStorage.setItem(OUT_KEY, outputMode);
+  applyOutputMode();
+  // Native Mode: Modalities live an Sophie senden falls Session laeuft
+  syncModalitiesToSession();
+});
+
+function applyOutputMode() {
+  outToggle.querySelectorAll("button").forEach(b => {
+    b.classList.toggle("active", b.dataset.out === outputMode);
+  });
+  // Chat-Log ist sichtbar sobald Text-Ausgabe im Spiel ist
+  chatLog.classList.toggle("visible", outputMode !== "voice");
+}
+
+function outputModalities() {
+  if (outputMode === "text")  return ["text"];
+  if (outputMode === "voice") return ["audio", "text"];  // Audio fuer Sprechen, Text fuer Transcript
+  return ["audio", "text"];
+}
+
+// Cache der aktuell an Sophie gesendeten modalities — damit wir Aenderungen erkennen
+let lastSessionModalities = null;
+
+function syncModalitiesToSession() {
+  if (!running || !dc || dc.readyState !== "open") return;
+
+  const newMods = outputModalities();
+  const hadAudio = !!lastSessionModalities?.includes("audio");
+  const hasAudio = newMods.includes("audio");
+
+  // Wechsel weg von Audio waehrend Sophie gerade spricht -> sofort abbrechen
+  if (hadAudio && !hasAudio && voiceBusy) {
+    dcSend({ type: "response.cancel" });
+    // Audio-Element kurz stummschalten fuer sofortige User-Erfahrung
+    try {
+      audioEl.muted = true;
+      setTimeout(() => { audioEl.muted = false; }, 500);
+    } catch {}
+  }
+
+  dcSend({ type: "session.update", session: { modalities: newMods } });
+  lastSessionModalities = newMods;
+}
+
+// ── Audio-Quelle Toggle ──────────────────────────────────
+// "mic" | "tab" — Tab-Audio braucht getDisplayMedia (Desktop-Chrome/Edge)
+const SRC_KEY = "xi_audio_source";
+const hasDisplayMediaAudio = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+const isIOSLike = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+
+let audioSource = localStorage.getItem(SRC_KEY) === "tab" && hasDisplayMediaAudio && !isIOSLike
+  ? "tab" : "mic";
+
+// Tab-Audio Option deaktivieren wenn nicht unterstuetzt
+if (!hasDisplayMediaAudio || isIOSLike) {
+  srcTabBtn.disabled = true;
+  srcTabBtn.title = isIOSLike
+    ? "Auf iPhone/iPad nicht verfügbar — Safari erlaubt keinen Zugriff auf System-/Call-Audio."
+    : "Browser unterstützt getDisplayMedia nicht.";
+  audioSource = "mic";
+}
+applySourceMode();
+
+srcToggle.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-src]");
+  if (!btn || btn.disabled) return;
+  audioSource = btn.dataset.src;
+  localStorage.setItem(SRC_KEY, audioSource);
+  applySourceMode();
+});
+
+function applySourceMode() {
+  srcToggle.querySelectorAll("button").forEach(b => {
+    b.classList.toggle("active", b.dataset.src === audioSource);
+  });
+}
+
+// ── Privacy Opt-In ───────────────────────────────────────
+let privacyAccepted = false;
+privacyAck.addEventListener("change", () => { privacyContinue.disabled = !privacyAck.checked; });
+privacyCancel.addEventListener("click", () => {
+  privacyModal.classList.remove("visible");
+  privacyAck.checked = false;
+  privacyContinue.disabled = true;
+});
+privacyContinue.addEventListener("click", async () => {
+  // XI-2: Einwilligung PERSISTIEREN (nicht nur Header schicken). § 201 StGB /
+  // § 120 StGB brauchen nachweisbare Zustimmung.
+  privacyContinue.disabled = true;
+  errorText.textContent = "";
+  try {
+    const ackRes = await fetch("/api/extra-intelligence/accept-privacy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ version: "1" }),
+    });
+    if (!ackRes.ok) {
+      const err = await ackRes.json().catch(() => ({}));
+      errorText.textContent = "Einwilligung konnte nicht gespeichert werden (" + (err?.error || ackRes.status) + ").";
+      privacyContinue.disabled = false;
+      return;
+    }
+  } catch (e) {
+    errorText.textContent = "Einwilligung konnte nicht gespeichert werden: " + (e?.message || "Netzwerkfehler");
+    privacyContinue.disabled = false;
+    return;
+  }
+  privacyAccepted = true;
+  privacyModal.classList.remove("visible");
+  startSession();
+});
+
+startBtn.addEventListener("click", () => {
+  errorText.textContent = "";
+  if (!privacyAccepted) { privacyModal.classList.add("visible"); return; }
+  startSession();
+});
+stopBtn.addEventListener("click", () => stopSession(false));
+logoutBtn.addEventListener("click", async () => {
+  await stopSession(true);
+  await supabase.auth.signOut();
+  window.location.href = "/";
+});
+
+// ── Session Start ────────────────────────────────────────
+async function startSession() {
+  if (running) return;
+  errorText.textContent = "";
+  startBtn.disabled = true;
+
+  try {
+    const tokenRes = await fetch("/api/session", {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "x-sophie-session-mode": "extra_intelligence",
+        "x-sophie-xi-privacy-ack": "1",
+      },
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.json().catch(() => ({}));
+      if (tokenRes.status === 402)      errorText.textContent = "Extra Intelligence ist nur im Premium-Plan verfügbar.";
+      else if (tokenRes.status === 404) errorText.textContent = "Extra Intelligence ist aktuell nicht freigeschaltet.";
+      else if (tokenRes.status === 412) {
+        // Privacy-ACK fehlt in DB (z.B. Version veraltet oder Race) — Modal
+        // erneut anzeigen, damit der User frisch zustimmt.
+        privacyAccepted = false;
+        privacyAck.checked = false;
+        privacyContinue.disabled = true;
+        errorText.textContent = "Bitte Einwilligung erneut bestaetigen.";
+        privacyModal.classList.add("visible");
+      }
+      else errorText.textContent = err?.message || err?.error || "Start fehlgeschlagen.";
+      startBtn.disabled = false;
+      return;
+    }
+
+    const data = await tokenRes.json();
+    if (typeof data?.remaining_seconds === "number" && data.remaining_seconds <= 0) {
+      errorText.textContent = "Kein Guthaben mehr verfügbar.";
+      startBtn.disabled = false;
+      return;
+    }
+    // XI-1: xi laeuft IMMER im Eco-Modus (Server erzwingt das, siehe api/session.js).
+    // Defensiv trotzdem hart auf 7.5 setzen, falls data.eco_mode mal fehlt.
+    secPerToken = 7.5;
+    // Plan-Cap fuer den Balance-Balken — bei Topups mindestens das, was der User tatsaechlich hat.
+    const planKey = String(data.plan || "").toLowerCase();
+    const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
+    planTotalTokens = Math.max(planCap, data.remaining_tokens || 0);
+
+    // WebRTC setup
+    pc = new RTCPeerConnection();
+    stream = await acquireAudioStream();
+    stream.getAudioTracks().forEach(t => pc.addTrack(t, stream));
+    pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+
+    dc = pc.createDataChannel("oai-events");
+    dc.addEventListener("open", onDataChannelOpen);
+    dc.addEventListener("message", onDataChannelMessage);
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // xi-Modus laeuft immer auf dem mini-Modell — matcht das server-seitig
+    // erzeugte ephemere Session-Config (isEco=true fuer xi in api/session.js).
+    const sdpRes = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime-mini", {
+      method: "POST",
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${data.client_secret.value}`,
+        "Content-Type": "application/sdp",
+      },
+    });
+    if (!sdpRes.ok) {
+      const t = await sdpRes.text().catch(() => "");
+      throw new Error(`OpenAI SDP ${sdpRes.status}: ${t.slice(0, 200)}`);
+    }
+    const answer = { type: "answer", sdp: await sdpRes.text() };
+    await pc.setRemoteDescription(answer);
+
+    running = true;
+    sessionStartedAt = Date.now();
+    triggerCount = 0;
+    if (triggerCountEl) triggerCountEl.textContent = "0";
+    startPanel.style.display = "none";
+    sessionBar.classList.add("active");
+    waveEl.classList.add("active");
+
+    // Native Mode: kein Classifier-Loop noetig — Sophie hoert direkt via Realtime
+    startTokenCapPoll(data.remaining_seconds || 0, data.remaining_tokens || 0);
+  } catch (e) {
+    console.error("[xi] start failed", e);
+    errorText.textContent = "Start fehlgeschlagen: " + (e?.message || String(e));
+    await stopSession(true);
+    startBtn.disabled = false;
+  }
+}
+
+// ── Audio-Stream-Acquire (Mic ODER Tab/System-Audio) ────
+async function acquireAudioStream() {
+  if (audioSource === "tab") {
+    // getDisplayMedia braucht video:true in der Request (Chrome-Zwang),
+    // wir verwerfen den Video-Track sofort.
+    // Audio-Track bekommen wir nur wenn User "Audio teilen" angehakt hat.
+    let dispStream;
+    try {
+      dispStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl:  false,
+        },
+      });
+    } catch (e) {
+      throw new Error("Tab-Audio-Freigabe abgebrochen oder nicht unterstützt.");
+    }
+
+    // Video-Track sofort stoppen — wir brauchen ihn nicht
+    dispStream.getVideoTracks().forEach(t => { try { t.stop(); } catch {} });
+
+    const audioTracks = dispStream.getAudioTracks();
+    if (!audioTracks.length) {
+      // User hat "Audio teilen" nicht angehakt — Stream hat kein Audio
+      throw new Error(
+        'Kein Audio erhalten. Im Browser-Dialog die Checkbox "Audio teilen" (oder "Share tab audio") aktivieren.'
+      );
+    }
+
+    // Wenn User via Browser-Banner "Freigabe beenden" klickt -> Session sauber beenden
+    audioTracks[0].addEventListener("ended", () => {
+      if (running) stopSession(false);
+    });
+
+    return dispStream;
+  }
+
+  // Mikrofon: Browser-Filter AUS fuer Multi-Speaker-Hoerfaehigkeit
+  return await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl:  false,
+    },
+  });
+}
+
+function onDataChannelOpen() {
+  // Native Mode: Sophie antwortet autonom (create_response: true),
+  // entscheidet selbst wann sie spricht, nutzt web_search Tool bei Bedarf.
+  lastSessionModalities = outputModalities();
+  dcSend({
+    type: "session.update",
+    session: {
+      instructions: buildNativeSystemPrompt(lang),
+      modalities: lastSessionModalities,
+      voice: "alloy",
+      input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
+      turn_detection: {
+        type: "server_vad",
+        threshold: 0.5,              // etwas strenger: VAD soll nicht auf jedes Raeuspern triggern
+        silence_duration_ms: 700,    // laenger warten bis Utterance als fertig gilt
+        create_response: true,       // AUTONOM: Sophie entscheidet selbst
+        interrupt_response: false,   // sie unterbricht sich nicht selbst
+      },
+      tools: [
+        {
+          type: "function",
+          name: "web_search",
+          description: "Search the web for a single factual fact. Use ONLY for clear factual questions about a name, book, film, place, date, or number. Do NOT use for opinions, smalltalk, or personal topics.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "The search query — the entity or fact to look up. No quotes, no question marks.",
+              },
+            },
+            required: ["query"],
+          },
+        },
+        {
+          type: "function",
+          name: "stay_silent",
+          description: "Default action. Call this for everything that is NOT a clear factual question: smalltalk, opinions, decisions, personal topics, reflections, already-answered questions, or anything you are not 100% sure warrants a fact lookup. Calling this produces zero output — no speech, no text.",
+          parameters: {
+            type: "object",
+            properties: {
+              reason: {
+                type: "string",
+                description: "One-word category: smalltalk | opinion | personal | unsure | already_said | other",
+              },
+            },
+            required: ["reason"],
+          },
+        },
+      ],
+      // tool_choice "required" zwingt Sophie zu einem Tool-Call pro Response.
+      // Damit ist kein freier Text/Audio-Output mehr moeglich — "(Keine Ausgabe)"
+      // und Konsorten koennen gar nicht erst entstehen.
+      tool_choice: "required",
+    },
+  });
+}
+
+// ── System-Prompt fuer Native Mode ───────────────────────
+function buildNativeSystemPrompt(language) {
+  const isEN = language === "en";
+  if (isEN) {
+    return `You are Sophie in Extra Intelligence mode. You silently observe a conversation you are NOT part of.
+
+═══ CRITICAL OUTPUT PROTOCOL ═══
+
+There are exactly TWO allowed output patterns. Nothing else exists.
+
+You have exactly TWO tools, and tool_choice is REQUIRED — every response MUST call one of them. You cannot produce any free-form audio or text.
+
+PATTERN A (FACT — call web_search):
+  1. Call web_search(query) — silently, no speech before the tool call
+  2. Receive tool result
+  3. Speak ONE sentence with the fact. Under 15 words. Telegraph style.
+  4. Stop.
+
+PATTERN B (SILENCE — call stay_silent):
+  Call stay_silent(reason). No speech, no text. This is the default.
+
+═══ FORBIDDEN — NEVER OUTPUT THESE ═══
+
+✗ "I'll look that up"
+✗ "Let me check"
+✗ "One moment"
+✗ "Interesting question"
+✗ "Good point"
+✗ "Hmm" / "ok" / "mm"
+✗ Any acknowledgment, narration, filler, or meta-comment
+✗ Any description of what you are doing
+✗ Repeating or paraphrasing the question
+
+If you catch yourself about to say any of the above: stop, erase, produce nothing.
+
+═══ WHEN TO USE PATTERN A (FACT) ═══
+
+Only if ALL three conditions hold:
+- A clear factual question was asked (Who/What/When/Where/How much) — OR —
+  a proper name / unfamiliar reference was mentioned
+- The fact fits in one short sentence
+- Listeners would genuinely not know this
+
+═══ WHEN TO USE PATTERN B (SILENCE) ═══
+
+- Smalltalk, weather, mood
+- Personal topics (relationships, health, finance)
+- Opinions, plans, decisions
+- Already answered in the conversation
+- Anything you are not 100% sure about
+- ANY case where you would need to use forbidden filler words to respond
+
+═══ EXAMPLES ═══
+
+SPEAK (PATTERN A — call tool, then say one fact sentence):
+  "Who wrote The Swarm?" → [web_search "Der Schwarm author"] → say: "Frank Schätzing, 2004, eco-thriller."
+  "…like in The Eagle Has Landed…" → [web_search "The Eagle Has Landed film"] → say: "1976 WWII thriller with Michael Caine."
+
+STAY SILENT (PATTERN B — call stay_silent, produce no audio/text):
+  "Nice weather today." → stay_silent(reason="smalltalk")
+  "I need to think about this." → stay_silent(reason="personal")
+  "Can you help me decide?" → stay_silent(reason="opinion")
+
+Never produce free audio or text. Every response is one of the two tool calls. stay_silent is the default.
+
+ONE violation rule: if you produce any forbidden phrase, the entire response is wrong. Better to be silent than to narrate.`;
+  }
+  return `Du bist Sophie im Extra-Intelligence-Modus. Du beobachtest still ein Gespraech, an dem du NICHT teilnimmst.
+
+═══ AUSGABE-PROTOKOLL (KRITISCH) ═══
+
+Es gibt exakt ZWEI erlaubte Ausgabemuster. Mehr nicht.
+
+Du hast genau ZWEI Tools, und tool_choice ist REQUIRED — jede Response MUSS eines der Tools aufrufen. Freier Audio- oder Text-Output ist nicht moeglich.
+
+MUSTER A (FAKT — web_search):
+  1. Rufe web_search(query) auf — ohne vorher zu sprechen, keine Ankuendigung
+  2. Warte auf das Tool-Ergebnis
+  3. Sprich EINEN Satz mit dem Fakt. Unter 15 Woertern. Telegramm-Stil.
+  4. Stop.
+
+MUSTER B (STILLE — stay_silent):
+  Rufe stay_silent(reason) auf. Keine Rede, kein Text. Das ist der Default.
+
+═══ VERBOTEN — NIEMALS AUSGEBEN ═══
+
+✗ "Ich schaue das kurz nach"
+✗ "Moment mal"
+✗ "Lass mich nachsehen"
+✗ "Einen Augenblick"
+✗ "Interessante Frage"
+✗ "Guter Punkt"
+✗ "Hmm" / "ok" / "mh" / "aha"
+✗ Jede Bestaetigung, Erzaehlung, Fuellsel oder Meta-Kommentar
+✗ Jede Beschreibung was du gerade tust
+✗ Wiederholung oder Paraphrase der Frage
+
+Wenn du dich dabei ertappst einen dieser Saetze zu beginnen: stopp, loeschen, produziere nichts.
+
+═══ WANN MUSTER A (FAKT) ═══
+
+Nur wenn ALLE drei Bedingungen gelten:
+- Eine klare Faktenfrage wurde gestellt (Wer/Was/Wann/Wo/Wie viel) — ODER —
+  ein Eigenname / unvertrauter Begriff wurde genannt
+- Der Fakt passt in einen kurzen Satz
+- Hoerer wuerden das tatsaechlich nicht wissen
+
+═══ WANN MUSTER B (STILLE) ═══
+
+- Smalltalk, Wetter, Stimmung
+- Persoenliche Themen (Beziehungen, Gesundheit, Finanzen)
+- Meinungen, Plaene, Entscheidungen
+- Bereits im Gespraech beantwortet
+- Allem wobei du dir nicht 100% sicher bist
+- JEDER Fall in dem du eines der verbotenen Fuell-Woerter brauchen wuerdest
+
+═══ BEISPIELE ═══
+
+SPRECHEN (MUSTER A — Tool rufen, dann einen Fakt-Satz sagen):
+  "Wer hat 'Der Schwarm' geschrieben?" → [web_search "Der Schwarm Autor"] → sagt: "Frank Schaetzing, 2004, Oeko-Thriller."
+  "...wie damals bei Kepler-22b..." → [web_search "Kepler-22b Exoplanet"] → sagt: "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."
+
+NICHT SPRECHEN (MUSTER B — stay_silent aufrufen, kein Audio/Text):
+  "Schoenes Wetter heute." → stay_silent(reason="smalltalk")
+  "Ich muss darueber nachdenken." → stay_silent(reason="personal")
+  "Kannst du mir helfen zu entscheiden?" → stay_silent(reason="opinion")
+
+Produziere NIE freien Audio- oder Text-Output. Jede Response ist einer der beiden Tool-Calls. stay_silent ist der Default.
+
+EINE-VIOLATION-REGEL: produzierst du auch nur eines der verbotenen Wörter, ist die ganze Antwort falsch. Lieber still sein als erzaehlen.`;
+}
+
+function dcSend(obj) {
+  if (!dc || dc.readyState !== "open") return;
+  try { dc.send(JSON.stringify(obj)); } catch (e) { console.warn("[xi] dc send failed", e); }
+}
+
+// ── Mic Mute (nur Mikro-Quelle; Tab-Audio braucht's nicht) ──
+function setMicMuted(muted) {
+  if (audioSource !== "mic") return;
+  if (!stream) return;
+  stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+}
+
+function unlockVoice() {
+  voiceBusy = false;
+  setMicMuted(false);
+}
+
+// ── DataChannel Handler (Native Mode) ────────────────────
+// Wir lauschen auf:
+// - response.created                         -> Sophie beginnt Antwort: Mic muten
+// - response.audio_transcript.delta/.done    -> Antwort-Text (Chat-Log)
+// - response.function_call_arguments.done    -> Tool-Call von Sophie -> web_search
+// - response.done / .output_audio.done       -> Antwort fertig: Mic wieder auf
+// - response.cancelled                       -> selten, auch unmuten
+function onDataChannelMessage(e) {
+  let msg;
+  try { msg = JSON.parse(e.data); } catch { return; }
+
+  switch (msg.type) {
+
+    case "response.created":
+      // NICHT sofort muten — Sophie koennte stillbleiben.
+      // Nur Arbeitsspeicher vorbereiten.
+      currentAssistantText = "";
+      currentResponseAllowsMessage = allowNextMessageResponse;
+      allowNextMessageResponse = false;
+      currentResponseCancelled = false;
+      currentResponseHadToolCall = false;
+      break;
+
+    case "response.output_item.added": {
+      // Entscheiden, ob diese Response ueberhaupt sprechen darf.
+      // function_call: immer erlaubt — Sophie greift zum Tool.
+      // message (kein Tool-Call) ohne vorherige response.create vom Client:
+      //   VAD-getriggerter Meta-Output → abbrechen, sonst wird "(Keine Ausgabe)"
+      //   oder aehnlicher Muell laut vorgelesen.
+      const itemType = msg.item?.type;
+      if (itemType === "function_call") {
+        currentResponseHadToolCall = true;
+      } else if (itemType === "message") {
+        if (!currentResponseAllowsMessage && !currentResponseHadToolCall) {
+          dcSend({ type: "response.cancel" });
+          currentResponseCancelled = true;
+        }
+      }
+      break;
+    }
+
+    case "response.audio.delta":
+    case "response.audio_transcript.delta":
+      if (currentResponseCancelled) break;
+      // ERSTES Audio-Stueck kommt -> Sophie spricht wirklich -> jetzt Mic muten
+      if (!voiceBusy) {
+        voiceBusy = true;
+        setMicMuted(true);
+        clearTimeout(voiceBusyTimeout);
+        voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
+      }
+      // Transcript-Stream fuer Chat-Log sammeln
+      if (msg.type === "response.audio_transcript.delta" && typeof msg.delta === "string") {
+        currentAssistantText += msg.delta;
+      }
+      break;
+
+    case "response.audio_transcript.done": {
+      if (currentResponseCancelled) { currentAssistantText = ""; break; }
+      const t = String(msg.transcript || currentAssistantText || "").trim();
+      if (t) {
+        triggerCount += 1;
+        if (triggerCountEl) triggerCountEl.textContent = String(triggerCount);
+        if (outputMode !== "voice") appendChatMessage(t);
+      }
+      currentAssistantText = "";
+      break;
+    }
+
+    case "response.text.delta":
+      if (currentResponseCancelled) break;
+      // Text-Only-Pfad (falls modalities=["text"] genutzt wird)
+      if (typeof msg.delta === "string") currentAssistantText += msg.delta;
+      break;
+
+    case "response.text.done": {
+      if (currentResponseCancelled) { currentAssistantText = ""; break; }
+      const t = String(msg.text || currentAssistantText || "").trim();
+      if (t && outputMode !== "voice") {
+        triggerCount += 1;
+        if (triggerCountEl) triggerCountEl.textContent = String(triggerCount);
+        appendChatMessage(t);
+      }
+      currentAssistantText = "";
+      break;
+    }
+
+    case "response.function_call_arguments.done":
+      // Sophie moechte web_search aufrufen
+      handleFunctionCall(msg).catch(err => console.warn("[xi] tool call failed", err));
+      break;
+
+    case "response.done":
+    case "response.output_audio.done":
+    case "response.audio.done":
+    case "response.cancelled":
+      // Antwort fertig -> 300ms Tail dann Mic wieder auf
+      clearTimeout(voiceBusyTimeout);
+      voiceBusyTimeout = setTimeout(unlockVoice, 300);
+
+      break;
+
+    case "error":
+      console.warn("[xi] realtime error", msg.error);
+      break;
+  }
+}
+
+// ── Tool-Call Handler ────────────────────────────────────
+// Zwei moegliche Tool-Calls:
+//   web_search  → Research + Sophie spricht den Fakt (response.create triggern)
+//   stay_silent → No-Op: Tool-Output zurueckgeben, aber KEIN response.create,
+//                 damit keine Folge-Antwort angefordert wird. Naechster VAD-End
+//                 triggert autonom die naechste Entscheidung.
+async function handleFunctionCall(msg) {
+  if (msg.name === "stay_silent") {
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: msg.call_id,
+        output: JSON.stringify({ ok: true }),
+      },
+    });
+    // KEIN response.create — Sophie soll still bleiben.
+    return;
+  }
+  if (msg.name !== "web_search") {
+    console.warn("[xi] unknown tool call", msg.name);
+    return;
+  }
+
+  let args = {};
+  try { args = JSON.parse(msg.arguments || "{}"); } catch {}
+  const query = String(args.query || "").trim();
+  if (!query) return;
+
+  // Placeholder im Chat-Log (nur wenn Text-Ausgabe aktiv)
+  let placeholderEl = null;
+  if (outputMode !== "voice") {
+    placeholderEl = appendChatMessage(
+      lang === "en" ? `Looking up: ${query}…` : `Recherchiere: ${query}…`,
+      { muted: true }
+    );
+  }
+
+  try {
+    const res = await fetch("/api/extra-intelligence/research", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      // action=question_factual ist fuer den Shortcut-Prompt auf Backend-Seite ok
+      body: JSON.stringify({ action: "question_factual", query, language: lang }),
+    });
+
+    placeholderEl?.remove();
+
+    let payload = { text: "", source: null };
+    if (res.ok) payload = await res.json();
+
+    const factText = String(payload.text || "").trim();
+
+    // Tool-Ergebnis zurueck an Sophie
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: msg.call_id,
+        output: JSON.stringify({
+          text: factText.slice(0, 400),
+          source: payload.source || null,
+        }),
+      },
+    });
+
+    if (!factText) {
+      // Keine Fakten gefunden → Sophie bleibt still. Kein response.create,
+      // sonst muesste sie mit tool_choice=required wieder ein Tool aufrufen
+      // oder (tool_choice=none) die Leere beklagen.
+      return;
+    }
+
+    // Fakt vorhanden: Sophie soll ihn jetzt sprechen. Per-Response-Override
+    // tool_choice=none entzieht ihr die Tools, damit sie einen Message-Output
+    // erzeugt (sonst wuerde sie erneut web_search oder stay_silent callen).
+    allowNextMessageResponse = true;
+    dcSend({
+      type: "response.create",
+      response: { tool_choice: "none" },
+    });
+  } catch (e) {
+    console.warn("[xi] research tool call failed", e?.message);
+    placeholderEl?.remove();
+    // Tool-Output leer zurueck, keine Folge-Response triggern (Sophie still).
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: msg.call_id,
+        output: JSON.stringify({ text: "", source: null }),
+      },
+    });
+  }
+}
+
+function appendChatMessage(text, opts = {}) {
+  const msg = document.createElement("div");
+  msg.className = "chat-msg" + (opts.muted ? " muted" : "");
+  const body = document.createElement("div");
+  body.className = "body";
+  body.textContent = text;
+  const ts = document.createElement("span");
+  ts.className = "ts";
+  const now = new Date();
+  ts.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  msg.appendChild(body);
+  msg.appendChild(ts);
+  chatLog.appendChild(msg);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return msg;
+}
+
+// ── Live-Display (Dauer + Sophie-Tokens + Trigger) ───────
+function sophieTokensUsedNow() {
+  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  // Fuer die Anzeige: floor, damit der Balken nicht sofort nach 1 Sek
+  // runterzaehlt. Tatsaechliche Abrechnung in stopSession nutzt ceil
+  // (kein Gratis-Abrunden am Session-Ende).
+  return Math.floor(sec / secPerToken);
+}
+
+function formatMMSS(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function updateTokenDisplay() {
+  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  const used = sophieTokensUsedNow();
+  // Altes Status-Row-UI ist entfernt — Guards halten den Code lauffaehig,
+  // falls die Elemente nicht existieren.
+  if (elapsedLabel)    elapsedLabel.textContent = formatMMSS(sec);
+  if (tokensUsedLabel) tokensUsedLabel.textContent = String(used);
+
+  if (tokensRemainingLabel) {
+    if (initialRemainingTokens != null) {
+      const left = Math.max(0, initialRemainingTokens - used);
+      const pct = initialRemainingTokens > 0 ? left / initialRemainingTokens : 0;
+      tokensRemainingLabel.textContent = ` / ${left} frei`;
+      tokensRemainingLabel.className = "muted-tokens" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+    } else {
+      tokensRemainingLabel.textContent = "";
+    }
+  }
+
+  // Plan-Balance-Balken live aktualisieren.
+  if (planTotalTokens > 0 && initialRemainingTokens != null) {
+    const planLeft = Math.max(0, initialRemainingTokens - used);
+    const pct = Math.max(0, Math.min(1, planLeft / planTotalTokens));
+    const balanceWrap = document.getElementById("balanceWrap");
+    const balanceFill = document.getElementById("balanceFill");
+    const balanceVal = document.getElementById("balanceValLabel");
+    const balanceMax = document.getElementById("balanceMaxLabel");
+    if (balanceWrap) balanceWrap.style.display = "block";
+    if (balanceVal) balanceVal.textContent = String(planLeft);
+    if (balanceMax) balanceMax.textContent = String(planTotalTokens);
+    if (balanceFill) {
+      balanceFill.style.width = (pct * 100).toFixed(1) + "%";
+      balanceFill.className = "balance-fill" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+    }
+  }
+}
+
+// ── Token Cap Poll + Ticker ──────────────────────────────
+let tokenCapTimer = null;
+let initialRemainingSeconds = 0;
+function startTokenCapPoll(remainingSeconds, remainingTokens) {
+  initialRemainingSeconds = remainingSeconds;
+  initialRemainingTokens = remainingTokens > 0 ? remainingTokens : null;
+  updateTokenDisplay();
+
+  // Ticker: jede Sekunde Display aktualisieren, jede 30s Cap pruefen
+  tickerTimer = setInterval(() => {
+    updateTokenDisplay();
+    const sec = Math.floor((Date.now() - sessionStartedAt) / 1000);
+    if (initialRemainingSeconds > 0 && sec >= initialRemainingSeconds) {
+      stopSession(false, true);
+    }
+  }, 1000);
+}
+
+// ── Stop ─────────────────────────────────────────────────
+async function stopSession(silent = false, byLimit = false) {
+  if (tokenCapTimer)   { clearInterval(tokenCapTimer); tokenCapTimer = null; }
+  if (tickerTimer)     { clearInterval(tickerTimer); tickerTimer = null; }
+  if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
+  voiceBusy = false;
+  currentAssistantText = "";
+  lastSessionModalities = null;
+  initialRemainingTokens = null;
+  setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
+  running = false;
+  waveEl.classList.remove("active");
+  sessionBar.classList.remove("active");
+  startPanel.style.display = "";
+  startBtn.disabled = false;
+
+  try { dc?.close(); } catch {}
+  try { pc?.getSenders().forEach(s => { try { s.track?.stop(); } catch {} }); } catch {}
+  try { pc?.close(); } catch {}
+  try { stream?.getTracks().forEach(t => t.stop()); } catch {}
+  // XI-10: audioEl-Stream ausbinden, sonst haelt der Browser Referenz auf pc.
+  try { audioEl.srcObject = null; } catch {}
+  dc = null; pc = null; stream = null;
+
+  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  if (sec > 0) {
+    try {
+      const tokens = Math.ceil(sec / secPerToken);
+      await fetch("/api/user?action=usage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ tokens_used: tokens, source: "extra_intelligence" }),
+        keepalive: true,
+      });
+    } catch {}
+  }
+
+  chatLog.innerHTML = "";
+
+  if (byLimit && !silent) errorText.textContent = "Token-Limit erreicht — Session beendet.";
+  sessionStartedAt = 0;
+}
+
+window.addEventListener("beforeunload", () => { if (running) stopSession(true); });
+</script>
+</body>
+</html>

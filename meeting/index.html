@@ -398,6 +398,15 @@ body{
   letter-spacing:.06em;text-align:center;padding:10px 0;
   font-variant-numeric:tabular-nums;
 }
+
+/* Plan-Balance-Live-Balken — nur waehrend der live-Phase sichtbar,
+   zeigt Rest-Guthaben aus /api/user?action=balance. */
+.balance-wrap{margin:4px auto 10px;width:100%;max-width:360px;padding:0 12px;box-sizing:border-box;}
+.balance-label{display:none;}
+.balance-track{height:6px;background:#ede8e2;border-radius:3px;overflow:hidden;}
+.balance-fill{height:100%;width:100%;background:#22c55e;transition:width .4s linear,background .3s;}
+.balance-fill.warn{background:#f59e0b;}
+.balance-fill.danger{background:#ef4444;}
 </style>
 </head>
 <body>
@@ -478,6 +487,15 @@ body{
 
   <!-- Live Timer -->
   <div class="live-timer hidden" id="liveTimer"></div>
+
+  <!-- Plan-Balance-Balken (live-Phase) -->
+  <div class="balance-wrap hidden" id="balanceWrap">
+    <div class="balance-label">
+      <span id="balanceLeftLabel">Guthaben</span>
+      <span><span class="val" id="balanceValLabel">0</span> / <span id="balanceMaxLabel">0</span></span>
+    </div>
+    <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
+  </div>
 
   <!-- Input Bar -->
   <!-- Sophie status indicator -->
@@ -831,6 +849,10 @@ let chatMessages = []; // { role, content }
 let isLoading = false;
 let liveStartTime = null;
 let liveTimerInterval = null;
+
+// Plan-Balance (Live-Balken waehrend live-Phase):
+const PLAN_TOKEN_CAPS = { premium: 2000, plus: 800, start: 300, starter: 300 };
+let balancePollInterval = null;
 let sophieMuted = true; // Sophie starts muted (passive listener)
 let sophieVoicePc = null;     // WebRTC PeerConnection (same as Talk)
 let sophieVoiceStream = null; // Mic stream
@@ -1870,11 +1892,59 @@ function startLiveTimer() {
     const s = (elapsed % 60).toString().padStart(2, "0");
     liveTimerEl.textContent = `🔴 Aufnahme ${m}:${s}`;
   }, 1000);
+  startBalancePoll();
 }
 
 function stopLiveTimer() {
   clearInterval(liveTimerInterval);
   liveTimerEl.classList.add("hidden");
+  stopBalancePoll();
+}
+
+// Balance-Balken: bei live-Phase Start einmal fetchen + alle 30s refreshen.
+// Server ist einzige Source of Truth (meeting-Abrechnung ist phasenweise).
+function startBalancePoll() {
+  updateBalanceBar();
+  stopBalancePoll();
+  balancePollInterval = setInterval(updateBalanceBar, 30000);
+}
+
+function stopBalancePoll() {
+  if (balancePollInterval) { clearInterval(balancePollInterval); balancePollInterval = null; }
+  const wrap = document.getElementById("balanceWrap");
+  if (wrap) wrap.classList.add("hidden");
+}
+
+async function updateBalanceBar() {
+  const wrap = document.getElementById("balanceWrap");
+  if (!wrap) return;
+  try {
+    await refreshAccessToken();
+    if (!accessToken) return;
+    const res = await fetch("/api/user?action=balance", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const remaining = Number.isFinite(data.remaining_tokens) ? data.remaining_tokens : 0;
+    const planKey = String(data.plan || "").toLowerCase();
+    const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
+    const total = Math.max(planCap, remaining);
+    if (total <= 0) { wrap.classList.add("hidden"); return; }
+    const pct = Math.max(0, Math.min(1, remaining / total));
+    wrap.classList.remove("hidden");
+    const valEl = document.getElementById("balanceValLabel");
+    const maxEl = document.getElementById("balanceMaxLabel");
+    const fillEl = document.getElementById("balanceFill");
+    if (valEl) valEl.textContent = String(remaining);
+    if (maxEl) maxEl.textContent = String(total);
+    if (fillEl) {
+      fillEl.style.width = (pct * 100).toFixed(1) + "%";
+      fillEl.className = "balance-fill" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+    }
+  } catch (e) {
+    console.warn("[meeting-balance] poll failed:", e.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
