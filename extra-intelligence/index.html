@@ -538,22 +538,42 @@ function onDataChannelOpen() {
         create_response: true,       // AUTONOM: Sophie entscheidet selbst
         interrupt_response: false,   // sie unterbricht sich nicht selbst
       },
-      tools: [{
-        type: "function",
-        name: "web_search",
-        description: "Search the web for a single factual fact. Use BEFORE answering any question about a name, book, film, place, date, or number that you are not 100% sure about. Do NOT use for opinions, smalltalk, or personal topics.",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "The search query — the entity or fact to look up. No quotes, no question marks.",
+      tools: [
+        {
+          type: "function",
+          name: "web_search",
+          description: "Search the web for a single factual fact. Use ONLY for clear factual questions about a name, book, film, place, date, or number. Do NOT use for opinions, smalltalk, or personal topics.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "The search query — the entity or fact to look up. No quotes, no question marks.",
+              },
             },
+            required: ["query"],
           },
-          required: ["query"],
         },
-      }],
-      tool_choice: "auto",
+        {
+          type: "function",
+          name: "stay_silent",
+          description: "Default action. Call this for everything that is NOT a clear factual question: smalltalk, opinions, decisions, personal topics, reflections, already-answered questions, or anything you are not 100% sure warrants a fact lookup. Calling this produces zero output — no speech, no text.",
+          parameters: {
+            type: "object",
+            properties: {
+              reason: {
+                type: "string",
+                description: "One-word category: smalltalk | opinion | personal | unsure | already_said | other",
+              },
+            },
+            required: ["reason"],
+          },
+        },
+      ],
+      // tool_choice "required" zwingt Sophie zu einem Tool-Call pro Response.
+      // Damit ist kein freier Text/Audio-Output mehr moeglich — "(Keine Ausgabe)"
+      // und Konsorten koennen gar nicht erst entstehen.
+      tool_choice: "required",
     },
   });
 }
@@ -568,14 +588,16 @@ function buildNativeSystemPrompt(language) {
 
 There are exactly TWO allowed output patterns. Nothing else exists.
 
-PATTERN A (FACT):
+You have exactly TWO tools, and tool_choice is REQUIRED — every response MUST call one of them. You cannot produce any free-form audio or text.
+
+PATTERN A (FACT — call web_search):
   1. Call web_search(query) — silently, no speech before the tool call
   2. Receive tool result
   3. Speak ONE sentence with the fact. Under 15 words. Telegraph style.
   4. Stop.
 
-PATTERN B (SILENCE):
-  Produce zero tokens. Zero audio. Zero text. Do nothing.
+PATTERN B (SILENCE — call stay_silent):
+  Call stay_silent(reason). No speech, no text. This is the default.
 
 ═══ FORBIDDEN — NEVER OUTPUT THESE ═══
 
@@ -614,12 +636,12 @@ SPEAK (PATTERN A — call tool, then say one fact sentence):
   "Who wrote The Swarm?" → [web_search "Der Schwarm author"] → say: "Frank Schätzing, 2004, eco-thriller."
   "…like in The Eagle Has Landed…" → [web_search "The Eagle Has Landed film"] → say: "1976 WWII thriller with Michael Caine."
 
-STAY SILENT (PATTERN B — produce NOTHING: no tool call, no audio, no text, no transcript):
-  "Nice weather today." — smalltalk
-  "I need to think about this." — personal reflection
-  "Can you help me decide?" — opinion request
+STAY SILENT (PATTERN B — call stay_silent, produce no audio/text):
+  "Nice weather today." → stay_silent(reason="smalltalk")
+  "I need to think about this." → stay_silent(reason="personal")
+  "Can you help me decide?" → stay_silent(reason="opinion")
 
-Never emit the word "silence" or any description of what you're doing. Silence means zero output tokens.
+Never produce free audio or text. Every response is one of the two tool calls. stay_silent is the default.
 
 ONE violation rule: if you produce any forbidden phrase, the entire response is wrong. Better to be silent than to narrate.`;
   }
@@ -629,14 +651,16 @@ ONE violation rule: if you produce any forbidden phrase, the entire response is 
 
 Es gibt exakt ZWEI erlaubte Ausgabemuster. Mehr nicht.
 
-MUSTER A (FAKT):
+Du hast genau ZWEI Tools, und tool_choice ist REQUIRED — jede Response MUSS eines der Tools aufrufen. Freier Audio- oder Text-Output ist nicht moeglich.
+
+MUSTER A (FAKT — web_search):
   1. Rufe web_search(query) auf — ohne vorher zu sprechen, keine Ankuendigung
   2. Warte auf das Tool-Ergebnis
   3. Sprich EINEN Satz mit dem Fakt. Unter 15 Woertern. Telegramm-Stil.
   4. Stop.
 
-MUSTER B (STILLE):
-  Null Tokens. Null Audio. Null Text. Mach gar nichts.
+MUSTER B (STILLE — stay_silent):
+  Rufe stay_silent(reason) auf. Keine Rede, kein Text. Das ist der Default.
 
 ═══ VERBOTEN — NIEMALS AUSGEBEN ═══
 
@@ -676,12 +700,12 @@ SPRECHEN (MUSTER A — Tool rufen, dann einen Fakt-Satz sagen):
   "Wer hat 'Der Schwarm' geschrieben?" → [web_search "Der Schwarm Autor"] → sagt: "Frank Schaetzing, 2004, Oeko-Thriller."
   "...wie damals bei Kepler-22b..." → [web_search "Kepler-22b Exoplanet"] → sagt: "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."
 
-NICHT SPRECHEN (MUSTER B — produziere NICHTS: kein Tool-Call, kein Audio, kein Text, kein Transkript):
-  "Schoenes Wetter heute." — Smalltalk
-  "Ich muss darueber nachdenken." — persoenliche Reflexion
-  "Kannst du mir helfen zu entscheiden?" — Meinungs-Anfrage
+NICHT SPRECHEN (MUSTER B — stay_silent aufrufen, kein Audio/Text):
+  "Schoenes Wetter heute." → stay_silent(reason="smalltalk")
+  "Ich muss darueber nachdenken." → stay_silent(reason="personal")
+  "Kannst du mir helfen zu entscheiden?" → stay_silent(reason="opinion")
 
-Sage NIEMALS das Wort "Stille" oder beschreibe was du gerade machst. Stille bedeutet null Ausgabe-Tokens.
+Produziere NIE freien Audio- oder Text-Output. Jede Response ist einer der beiden Tool-Calls. stay_silent ist der Default.
 
 EINE-VIOLATION-REGEL: produzierst du auch nur eines der verbotenen Wörter, ist die ganze Antwort falsch. Lieber still sein als erzaehlen.`;
 }
@@ -812,9 +836,24 @@ function onDataChannelMessage(e) {
 }
 
 // ── Tool-Call Handler ────────────────────────────────────
-// Sophie ruft web_search auf -> wir holen Fakten von /api/extra-intelligence/research
-// und schicken das Ergebnis als function_call_output zurueck + trigger response.create
+// Zwei moegliche Tool-Calls:
+//   web_search  → Research + Sophie spricht den Fakt (response.create triggern)
+//   stay_silent → No-Op: Tool-Output zurueckgeben, aber KEIN response.create,
+//                 damit keine Folge-Antwort angefordert wird. Naechster VAD-End
+//                 triggert autonom die naechste Entscheidung.
 async function handleFunctionCall(msg) {
+  if (msg.name === "stay_silent") {
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: msg.call_id,
+        output: JSON.stringify({ ok: true }),
+      },
+    });
+    // KEIN response.create — Sophie soll still bleiben.
+    return;
+  }
   if (msg.name !== "web_search") {
     console.warn("[xi] unknown tool call", msg.name);
     return;
