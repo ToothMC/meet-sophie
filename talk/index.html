@@ -7516,6 +7516,15 @@ if (!hasRealConversation) {
       stopFakeReportLoader();
       if (!cs.memoryUpdateSent && memoryBody) {
         cs.memoryUpdateSent = true;
+        // Hint for /app: the session this ID refers to is still being written
+        // by memory-update. /app will briefly poll until the latest session
+        // matches this ID (or give up after ~5s).
+        try {
+          if (sessionId) {
+            sessionStorage.setItem("sophie-last-session-pending", sessionId);
+            sessionStorage.setItem("sophie-last-session-pending-ts", String(Date.now()));
+          }
+        } catch (_) {}
         fetch("/api/memory-update", {
           method: "POST",
           headers: memoryBody.headers,
