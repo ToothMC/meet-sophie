@@ -1,0 +1,40 @@
+# RPC Allowlist — Production-only functions
+#
+# Each entry here is an RPC called from api/ or lib/ that lives in the
+# production Supabase instance but has no CREATE FUNCTION migration in
+# supabase/migrations/. CI warns about them but does NOT fail.
+#
+# Rules:
+#   - Every entry MUST have corresponding recovery instructions in
+#     supabase/MISSING_RPCS.md so a fresh setup knows how to rebuild them.
+#   - Once the function gets a real migration, REMOVE the entry from here.
+#   - Adding a new entry = adding technical debt. Prefer writing the
+#     migration instead.
+#
+# Format: one name per line. Comments start with #.
+
+# From the audit (2026-04-19) — recovery migration 20260420 covers these,
+# but the allowlist keeps CI green while the prod DB is brought into sync.
+deduct_tokens
+meeting_create_with_token_gate
+acquire_realtime_lock
+reserve_free_seconds
+
+# Additional production-only RPCs discovered by the drift check itself:
+
+# meeting_segment_upsert
+#   Called from api/ai/transcribe.js. Upserts a meeting_segments row
+#   keyed by (meeting_id, segment_index). Export + document.
+meeting_segment_upsert
+
+# increment_meeting_cost
+#   Called from api/ai/transcribe.js and api/meeting.js (2x).
+#   Adds Whisper / analysis / burst cost to meetings.{listen,analysis,burst}_cost_usd
+#   atomically. Export + document.
+increment_meeting_cost
+
+# insert_conversation_message
+#   Called from api/chat.js (2x). Inserts a row into conversation_messages
+#   and increments user_sessions.turn_count in one transaction.
+#   Export + document.
+insert_conversation_message
