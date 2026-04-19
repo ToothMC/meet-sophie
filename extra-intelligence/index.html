@@ -32,6 +32,10 @@
 
     .wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 72px; margin: 24px 0 32px; opacity: 0.35; transition: opacity .3s; }
     .wave.active { opacity: 1; }
+    /* Mic aktuell zu (Sophie spricht) — Animation eingefroren, damit visuell klar
+       ist, dass im Moment nicht zugehoert wird. */
+    .wave.listening-off { opacity: 0.55; }
+    .wave.listening-off span { animation-play-state: paused; }
     .wave span { width: 4px; background: var(--accent); border-radius: 2px; animation: pulse 1.4s ease-in-out infinite; }
     .wave span:nth-child(1) { height: 24%; animation-delay: 0s; }
     .wave span:nth-child(2) { height: 55%; animation-delay: .15s; }
@@ -673,9 +677,18 @@ function setMicMuted(muted) {
   stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
 }
 
+// Wave-Animation an "Sophie hoert gerade zu" koppeln: im voice-busy Fenster
+// (Sophie spricht — Mic ist fuer Mic-Source gemutet, fuer Tab-Source ignorieren
+// wir eingehendes Audio) friert die Animation ein; sonst laeuft sie.
+function setWaveListening(on) {
+  if (!waveEl) return;
+  waveEl.classList.toggle("listening-off", !on);
+}
+
 function unlockVoice() {
   voiceBusy = false;
   setMicMuted(false);
+  setWaveListening(true);
 }
 
 // ── DataChannel Handler (Native Mode) ────────────────────
@@ -726,6 +739,7 @@ function onDataChannelMessage(e) {
       if (!voiceBusy) {
         voiceBusy = true;
         setMicMuted(true);
+        setWaveListening(false);
         clearTimeout(voiceBusyTimeout);
         voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
       }
@@ -984,6 +998,7 @@ async function stopSession(silent = false, byLimit = false) {
   setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
   waveEl.classList.remove("active");
+  waveEl.classList.remove("listening-off");
   sessionBar.classList.remove("active");
   startPanel.style.display = "";
   startBtn.disabled = false;
