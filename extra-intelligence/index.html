@@ -247,9 +247,9 @@ let responsePendingCount = 0;
 // Client-VAD (lokale Lautstaerke-Messung, entscheidet Sleep/Wake).
 // AudioContext + AnalyserNode haengen am Mic-Stream und laufen DAUERHAFT —
 // auch im Standby, damit der erste Voice-Spike die Session wecken kann.
-const SILENCE_SLEEP_MS = 6000;       // nach 6s Stille pc schliessen
+const SILENCE_SLEEP_MS = 12000;      // nach 12s Stille pc schliessen
 const VAD_CHECK_MS     = 100;        // alle 100ms RMS messen
-const RMS_WAKE         = 0.02;       // Voice-Spike Schwelle (leise Stimmen gehen durch)
+const RMS_WAKE         = 0.01;       // Voice-Spike Schwelle (normales Sprechen, nicht Schreien)
 const MIN_ACTIVE_MS    = 3000;       // Anti-Flap: erst nach 3s aktiver Zeit darf Sleep triggern
 let audioContext = null;
 let analyserNode = null;
