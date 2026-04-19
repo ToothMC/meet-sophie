@@ -599,6 +599,14 @@ function setupClientVAD(mediaStream) {
     analyserNode = audioContext.createAnalyser();
     analyserNode.fftSize = 1024;
     src.connect(analyserNode);
+    // iOS-Keepalive: ohne aktive Ausgabe suspended Safari den AudioContext
+    // nach kurzer Idle-Zeit — der Analyser liefert dann nur Nullen und der
+    // Wake triggert nie. Stummer Gain -> destination haelt den Graphen aktiv,
+    // ohne real Audio auszugeben.
+    const silentGain = audioContext.createGain();
+    silentGain.gain.value = 0;
+    analyserNode.connect(silentGain);
+    silentGain.connect(audioContext.destination);
     analyserBuf = new Float32Array(analyserNode.fftSize);
     lastVoiceAt = Date.now();
     vadTimer = setInterval(onVadTick, VAD_CHECK_MS);
