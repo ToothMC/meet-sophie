@@ -872,6 +872,17 @@ function dcSend(obj) {
   try { dc.send(JSON.stringify(obj)); } catch (e) { console.warn("[xi] dc send failed", e); }
 }
 
+// Akustisches Signal "Sophie recherchiert" — wird beim Start eines web_search
+// gespielt, damit der User weiss dass gleich eine Antwort kommt und nicht denkt
+// die Session sei tot. Gleiche Asset + Volume wie in talk/.
+function playReadySound() {
+  try {
+    const audio = new Audio("/audio/ready.mp3");
+    audio.volume = 0.28;
+    audio.play().catch(() => {});
+  } catch {}
+}
+
 // ── Mic Mute (nur Mikro-Quelle; Tab-Audio braucht's nicht) ──
 function setMicMuted(muted) {
   if (audioSource !== "mic") return;
@@ -1048,6 +1059,10 @@ async function handleFunctionCall(msg) {
   try { args = JSON.parse(msg.arguments || "{}"); } catch {}
   const query = String(args.query || "").trim();
   if (!query) return;
+
+  // Akustisches Feedback: Sophie recherchiert jetzt. Damit weiss der User,
+  // dass gleich eine Antwort kommt und die Session nicht tot ist.
+  playReadySound();
 
   // Placeholder im Chat-Log (nur wenn Text-Ausgabe aktiv)
   let placeholderEl = null;
