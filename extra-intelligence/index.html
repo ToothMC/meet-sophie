@@ -362,15 +362,16 @@ const hasDisplayMediaAudio = !!(navigator.mediaDevices && navigator.mediaDevices
 const isIOSLike = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                   (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 
-let audioSource = localStorage.getItem(SRC_KEY) === "tab" && hasDisplayMediaAudio && !isIOSLike
+let audioSource = localStorage.getItem(SRC_KEY) === "tab" && hasDisplayMediaAudio
   ? "tab" : "mic";
 
-// Tab-Audio Option deaktivieren wenn nicht unterstuetzt
-if (!hasDisplayMediaAudio || isIOSLike) {
+// Tab-Audio Option deaktivieren, wenn der Browser getDisplayMedia gar nicht kann.
+// Echtes iOS Safari hat die API nicht -> automatisch disabled. UA-Spoof auf
+// Desktop-Browsern (Brave/Chromium mit iPhone-UA) wird nicht mehr kuenstlich
+// blockiert — Feature-Detection ist die Wahrheit, nicht der User-Agent-String.
+if (!hasDisplayMediaAudio) {
   srcTabBtn.disabled = true;
-  srcTabBtn.title = isIOSLike
-    ? "Auf iPhone/iPad nicht verfügbar — Safari erlaubt keinen Zugriff auf System-/Call-Audio."
-    : "Browser unterstützt getDisplayMedia nicht.";
+  srcTabBtn.title = "Browser unterstützt getDisplayMedia nicht.";
   audioSource = "mic";
 }
 applySourceMode();
