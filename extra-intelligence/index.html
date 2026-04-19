@@ -208,6 +208,16 @@ let tickerTimer = null;
 let voiceBusy = false;
 let voiceBusyTimeout = null;
 
+// Meta-Output-Suppression: mit create_response:true triggert server_vad
+// bei jedem VAD-Ende eine Antwort. Sophie "gehorcht" dem Passive-Listening
+// -Prompt mit Meta-Saetzen wie "(Keine Ausgabe)". Wir canceln jede Response,
+// die nur ein message-Item enthaelt (kein Tool-Call) und nicht von uns
+// nach einem Tool-Ergebnis explizit angefordert wurde.
+let allowNextMessageResponse = false;       // Client hat gerade response.create nach Tool-Output geschickt
+let currentResponseAllowsMessage = false;   // am response.created aus allowNext... gezogen
+let currentResponseCancelled = false;
+let currentResponseHadToolCall = false;
+
 // Laufender Antwort-Transcript (fuer Chat-Log)
 let currentAssistantText = "";
 
@@ -710,10 +720,33 @@ function onDataChannelMessage(e) {
       // NICHT sofort muten — Sophie koennte stillbleiben.
       // Nur Arbeitsspeicher vorbereiten.
       currentAssistantText = "";
+      currentResponseAllowsMessage = allowNextMessageResponse;
+      allowNextMessageResponse = false;
+      currentResponseCancelled = false;
+      currentResponseHadToolCall = false;
       break;
+
+    case "response.output_item.added": {
+      // Entscheiden, ob diese Response ueberhaupt sprechen darf.
+      // function_call: immer erlaubt — Sophie greift zum Tool.
+      // message (kein Tool-Call) ohne vorherige response.create vom Client:
+      //   VAD-getriggerter Meta-Output → abbrechen, sonst wird "(Keine Ausgabe)"
+      //   oder aehnlicher Muell laut vorgelesen.
+      const itemType = msg.item?.type;
+      if (itemType === "function_call") {
+        currentResponseHadToolCall = true;
+      } else if (itemType === "message") {
+        if (!currentResponseAllowsMessage && !currentResponseHadToolCall) {
+          dcSend({ type: "response.cancel" });
+          currentResponseCancelled = true;
+        }
+      }
+      break;
+    }
 
     case "response.audio.delta":
     case "response.audio_transcript.delta":
+      if (currentResponseCancelled) break;
       // ERSTES Audio-Stueck kommt -> Sophie spricht wirklich -> jetzt Mic muten
       if (!voiceBusy) {
         voiceBusy = true;
@@ -728,6 +761,7 @@ function onDataChannelMessage(e) {
       break;
 
     case "response.audio_transcript.done": {
+      if (currentResponseCancelled) { currentAssistantText = ""; break; }
       const t = String(msg.transcript || currentAssistantText || "").trim();
       if (t) {
         triggerCount += 1;
@@ -739,11 +773,13 @@ function onDataChannelMessage(e) {
     }
 
     case "response.text.delta":
+      if (currentResponseCancelled) break;
       // Text-Only-Pfad (falls modalities=["text"] genutzt wird)
       if (typeof msg.delta === "string") currentAssistantText += msg.delta;
       break;
 
     case "response.text.done": {
+      if (currentResponseCancelled) { currentAssistantText = ""; break; }
       const t = String(msg.text || currentAssistantText || "").trim();
       if (t && outputMode !== "voice") {
         triggerCount += 1;
@@ -828,7 +864,8 @@ async function handleFunctionCall(msg) {
       },
     });
 
-    // Sophie soll jetzt mit dem Tool-Ergebnis antworten
+    // Sophie soll jetzt mit dem Tool-Ergebnis antworten — message-Output erlaubt.
+    allowNextMessageResponse = true;
     dcSend({ type: "response.create" });
   } catch (e) {
     console.warn("[xi] research tool call failed", e?.message);
