@@ -162,16 +162,26 @@ async function handleBalance(req, res) {
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
 
-    const { data: usage } = await supabase
-      .from("user_usage")
-      .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const [usageRes, subRes] = await Promise.all([
+      supabase
+        .from("user_usage")
+        .select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("user_subscriptions")
+        .select("plan")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
+    const usage = usageRes.data;
+    const plan = subRes.data?.plan || null;
 
     if (!usage) {
       return res.status(200).json({
         remaining_tokens: DEFAULT_FREE_TOKENS,
         totalRemaining: DEFAULT_FREE_TOKENS,
+        plan,
         usage: { free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0, paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0 },
       });
     }
@@ -184,6 +194,7 @@ async function handleBalance(req, res) {
     return res.status(200).json({
       remaining_tokens: totalRemaining,
       totalRemaining,
+      plan,
       usage: {
         free_tokens_total: usage.free_tokens_total,
         free_tokens_used: usage.free_tokens_used,

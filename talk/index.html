@@ -412,6 +412,15 @@ body::after{
 }
 .timer{ display:none; }
 
+/* Plan-Balance Live-Balken (nur waehrend Session, open-ended UX-Hilfe) */
+.balance-wrap{margin:10px auto 6px;width:100%;max-width:360px;box-sizing:border-box;}
+.balance-label{display:flex;justify-content:space-between;font-size:11px;color:rgba(140,120,200,.7);font-variant-numeric:tabular-nums;margin-bottom:4px;}
+.balance-label .val{color:#eef0f6;font-weight:600;}
+.balance-track{height:6px;background:rgba(100,80,200,.15);border-radius:3px;overflow:hidden;}
+.balance-fill{height:100%;width:100%;background:#4ade80;transition:width .4s linear,background .3s;}
+.balance-fill.warn{background:#ffb84d;}
+.balance-fill.danger{background:#ff6b6b;}
+
 .mode-bar{
   display:flex;justify-content:center;gap:8px;
   margin-bottom:18px;
@@ -1279,6 +1288,15 @@ body::after{
         </div>
       </div>
       <div class="sv-timer" id="svTimer">0:00</div>
+    </div>
+
+    <!-- Plan-Balance Bar (live, zeigt Gesamtkontingent) -->
+    <div class="balance-wrap" id="balanceWrap" style="display:none">
+      <div class="balance-label">
+        <span id="balanceLeftLabel">Guthaben</span>
+        <span><span class="val" id="balanceValLabel">0</span> / <span id="balanceMaxLabel">0</span></span>
+      </div>
+      <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
     </div>
 
     <!-- Globe: lights up when Sophie accesses realtime APIs -->
@@ -2371,6 +2389,11 @@ let lastAssistantFinal = "";
 
 let countdown = null;
 let remainingSeconds = 0;
+
+// Plan-Balance fuer den Live-Balken (open-end Sessions brauchen Sichtbarkeit
+// auf das Gesamtkontingent, nicht nur Session-Restzeit).
+const PLAN_TOKEN_CAPS = { premium: 2000, plus: 800, start: 300, starter: 300 };
+let planTotalTokens = 0;
 let isPremium = false;
 let plan = null;
 
@@ -4595,6 +4618,28 @@ function formatMMSS(sec){
 
 function renderTimer(){
   timerEl.textContent = `${t("time_prefix")}${formatMMSS(remainingSeconds)}`;
+  renderBalanceBar();
+}
+
+// Live-Balken: plan_left = remainingSeconds / secPerToken (serverseitige Formel).
+// Zeigt Rest-Guthaben vs Plan-Cap in Gruen/Gelb/Rot je Prozent.
+function renderBalanceBar(){
+  const wrap = document.getElementById("balanceWrap");
+  if (!wrap) return;
+  if (planTotalTokens <= 0 || remainingSeconds <= 0) { wrap.style.display = "none"; return; }
+  const secPerToken = window._ecoMode ? 7.5 : 3;
+  const planLeft = Math.max(0, Math.floor(remainingSeconds / secPerToken));
+  const pct = Math.max(0, Math.min(1, planLeft / planTotalTokens));
+  wrap.style.display = "block";
+  const valEl = document.getElementById("balanceValLabel");
+  const maxEl = document.getElementById("balanceMaxLabel");
+  const fillEl = document.getElementById("balanceFill");
+  if (valEl) valEl.textContent = String(planLeft);
+  if (maxEl) maxEl.textContent = String(planTotalTokens);
+  if (fillEl) {
+    fillEl.style.width = (pct * 100).toFixed(1) + "%";
+    fillEl.className = "balance-fill" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+  }
 }
 renderTimer();
 
@@ -5453,6 +5498,7 @@ function stopInactivityTimer() {
 function startCountdown(){
   if (countdown) clearInterval(countdown);
   timerEl.style.display = "none";
+  { const bw = document.getElementById("balanceWrap"); if (bw) bw.style.display = "none"; }
   touchActivity(); // baseline — prevents timer from firing immediately
   startInactivityTimer();
 
@@ -6923,6 +6969,14 @@ async function startVoice(){
     plan = data?.plan || null;
     window._ecoMode = !!data?.eco_mode;
 
+    // Plan-Cap fuer Balance-Balken. Bei Topups mindestens den tatsaechlichen Startwert nehmen.
+    {
+      const planKey = String(plan || "").toLowerCase();
+      const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
+      const startTokens = Number.isFinite(data?.remaining_tokens) ? data.remaining_tokens : 0;
+      planTotalTokens = Math.max(planCap, startTokens);
+    }
+
     softEndEnabled = data?.soft_end_enabled !== false;
     softEndWarningSeconds = Number.isFinite(data?.soft_end_warning_seconds)
       ? Math.max(12, Number(data.soft_end_warning_seconds))
@@ -7181,6 +7235,7 @@ async function stopVoicePitchClean() {
   setStatus("");
   setSoftHint("");
   timerEl.style.display = "none";
+  { const bw = document.getElementById("balanceWrap"); if (bw) bw.style.display = "none"; }
 
   // Calculate actual wallclock duration only — no time-limit inflation
   const wallclockSeconds = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : 0;
@@ -7309,6 +7364,7 @@ async function stopVoice(triggeredByLimit = false){
   setStatus("");
   setSoftHint("");
   timerEl.style.display = "none";
+  { const bw = document.getElementById("balanceWrap"); if (bw) bw.style.display = "none"; }
 
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
