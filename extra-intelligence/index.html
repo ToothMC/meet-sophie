@@ -32,6 +32,12 @@
 
     .wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 72px; margin: 24px 0 32px; opacity: 0.35; transition: opacity .3s; }
     .wave.active { opacity: 1; }
+    /* Mic aktuell zu (Sophie spricht) — Animation eingefroren, damit visuell klar
+       ist, dass im Moment nicht zugehoert wird. */
+    .wave.listening-off { opacity: 0.55; }
+    .wave.listening-off span { animation-play-state: paused; }
+    /* Standby: pc zu waehrend Stille — Animation gedaempft, aber sichtbar dass Session weiter lauscht. */
+    .wave.standby { opacity: 0.5; filter: saturate(0.3); }
     .wave span { width: 4px; background: var(--accent); border-radius: 2px; animation: pulse 1.4s ease-in-out infinite; }
     .wave span:nth-child(1) { height: 24%; animation-delay: 0s; }
     .wave span:nth-child(2) { height: 55%; animation-delay: .15s; }
@@ -198,30 +204,65 @@ if (!session?.user) { window.location.href = "/login"; }
 let pc = null;
 let dc = null;
 let stream = null;
-let sessionStartedAt = 0;
 let running = false;
 let lang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";
 
 let triggerCount = 0;
 
-// Sophie-Tokens: Billing-Rate kommt vom Server (data.eco_mode).
-// Eco-Mode: 1 Token = 7.5s / Normal: 1 Token = 3s (gleich wie talk/).
-// secPerToken wird nach /api/session aus data.eco_mode gesetzt und fuer
-// das Server-Reporting via /api/user?action=usage verwendet.
-// Research-Kosten (gpt-4o-mini condense) sind vernachlaessigbar und separat.
+// Billing-Akku: Sophie zahlt NUR fuer aktive Zeit (pc offen, Audio fliesst).
+// Bei Stille schliesst der Client-VAD die pc — Ticker pausiert, Akku friert ein,
+// Mic-Stream + AudioContext bleiben offen damit der naechste Voice-Spike weckt.
+// Eco-Mode: 1 Token = 7.5s. Research (gpt-4o-mini) vernachlaessigbar und separat.
+let totalActiveMs = 0;               // Summe bereits geschlossener aktiver Segmente
+let activeSegmentStartedAt = 0;      // Wallclock-Start des LAUFENDEN aktiven Segments (0 = nicht aktiv)
 let initialRemainingTokens = null;
-let secPerToken = 3;             // default Normal, wird nach /api/session gesetzt
+let secPerToken = 3;                 // default Normal, wird nach /api/session gesetzt
 let tickerTimer = null;
+
+// State-Machine fuer Sleep/Wake (Token-Spar-Loop):
+//   idle     -> noch nie gestartet
+//   starting -> /api/session + SDP Handshake laeuft
+//   active   -> pc offen, Ticker laeuft, Audio fliesst zu OpenAI
+//   standby  -> pc geschlossen, Mic-Stream + VAD laufen, lauscht auf Voice-Spike
+//   stopping -> finaler Shutdown
+let sessionState = "idle";
 
 // Plan-Balance (fuer den Live-Balken): wie viele Tokens dem User pro Abo
 // maximal zustehen — bei Topups ggf. mehr. Kommt aus /api/session data.plan.
 const PLAN_TOKEN_CAPS = { premium: 2000, plus: 800, start: 300, starter: 300 };
-let planTotalTokens = 0;         // Kapazitaet fuer den Balken (0 = Bar versteckt)
+let planTotalTokens = 0;             // Kapazitaet fuer den Balken (0 = Bar versteckt)
 
 // Voice-Busy-Lock: waehrend Sophie spricht Mic stummschalten,
 // damit Server-VAD sie nicht unterbricht (bleibt wie im Pipeline-Mode).
 let voiceBusy = false;
 let voiceBusyTimeout = null;
+
+// Response-Pending-Counter: zwischen response.created und response.done/cancelled
+// arbeitet der Server an einer Antwort (tool-call, formulating, audio-stream).
+// In dieser Phase darf KEIN Sleep ausgeloest werden, sonst reisst die Antwort ab.
+// Counter statt Boolean, damit verschachtelte Responses (web_search -> follow-up)
+// sauber abgebildet werden — ein kurzes Zwischen-Done wirft uns nicht raus.
+let responsePendingCount = 0;
+
+// Queue fuer Client-getriggerte response.create: der Server akzeptiert keine
+// neue Response solange noch eine aktiv ist ("conversation_already_has_active_response").
+// Wenn wir nach web_search einen neuen Output anstossen wollen, warten wir bis
+// responsePendingCount==0 ist. Bei response.done flushen wir.
+let pendingResponseCreatePayload = null;
+
+// Client-VAD (lokale Lautstaerke-Messung, entscheidet Sleep/Wake).
+// AudioContext + AnalyserNode haengen am Mic-Stream und laufen DAUERHAFT —
+// auch im Standby, damit der erste Voice-Spike die Session wecken kann.
+const SILENCE_SLEEP_MS = 12000;      // nach 12s Stille pc schliessen
+const VAD_CHECK_MS     = 100;        // alle 100ms RMS messen
+const RMS_WAKE         = 0.01;       // Voice-Spike Schwelle (normales Sprechen, nicht Schreien)
+const MIN_ACTIVE_MS    = 3000;       // Anti-Flap: erst nach 3s aktiver Zeit darf Sleep triggern
+let audioContext = null;
+let analyserNode = null;
+let analyserBuf = null;
+let vadTimer = null;
+let lastVoiceAt = 0;
+let cachedModel = "gpt-realtime-mini"; // fuer Reconnect beim Wake
 
 // Meta-Output-Suppression: mit create_response:true triggert server_vad
 // bei jedem VAD-Ende eine Antwort. Sophie "gehorcht" dem Passive-Listening
@@ -409,91 +450,51 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 // ── Session Start ────────────────────────────────────────
+// Session-Lifecycle: start -> active <-> standby -> stop
+// Beim initialen Start wird der Mic-Stream EINMALIG akquiriert (User-Gesture).
+// Danach cyceln wir nur pc+dc zwischen active und standby — Stream + VAD
+// laufen dauerhaft, damit der naechste Voice-Spike die pc wieder aufbauen kann.
 async function startSession() {
-  if (running) return;
+  if (running || sessionState !== "idle") return;
   errorText.textContent = "";
   startBtn.disabled = true;
+  sessionState = "starting";
 
   try {
-    const tokenRes = await fetch("/api/session", {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        "x-sophie-session-mode": "extra_intelligence",
-        "x-sophie-xi-privacy-ack": "1",
-      },
-    });
+    // 1) Audio-Stream akquirieren (User-Gesture Pfad — nur beim INITIAL-Start).
+    //    getDisplayMedia braucht eine neue Gesture, die wir beim Wake nicht mehr
+    //    haetten — deshalb halten wir den Stream ueber Sleep/Wake hinweg.
+    stream = await acquireAudioStream();
 
-    if (!tokenRes.ok) {
-      const err = await tokenRes.json().catch(() => ({}));
-      if (tokenRes.status === 402)      errorText.textContent = "Extra Intelligence ist nur im Premium-Plan verfügbar.";
-      else if (tokenRes.status === 404) errorText.textContent = "Extra Intelligence ist aktuell nicht freigeschaltet.";
-      else if (tokenRes.status === 412) {
-        // Privacy-ACK fehlt in DB (z.B. Version veraltet oder Race) — Modal
-        // erneut anzeigen, damit der User frisch zustimmt.
-        privacyAccepted = false;
-        privacyAck.checked = false;
-        privacyContinue.disabled = true;
-        errorText.textContent = "Bitte Einwilligung erneut bestaetigen.";
-        privacyModal.classList.add("visible");
-      }
-      else errorText.textContent = err?.message || err?.error || "Start fehlgeschlagen.";
+    // 2) Client-VAD aufsetzen — laeuft permanent (auch im Standby).
+    setupClientVAD(stream);
+
+    // 3) Ephemeren OpenAI-Key + Quota-Snapshot holen
+    const data = await fetchEphemeralSession();
+    if (!data) {
+      // Fehler wurde inline ins UI geschrieben — sauber zuruecksetzen
+      await stopSession(true);
       startBtn.disabled = false;
       return;
     }
 
-    const data = await tokenRes.json();
-    if (typeof data?.remaining_seconds === "number" && data.remaining_seconds <= 0) {
-      errorText.textContent = "Kein Guthaben mehr verfügbar.";
-      startBtn.disabled = false;
-      return;
-    }
-    // XI-1: xi laeuft IMMER im Eco-Modus (Server erzwingt das, siehe api/session.js).
-    // Defensiv trotzdem hart auf 7.5 setzen, falls data.eco_mode mal fehlt.
+    // 4) Plan-Cap fuer den Balance-Balken (einmalig beim Initial-Start).
+    //    XI-1: xi laeuft IMMER im Eco-Modus (Server erzwingt, defensiv hart 7.5).
     secPerToken = 7.5;
-    // Plan-Cap fuer den Balance-Balken — bei Topups mindestens das, was der User tatsaechlich hat.
     const planKey = String(data.plan || "").toLowerCase();
     const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
     planTotalTokens = Math.max(planCap, data.remaining_tokens || 0);
 
-    // WebRTC setup
-    pc = new RTCPeerConnection();
-    stream = await acquireAudioStream();
-    stream.getAudioTracks().forEach(t => pc.addTrack(t, stream));
-    pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
-
-    dc = pc.createDataChannel("oai-events");
-    dc.addEventListener("open", onDataChannelOpen);
-    dc.addEventListener("message", onDataChannelMessage);
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    // xi-Modus laeuft immer auf dem mini-Modell — matcht das server-seitig
-    // erzeugte ephemere Session-Config (isEco=true fuer xi in api/session.js).
-    const sdpRes = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime-mini", {
-      method: "POST",
-      body: offer.sdp,
-      headers: {
-        Authorization: `Bearer ${data.client_secret.value}`,
-        "Content-Type": "application/sdp",
-      },
-    });
-    if (!sdpRes.ok) {
-      const t = await sdpRes.text().catch(() => "");
-      throw new Error(`OpenAI SDP ${sdpRes.status}: ${t.slice(0, 200)}`);
-    }
-    const answer = { type: "answer", sdp: await sdpRes.text() };
-    await pc.setRemoteDescription(answer);
+    // 5) Erste Realtime-Verbindung aufbauen (setzt sessionState = active)
+    await buildRealtimeConnection(data);
 
     running = true;
-    sessionStartedAt = Date.now();
     triggerCount = 0;
     if (triggerCountEl) triggerCountEl.textContent = "0";
     startPanel.style.display = "none";
     sessionBar.classList.add("active");
-    waveEl.classList.add("active");
 
-    // Native Mode: kein Classifier-Loop noetig — Sophie hoert direkt via Realtime
+    // Ticker + Cap-Check starten
     startTokenCapPoll(data.remaining_seconds || 0, data.remaining_tokens || 0);
   } catch (e) {
     console.error("[xi] start failed", e);
@@ -501,6 +502,228 @@ async function startSession() {
     await stopSession(true);
     startBtn.disabled = false;
   }
+}
+
+// Holt einen frischen ephemeren OpenAI-Key + Quota-Snapshot.
+// Wird sowohl beim initialen Start als auch bei jedem Wake aus Standby aufgerufen.
+// Gibt null zurueck bei Fehler/kein Guthaben (Fehler-UI inline gesetzt).
+async function fetchEphemeralSession() {
+  const tokenRes = await fetch("/api/session", {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      "x-sophie-session-mode": "extra_intelligence",
+      "x-sophie-xi-privacy-ack": "1",
+    },
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.json().catch(() => ({}));
+    if (tokenRes.status === 402)      errorText.textContent = "Extra Intelligence ist nur im Premium-Plan verfügbar.";
+    else if (tokenRes.status === 404) errorText.textContent = "Extra Intelligence ist aktuell nicht freigeschaltet.";
+    else if (tokenRes.status === 412) {
+      privacyAccepted = false;
+      privacyAck.checked = false;
+      privacyContinue.disabled = true;
+      errorText.textContent = "Bitte Einwilligung erneut bestaetigen.";
+      privacyModal.classList.add("visible");
+    }
+    else errorText.textContent = err?.message || err?.error || "Start fehlgeschlagen.";
+    return null;
+  }
+  const data = await tokenRes.json();
+  if (typeof data?.remaining_seconds === "number" && data.remaining_seconds <= 0) {
+    errorText.textContent = "Kein Guthaben mehr verfügbar.";
+    return null;
+  }
+  return data;
+}
+
+// Baut pc+dc gegen OpenAI Realtime auf. Nutzt den bestehenden `stream`.
+// Setzt bei Erfolg sessionState=active und startet den aktiven Zeit-Akku.
+async function buildRealtimeConnection(data) {
+  pc = new RTCPeerConnection();
+  stream.getAudioTracks().forEach(t => pc.addTrack(t, stream));
+  pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+
+  dc = pc.createDataChannel("oai-events");
+  dc.addEventListener("open", onDataChannelOpen);
+  dc.addEventListener("message", onDataChannelMessage);
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // xi laeuft immer auf dem mini-Modell — matcht isEco=true in api/session.js.
+  const sdpRes = await fetch(`https://api.openai.com/v1/realtime?model=${cachedModel}`, {
+    method: "POST",
+    body: offer.sdp,
+    headers: {
+      Authorization: `Bearer ${data.client_secret.value}`,
+      "Content-Type": "application/sdp",
+    },
+  });
+  if (!sdpRes.ok) {
+    const t = await sdpRes.text().catch(() => "");
+    throw new Error(`OpenAI SDP ${sdpRes.status}: ${t.slice(0, 200)}`);
+  }
+  const answer = { type: "answer", sdp: await sdpRes.text() };
+  await pc.setRemoteDescription(answer);
+
+  // Race-Guard: falls der User waehrend Handshake auf Stop gedrueckt hat,
+  // darf diese pc nicht "active" werden — abbauen und raus.
+  if (sessionState !== "starting") {
+    try { dc?.close(); } catch {}
+    try { pc?.close(); } catch {}
+    dc = null; pc = null;
+    try { audioEl.srcObject = null; } catch {}
+    return;
+  }
+
+  // Ab hier ist die Verbindung live: Akku startet, UI auf active.
+  sessionState = "active";
+  activeSegmentStartedAt = Date.now();
+  lastVoiceAt = Date.now();                // Anti-Flap: gerade verbunden
+  waveEl.classList.remove("standby");
+  waveEl.classList.add("active");
+}
+
+// ── Client-VAD: lokale RMS-Messung, entscheidet Sleep/Wake ──
+// AudioContext + AnalyserNode haengen am Mic-Stream. Laufen DAUERHAFT —
+// auch wenn pc geschlossen ist — damit der erste Voice-Spike die pc
+// wieder aufbauen kann.
+function setupClientVAD(mediaStream) {
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS Safari startet den Context haeufig "suspended" auch nach User-Gesture —
+    // wir muessen explizit resumen, sonst liefert der Analyser nur Nullen.
+    audioContext.resume().catch(() => {});
+    const src = audioContext.createMediaStreamSource(mediaStream);
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 1024;
+    src.connect(analyserNode);
+    // iOS-Keepalive: ohne aktive Ausgabe suspended Safari den AudioContext
+    // nach kurzer Idle-Zeit — der Analyser liefert dann nur Nullen und der
+    // Wake triggert nie. Stummer Gain -> destination haelt den Graphen aktiv,
+    // ohne real Audio auszugeben.
+    const silentGain = audioContext.createGain();
+    silentGain.gain.value = 0;
+    analyserNode.connect(silentGain);
+    silentGain.connect(audioContext.destination);
+    analyserBuf = new Float32Array(analyserNode.fftSize);
+    lastVoiceAt = Date.now();
+    vadTimer = setInterval(onVadTick, VAD_CHECK_MS);
+  } catch (e) {
+    console.warn("[xi] VAD setup failed — Session laeuft ohne Sleep", e);
+    audioContext = null; analyserNode = null; analyserBuf = null;
+  }
+}
+
+function teardownClientVAD() {
+  if (vadTimer) { clearInterval(vadTimer); vadTimer = null; }
+  try { audioContext?.close(); } catch {}
+  audioContext = null; analyserNode = null; analyserBuf = null;
+}
+
+function onVadTick() {
+  if (!analyserNode) return;
+  // iOS Safari suspended den AudioContext nach pc.close() (und allgemein bei
+  // Idle) gerne auto. Solange suspended liefert der Analyser nur Nullen und
+  // der Wake triggert nie -> Session bleibt fuer immer in standby stecken.
+  if (audioContext && audioContext.state === "suspended") {
+    audioContext.resume().catch(() => {});
+  }
+  analyserNode.getFloatTimeDomainData(analyserBuf);
+  let sumSq = 0;
+  for (let i = 0; i < analyserBuf.length; i++) {
+    const v = analyserBuf[i];
+    sumSq += v * v;
+  }
+  const rms = Math.sqrt(sumSq / analyserBuf.length);
+  const now = Date.now();
+
+  if (rms >= RMS_WAKE) {
+    lastVoiceAt = now;
+    if (sessionState === "standby") {
+      wakeFromStandby().catch(e => console.warn("[xi] wake failed", e));
+    }
+    return;
+  }
+
+  // Stille — pruefen, ob Sleep triggern soll
+  if (sessionState !== "active") return;
+  if (voiceBusy) return;                                         // Sophie spricht gerade
+  if (responsePendingCount > 0) return;                          // Server arbeitet an Antwort (tool-call, formulating)
+  if (!activeSegmentStartedAt) return;
+  if (now - activeSegmentStartedAt < MIN_ACTIVE_MS) return;      // Anti-Flap
+  if (now - lastVoiceAt < SILENCE_SLEEP_MS) return;              // noch nicht lang genug still
+
+  enterStandby().catch(e => console.warn("[xi] standby failed", e));
+}
+
+// ── Standby: pc schliessen, Ticker pausieren, Stream + VAD bleiben ──
+async function enterStandby() {
+  if (sessionState !== "active") return;
+  sessionState = "standby";
+
+  // Akku einfrieren: aktive ms in den Gesamt-Akku rechnen
+  if (activeSegmentStartedAt) {
+    totalActiveMs += Date.now() - activeSegmentStartedAt;
+    activeSegmentStartedAt = 0;
+  }
+  // Ticker stoppen — Display friert beim letzten Wert ein
+  if (tickerTimer) { clearInterval(tickerTimer); tickerTimer = null; }
+
+  // WebRTC zu. Mic-Track NICHT stoppen (stream bleibt fuer VAD + naechsten Connect).
+  try { dc?.close(); } catch {}
+  try { pc?.close(); } catch {}
+  dc = null; pc = null;
+  try { audioEl.srcObject = null; } catch {}
+
+  // Voice-Lock reset — Sophie kann im Standby nicht sprechen
+  clearTimeout(voiceBusyTimeout);
+  voiceBusy = false;
+  responsePendingCount = 0;            // Server-Session ist weg, alte Pending-Counts obsolet
+  pendingResponseCreatePayload = null; // alte Queue im neuen Server-Session kontext obsolet
+  lastSessionModalities = null;
+
+  waveEl.classList.remove("active");
+  waveEl.classList.remove("listening-off");
+  waveEl.classList.add("standby");
+}
+
+// ── Wake: neuen ephemeren Key holen, pc neu aufbauen ──
+async function wakeFromStandby() {
+  if (sessionState !== "standby") return;
+  sessionState = "starting";           // verhindert Doppel-Wake waehrend Handshake
+
+  try {
+    const data = await fetchEphemeralSession();
+    if (!data) {
+      // Quota erschoepft oder Auth-Fehler — Session sauber beenden
+      await stopSession(false, true);
+      return;
+    }
+    await buildRealtimeConnection(data);
+    // Ticker wieder anwerfen (Akku laeuft ab buildRealtimeConnection weiter)
+    startTicker();
+  } catch (e) {
+    console.warn("[xi] wake failed — zurueck zu standby", e);
+    // pc kann halb-gebaut sein — saeubern und auf naechsten Voice-Spike warten
+    try { dc?.close(); } catch {}
+    try { pc?.close(); } catch {}
+    dc = null; pc = null;
+    sessionState = "standby";
+  }
+}
+
+// Queued response.create sofort feuern, falls der Server wieder frei ist.
+// Wird aus handleFunctionCall (setzt den Payload) + response.done-Handler
+// (Count geht auf 0) aufgerufen.
+function maybeFlushPendingResponse() {
+  if (!pendingResponseCreatePayload) return;
+  if (responsePendingCount > 0) return;
+  if (!dc || dc.readyState !== "open") { pendingResponseCreatePayload = null; return; }
+  const rp = pendingResponseCreatePayload;
+  pendingResponseCreatePayload = null;
+  dcSend({ type: "response.create", response: rp });
 }
 
 // ── Audio-Stream-Acquire (Mic ODER Tab/System-Audio) ────
@@ -542,9 +765,13 @@ async function acquireAudioStream() {
     return dispStream;
   }
 
-  // Mikrofon: Browser-Filter AUS fuer Multi-Speaker-Hoerfaehigkeit
+  // Mikrofon: Browser-Filter AUS fuer Multi-Speaker-Hoerfaehigkeit.
+  // iOS-Ausnahme: Safari routet getUserMedia nicht zuverlaessig auf AirPods,
+  // wenn wir "no processing" verlangen — die AirPods-Pipeline hat EC/NS fest
+  // eingebaut, iOS faellt dann auf die iPhone-Mic zurueck, weil die "roh" kann.
+  // Auf iOS also Default-Constraints (EC/NS/AGC an), damit AirPods gewaehlt werden.
   return await navigator.mediaDevices.getUserMedia({
-    audio: {
+    audio: isIOSLike ? true : {
       echoCancellation: false,
       noiseSuppression: false,
       autoGainControl:  false,
@@ -666,6 +893,17 @@ function dcSend(obj) {
   try { dc.send(JSON.stringify(obj)); } catch (e) { console.warn("[xi] dc send failed", e); }
 }
 
+// Akustisches Signal "Sophie recherchiert" — wird beim Start eines web_search
+// gespielt, damit der User weiss dass gleich eine Antwort kommt und nicht denkt
+// die Session sei tot. Gleiche Asset + Volume wie in talk/.
+function playReadySound() {
+  try {
+    const audio = new Audio("/audio/ready.mp3");
+    audio.volume = 0.28;
+    audio.play().catch(() => {});
+  } catch {}
+}
+
 // ── Mic Mute (nur Mikro-Quelle; Tab-Audio braucht's nicht) ──
 function setMicMuted(muted) {
   if (audioSource !== "mic") return;
@@ -673,9 +911,18 @@ function setMicMuted(muted) {
   stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
 }
 
+// Wave-Animation an "Sophie hoert gerade zu" koppeln: im voice-busy Fenster
+// (Sophie spricht — Mic ist fuer Mic-Source gemutet, fuer Tab-Source ignorieren
+// wir eingehendes Audio) friert die Animation ein; sonst laeuft sie.
+function setWaveListening(on) {
+  if (!waveEl) return;
+  waveEl.classList.toggle("listening-off", !on);
+}
+
 function unlockVoice() {
   voiceBusy = false;
   setMicMuted(false);
+  setWaveListening(true);
 }
 
 // ── DataChannel Handler (Native Mode) ────────────────────
@@ -699,6 +946,11 @@ function onDataChannelMessage(e) {
       allowNextMessageResponse = false;
       currentResponseCancelled = false;
       currentResponseHadToolCall = false;
+      // Server arbeitet — Sleep-Guard hochzaehlen + Silence-Clock reset
+      // (sonst laeuft die 6s-Uhr waehrend Sophies Antwort weiter und
+      // Sleep triggert sofort sobald Sophie fertig ist).
+      responsePendingCount++;
+      lastVoiceAt = Date.now();
       break;
 
     case "response.output_item.added": {
@@ -726,9 +978,12 @@ function onDataChannelMessage(e) {
       if (!voiceBusy) {
         voiceBusy = true;
         setMicMuted(true);
+        setWaveListening(false);
         clearTimeout(voiceBusyTimeout);
         voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
       }
+      // Silence-Clock laufend frisch halten, solange Sophie spricht.
+      lastVoiceAt = Date.now();
       // Transcript-Stream fuer Chat-Log sammeln
       if (msg.type === "response.audio_transcript.delta" && typeof msg.delta === "string") {
         currentAssistantText += msg.delta;
@@ -771,13 +1026,24 @@ function onDataChannelMessage(e) {
       break;
 
     case "response.done":
+    case "response.cancelled":
     case "response.output_audio.done":
     case "response.audio.done":
-    case "response.cancelled":
-      // Antwort fertig -> 300ms Tail dann Mic wieder auf
+      // response.done / .cancelled = ganze Antwort-Lifecycle fertig -> Sleep-Guard runter.
+      // .output_audio.done / .audio.done = nur Audio-Stream fertig, Response kann
+      // noch weiterlaufen (z.B. Text-Nachlauf). Nicht dekrementieren.
+      if (msg.type === "response.done" || msg.type === "response.cancelled") {
+        responsePendingCount = Math.max(0, responsePendingCount - 1);
+        // Queue flushen: wenn wir nach web_search eine Folge-Response geplant
+        // hatten und der Server gerade frei wurde, jetzt feuern.
+        maybeFlushPendingResponse();
+      }
+      // Silence-Clock reset — User hat nach Sophies Antwort volle 12s Grace-Period
+      // fuer Follow-up, bevor Standby triggert.
+      lastVoiceAt = Date.now();
+      // Antwort-Audio fertig -> 300ms Tail dann Mic wieder auf
       clearTimeout(voiceBusyTimeout);
       voiceBusyTimeout = setTimeout(unlockVoice, 300);
-
       break;
 
     case "error":
@@ -814,6 +1080,10 @@ async function handleFunctionCall(msg) {
   try { args = JSON.parse(msg.arguments || "{}"); } catch {}
   const query = String(args.query || "").trim();
   if (!query) return;
+
+  // Akustisches Feedback: Sophie recherchiert jetzt. Damit weiss der User,
+  // dass gleich eine Antwort kommt und die Session nicht tot ist.
+  playReadySound();
 
   // Placeholder im Chat-Log (nur wenn Text-Ausgabe aktiv)
   let placeholderEl = null;
@@ -865,11 +1135,12 @@ async function handleFunctionCall(msg) {
     // Fakt vorhanden: Sophie soll ihn jetzt sprechen. Per-Response-Override
     // tool_choice=none entzieht ihr die Tools, damit sie einen Message-Output
     // erzeugt (sonst wuerde sie erneut web_search oder stay_silent callen).
+    // Queue statt direkt: Server lehnt response.create mit
+    // "conversation_already_has_active_response" ab, wenn die Tool-Call-Response
+    // noch nicht als done gemeldet wurde.
     allowNextMessageResponse = true;
-    dcSend({
-      type: "response.create",
-      response: { tool_choice: "none" },
-    });
+    pendingResponseCreatePayload = { tool_choice: "none" };
+    maybeFlushPendingResponse();
   } catch (e) {
     console.warn("[xi] research tool call failed", e?.message);
     placeholderEl?.remove();
@@ -903,8 +1174,14 @@ function appendChatMessage(text, opts = {}) {
 }
 
 // ── Live-Display (Dauer + Sophie-Tokens + Trigger) ───────
+// Aktiv-ms = Summe geschlossener Segmente + aktuelles Segment (falls active).
+// Im Standby friert der Wert ein (activeSegmentStartedAt == 0).
+function activeMsNow() {
+  return totalActiveMs + (activeSegmentStartedAt ? Date.now() - activeSegmentStartedAt : 0);
+}
+
 function sophieTokensUsedNow() {
-  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  const sec = Math.floor(activeMsNow() / 1000);
   // Fuer die Anzeige: floor, damit der Balken nicht sofort nach 1 Sek
   // runterzaehlt. Tatsaechliche Abrechnung in stopSession nutzt ceil
   // (kein Gratis-Abrunden am Session-Ende).
@@ -918,7 +1195,8 @@ function formatMMSS(sec) {
 }
 
 function updateTokenDisplay() {
-  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
+  // elapsedLabel zeigt AKTIVE Zeit (nicht Wallclock) — stimmt mit dem Token-Counter ueberein.
+  const sec = Math.floor(activeMsNow() / 1000);
   const used = sophieTokensUsedNow();
   // Altes Status-Row-UI ist entfernt — Guards halten den Code lauffaehig,
   // falls die Elemente nicht existieren.
@@ -955,35 +1233,53 @@ function updateTokenDisplay() {
 }
 
 // ── Token Cap Poll + Ticker ──────────────────────────────
-let tokenCapTimer = null;
-let initialRemainingSeconds = 0;
+// Cap-Check: auf AKTIVE Tokens — Wallclock ist durch Sleep/Wake nicht mehr
+// aussagekraeftig. Wenn die aktiven Tokens das Kontingent erreichen, Stop.
 function startTokenCapPoll(remainingSeconds, remainingTokens) {
-  initialRemainingSeconds = remainingSeconds;
   initialRemainingTokens = remainingTokens > 0 ? remainingTokens : null;
   updateTokenDisplay();
+  startTicker();
+}
 
-  // Ticker: jede Sekunde Display aktualisieren, jede 30s Cap pruefen
+// Ticker: aktualisiert Display + prueft Cap. Wird bei Sleep pausiert und bei
+// Wake wieder gestartet — daher als eigene Funktion.
+function startTicker() {
+  if (tickerTimer) return;
   tickerTimer = setInterval(() => {
     updateTokenDisplay();
-    const sec = Math.floor((Date.now() - sessionStartedAt) / 1000);
-    if (initialRemainingSeconds > 0 && sec >= initialRemainingSeconds) {
+    if (initialRemainingTokens != null && sophieTokensUsedNow() >= initialRemainingTokens) {
       stopSession(false, true);
     }
   }, 1000);
 }
 
 // ── Stop ─────────────────────────────────────────────────
+// Finaler Shutdown: schliesst pc+dc, stoppt Mic-Stream, beendet VAD, postet
+// die gesamte aktive Zeit als Usage. Akkumuliert ein evtl. laufendes
+// aktives Segment vorher in den Gesamt-Akku.
 async function stopSession(silent = false, byLimit = false) {
-  if (tokenCapTimer)   { clearInterval(tokenCapTimer); tokenCapTimer = null; }
+  sessionState = "stopping";
+
+  // Aktives Segment einfrieren (falls wir im active-State stoppen)
+  if (activeSegmentStartedAt) {
+    totalActiveMs += Date.now() - activeSegmentStartedAt;
+    activeSegmentStartedAt = 0;
+  }
+
   if (tickerTimer)     { clearInterval(tickerTimer); tickerTimer = null; }
   if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
+  teardownClientVAD();
   voiceBusy = false;
+  responsePendingCount = 0;
+  pendingResponseCreatePayload = null;
   currentAssistantText = "";
   lastSessionModalities = null;
   initialRemainingTokens = null;
   setMicMuted(false);     // safety: Mic nicht stumm im gestoppten Zustand lassen
   running = false;
   waveEl.classList.remove("active");
+  waveEl.classList.remove("listening-off");
+  waveEl.classList.remove("standby");
   sessionBar.classList.remove("active");
   startPanel.style.display = "";
   startBtn.disabled = false;
@@ -996,10 +1292,11 @@ async function stopSession(silent = false, byLimit = false) {
   try { audioEl.srcObject = null; } catch {}
   dc = null; pc = null; stream = null;
 
-  const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
-  if (sec > 0) {
+  // Billing: ganzen Akku als Usage posten, ceil damit kein Gratis-Abrunden.
+  const activeSec = Math.floor(totalActiveMs / 1000);
+  if (activeSec > 0) {
     try {
-      const tokens = Math.ceil(sec / secPerToken);
+      const tokens = Math.ceil(activeSec / secPerToken);
       await fetch("/api/user?action=usage", {
         method: "POST",
         headers: {
@@ -1015,7 +1312,9 @@ async function stopSession(silent = false, byLimit = false) {
   chatLog.innerHTML = "";
 
   if (byLimit && !silent) errorText.textContent = "Token-Limit erreicht — Session beendet.";
-  sessionStartedAt = 0;
+  // Akku + State fuer naechste Session zuruecksetzen
+  totalActiveMs = 0;
+  sessionState = "idle";
 }
 
 window.addEventListener("beforeunload", () => { if (running) stopSession(true); });
