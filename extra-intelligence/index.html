@@ -438,8 +438,9 @@ async function startSession() {
       startBtn.disabled = false;
       return;
     }
-    // XI-1: Billing-Rate uebernehmen, damit Client- und Server-Rechnung identisch sind.
-    secPerToken = data.eco_mode ? 7.5 : 3;
+    // XI-1: xi laeuft IMMER im Eco-Modus (Server erzwingt das, siehe api/session.js).
+    // Defensiv trotzdem hart auf 7.5 setzen, falls data.eco_mode mal fehlt.
+    secPerToken = 7.5;
     // Plan-Cap fuer den Balance-Balken — bei Topups mindestens das, was der User tatsaechlich hat.
     const planKey = String(data.plan || "").toLowerCase();
     const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
@@ -458,7 +459,9 @@ async function startSession() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    const sdpRes = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime", {
+    // xi-Modus laeuft immer auf dem mini-Modell — matcht das server-seitig
+    // erzeugte ephemere Session-Config (isEco=true fuer xi in api/session.js).
+    const sdpRes = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime-mini", {
       method: "POST",
       body: offer.sdp,
       headers: {

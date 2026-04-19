@@ -1218,7 +1218,10 @@ Exaggerate slightly — it always sounds less than you think.
     // ---------------------------
     // Realtime session create
     // ---------------------------
-    const isEco = !!profile.eco_mode;
+    // Extra-Intelligence laeuft IMMER im Eco-Modus — Sophie wirft nur kurze
+    // Fakten ein, das volle gpt-realtime waere ueberdimensioniert und wuerde
+    // die Marge killen. Fuer andere Modi zaehlt das Profil-Flag.
+    const isEco = sessionMode === "extra_intelligence" ? true : !!profile.eco_mode;
     const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-realtime";
 
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
