@@ -250,6 +250,16 @@ let responsePendingCount = 0;
 // responsePendingCount==0 ist. Bei response.done flushen wir.
 let pendingResponseCreatePayload = null;
 
+// Auto-Reconnect bei unerwartetem pc-Disconnect (Network-Blip, OpenAI-Session-
+// Max-Duration, generische WebRTC-Drops). Retry mit exponential backoff und
+// hartem Limit, damit echte Fehler (Auth weg, Server down) nicht in Endlos-Loop
+// gehen. Counter wird bei jedem erfolgreichen "connected"-State und bei
+// manuellem Start auf 0 resettet.
+const MAX_RECONNECT_ATTEMPTS     = 3;
+const RECONNECT_BACKOFF_BASE_MS  = 1000;   // 1s / 2s / 4s
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+
 // Client-VAD (lokale Lautstaerke-Messung, entscheidet Sleep/Wake).
 // AudioContext + AnalyserNode haengen am Mic-Stream und laufen DAUERHAFT —
 // auch im Standby, damit der erste Voice-Spike die Session wecken kann.
@@ -460,6 +470,7 @@ async function startSession() {
   errorText.textContent = "";
   startBtn.disabled = true;
   sessionState = "starting";
+  reconnectAttempts = 0;                 // frischer Start -> Retry-Counter auf 0
 
   try {
     // 1) Audio-Stream akquirieren (User-Gesture Pfad — nur beim INITIAL-Start).
@@ -544,10 +555,18 @@ async function buildRealtimeConnection(data) {
   pc = new RTCPeerConnection();
   stream.getAudioTracks().forEach(t => pc.addTrack(t, stream));
   pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+  // Disconnect-Detection: pc kann aus vielen Gruenden sterben (Network-Blip,
+  // OpenAI-Session-Max-Duration, TURN-Server-Zucker). Wir hoeren mit, damit
+  // der User nicht stumm ins Leere redet und ein Auto-Reconnect fuer Stabilitaet.
+  pc.addEventListener("connectionstatechange", onPcConnectionStateChange);
 
   dc = pc.createDataChannel("oai-events");
   dc.addEventListener("open", onDataChannelOpen);
   dc.addEventListener("message", onDataChannelMessage);
+  // DataChannel kann sterben, ohne dass pc.connectionState gleichzeitig wechselt —
+  // zusaetzliche Leine fuers Ausfall-Frueherkennung.
+  dc.addEventListener("close", onDataChannelClose);
+  dc.addEventListener("error", onDataChannelError);
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -671,6 +690,9 @@ async function enterStandby() {
   }
   // Ticker stoppen — Display friert beim letzten Wert ein
   if (tickerTimer) { clearInterval(tickerTimer); tickerTimer = null; }
+  // Pending Auto-Reconnect abbrechen (handleUnexpectedDisconnect setzt ihn
+  // DANACH neu — deshalb hier sicher clearbar).
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
   // WebRTC zu. Mic-Track NICHT stoppen (stream bleibt fuer VAD + naechsten Connect).
   try { dc?.close(); } catch {}
@@ -713,6 +735,67 @@ async function wakeFromStandby() {
     dc = null; pc = null;
     sessionState = "standby";
   }
+}
+
+// ── Disconnect-Detection & Auto-Reconnect ──────────────────
+// pc.onconnectionstatechange feuert bei jedem State-Wechsel. Wir reagieren
+// auf disconnected/failed/closed WAEHREND wir eigentlich "active" sein sollten
+// — das ist der unerwartete Ausfall (Network-Blip, OpenAI-Limit, WebRTC-Drop).
+// Bei erfolgreich "connected" wird der Retry-Counter resettet.
+function onPcConnectionStateChange() {
+  if (!pc) return;
+  const cs = pc.connectionState;
+  console.log("[xi] pc.connectionState:", cs);
+  if (cs === "connected") {
+    reconnectAttempts = 0;        // stabile Verbindung -> frisch zaehlen
+    return;
+  }
+  if (cs === "disconnected" || cs === "failed" || cs === "closed") {
+    // Nur reagieren, wenn wir NICHT eh gerade standby/stop machen.
+    if (sessionState === "active") {
+      handleUnexpectedDisconnect();
+    }
+  }
+}
+
+function onDataChannelClose() {
+  console.log("[xi] dc closed");
+  if (sessionState === "active") handleUnexpectedDisconnect();
+}
+
+function onDataChannelError(e) {
+  console.warn("[xi] dc error", e);
+  // Nicht zwingend fatal — pc.connectionState entscheidet. Logging only.
+}
+
+// Unerwarteter pc-Ausfall: aufraeumen (wie enterStandby) und nach Backoff
+// selbst wake'n, damit der User nicht warten muss bis er selbst spricht.
+// Retry-Limit verhindert Endlos-Loop bei echten Fehlern (Auth weg etc.).
+async function handleUnexpectedDisconnect() {
+  if (sessionState !== "active") return;
+  reconnectAttempts += 1;
+
+  if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+    console.warn("[xi] max reconnect attempts erreicht — Session beenden");
+    errorText.textContent = "Verbindung wiederholt verloren — Session beendet.";
+    await stopSession(false, false);
+    return;
+  }
+
+  const delay = RECONNECT_BACKOFF_BASE_MS * Math.pow(2, reconnectAttempts - 1);
+  console.warn(`[xi] unerwarteter Disconnect — Auto-Reconnect #${reconnectAttempts} in ${delay}ms`);
+
+  // Sauber auf Standby: Akku einfrieren, pc+dc zu, Ticker aus.
+  await enterStandby();
+
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    // Nur wenn wir immer noch im standby sind — User koennte manuell gestoppt haben.
+    if (sessionState === "standby") {
+      wakeFromStandby().catch(e => console.warn("[xi] auto-reconnect failed", e));
+    }
+  }, delay);
 }
 
 // Queued response.create sofort feuern, falls der Server wieder frei ist.
@@ -1269,6 +1352,8 @@ async function stopSession(silent = false, byLimit = false) {
 
   if (tickerTimer)     { clearInterval(tickerTimer); tickerTimer = null; }
   if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
+  if (reconnectTimer)  { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  reconnectAttempts = 0;
   teardownClientVAD();
   voiceBusy = false;
   responsePendingCount = 0;
