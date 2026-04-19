@@ -92,6 +92,10 @@ export default async function handler(req, res) {
       // Atomic idempotency claim — prevents double-grant when /api/billing?action=confirm
       // and this webhook race on the same checkout.session. Only the winner of the
       // INSERT writes user_usage/user_subscriptions.
+      //
+      // Graceful degradation: if the idempotency table is missing (migration
+      // 20260419_billing_idempotency.sql not applied), log a warning and continue.
+      // A missing migration must not leave Stripe stuck retrying the webhook.
       const { error: claimErr } = await supabase
         .from("billing_processed_sessions")
         .insert({ stripe_session_id: session.id, processed_by: "webhook", user_id: userId, mode });
@@ -100,8 +104,16 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true, already_processed: true });
       }
       if (claimErr) {
-        console.error("[webhook] Idempotency claim failed:", claimErr);
-        return res.status(500).send("Idempotency check failed");
+        const missingTable =
+          claimErr.code === "42P01" ||
+          /relation .*billing_processed_sessions.* does not exist/i.test(claimErr.message || "") ||
+          /billing_processed_sessions/i.test(claimErr.details || "");
+        if (missingTable) {
+          console.warn("[webhook] idempotency table missing — proceeding without guard. Apply migration 20260419_billing_idempotency.sql.");
+        } else {
+          console.error("[webhook] Idempotency claim failed:", claimErr);
+          return res.status(500).send("Idempotency check failed");
+        }
       }
 
       // A) Subscription
