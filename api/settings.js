@@ -1,7 +1,7 @@
 // api/settings.js — Settings API (sources, costs, health)
 import { createClient } from '@supabase/supabase-js';
 import { listSources, decoupleSource, deleteRawData, deleteAll } from '../lib/import/source-ledger.js';
-import { TOKEN_COSTS, SECONDS_PER_TOKEN } from '../lib/billing-constants.js';
+import { TOKEN_COSTS, SECONDS_PER_TOKEN, DEFAULT_FREE_TOKENS } from '../lib/billing-constants.js';
 import { trackCost } from '../lib/ai/cost-tracker.js';
 
 export default async function handler(req, res) {
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
         .from('user_usage')
         .upsert({
           user_id: user.id,
-          free_tokens_total: 50, free_tokens_used: 0,
+          free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
           paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
         }, { onConflict: 'user_id' })
         .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       if (created) usage = created;
     }
 
-    const freeTotal = usage?.free_tokens_total ?? 50;
+    const freeTotal = usage?.free_tokens_total ?? DEFAULT_FREE_TOKENS;
     const freeUsed = usage?.free_tokens_used ?? 0;
     const freeRemaining = Math.max(0, freeTotal - freeUsed);
 

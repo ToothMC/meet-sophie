@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 import { normalizeResponse } from '../../lib/ai/persona-normalizer.js';
-import { TOKEN_COSTS } from '../../lib/billing-constants.js';
+import { TOKEN_COSTS, DEFAULT_FREE_TOKENS } from '../../lib/billing-constants.js';
 import { buildServerSystemPrompt } from '../../lib/server-prompt.js';
 
 const CHALLENGE_PROVIDERS = [
@@ -214,7 +214,7 @@ Erstelle jetzt die bestmögliche Antwort. Antworte direkt, ohne Meta-Kommentare.
         .eq('user_id', userId).maybeSingle()).data;
       if (!usage) {
         const { data: created } = await supabase.from('user_usage').upsert({
-          user_id: userId, free_tokens_total: 50, free_tokens_used: 0,
+          user_id: userId, free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
           paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
         }, { onConflict: 'user_id' }).select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance').single();
         if (created) usage = created;

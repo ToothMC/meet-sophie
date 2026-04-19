@@ -1,6 +1,6 @@
 // api/admin.js — Admin Dashboard API
 import { createClient } from '@supabase/supabase-js';
-import { PLAN_PRICES } from '../lib/billing-constants.js';
+import { PLAN_PRICES, DEFAULT_FREE_TOKENS } from '../lib/billing-constants.js';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -178,7 +178,7 @@ export default async function handler(req, res) {
       const sub = subMap[id];
       const usage = usageMap[id];
       const prof = profMap[id];
-      const freeRem = Math.max(0, (usage?.free_tokens_total ?? 50) - (usage?.free_tokens_used ?? 0));
+      const freeRem = Math.max(0, (usage?.free_tokens_total ?? DEFAULT_FREE_TOKENS) - (usage?.free_tokens_used ?? 0));
       const paidRem = Math.max(0, (usage?.paid_tokens_total ?? 0) - (usage?.paid_tokens_used ?? 0));
       const topupRem = Math.max(0, usage?.topup_tokens_balance ?? 0);
 
