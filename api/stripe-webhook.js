@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return res.status(500).send("Missing Supabase server env vars");
 
-  const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+  const stripe = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
   const supabase = createClient(supabaseUrl, serviceKey);
 
   let event;

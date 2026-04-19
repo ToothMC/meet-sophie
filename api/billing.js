@@ -327,7 +327,7 @@ async function handleConfirm(req, res) {
       return res.status(500).json({ error: "Missing Supabase env vars" });
     }
 
-    const stripe   = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+    const stripe   = new Stripe(stripeKey, { apiVersion: "2026-01-28.clover" });
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const sessionId = req.query?.session_id || req.body?.session_id || null;
