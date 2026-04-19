@@ -2,7 +2,7 @@
   "name": "meet-sophie",
   "private": true,
   "scripts": {
-    "build": "node scripts/build-blog.mjs"
+    "build": "node scripts/build-blog.mjs && node scripts/strip-dev-routes.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

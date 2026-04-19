@@ -1465,49 +1465,84 @@
       // Last session — check both user_sessions AND meetings, show newest
       const sessionCard = document.getElementById("sessionCard");
       try {
-        // Fetch last activity from all sources.
-        // Verlauf = alle Sessions. Prio hat das Gespräch, unabhängig von Report-Status.
-        const [sessRes, chatRes, meetRes] = await Promise.all([
-          // Last talk/brainstorm/pitch — mit oder ohne Report.
-          // 'voice' ist Legacy (alte chat_note-Upserts), zählt als talk.
-          supabase.from("user_sessions")
-            .select("id, title, session_type, status, started_at, last_message_at, session_date, conversation_outputs(title)")
-            .eq("user_id", userId)
-            .in("session_type", ["talk", "brainstorm", "sales_pitch", "voice"])
-            .order("session_date", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          // Last chat session
-          supabase.from("user_sessions")
-            .select("id, title, session_type, status, started_at, last_message_at")
-            .eq("user_id", userId)
-            .eq("session_type", "chat")
-            .gt("turn_count", 0)
-            .order("last_message_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          // Last meeting — order by created_at (always set; started_at is null for prep-phase meetings)
-          supabase.from("meetings")
-            .select("id, title, meeting_type, phase, started_at, created_at")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-        ]);
+        // Helper: one query pass across all sources.
+        async function fetchLatestEntry() {
+          const [sessRes, chatRes, meetRes] = await Promise.all([
+            // Last talk/brainstorm/pitch — mit oder ohne Report.
+            // 'voice' ist Legacy (alte chat_note-Upserts), zählt als talk.
+            supabase.from("user_sessions")
+              .select("id, title, session_type, status, started_at, last_message_at, session_date, conversation_outputs(title)")
+              .eq("user_id", userId)
+              .in("session_type", ["talk", "brainstorm", "sales_pitch", "voice"])
+              .order("session_date", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            // Last chat session
+            supabase.from("user_sessions")
+              .select("id, title, session_type, status, started_at, last_message_at")
+              .eq("user_id", userId)
+              .eq("session_type", "chat")
+              .gt("turn_count", 0)
+              .order("last_message_at", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            // Last meeting — order by created_at (always set; started_at is null for prep-phase meetings)
+            supabase.from("meetings")
+              .select("id, title, meeting_type, phase, started_at, created_at")
+              .eq("user_id", userId)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+          ]);
 
-        // Pick the most recent across all sources.
-        // Meetings use created_at as fallback because started_at is null until the meeting goes live.
-        const candidates = [
-          sessRes.data && { ...sessRes.data, _src: "session" },
-          chatRes.data && { ...chatRes.data, _src: "chat" },
-          meetRes.data && { ...meetRes.data, _src: "meeting" },
-        ].filter(Boolean);
+          // Pick the most recent across all sources.
+          // Meetings use created_at as fallback because started_at is null until the meeting goes live.
+          const candidates = [
+            sessRes.data && { ...sessRes.data, _src: "session" },
+            chatRes.data && { ...chatRes.data, _src: "chat" },
+            meetRes.data && { ...meetRes.data, _src: "meeting" },
+          ].filter(Boolean);
 
-        const entry = candidates.sort((a, b) => {
-          const dateA = a.last_message_at || a.started_at || a.session_date || a.created_at || 0;
-          const dateB = b.last_message_at || b.started_at || b.session_date || b.created_at || 0;
-          return new Date(dateB) - new Date(dateA);
-        })[0] || null;
+          return candidates.sort((a, b) => {
+            const dateA = a.last_message_at || a.started_at || a.session_date || a.created_at || 0;
+            const dateB = b.last_message_at || b.started_at || b.session_date || b.created_at || 0;
+            return new Date(dateB) - new Date(dateA);
+          })[0] || null;
+        }
+
+        // Check if /talk just redirected here while memory-update is still
+        // writing. If so, retry briefly until the pending session is the
+        // newest — prevents showing the previous session as "last session".
+        let pendingId = null;
+        let pendingTs = 0;
+        try {
+          pendingId = sessionStorage.getItem("sophie-last-session-pending") || null;
+          pendingTs = Number(sessionStorage.getItem("sophie-last-session-pending-ts") || "0");
+        } catch (_) {}
+        // Ignore stale hints (older than 30s — user probably already refreshed).
+        if (pendingId && Date.now() - pendingTs > 30000) {
+          try {
+            sessionStorage.removeItem("sophie-last-session-pending");
+            sessionStorage.removeItem("sophie-last-session-pending-ts");
+          } catch (_) {}
+          pendingId = null;
+        }
+
+        let entry = await fetchLatestEntry();
+
+        if (pendingId && entry?.id !== pendingId) {
+          // Race with memory-update: poll up to 3x, 1.5s apart (≈4.5s total).
+          for (let i = 0; i < 3 && entry?.id !== pendingId; i++) {
+            await new Promise((r) => setTimeout(r, 1500));
+            entry = await fetchLatestEntry();
+          }
+        }
+        if (pendingId) {
+          try {
+            sessionStorage.removeItem("sophie-last-session-pending");
+            sessionStorage.removeItem("sophie-last-session-pending-ts");
+          } catch (_) {}
+        }
 
         if (entry) {
           const isMeeting = entry._src === "meeting";

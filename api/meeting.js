@@ -8,6 +8,15 @@
 // ?action=message   — Chat-Nachricht im Meeting (phasenspezifisch)
 // ?action=summarize — Summary generieren (POST-Phase)
 // ?action=summary   — Summary abrufen
+//
+// RLS contract for meeting_context / meeting_notes / meeting_summary:
+//   Direct client reads go through SELECT policies scoped by
+//   meetings.user_id = auth.uid(). ALL mutating operations
+//   (INSERT/UPDATE/DELETE) run from this file with the service role
+//   — that's why those tables intentionally have no UPDATE/DELETE
+//   RLS policies (migration 20260325_meeting_mode.sql). If you ever
+//   need a client-side write, add the policy here AND mirror the
+//   ownership check in the policy itself.
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
