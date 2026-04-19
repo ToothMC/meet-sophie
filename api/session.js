@@ -296,16 +296,32 @@ export default async function handler(req, res) {
 
     const topupRemaining = Math.max(0, usage?.topup_tokens_balance ?? 0);
 
+    // Voice is a paid feature: only users with an active subscription or
+    // remaining paid/topup tokens may start a session. Free-tokens alone
+    // (legacy leftovers) are not enough — those users are sent to /pricing.
+    const isPayingUser = !!(isPremium || paidRemaining > 0 || topupRemaining > 0);
+
+    if (!isPayingUser) {
+      return res.status(402).json({
+        error: "No active subscription",
+        reason: "no_active_subscription",
+        remaining_tokens: 0,
+        remaining_seconds: 0,
+        is_premium: false,
+        plan: plan,
+        subscription_active: false,
+        soft_end_enabled: true,
+        soft_end_warning_seconds: softEndWarningSeconds,
+        soft_end_summary_seconds: softEndSummarySeconds,
+      });
+    }
+
     const remaining = freeRemaining + paidRemaining + topupRemaining;
 
     if (remaining <= 0) {
-      const reason = isPremium
-        ? "subscription_quota_exhausted"
-        : "no_active_subscription";
-
       return res.status(402).json({
         error: "No remaining time",
-        reason,
+        reason: "subscription_quota_exhausted",
         remaining_tokens: 0,
         remaining_seconds: 0,
         is_premium: isPremium,
@@ -315,29 +331,6 @@ export default async function handler(req, res) {
         soft_end_warning_seconds: softEndWarningSeconds,
         soft_end_summary_seconds: softEndSummarySeconds,
       });
-    }
-
-    // ---------------------------
-    // DAILY BUDGET LIMIT (global) - only for truly free users
-    // ---------------------------
-    const DAILY_FREE_SECONDS_CAP = parseInt(process.env.DAILY_FREE_SECONDS_CAP || "3000", 10);
-    const FREE_SECONDS_PER_TRIAL = 120;
-    const isPayingUser = !!(isPremium || paidRemaining > 0 || topupRemaining > 0);
-
-    if (!isPayingUser) {
-      const { data: budgetRow, error: budgetErr } = await supabase.rpc("reserve_free_seconds", {
-        p_seconds: FREE_SECONDS_PER_TRIAL,
-        p_cap: DAILY_FREE_SECONDS_CAP,
-      });
-
-      const allowed = Array.isArray(budgetRow) && budgetRow[0]?.allowed === true;
-
-      if (budgetErr || !allowed) {
-        return res.status(429).json({
-          error: "busy",
-          message: "Sophie has too many calls right now. Please try later.",
-        });
-      }
     }
 
     // ---------------------------
