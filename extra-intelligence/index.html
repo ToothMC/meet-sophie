@@ -895,8 +895,11 @@ function onDataChannelMessage(e) {
       allowNextMessageResponse = false;
       currentResponseCancelled = false;
       currentResponseHadToolCall = false;
-      // Server arbeitet — Sleep-Guard hochzaehlen.
+      // Server arbeitet — Sleep-Guard hochzaehlen + Silence-Clock reset
+      // (sonst laeuft die 6s-Uhr waehrend Sophies Antwort weiter und
+      // Sleep triggert sofort sobald Sophie fertig ist).
       responsePendingCount++;
+      lastVoiceAt = Date.now();
       break;
 
     case "response.output_item.added": {
@@ -928,6 +931,8 @@ function onDataChannelMessage(e) {
         clearTimeout(voiceBusyTimeout);
         voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
       }
+      // Silence-Clock laufend frisch halten, solange Sophie spricht.
+      lastVoiceAt = Date.now();
       // Transcript-Stream fuer Chat-Log sammeln
       if (msg.type === "response.audio_transcript.delta" && typeof msg.delta === "string") {
         currentAssistantText += msg.delta;
@@ -979,6 +984,9 @@ function onDataChannelMessage(e) {
       if (msg.type === "response.done" || msg.type === "response.cancelled") {
         responsePendingCount = Math.max(0, responsePendingCount - 1);
       }
+      // Silence-Clock reset — User hat nach Sophies Antwort volle 6s Grace-Period
+      // fuer Follow-up, bevor Standby triggert.
+      lastVoiceAt = Date.now();
       // Antwort-Audio fertig -> 300ms Tail dann Mic wieder auf
       clearTimeout(voiceBusyTimeout);
       voiceBusyTimeout = setTimeout(unlockVoice, 300);
