@@ -147,11 +147,6 @@
     </div>
 
     <div class="session-bar" id="sessionBar">
-      <div class="status-row">
-        <span>⏱ <span class="val" id="elapsedLabel">00:00</span></span>
-        <span>🪙 <span class="val" id="tokensUsedLabel">0</span><span class="muted-tokens" id="tokensRemainingLabel"></span></span>
-        <span>💬 <span class="val" id="triggerCount">0</span></span>
-      </div>
       <div class="balance-wrap" id="balanceWrap" style="display:none">
         <div class="balance-label">
           <span id="balanceLeftLabel">Guthaben</span>
@@ -481,7 +476,7 @@ async function startSession() {
     running = true;
     sessionStartedAt = Date.now();
     triggerCount = 0;
-    triggerCountEl.textContent = "0";
+    if (triggerCountEl) triggerCountEl.textContent = "0";
     startPanel.style.display = "none";
     sessionBar.classList.add("active");
     waveEl.classList.add("active");
@@ -814,7 +809,7 @@ function onDataChannelMessage(e) {
       const t = String(msg.transcript || currentAssistantText || "").trim();
       if (t) {
         triggerCount += 1;
-        triggerCountEl.textContent = String(triggerCount);
+        if (triggerCountEl) triggerCountEl.textContent = String(triggerCount);
         if (outputMode !== "voice") appendChatMessage(t);
       }
       currentAssistantText = "";
@@ -832,7 +827,7 @@ function onDataChannelMessage(e) {
       const t = String(msg.text || currentAssistantText || "").trim();
       if (t && outputMode !== "voice") {
         triggerCount += 1;
-        triggerCountEl.textContent = String(triggerCount);
+        if (triggerCountEl) triggerCountEl.textContent = String(triggerCount);
         appendChatMessage(t);
       }
       currentAssistantText = "";
@@ -992,16 +987,20 @@ function formatMMSS(sec) {
 function updateTokenDisplay() {
   const sec = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt) / 1000) : 0;
   const used = sophieTokensUsedNow();
-  elapsedLabel.textContent = formatMMSS(sec);
-  tokensUsedLabel.textContent = String(used);
+  // Altes Status-Row-UI ist entfernt — Guards halten den Code lauffaehig,
+  // falls die Elemente nicht existieren.
+  if (elapsedLabel)    elapsedLabel.textContent = formatMMSS(sec);
+  if (tokensUsedLabel) tokensUsedLabel.textContent = String(used);
 
-  if (initialRemainingTokens != null) {
-    const left = Math.max(0, initialRemainingTokens - used);
-    const pct = initialRemainingTokens > 0 ? left / initialRemainingTokens : 0;
-    tokensRemainingLabel.textContent = ` / ${left} frei`;
-    tokensRemainingLabel.className = "muted-tokens" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
-  } else {
-    tokensRemainingLabel.textContent = "";
+  if (tokensRemainingLabel) {
+    if (initialRemainingTokens != null) {
+      const left = Math.max(0, initialRemainingTokens - used);
+      const pct = initialRemainingTokens > 0 ? left / initialRemainingTokens : 0;
+      tokensRemainingLabel.textContent = ` / ${left} frei`;
+      tokensRemainingLabel.className = "muted-tokens" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+    } else {
+      tokensRemainingLabel.textContent = "";
+    }
   }
 
   // Plan-Balance-Balken live aktualisieren.
