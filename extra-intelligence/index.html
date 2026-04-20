@@ -651,6 +651,9 @@ function setupClientVAD(mediaStream) {
     analyserBuf = new Float32Array(analyserNode.fftSize);
     lastVoiceAt = Date.now();
     vadTimer = setInterval(onVadTick, VAD_CHECK_MS);
+    // Ready-Sound dekodieren solange der Context gerade durch User-Gesture
+    // entsperrt ist — iOS blockt sonst spaetere playback-Versuche.
+    decodeReadySound();
   } catch (e) {
     console.warn("[xi] VAD setup failed — Session laeuft ohne Sleep", e);
     audioContext = null; analyserNode = null; analyserBuf = null;
@@ -661,6 +664,7 @@ function teardownClientVAD() {
   if (vadTimer) { clearInterval(vadTimer); vadTimer = null; }
   try { audioContext?.close(); } catch {}
   audioContext = null; analyserNode = null; analyserBuf = null;
+  readySoundBuffer = null;
 }
 
 function onVadTick() {
@@ -1072,8 +1076,35 @@ function dcSend(obj) {
 // Akustisches Signal "Sophie recherchiert" — wird beim Start eines web_search
 // gespielt, damit der User weiss dass gleich eine Antwort kommt und nicht denkt
 // die Session sei tot. Gleiche Asset + Volume wie in talk/.
+//
+// iOS Safari: HTMLAudioElement.play() ohne User-Gesture ist blockiert. Deshalb
+// spielen wir primaer via Web Audio durch den bereits in setupClientVAD durch
+// User-Gesture entsperrten audioContext — der ist fuer getUserMedia + WebRTC
+// eh offen und erbt die Gesture-Erlaubnis. Fallback HTMLAudio bleibt fuer
+// Desktop/Edge-Cases wo der Context ausnahmsweise nicht steht.
+let readySoundBuffer = null;
+
+async function decodeReadySound() {
+  if (readySoundBuffer || !audioContext) return;
+  try {
+    const resp = await fetch("/audio/ready.mp3");
+    const buf = await resp.arrayBuffer();
+    readySoundBuffer = await audioContext.decodeAudioData(buf);
+  } catch {}
+}
+
 function playReadySound() {
   try {
+    if (audioContext && readySoundBuffer) {
+      if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+      const source = audioContext.createBufferSource();
+      source.buffer = readySoundBuffer;
+      const gain = audioContext.createGain();
+      gain.gain.value = 0.28;
+      source.connect(gain).connect(audioContext.destination);
+      source.start(0);
+      return;
+    }
     const audio = new Audio("/audio/ready.mp3");
     audio.volume = 0.28;
     audio.play().catch(() => {});
