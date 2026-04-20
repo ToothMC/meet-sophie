@@ -230,6 +230,9 @@
     .hero-mode-link:nth-child(3){animation-delay:.6s}
     .hero-mode-link:nth-child(4){animation-delay:.9s}
     .hero-mode-link:hover{color:rgba(220,200,170,1);animation:none;opacity:1;text-decoration-color:rgba(196,168,130,.6)}
+    .hero-modes-xi{margin-top:-20px}
+    .hero-modes-xi .hero-mode-link{animation-delay:1.2s}
+    @media(max-width:640px){.hero-modes-xi{margin-top:-14px}}
     .hero-email-form{
       display:flex;align-items:center;
       background:rgba(255,255,255,.08);
@@ -2042,6 +2045,9 @@
           <button class="hero-mode-link" data-video-mode="meeting" id="hero-mode-meeting">Meeting</button>
           <span class="separator">-</span>
           <button class="hero-mode-link" data-video-mode="brainstorm" id="hero-mode-brainstorm">Brainstorm</button>
+        </div>
+        <div class="hero-modes hero-modes-xi">
+          <a class="hero-mode-link" href="/plus-intelligence/" id="hero-mode-xi">+Intelligence</a>
         </div>
         <form class="hero-email-form" id="heroEmailForm" autocomplete="off">
           <svg class="hero-email-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m2 7 10 6 10-6"/></svg>
