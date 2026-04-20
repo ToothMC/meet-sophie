@@ -123,18 +123,25 @@ export default async function handler(req, res) {
   ];
 
   try {
-    const first = await Promise.any(racers);
+    // 8s Timeout: verhindert, dass Promise.any auf die langsamste Quelle wartet
+    // wenn alle fehlschlagen. Messung zeigte no_facts bis 13s, Erfolge bis ~9.5s —
+    // 8s kappt Ausreisser, bewahrt typische Erfolgs-Latenzen.
+    const first = await Promise.race([
+      Promise.any(racers),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("research_timeout")), 8000)),
+    ]);
     facts   = first.facts;
     sources = first.sources;
     winner  = first.name;
-  } catch {
-    // fire-and-forget analytics on no-facts outcome
+  } catch (e) {
+    const outcome = e?.message === "research_timeout" ? "no_facts_timeout" : "no_facts";
+    // fire-and-forget analytics on no-facts outcome (echtes fail vs. timeout getrennt)
     supabase.from("analytics_events").insert({
       user_id: user.id,
       event_name: "xi_research",
-      meta: { action, language, query_len: query.length, source: null, outcome: "no_facts" },
+      meta: { action, language, query_len: query.length, source: null, outcome },
     }).then(() => {}, () => {});
-    return res.status(200).json({ text: "", reason: "no_facts" });
+    return res.status(200).json({ text: "", reason: outcome });
   }
 
   // Shortcut: wenn Quelle kurz + Satzende + nicht nur die Query → kein Condense
