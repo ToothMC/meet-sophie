@@ -287,7 +287,8 @@
     @media(max-width:520px){.pricing-rows{grid-template-columns:1fr}}
     .price-row{
       background:rgba(255,255,255,.04);border:1px solid rgba(196,168,130,.18);
-      border-radius:14px;padding:16px;text-align:left;
+      border-radius:14px;padding:18px;text-align:left;
+      display:flex;flex-direction:column;gap:14px;
     }
     .price-row .k{
       font-size:11px;font-weight:700;letter-spacing:.16em;
@@ -297,8 +298,9 @@
       font-size:20px;font-weight:700;color:#ffffff;line-height:1.2;
     }
     .price-row .v small{font-weight:500;opacity:.7;font-size:13px;display:block;margin-top:4px}
-    .pricing-cta-row{
-      display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
+    .price-row .btn{
+      width:100%;min-height:44px;font-size:13px;padding:0 16px;
+      border-radius:10px;margin-top:auto;
     }
 
     /* Final CTA band */
@@ -351,7 +353,7 @@
         fehlt dir <em>nie</em> eine Antwort.
       </h1>
       <p class="hero-sub" id="tSub">
-        Sophie hört mit. Prüft Fakten. Liefert die Quelle — live, während du sprichst.
+        Sophie hört mit. Prüft Fakten. Liefert die Antwort — live, während du sprichst.
         Kein Tippen. Kein Blättern. Kein Zögern.
       </p>
       <div class="hero-cta-row">
@@ -394,17 +396,16 @@
 <section class="section section-light">
   <div class="wrap">
     <div class="section-head">
-      <div class="section-eyebrow" id="tScenarioEyebrow">Du kennst das</div>
-      <h2 class="section-title" id="tScenarioTitle">Diese Momente, in denen plötzlich jede Sekunde zählt.</h2>
+      <div class="section-eyebrow" id="tScenarioEyebrow">Der Traum</div>
+      <h2 class="section-title" id="tScenarioTitle">Wer hat nicht schon davon geträumt</h2>
       <p class="section-lede" id="tScenarioLede">
-        Ein Fakt. Eine Zahl. Ein Name. Du weißt, er ist da draußen — aber nicht in deinem Kopf.
-        Sophie holt ihn, bevor das Gespräch weiterzieht.
+        Das Wissen des gesamten Internets mit KI in deinem Kopf. Alle Fakten, alle Zahlen, alle Namen.
+        Die Antworten kommen wie eine Erinnerung in dein Ohr. Sophie liefert dir alle Antworten direkt in dein Gespräch.
       </p>
     </div>
 
     <div class="scenarios">
       <div class="scenario">
-        <div class="scenario-icon">💼</div>
         <h3 class="scenario-title" id="tSc1Title">Das Bewerbungsgespräch</h3>
         <p class="scenario-body" id="tSc1Body">
           „Was wissen Sie über unser letztes Quartalsergebnis?" — <em>Sophie hat die Zahl, bevor du antwortest.</em>
@@ -412,7 +413,6 @@
       </div>
 
       <div class="scenario">
-        <div class="scenario-icon">🤝</div>
         <h3 class="scenario-title" id="tSc2Title">Die Verhandlung</h3>
         <p class="scenario-body" id="tSc2Body">
           Dein Gegenüber nennt eine Marktzahl. Stimmt die? — <em>Sophie prüft sie in Echtzeit.</em>
@@ -420,7 +420,6 @@
       </div>
 
       <div class="scenario">
-        <div class="scenario-icon">📞</div>
         <h3 class="scenario-title" id="tSc3Title">Der Kundencall</h3>
         <p class="scenario-body" id="tSc3Body">
           Ein Konkurrent wird erwähnt. Was macht der gerade? — <em>Sophie recherchiert, während du sprichst.</em>
@@ -428,10 +427,9 @@
       </div>
 
       <div class="scenario">
-        <div class="scenario-icon">🎯</div>
         <h3 class="scenario-title" id="tSc4Title">Der Pitch</h3>
         <p class="scenario-body" id="tSc4Body">
-          „Wie groß ist der Markt wirklich?" — <em>Sophie liefert Zahl und Quelle, bevor du weiterredest.</em>
+          „Wie groß ist der Markt wirklich?" — <em>Sophie liefert Zahl und Antwort, bevor du weiterredest.</em>
         </p>
       </div>
     </div>
@@ -443,10 +441,9 @@
   <div class="wrap">
     <div class="section-head">
       <div class="section-eyebrow" id="tHowEyebrow">So funktioniert's</div>
-      <h2 class="section-title" id="tHowTitle">Drei Schritte. Kein Werkzeugwechsel.</h2>
+      <h2 class="section-title" id="tHowTitle">Drei Schritte. Multi-KI-gesteuert.</h2>
       <p class="section-lede" id="tHowLede">
-        +Intelligence arbeitet im Hintergrund — wie ein zweiter Hörer, der mitdenkt,
-        aber nur dann etwas sagt, wenn du ihn fragst.
+        Wie ein zweiter Teilnehmer, der mitdenkt und auf alle Fragen die Fakten liefert.
       </p>
     </div>
 
@@ -460,16 +457,16 @@
       </div>
       <div class="step">
         <div class="step-num">2</div>
-        <h3 class="step-title" id="tStep2Title">Du fragst.</h3>
+        <h3 class="step-title" id="tStep2Title">Jemand sagt.</h3>
         <p class="step-body" id="tStep2Body">
-          „Sophie, check mal…" — und Sophie startet die Live-Recherche im Web.
+          „Wie hoch ist der Mount Everest noch gleich…"
         </p>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <h3 class="step-title" id="tStep3Title">Sophie liefert.</h3>
         <p class="step-body" id="tStep3Body">
-          Fakt plus Quelle, direkt in deinen Chat. Diskret. In Sekunden.
+          Mount Everest 8.849 m — in dein Ohr oder Chat. Diskret. In Sekunden.
         </p>
       </div>
     </div>
@@ -480,8 +477,8 @@
 <section class="section section-light">
   <div class="wrap">
     <div class="pricing-callout">
-      <span class="badge" id="tPriceBadge">Einfach dabei</span>
-      <h3 id="tPriceTitle">+Intelligence ist in jedem Plan aktiv.</h3>
+      <span class="badge" id="tPriceBadge">Verfügbar</span>
+      <h3 id="tPriceTitle">+Intelligence ist hiermit verfügbar.</h3>
       <p id="tPriceLede">
         Starte ohne Abo mit einem TopUp. Oder hol dir Premium und hab es fest dabei —
         jeden Monat, mit reichlich Tokens zum Experimentieren.
@@ -494,6 +491,7 @@
             €5
             <small id="tPriceV1">50 Tokens · kein Abo · sofort starten</small>
           </div>
+          <a class="btn btn-ghost" id="btnPriceSecondary" href="/pricing">Erst ausprobieren</a>
         </div>
         <div class="price-row">
           <div class="k" id="tPriceK2">Premium</div>
@@ -501,12 +499,8 @@
             €39,90
             <small id="tPriceV2">2.000 Tokens / Monat · +Intelligence inklusive</small>
           </div>
+          <a class="btn btn-primary" id="btnPricePrimary" href="/pricing">Plan wählen</a>
         </div>
-      </div>
-
-      <div class="pricing-cta-row">
-        <a class="btn btn-primary" id="btnPricePrimary" href="/pricing">Plan wählen</a>
-        <a class="btn btn-ghost" id="btnPriceSecondary" href="/">Erst ausprobieren</a>
       </div>
     </div>
   </div>
@@ -541,12 +535,12 @@
       navStart:"Zu Sophie",
       eyebrow:"+Intelligence · Live-Recherche",
       headlineHtml:`Wenn es drauf ankommt,<br>fehlt dir <em>nie</em> eine Antwort.`,
-      sub:"Sophie hört mit. Prüft Fakten. Liefert die Quelle — live, während du sprichst. Kein Tippen. Kein Blättern. Kein Zögern.",
+      sub:"Sophie hört mit. Prüft Fakten. Liefert die Antwort — live, während du sprichst. Kein Tippen. Kein Blättern. Kein Zögern.",
       btnPrimary:"Jetzt starten",
       btnSecondary:"Preise ansehen",
-      scEyebrow:"Du kennst das",
-      scTitle:"Diese Momente, in denen plötzlich jede Sekunde zählt.",
-      scLede:"Ein Fakt. Eine Zahl. Ein Name. Du weißt, er ist da draußen — aber nicht in deinem Kopf. Sophie holt ihn, bevor das Gespräch weiterzieht.",
+      scEyebrow:"Der Traum",
+      scTitle:"Wer hat nicht schon davon geträumt",
+      scLede:"Das Wissen des gesamten Internets mit KI in deinem Kopf. Alle Fakten, alle Zahlen, alle Namen. Die Antworten kommen wie eine Erinnerung in dein Ohr. Sophie liefert dir alle Antworten direkt in dein Gespräch.",
       sc1Title:"Das Bewerbungsgespräch",
       sc1Body:`„Was wissen Sie über unser letztes Quartalsergebnis?" — <em>Sophie hat die Zahl, bevor du antwortest.</em>`,
       sc2Title:"Die Verhandlung",
@@ -554,18 +548,18 @@
       sc3Title:"Der Kundencall",
       sc3Body:"Ein Konkurrent wird erwähnt. Was macht der gerade? — <em>Sophie recherchiert, während du sprichst.</em>",
       sc4Title:"Der Pitch",
-      sc4Body:`„Wie groß ist der Markt wirklich?" — <em>Sophie liefert Zahl und Quelle, bevor du weiterredest.</em>`,
+      sc4Body:`„Wie groß ist der Markt wirklich?" — <em>Sophie liefert Zahl und Antwort, bevor du weiterredest.</em>`,
       howEyebrow:"So funktioniert's",
-      howTitle:"Drei Schritte. Kein Werkzeugwechsel.",
-      howLede:"+Intelligence arbeitet im Hintergrund — wie ein zweiter Hörer, der mitdenkt, aber nur dann etwas sagt, wenn du ihn fragst.",
+      howTitle:"Drei Schritte. Multi-KI-gesteuert.",
+      howLede:"Wie ein zweiter Teilnehmer, der mitdenkt und auf alle Fragen die Fakten liefert.",
       step1Title:"Du sprichst.",
       step1Body:"Sophie hört mit — sicher, privat, nur so lange die Session läuft.",
-      step2Title:"Du fragst.",
-      step2Body:`„Sophie, check mal…" — und Sophie startet die Live-Recherche im Web.`,
+      step2Title:"Jemand sagt.",
+      step2Body:`„Wie hoch ist der Mount Everest noch gleich…"`,
       step3Title:"Sophie liefert.",
-      step3Body:"Fakt plus Quelle, direkt in deinen Chat. Diskret. In Sekunden.",
-      priceBadge:"Einfach dabei",
-      priceTitle:"+Intelligence ist in jedem Plan aktiv.",
+      step3Body:"Mount Everest 8.849 m — in dein Ohr oder Chat. Diskret. In Sekunden.",
+      priceBadge:"Verfügbar",
+      priceTitle:"+Intelligence ist hiermit verfügbar.",
       priceLede:"Starte ohne Abo mit einem TopUp. Oder hol dir Premium und hab es fest dabei — jeden Monat, mit reichlich Tokens zum Experimentieren.",
       priceK1:"TopUp · ab",
       priceV1:"50 Tokens · kein Abo · sofort starten",
@@ -585,12 +579,12 @@
       navStart:"Go to Sophie",
       eyebrow:"+Intelligence · Live Research",
       headlineHtml:`When it matters most,<br>you're <em>never</em> without an answer.`,
-      sub:"Sophie listens. Fact-checks. Delivers the source — live, while you speak. No typing. No tab-juggling. No hesitation.",
+      sub:"Sophie listens. Fact-checks. Delivers the answer — live, while you speak. No typing. No tab-juggling. No hesitation.",
       btnPrimary:"Start now",
       btnSecondary:"See pricing",
-      scEyebrow:"You know the moment",
-      scTitle:"Those seconds where every fact counts.",
-      scLede:"A number. A name. A figure. You know it's out there — just not in your head. Sophie finds it before the conversation moves on.",
+      scEyebrow:"The dream",
+      scTitle:"Who hasn't dreamed of this",
+      scLede:"The knowledge of the entire internet plus AI in your head. Every fact, every figure, every name. Answers arriving like a memory in your ear. Sophie delivers every answer right into your conversation.",
       sc1Title:"The job interview",
       sc1Body:`"What do you know about our last quarter?" — <em>Sophie has the number before you answer.</em>`,
       sc2Title:"The negotiation",
@@ -598,18 +592,18 @@
       sc3Title:"The customer call",
       sc3Body:"A competitor comes up. What are they up to? — <em>Sophie researches while you speak.</em>",
       sc4Title:"The pitch",
-      sc4Body:`"How big is the market really?" — <em>Sophie delivers the number and the source before you continue.</em>`,
+      sc4Body:`"How big is the market really?" — <em>Sophie delivers the number and the answer before you continue.</em>`,
       howEyebrow:"How it works",
-      howTitle:"Three steps. No tool switch.",
-      howLede:"+Intelligence runs in the background — like a second listener who thinks along, but only speaks when you ask.",
+      howTitle:"Three steps. Multi-AI powered.",
+      howLede:"Like a second participant who thinks along and delivers the facts for every question.",
       step1Title:"You speak.",
       step1Body:"Sophie listens — secure, private, only while the session runs.",
-      step2Title:"You ask.",
-      step2Body:`"Sophie, check…" — and live web research kicks off.`,
+      step2Title:"Someone asks.",
+      step2Body:`"How tall is Mount Everest again…"`,
       step3Title:"Sophie delivers.",
-      step3Body:"Fact plus source, right in your chat. Discreet. In seconds.",
-      priceBadge:"Included",
-      priceTitle:"+Intelligence is in every plan.",
+      step3Body:"Mount Everest 8,849 m — into your ear or chat. Discreet. In seconds.",
+      priceBadge:"Available",
+      priceTitle:"+Intelligence is available here.",
       priceLede:"Start without a subscription via a TopUp. Or go Premium and keep it on, every month, with plenty of tokens to play with.",
       priceK1:"TopUp · from",
       priceV1:"50 tokens · no subscription · start instantly",
