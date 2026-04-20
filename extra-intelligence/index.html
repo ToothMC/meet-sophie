@@ -232,23 +232,27 @@ let sessionState = "idle";
 const PLAN_TOKEN_CAPS = { premium: 2000, plus: 800, start: 300, starter: 300 };
 let planTotalTokens = 0;             // Kapazitaet fuer den Balken (0 = Bar versteckt)
 
-// Voice-Busy-Lock: waehrend Sophie spricht Mic stummschalten,
-// damit Server-VAD sie nicht unterbricht (bleibt wie im Pipeline-Mode).
-let voiceBusy = false;
-let voiceBusyTimeout = null;
+// Turn-Phase State-Maschine fuer die Conversation-Ebene. Unabhaengig vom
+// Connection-Lifecycle (sessionState) laeuft pro Tool-Call ein eigener
+// Turn-Zyklus:
+//   listening   -> User kann sprechen, Server-VAD an, Sophie kann Tool rufen
+//   researching -> Tool laeuft, VAD AUS, User-Input wird verworfen
+//   answering   -> Sophie spricht Antwort, VAD bleibt AUS (keine Unterbrechung)
+//
+// Zweck: Garantieren dass Sophie ihre Antwort immer zu Ende liefert, auch
+// wenn der User waehrend Research/Antwort weiterspricht. Durch VAD-aus
+// waehrend researching/answering kann der Server keine parallele Response
+// starten — das ehemalige "conversation_already_has_active_response"
+// Race-Cascade-Problem ist strukturell ausgeschlossen.
+//
+// Transitions ausschliesslich via transitionTo() — dort liegen alle
+// Entry-Actions (VAD on/off, Buffer-Clear, Mic-UI, Safety-Timer).
+let turnPhase = "listening";
+let turnPhaseTimeout = null;
 
-// Response-Pending-Counter: zwischen response.created und response.done/cancelled
-// arbeitet der Server an einer Antwort (tool-call, formulating, audio-stream).
-// In dieser Phase darf KEIN Sleep ausgeloest werden, sonst reisst die Antwort ab.
-// Counter statt Boolean, damit verschachtelte Responses (web_search -> follow-up)
-// sauber abgebildet werden — ein kurzes Zwischen-Done wirft uns nicht raus.
+// Counter offener Server-Responses (response.created..response.done).
+// Nur noch fuer den Sleep-Guard relevant — Turn-State laeuft ueber turnPhase.
 let responsePendingCount = 0;
-
-// Queue fuer Client-getriggerte response.create: der Server akzeptiert keine
-// neue Response solange noch eine aktiv ist ("conversation_already_has_active_response").
-// Wenn wir nach web_search einen neuen Output anstossen wollen, warten wir bis
-// responsePendingCount==0 ist. Bei response.done flushen wir.
-let pendingResponseCreatePayload = null;
 
 // Auto-Reconnect bei unerwartetem pc-Disconnect (Network-Blip, OpenAI-Session-
 // Max-Duration, generische WebRTC-Drops). Retry mit exponential backoff und
@@ -274,17 +278,11 @@ let vadTimer = null;
 let lastVoiceAt = 0;
 let cachedModel = "gpt-realtime-mini"; // fuer Reconnect beim Wake
 
-// Meta-Output-Suppression: mit create_response:true triggert server_vad
-// bei jedem VAD-Ende eine Antwort. Sophie "gehorcht" dem Passive-Listening
-// -Prompt mit Meta-Saetzen wie "(Keine Ausgabe)". Wir canceln jede Response,
-// die nur ein message-Item enthaelt (kein Tool-Call) und nicht von uns
-// nach einem Tool-Ergebnis explizit angefordert wurde.
-let allowNextMessageResponse = false;       // Client hat gerade response.create nach Tool-Output geschickt
-let currentResponseAllowsMessage = false;   // am response.created aus allowNext... gezogen
-let currentResponseCancelled = false;
-let currentResponseHadToolCall = false;
-
-// Laufender Antwort-Transcript (fuer Chat-Log)
+// Laufender Antwort-Transcript (fuer Chat-Log) — waehrend Sophie spricht
+// sammeln, beim response.*.done appenden, beim Turn-Reset leeren.
+// Meta-Output-Suppression braucht es nicht mehr: waehrend "answering" ist
+// message-Output erlaubt (nach tool_output response.create), in allen anderen
+// Phasen ist Server-VAD aus und der Server startet keine spontanen Responses.
 let currentAssistantText = "";
 
 // ── DOM ──────────────────────────────────────────────────
@@ -352,7 +350,7 @@ function syncModalitiesToSession() {
   const hasAudio = newMods.includes("audio");
 
   // Wechsel weg von Audio waehrend Sophie gerade spricht -> sofort abbrechen
-  if (hadAudio && !hasAudio && voiceBusy) {
+  if (hadAudio && !hasAudio && turnPhase === "answering") {
     dcSend({ type: "response.cancel" });
     // Audio-Element kurz stummschalten fuer sofortige User-Erfahrung
     try {
@@ -669,7 +667,7 @@ function onVadTick() {
 
   // Stille — pruefen, ob Sleep triggern soll
   if (sessionState !== "active") return;
-  if (voiceBusy) return;                                         // Sophie spricht gerade
+  if (turnPhase !== "listening") return;                         // researching/answering = aktiver Turn, nie schlafen
   if (responsePendingCount > 0) return;                          // Server arbeitet an Antwort (tool-call, formulating)
   if (!activeSegmentStartedAt) return;
   if (now - activeSegmentStartedAt < MIN_ACTIVE_MS) return;      // Anti-Flap
@@ -700,11 +698,14 @@ async function enterStandby() {
   dc = null; pc = null;
   try { audioEl.srcObject = null; } catch {}
 
-  // Voice-Lock reset — Sophie kann im Standby nicht sprechen
-  clearTimeout(voiceBusyTimeout);
-  voiceBusy = false;
-  responsePendingCount = 0;            // Server-Session ist weg, alte Pending-Counts obsolet
-  pendingResponseCreatePayload = null; // alte Queue im neuen Server-Session kontext obsolet
+  // Turn-State reset — Server-Session ist weg, alles was turnPhase getrackt
+  // hat (laufende Research, VAD-aus-Overrides) ist obsolet. Mic/Wave werden
+  // beim naechsten wake via onDataChannelOpen + transitionTo("listening")
+  // konsistent wiederhergestellt.
+  clearTimeout(turnPhaseTimeout);
+  turnPhaseTimeout = null;
+  turnPhase = "listening";
+  responsePendingCount = 0;
   lastSessionModalities = null;
 
   waveEl.classList.remove("active");
@@ -798,18 +799,6 @@ async function handleUnexpectedDisconnect() {
   }, delay);
 }
 
-// Queued response.create sofort feuern, falls der Server wieder frei ist.
-// Wird aus handleFunctionCall (setzt den Payload) + response.done-Handler
-// (Count geht auf 0) aufgerufen.
-function maybeFlushPendingResponse() {
-  if (!pendingResponseCreatePayload) return;
-  if (responsePendingCount > 0) return;
-  if (!dc || dc.readyState !== "open") { pendingResponseCreatePayload = null; return; }
-  const rp = pendingResponseCreatePayload;
-  pendingResponseCreatePayload = null;
-  dcSend({ type: "response.create", response: rp });
-}
-
 // ── Audio-Stream-Acquire (Mic ODER Tab/System-Audio) ────
 async function acquireAudioStream() {
   if (audioSource === "tab") {
@@ -874,13 +863,7 @@ function onDataChannelOpen() {
       modalities: lastSessionModalities,
       voice: "alloy",
       input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-      turn_detection: {
-        type: "server_vad",
-        threshold: 0.5,              // etwas strenger: VAD soll nicht auf jedes Raeuspern triggern
-        silence_duration_ms: 700,    // laenger warten bis Utterance als fertig gilt
-        create_response: true,       // AUTONOM: Sophie entscheidet selbst
-        interrupt_response: false,   // sie unterbricht sich nicht selbst
-      },
+      turn_detection: LISTENING_TURN_DETECTION,
       tools: [
         {
           type: "function",
@@ -1003,19 +986,83 @@ function setWaveListening(on) {
   waveEl.classList.toggle("listening-off", !on);
 }
 
-function unlockVoice() {
-  voiceBusy = false;
-  setMicMuted(false);
-  setWaveListening(true);
+// Server-VAD-Config fuer die "listening"-Phase. Wird in onDataChannelOpen
+// initial gesetzt und bei jedem transitionTo("listening") restored.
+const LISTENING_TURN_DETECTION = {
+  type: "server_vad",
+  threshold: 0.5,              // etwas strenger: VAD soll nicht auf jedes Raeuspern triggern
+  silence_duration_ms: 700,    // laenger warten bis Utterance als fertig gilt
+  create_response: true,       // AUTONOM: Sophie entscheidet selbst
+  interrupt_response: false,   // sie unterbricht sich nicht selbst
+};
+
+// Zentrale Turn-State-Transition. Entry-Actions fuer jede Phase sind hier
+// gebuendelt, damit Transitions genau eine Stelle im Code beruehren.
+// Logging immer mit Grund — macht die SM in Dev-Tools nachvollziehbar.
+function transitionTo(nextPhase, reason = "") {
+  if (turnPhase === nextPhase) return;
+  const prev = turnPhase;
+  turnPhase = nextPhase;
+  console.log(`[xi] turn: ${prev} -> ${nextPhase}${reason ? ` (${reason})` : ""}`);
+
+  if (nextPhase === "researching") {
+    // Server-VAD aus — User-Weiter-Sprechen triggert keine neue Response mehr,
+    // also kann nichts die laufende Tool-Call-Response cancelen.
+    dcSend({ type: "session.update", session: { turn_detection: null } });
+    // Audio-Buffer weg, damit nach Antwort nicht akkumuliertes Rauschen
+    // als neue Utterance interpretiert wird.
+    dcSend({ type: "input_audio_buffer.clear" });
+    // UI: "Sophie denkt" — Mic visuell aus + Ready-Sound.
+    setMicMuted(true);
+    setWaveListening(false);
+    playReadySound();
+    // Safety-Timeout: falls die fetch-Abort-Logik selbst haengt, nach 35s
+    // zurueck zu listening. fetch hat seinen eigenen AbortController bei 30s —
+    // dieses Safety-Net ist nur der Fallback.
+    clearTimeout(turnPhaseTimeout);
+    turnPhaseTimeout = setTimeout(() => transitionTo("listening", "researching_timeout"), 35_000);
+    return;
+  }
+
+  if (nextPhase === "answering") {
+    // VAD bleibt aus — Sophie spricht jetzt ihre Antwort und darf nicht
+    // unterbrochen werden. Mic bleibt gemuted. Safety-Timeout 25s falls
+    // response.done nicht kommt (Netzwerk-Hang etc.).
+    clearTimeout(turnPhaseTimeout);
+    turnPhaseTimeout = setTimeout(() => transitionTo("listening", "answering_timeout"), 25_000);
+    return;
+  }
+
+  if (nextPhase === "listening") {
+    // Server-VAD wieder an — User kann Sophie neue Fragen stellen.
+    dcSend({ type: "session.update", session: { turn_detection: LISTENING_TURN_DETECTION } });
+    // Buffer clear — alles was waehrend researching/answering akkumulierte
+    // (User-Weiter-Sprechen, Hintergrundgeraeusche) wird verworfen.
+    dcSend({ type: "input_audio_buffer.clear" });
+    setMicMuted(false);
+    setWaveListening(true);
+    clearTimeout(turnPhaseTimeout);
+    turnPhaseTimeout = null;
+    return;
+  }
 }
 
 // ── DataChannel Handler (Native Mode) ────────────────────
-// Wir lauschen auf:
-// - response.created                         -> Sophie beginnt Antwort: Mic muten
-// - response.audio_transcript.delta/.done    -> Antwort-Text (Chat-Log)
-// - response.function_call_arguments.done    -> Tool-Call von Sophie -> web_search
-// - response.done / .output_audio.done       -> Antwort fertig: Mic wieder auf
-// - response.cancelled                       -> selten, auch unmuten
+// Event-Flow (Happy-Path web_search):
+//   response.created          -> Sophie startet Tool-Call-Response (in "listening")
+//   response.output_item.added (function_call)
+//   response.function_call_arguments.done (web_search) -> handleFunctionCall:
+//     -> transitionTo("researching") — VAD aus, Buffer clear, Mic aus, Ready-Sound
+//     -> fetch research
+//     -> transitionTo("answering") + response.create(tool_choice:none)
+//   response.created (die answer-response)
+//   response.output_item.added (message)
+//   response.audio.delta ... response.audio.done (Sophie spricht)
+//   response.done             -> 300ms Tail, dann transitionTo("listening")
+//
+// Happy-Path stay_silent: response.created -> function_call (stay_silent)
+//   -> handleFunctionCall returned (kein Transition, kein response.create)
+//   -> response.done -> responsePendingCount--; turnPhase bleibt "listening"
 function onDataChannelMessage(e) {
   let msg;
   try { msg = JSON.parse(e.data); } catch { return; }
@@ -1023,49 +1070,26 @@ function onDataChannelMessage(e) {
   switch (msg.type) {
 
     case "response.created":
-      // NICHT sofort muten — Sophie koennte stillbleiben.
-      // Nur Arbeitsspeicher vorbereiten.
       currentAssistantText = "";
-      currentResponseAllowsMessage = allowNextMessageResponse;
-      allowNextMessageResponse = false;
-      currentResponseCancelled = false;
-      currentResponseHadToolCall = false;
-      // Server arbeitet — Sleep-Guard hochzaehlen + Silence-Clock reset
-      // (sonst laeuft die 6s-Uhr waehrend Sophies Antwort weiter und
-      // Sleep triggert sofort sobald Sophie fertig ist).
+      // Sleep-Guard hochzaehlen — waehrend offener Response nie in Standby gehen.
+      // Silence-Clock reset, damit die 12s-Uhr nicht waehrend Sophies Antwort laeuft.
       responsePendingCount++;
       lastVoiceAt = Date.now();
       break;
 
     case "response.output_item.added": {
-      // Entscheiden, ob diese Response ueberhaupt sprechen darf.
-      // function_call: immer erlaubt — Sophie greift zum Tool.
-      // message (kein Tool-Call) ohne vorherige response.create vom Client:
-      //   VAD-getriggerter Meta-Output → abbrechen, sonst wird "(Keine Ausgabe)"
-      //   oder aehnlicher Muell laut vorgelesen.
+      // Safety-Net: Server sollte mit tool_choice=required nie message-Output
+      // ausserhalb von "answering" liefern. Falls doch (z.B. waehrend eines
+      // Race beim session.update), abbrechen damit nichts laut vorgelesen wird.
       const itemType = msg.item?.type;
-      if (itemType === "function_call") {
-        currentResponseHadToolCall = true;
-      } else if (itemType === "message") {
-        if (!currentResponseAllowsMessage && !currentResponseHadToolCall) {
-          dcSend({ type: "response.cancel" });
-          currentResponseCancelled = true;
-        }
+      if (itemType === "message" && turnPhase !== "answering") {
+        dcSend({ type: "response.cancel" });
       }
       break;
     }
 
     case "response.audio.delta":
     case "response.audio_transcript.delta":
-      if (currentResponseCancelled) break;
-      // ERSTES Audio-Stueck kommt -> Sophie spricht wirklich -> jetzt Mic muten
-      if (!voiceBusy) {
-        voiceBusy = true;
-        setMicMuted(true);
-        setWaveListening(false);
-        clearTimeout(voiceBusyTimeout);
-        voiceBusyTimeout = setTimeout(unlockVoice, 25_000);
-      }
       // Silence-Clock laufend frisch halten, solange Sophie spricht.
       lastVoiceAt = Date.now();
       // Transcript-Stream fuer Chat-Log sammeln
@@ -1075,7 +1099,6 @@ function onDataChannelMessage(e) {
       break;
 
     case "response.audio_transcript.done": {
-      if (currentResponseCancelled) { currentAssistantText = ""; break; }
       const t = String(msg.transcript || currentAssistantText || "").trim();
       if (t) {
         triggerCount += 1;
@@ -1087,13 +1110,11 @@ function onDataChannelMessage(e) {
     }
 
     case "response.text.delta":
-      if (currentResponseCancelled) break;
       // Text-Only-Pfad (falls modalities=["text"] genutzt wird)
       if (typeof msg.delta === "string") currentAssistantText += msg.delta;
       break;
 
     case "response.text.done": {
-      if (currentResponseCancelled) { currentAssistantText = ""; break; }
       const t = String(msg.text || currentAssistantText || "").trim();
       if (t && outputMode !== "voice") {
         triggerCount += 1;
@@ -1105,7 +1126,7 @@ function onDataChannelMessage(e) {
     }
 
     case "response.function_call_arguments.done":
-      // Sophie moechte web_search aufrufen
+      // Sophie ruft ein Tool (web_search -> research; stay_silent -> no-op)
       handleFunctionCall(msg).catch(err => console.warn("[xi] tool call failed", err));
       break;
 
@@ -1118,30 +1139,44 @@ function onDataChannelMessage(e) {
       // noch weiterlaufen (z.B. Text-Nachlauf). Nicht dekrementieren.
       if (msg.type === "response.done" || msg.type === "response.cancelled") {
         responsePendingCount = Math.max(0, responsePendingCount - 1);
-        // Queue flushen: wenn wir nach web_search eine Folge-Response geplant
-        // hatten und der Server gerade frei wurde, jetzt feuern.
-        maybeFlushPendingResponse();
+        // Wenn wir in "answering" waren: nach 300ms Tail zurueck zu listening.
+        // In "listening" (stay_silent, Meta-Cancel): nichts tun — bleibt listening.
+        // In "researching": nichts tun — transitionTo("answering"/"listening") erfolgt
+        //   im Research-Flow, nicht per response.done (die aktuelle Response hier
+        //   ist die Tool-Call-Response, nicht die Answer-Response).
+        if (turnPhase === "answering") {
+          clearTimeout(turnPhaseTimeout);
+          turnPhaseTimeout = setTimeout(
+            () => transitionTo("listening", "response.done tail"),
+            300
+          );
+        }
       }
-      // Silence-Clock reset — User hat nach Sophies Antwort volle 12s Grace-Period
-      // fuer Follow-up, bevor Standby triggert.
+      // Silence-Clock reset — User hat nach Sophies Antwort volle 12s Grace-Period.
       lastVoiceAt = Date.now();
-      // Antwort-Audio fertig -> 300ms Tail dann Mic wieder auf
-      clearTimeout(voiceBusyTimeout);
-      voiceBusyTimeout = setTimeout(unlockVoice, 300);
       break;
 
     case "error":
       console.warn("[xi] realtime error", msg.error);
+      // Race-Safety-Net: wenn trotz VAD-aus irgendwie eine parallele Response
+      // angelegt wurde (z.B. session.update noch in-flight), reset zu listening
+      // statt in researching/answering haengen zu bleiben.
+      if (msg.error?.code === "conversation_already_has_active_response"
+          && turnPhase !== "listening") {
+        transitionTo("listening", "race_recovery");
+      }
       break;
   }
 }
 
 // ── Tool-Call Handler ────────────────────────────────────
-// Zwei moegliche Tool-Calls:
-//   web_search  → Research + Sophie spricht den Fakt (response.create triggern)
-//   stay_silent → No-Op: Tool-Output zurueckgeben, aber KEIN response.create,
-//                 damit keine Folge-Antwort angefordert wird. Naechster VAD-End
-//                 triggert autonom die naechste Entscheidung.
+// Zwei Tool-Calls moeglich (tool_choice=required: genau einer pro Response):
+//   web_search  → Research + Sophie spricht den Fakt. Steuert die Turn-SM:
+//                 transitionTo("researching") vor fetch, dann
+//                 transitionTo("answering") + response.create(tool_choice:none)
+//                 bei Erfolg, sonst transitionTo("listening").
+//   stay_silent → No-Op: Tool-Output zurueck, KEINE Transition — Turn bleibt
+//                 in "listening", der naechste VAD-End triggert autonom.
 async function handleFunctionCall(msg) {
   if (msg.name === "stay_silent") {
     dcSend({
@@ -1152,7 +1187,7 @@ async function handleFunctionCall(msg) {
         output: JSON.stringify({ ok: true }),
       },
     });
-    // KEIN response.create — Sophie soll still bleiben.
+    // KEIN response.create — Sophie soll still bleiben. turnPhase bleibt listening.
     return;
   }
   if (msg.name !== "web_search") {
@@ -1165,9 +1200,10 @@ async function handleFunctionCall(msg) {
   const query = String(args.query || "").trim();
   if (!query) return;
 
-  // Akustisches Feedback: Sophie recherchiert jetzt. Damit weiss der User,
-  // dass gleich eine Antwort kommt und die Session nicht tot ist.
-  playReadySound();
+  // Transition zu "researching": VAD aus, Buffer clear, Mic-UI aus, Ready-Sound.
+  // Ab hier ignoriert der Server jedes User-Weiter-Sprechen bis wir zurueck
+  // zu "listening" wechseln.
+  transitionTo("researching", `web_search: "${query}"`);
 
   // Placeholder im Chat-Log (nur wenn Text-Ausgabe aktiv)
   let placeholderEl = null;
@@ -1178,7 +1214,13 @@ async function handleFunctionCall(msg) {
     );
   }
 
+  // AbortController gegen fetch-Haenger. 30s < 35s Safety-Timer in
+  // transitionTo("researching") — der AbortController feuert zuerst, das
+  // Safety-Timeout ist nur noch Fallback falls AbortController selbst haengt.
+  const abortController = new AbortController();
+  const hardTimeout = setTimeout(() => abortController.abort(), 30_000);
   const t0 = Date.now();
+
   try {
     const res = await fetch("/api/extra-intelligence/research", {
       method: "POST",
@@ -1188,7 +1230,19 @@ async function handleFunctionCall(msg) {
       },
       // action=question_factual ist fuer den Shortcut-Prompt auf Backend-Seite ok
       body: JSON.stringify({ action: "question_factual", query, language: lang }),
+      signal: abortController.signal,
     });
+    clearTimeout(hardTimeout);
+
+    // Falls waehrend des fetch der Safety-Timer von transitionTo("researching")
+    // zugeschlagen hat (turnPhase bereits nicht mehr "researching"), Turn wurde
+    // schon verlassen — nicht weiter arbeiten, sonst entsteht ein Zombie-Flow
+    // der einen bereits aufgegebenen Tool-Call beantwortet.
+    if (turnPhase !== "researching") {
+      console.warn(`[xi] research result arrived after turn abandoned (phase=${turnPhase})`);
+      placeholderEl?.remove();
+      return;
+    }
 
     placeholderEl?.remove();
 
@@ -1219,27 +1273,30 @@ async function handleFunctionCall(msg) {
     if (!factText) {
       const reason = payload.reason || (res.ok ? "empty_text" : `http_${res.status}`);
       console.warn(`[xi] research empty after ${Date.now() - t0}ms: reason=${reason}, query="${query}"`);
-      // Keine Fakten gefunden → Sophie bleibt still. Kein response.create,
-      // sonst muesste sie mit tool_choice=required wieder ein Tool aufrufen
-      // oder (tool_choice=none) die Leere beklagen.
+      // Keine Fakten → KEIN response.create. Zurueck zu "listening" damit VAD
+      // wieder lauscht und der Audio-Buffer frisch ist.
+      transitionTo("listening", `no_facts: ${reason}`);
       return;
     }
 
     console.log(`[xi] research ok after ${Date.now() - t0}ms: source=${payload.source || "?"}`);
 
-    // Fakt vorhanden: Sophie soll ihn jetzt sprechen. Per-Response-Override
-    // tool_choice=none entzieht ihr die Tools, damit sie einen Message-Output
-    // erzeugt (sonst wuerde sie erneut web_search oder stay_silent callen).
-    // Queue statt direkt: Server lehnt response.create mit
-    // "conversation_already_has_active_response" ab, wenn die Tool-Call-Response
-    // noch nicht als done gemeldet wurde.
-    allowNextMessageResponse = true;
-    pendingResponseCreatePayload = { tool_choice: "none" };
-    maybeFlushPendingResponse();
+    // Fakt vorhanden: transition zu "answering" (VAD bleibt aus, Mic bleibt
+    // gemuted), dann direkt response.create mit tool_choice=none — da VAD
+    // waehrend researching aus war, ist garantiert keine andere Response aktiv,
+    // der Server akzeptiert das response.create ohne Race-Error.
+    transitionTo("answering", `fact from ${payload.source || "?"}`);
+    dcSend({ type: "response.create", response: { tool_choice: "none" } });
   } catch (e) {
-    console.warn(`[xi] research tool call failed after ${Date.now() - t0}ms:`, e?.message);
+    clearTimeout(hardTimeout);
+    const aborted = e?.name === "AbortError";
+    console.warn(`[xi] research ${aborted ? "aborted" : "failed"} after ${Date.now() - t0}ms:`, e?.message);
     placeholderEl?.remove();
-    // Tool-Output leer zurueck, keine Folge-Response triggern (Sophie still).
+
+    // Wenn inzwischen ein anderer Turn laeuft, nicht dazwischenfunken.
+    if (turnPhase !== "researching") return;
+
+    // Tool-Output leer zurueck, zurueck zu "listening".
     dcSend({
       type: "conversation.item.create",
       item: {
@@ -1248,6 +1305,7 @@ async function handleFunctionCall(msg) {
         output: JSON.stringify({ text: "", source: null }),
       },
     });
+    transitionTo("listening", aborted ? "fetch_aborted" : `fetch_error: ${e?.message || "unknown"}`);
   }
 }
 
@@ -1362,13 +1420,12 @@ async function stopSession(silent = false, byLimit = false) {
   }
 
   if (tickerTimer)     { clearInterval(tickerTimer); tickerTimer = null; }
-  if (voiceBusyTimeout){ clearTimeout(voiceBusyTimeout); voiceBusyTimeout = null; }
+  if (turnPhaseTimeout){ clearTimeout(turnPhaseTimeout); turnPhaseTimeout = null; }
   if (reconnectTimer)  { clearTimeout(reconnectTimer); reconnectTimer = null; }
   reconnectAttempts = 0;
   teardownClientVAD();
-  voiceBusy = false;
+  turnPhase = "listening";
   responsePendingCount = 0;
-  pendingResponseCreatePayload = null;
   currentAssistantText = "";
   lastSessionModalities = null;
   initialRemainingTokens = null;
