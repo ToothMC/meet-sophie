@@ -254,6 +254,16 @@ let turnPhaseTimeout = null;
 // Nur noch fuer den Sleep-Guard relevant — Turn-State laeuft ueber turnPhase.
 let responsePendingCount = 0;
 
+// Diagnose-Helper fuer DC-close-Analyse. Rein Observability, kein Behaviour:
+// Session-Alter, Counter fuer session.updates + tool_calls, Ring-Buffer
+// der letzten Server-Messages. Wird in onDataChannelClose komplett ausgelogged,
+// damit bei Disconnect-Ursachen (Rate-Limit, Session-Lifetime, Netzwerk-Flap,
+// Error-vor-Close) die Korrelation sichtbar wird.
+let dcOpenedAt = 0;
+let sessionUpdatesCount = 0;
+let toolCallsCount = 0;
+const recentMessagesRing = [];
+
 // Auto-Reconnect bei unerwartetem pc-Disconnect (Network-Blip, OpenAI-Session-
 // Max-Duration, generische WebRTC-Drops). Retry mit exponential backoff und
 // hartem Limit, damit echte Fehler (Auth weg, Server down) nicht in Endlos-Loop
@@ -746,7 +756,10 @@ async function wakeFromStandby() {
 function onPcConnectionStateChange() {
   if (!pc) return;
   const cs = pc.connectionState;
-  console.log("[xi] pc.connectionState:", cs);
+  const ice = pc.iceConnectionState;
+  const sig = pc.signalingState;
+  const age = dcOpenedAt ? ((Date.now() - dcOpenedAt) / 1000).toFixed(1) : "?";
+  console.log(`[xi] pc: connection=${cs} ice=${ice} signaling=${sig} age=${age}s`);
   if (cs === "connected") {
     reconnectAttempts = 0;        // stabile Verbindung -> frisch zaehlen
     return;
@@ -759,8 +772,25 @@ function onPcConnectionStateChange() {
   }
 }
 
-function onDataChannelClose() {
-  console.log("[xi] dc closed");
+function onDataChannelClose(e) {
+  // Diagnose-Log: Session-Alter + Counter + letzte Messages + Close-Details.
+  // Damit wir Disconnect-Ursachen auseinander halten koennen:
+  //   - sehr alt (≥15min) → OpenAI Max-Session-Lifetime
+  //   - viele sessionUpdates in kurzer Zeit → Rate-Limit-Verdacht
+  //   - letzte Message error/session.expired/etc. → Server-Side Signal
+  //   - Alter sehr kurz + wiederholt → Netzwerk-Flap
+  const age = dcOpenedAt ? ((Date.now() - dcOpenedAt) / 1000).toFixed(1) : "?";
+  const closeCode = e?.code ?? "n/a";
+  const closeReason = e?.reason || "(none)";
+  const icePhase = pc?.iceConnectionState || "n/a";
+  const connPhase = pc?.connectionState || "n/a";
+  console.log(
+    `[xi] dc closed after ${age}s — sessionUpdates=${sessionUpdatesCount}`
+    + ` toolCalls=${toolCallsCount}`
+    + ` lastMsgs=[${recentMessagesRing.join(",")}]`
+    + ` pc=${connPhase}/ice=${icePhase}`
+    + ` code=${closeCode} reason="${closeReason}"`
+  );
   if (sessionState === "active") handleUnexpectedDisconnect();
 }
 
@@ -853,6 +883,13 @@ async function acquireAudioStream() {
 }
 
 function onDataChannelOpen() {
+  // Diagnose: frischer Session-Start → Counter + Ring-Buffer resetten,
+  // Start-Timestamp fuer Session-Alter-Messung setzen.
+  dcOpenedAt = Date.now();
+  sessionUpdatesCount = 0;
+  toolCallsCount = 0;
+  recentMessagesRing.length = 0;
+
   // Native Mode: Sophie antwortet autonom (create_response: true),
   // entscheidet selbst wann sie spricht, nutzt web_search Tool bei Bedarf.
   lastSessionModalities = outputModalities();
@@ -957,6 +994,7 @@ Kalibriere in Richtung Stille. Ein verpasster Fakt ist ein kleiner Verlust. Ein 
 
 function dcSend(obj) {
   if (!dc || dc.readyState !== "open") return;
+  if (obj?.type === "session.update") sessionUpdatesCount++;
   try { dc.send(JSON.stringify(obj)); } catch (e) { console.warn("[xi] dc send failed", e); }
 }
 
@@ -1066,6 +1104,13 @@ function transitionTo(nextPhase, reason = "") {
 function onDataChannelMessage(e) {
   let msg;
   try { msg = JSON.parse(e.data); } catch { return; }
+
+  // Diagnose: Ring-Buffer letzter 5 Message-Typen + tool_calls-Counter.
+  // Bei DC-close wird das ausgelogged, um Error-vor-Close bzw. Call-Frequenz
+  // zu sehen. Keine Verhaltensaenderung.
+  recentMessagesRing.push(msg.type);
+  if (recentMessagesRing.length > 5) recentMessagesRing.shift();
+  if (msg.type === "response.function_call_arguments.done") toolCallsCount++;
 
   switch (msg.type) {
 
