@@ -1034,22 +1034,6 @@ const LISTENING_TURN_DETECTION = {
   interrupt_response: false,   // sie unterbricht sich nicht selbst
 };
 
-// "Gemutete" VAD-Config fuer researching + answering: VAD laeuft weiter
-// (Events werden gefeuert, Verbindung bleibt stabil), aber der Server
-// startet KEINE automatische Response auf User-Audio (create_response:false)
-// UND unterbricht die laufende Response nicht (interrupt_response:false).
-// Wichtig: NICHT turn_detection:null verwenden — das hat in WebRTC bekannte
-// Probleme (Connection-Destabilisierung, unvorhergesehene Response-Cancels).
-// Dokumentierter OpenAI-Weg fuer "User kann nicht unterbrechen":
-// https://platform.openai.com/docs/guides/realtime-conversations
-const MUTED_TURN_DETECTION = {
-  type: "server_vad",
-  threshold: 0.5,
-  silence_duration_ms: 700,
-  create_response: false,
-  interrupt_response: false,
-};
-
 // Zentrale Turn-State-Transition. Entry-Actions fuer jede Phase sind hier
 // gebuendelt, damit Transitions genau eine Stelle im Code beruehren.
 // Logging immer mit Grund — macht die SM in Dev-Tools nachvollziehbar.
@@ -1060,12 +1044,9 @@ function transitionTo(nextPhase, reason = "") {
   console.log(`[xi] turn: ${prev} -> ${nextPhase}${reason ? ` (${reason})` : ""}`);
 
   if (nextPhase === "researching") {
-    // Server-VAD "gemutet" (create_response:false + interrupt_response:false):
-    // VAD laeuft technisch weiter — Verbindung bleibt stabil und Events
-    // fliessen — aber der Server startet KEINE automatische Response auf
-    // User-Audio und unterbricht die laufende Response nicht. Damit liefert
-    // Sophie ihre Antwort zu Ende, egal was der User sagt.
-    dcSend({ type: "session.update", session: { turn_detection: MUTED_TURN_DETECTION } });
+    // Server-VAD aus — User-Weiter-Sprechen triggert keine neue Response mehr,
+    // also kann nichts die laufende Tool-Call-Response cancelen.
+    dcSend({ type: "session.update", session: { turn_detection: null } });
     // Audio-Buffer weg, damit nach Antwort nicht akkumuliertes Rauschen
     // als neue Utterance interpretiert wird.
     dcSend({ type: "input_audio_buffer.clear" });
