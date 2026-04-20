@@ -282,10 +282,17 @@ const btnStart=$("btnStart"),btnPlus=$("btnPlus"),btnPremium=$("btnPremium");
 const btnTu5=$("btnTu5"),btnTu10=$("btnTu10"),btnTu20=$("btnTu20");
 const allBtns=[btnStart,btnPlus,btnPremium,btnTu5,btnTu10,btnTu20];
 let lang="en";
-if((navigator.language||"").startsWith("de"))lang="de";
+try{
+  const stored=localStorage.getItem("preferredLanguage");
+  if(stored==="de"||stored==="en")lang=stored;
+  else if((navigator.language||"").startsWith("de"))lang="de";
+}catch{
+  if((navigator.language||"").startsWith("de"))lang="de";
+}
 
 function setLang(l){
   lang=l;
+  try{localStorage.setItem("preferredLanguage",l);}catch{}
   $("langDE").classList.toggle("active",l==="de");
   $("langEN").classList.toggle("active",l==="en");
   const t=L[l];
