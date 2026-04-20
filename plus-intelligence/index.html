@@ -666,13 +666,13 @@
     $("btnFinal").textContent = t.btnFinal;
     $("tPrivacy").textContent = t.tPrivacy;
     $("tTerms").textContent = t.tTerms;
-    try { localStorage.setItem("sophie_lang_pref", l); } catch {}
+    try { localStorage.setItem("preferredLanguage", l); } catch {}
   }
 
   // Detect language: localStorage > browser > DE fallback
   let initLang = "de";
   try {
-    const stored = localStorage.getItem("sophie_lang_pref");
+    const stored = localStorage.getItem("preferredLanguage");
     if (stored === "de" || stored === "en") initLang = stored;
     else if (!(navigator.language || "").toLowerCase().startsWith("de")) initLang = "en";
   } catch {}
