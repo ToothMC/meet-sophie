@@ -247,12 +247,12 @@ main{max-width:520px;margin:0 auto;padding:12px}
 <body>
 
 <div class="topbar">
-  <a href="/" class="back">&larr; Zur&uuml;ck</a>
-  <span class="title">Einstellungen</span>
-  <button class="logout-btn" id="logoutBtn">Abmelden</button>
+  <a href="/" class="back" data-i18n="topbar.back">&larr; Zur&uuml;ck</a>
+  <span class="title" data-i18n="topbar.title">Einstellungen</span>
+  <button class="logout-btn" id="logoutBtn" data-i18n="topbar.logout">Abmelden</button>
 </div>
 
-<div class="loading" id="authLoading">Laden...</div>
+<div class="loading" id="authLoading" data-i18n="common.loading">Laden...</div>
 
 <main id="mainContent" class="hidden">
 
@@ -268,8 +268,8 @@ main{max-width:520px;margin:0 auto;padding:12px}
         <span class="badge badge-active" id="accountPlan" style="display:none">—</span>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary btn-sm" id="manageSubBtn" style="display:none">Abo verwalten</button>
-        <button class="btn btn-secondary btn-sm" id="logoutBtn2">Abmelden</button>
+        <button class="btn btn-secondary btn-sm" id="manageSubBtn" style="display:none" data-i18n="account.manage_sub">Abo verwalten</button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn2" data-i18n="account.logout">Abmelden</button>
       </div>
     </div>
   </div>
@@ -278,11 +278,11 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section" id="sectionUsage">
     <div class="section-toggle" onclick="toggleSection('sectionUsage')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Guthaben</span>
-      <span class="s-sub" id="usageSub">Dein verbleibendes Kontingent</span>
+      <span class="s-title" data-i18n="usage.title">Guthaben</span>
+      <span class="s-sub" id="usageSub" data-i18n="usage.subtitle">Dein verbleibendes Kontingent</span>
     </div>
     <div class="section-body">
-      <div id="usageContent"><p class="msg">Laden...</p></div>
+      <div id="usageContent"><p class="msg" data-i18n="common.loading">Laden...</p></div>
     </div>
   </div>
 
@@ -290,11 +290,11 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionIntegrations">
     <div class="section-toggle" onclick="toggleSection('sectionIntegrations')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Verbindungen</span>
-      <span class="s-sub" id="integrationsSub">Kalender &amp; Dienste</span>
+      <span class="s-title" data-i18n="integrations.title">Verbindungen</span>
+      <span class="s-sub" id="integrationsSub" data-i18n="integrations.subtitle">Kalender &amp; Dienste</span>
     </div>
     <div class="section-body">
-      <div id="integrationsContent"><p class="msg">Laden...</p></div>
+      <div id="integrationsContent"><p class="msg" data-i18n="common.loading">Laden...</p></div>
     </div>
   </div>
 
@@ -302,55 +302,55 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionImport">
     <div class="section-toggle" onclick="toggleSection('sectionImport')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">KI-Import</span>
-      <span class="s-sub">Bring deine KI-History mit</span>
+      <span class="s-title" data-i18n="import.title">KI-Import</span>
+      <span class="s-sub" data-i18n="import.subtitle">Bring deine KI-History mit</span>
     </div>
     <div class="section-body">
       <div class="import-tabs">
-        <button class="import-tab active" id="tabPaste" onclick="switchImportTab('paste')">Text einf&uuml;gen</button>
-        <button class="import-tab" id="tabUpload" onclick="switchImportTab('upload')">Datei hochladen</button>
+        <button class="import-tab active" id="tabPaste" onclick="switchImportTab('paste')" data-i18n="import.tab_paste">Text einf&uuml;gen</button>
+        <button class="import-tab" id="tabUpload" onclick="switchImportTab('upload')" data-i18n="import.tab_upload">Datei hochladen</button>
       </div>
 
       <!-- Tab: Text Paste -->
       <div id="importTabPaste">
-        <p class="msg">W&auml;hle deine bisherige KI &mdash; Sophie generiert einen Extraktions-Prompt zum Kopieren.</p>
+        <p class="msg" data-i18n="import.select_ai">W&auml;hle deine bisherige KI &mdash; Sophie generiert einen Extraktions-Prompt zum Kopieren.</p>
         <div class="pill-row" id="importPills">
           <div class="pill" data-source="chatgpt">ChatGPT</div>
           <div class="pill" data-source="claude">Claude</div>
           <div class="pill" data-source="gemini">Gemini</div>
         </div>
         <div id="importStep1" class="hidden">
-          <p class="msg">1. Kopiere diesen Prompt und f&uuml;ge ihn in deine andere KI ein:</p>
+          <p class="msg" data-i18n="import.step1">1. Kopiere diesen Prompt und f&uuml;ge ihn in deine andere KI ein:</p>
           <div class="prompt-box">
             <textarea class="ta ta-readonly" id="importPrompt" readonly></textarea>
-            <button class="copy-btn" id="copyPromptBtn">Kopieren</button>
+            <button class="copy-btn" id="copyPromptBtn" data-i18n="common.copy">Kopieren</button>
           </div>
-          <p class="msg">2. F&uuml;ge die Antwort hier ein:</p>
-          <textarea class="ta" id="importPaste" placeholder="Antwort hier einf&uuml;gen..."></textarea>
+          <p class="msg" data-i18n="import.step2">2. F&uuml;ge die Antwort hier ein:</p>
+          <textarea class="ta" id="importPaste" placeholder="Antwort hier einf&uuml;gen..." data-i18n-ph="import.paste_placeholder"></textarea>
           <div style="margin-top:8px">
-            <button class="btn btn-primary" id="importBtn" disabled>Importieren</button>
+            <button class="btn btn-primary" id="importBtn" disabled data-i18n="import.import_btn">Importieren</button>
           </div>
         </div>
       </div>
 
       <!-- Tab: File Upload -->
       <div id="importTabUpload" class="hidden">
-        <p class="msg">Lade einen Export deiner bisherigen KI hoch. Unterst&uuml;tzte Formate:</p>
+        <p class="msg" data-i18n="import.upload_desc">Lade einen Export deiner bisherigen KI hoch. Unterst&uuml;tzte Formate:</p>
         <div class="drop-zone" id="dropZone">
           <div class="dz-icon">&#128194;</div>
-          <div>Datei hierher ziehen oder klicken</div>
+          <div data-i18n="import.drop_here">Datei hierher ziehen oder klicken</div>
           <div class="dz-formats">.zip &middot; .dms &middot; .json &middot; .txt &middot; .docx</div>
           <input type="file" id="fileInput" accept=".zip,.dms,.json,.txt,.md,.docx">
           <div class="dz-file hidden" id="fileInfo"></div>
         </div>
-        <button class="btn btn-primary" id="uploadBtn" disabled>Datei importieren</button>
+        <button class="btn btn-primary" id="uploadBtn" disabled data-i18n="import.upload_btn">Datei importieren</button>
       </div>
       <div id="importStep2" class="hidden">
         <p class="msg msg-success" id="importStatus"></p>
-        <p class="msg">Sophie hat folgende Insights extrahiert. W&auml;hle was in ihr Ged&auml;chtnis &uuml;bernommen werden soll:</p>
+        <p class="msg" data-i18n="import.insights_prompt">Sophie hat folgende Insights extrahiert. W&auml;hle was in ihr Ged&auml;chtnis &uuml;bernommen werden soll:</p>
         <div id="importCandidates"></div>
         <div style="margin-top:8px">
-          <button class="btn btn-primary" id="approveBtn">In Ged&auml;chtnis &uuml;bernehmen</button>
+          <button class="btn btn-primary" id="approveBtn" data-i18n="import.approve_btn">In Ged&auml;chtnis &uuml;bernehmen</button>
         </div>
         <p class="msg hidden" id="approveStatus"></p>
       </div>
@@ -361,11 +361,11 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionSources">
     <div class="section-toggle" onclick="toggleSection('sectionSources')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Quellen</span>
-      <span class="s-sub">Was wei&szlig; Sophie &uuml;ber mich?</span>
+      <span class="s-title" data-i18n="sources.title">Quellen</span>
+      <span class="s-sub" data-i18n="sources.subtitle">Was wei&szlig; Sophie &uuml;ber mich?</span>
     </div>
     <div class="section-body">
-      <div id="sourcesList"><p class="msg">Laden...</p></div>
+      <div id="sourcesList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
     </div>
   </div>
 
@@ -373,13 +373,13 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionRules">
     <div class="section-toggle" onclick="toggleSection('sectionRules')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Meine Regeln</span>
-      <span class="s-sub">Was Sophie von dir gelernt hat</span>
+      <span class="s-title" data-i18n="rules.title">Meine Regeln</span>
+      <span class="s-sub" data-i18n="rules.subtitle">Was Sophie von dir gelernt hat</span>
     </div>
     <div class="section-body">
-      <div id="rulesList"><p class="msg">Laden...</p></div>
+      <div id="rulesList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
       <div style="margin-top:8px;text-align:right">
-        <button onclick="resetAllRules()" style="background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">Alle Regeln zurücksetzen</button>
+        <button onclick="resetAllRules()" style="background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit" data-i18n="rules.reset_all">Alle Regeln zurücksetzen</button>
       </div>
     </div>
   </div>
@@ -388,15 +388,15 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionReports">
     <div class="section-toggle" onclick="toggleSection('sectionReports')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Reports</span>
-      <span class="s-sub">Deine bisherigen Reports</span>
+      <span class="s-title" data-i18n="reports.title">Reports</span>
+      <span class="s-sub" data-i18n="reports.subtitle">Deine bisherigen Reports</span>
     </div>
     <div class="section-body">
       <div id="deleteSelectedBar" style="display:none;padding:8px 0;margin-bottom:8px">
-        <button id="deleteSelectedBtn" onclick="deleteSelectedReports()" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🗑 Ausgewählte löschen</button>
+        <button id="deleteSelectedBtn" onclick="deleteSelectedReports()" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" data-i18n="reports.delete_selected">🗑 Ausgewählte löschen</button>
         <span id="deleteSelectedCount" style="font-size:12px;color:#a09080;margin-left:8px"></span>
       </div>
-      <div id="reportsList"><p class="msg">Laden...</p></div>
+      <div id="reportsList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
       <!-- Report detail modal -->
       <div id="reportDetailOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:#ffffff;overflow-y:auto;padding:20px;padding-top:max(20px, calc(env(safe-area-inset-top, 0px) + 20px))">
         <div style="max-width:600px;margin:0 auto">
@@ -407,14 +407,14 @@ main{max-width:520px;margin:0 auto;padding:12px}
           <div id="reportDetailContent" style="background:#fff;border:1px solid #ede8e2;border-radius:12px;padding:16px;overflow:hidden;color:#1a1a1a"></div>
           <div id="pitchAgainBar" style="display:none;margin-top:12px">
             <div style="display:flex;gap:8px">
-              <button class="btn btn-primary btn-sm" onclick="pitchAgain()" style="flex:1;padding:12px;font-size:14px;font-weight:600">&#9650; Pitch again</button>
-              <button id="pitchDemoBtn" class="btn btn-secondary btn-sm" onclick="pitchDemoFromReport()" style="flex:1;padding:12px;font-size:14px;font-weight:600">&#127911; Sophie pitcht f&uuml;r dich</button>
+              <button class="btn btn-primary btn-sm" onclick="pitchAgain()" style="flex:1;padding:12px;font-size:14px;font-weight:600">&#9650; <span data-i18n="reports.pitch_again">Pitch again</span></button>
+              <button id="pitchDemoBtn" class="btn btn-secondary btn-sm" onclick="pitchDemoFromReport()" style="flex:1;padding:12px;font-size:14px;font-weight:600" data-i18n="reports.sophie_pitches">&#127911; Sophie pitcht f&uuml;r dich</button>
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="copyReportDetail()">Kopieren</button>
-            <button class="btn btn-secondary btn-sm" onclick="saveReportAsTemplate()">Als Vorlage speichern</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteReport()" style="margin-left:auto">L&ouml;schen</button>
+            <button class="btn btn-secondary btn-sm" onclick="copyReportDetail()" data-i18n="common.copy">Kopieren</button>
+            <button class="btn btn-secondary btn-sm" onclick="saveReportAsTemplate()" data-i18n="reports.save_template">Als Vorlage speichern</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteReport()" style="margin-left:auto" data-i18n="common.delete">L&ouml;schen</button>
           </div>
         </div>
       </div>
@@ -425,11 +425,11 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionTemplates">
     <div class="section-toggle" onclick="toggleSection('sectionTemplates')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Meine Vorlagen</span>
-      <span class="s-sub">Gespeicherte Report-Designs</span>
+      <span class="s-title" data-i18n="templates.title">Meine Vorlagen</span>
+      <span class="s-sub" data-i18n="templates.subtitle">Gespeicherte Report-Designs</span>
     </div>
     <div class="section-body">
-      <div id="templatesList"><p class="msg">Laden...</p></div>
+      <div id="templatesList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
     </div>
   </div>
 
@@ -463,6 +463,450 @@ const ICONS = {
 };
 const NAMES = { openai: "OpenAI", anthropic: "Anthropic", google: "Google", mistral: "Mistral" };
 
+// ── i18n ──────────────────────────────────────────────────────────────
+const _i18nDict = {
+  de: {
+    'title.page': 'Sophie — Einstellungen',
+    'topbar.back': '← Zurück',
+    'topbar.title': 'Einstellungen',
+    'topbar.logout': 'Abmelden',
+    'common.loading': 'Laden...',
+    'common.error_loading': 'Fehler beim Laden',
+    'common.error_loading_dot': 'Fehler beim Laden.',
+    'common.error_prefix': 'Fehler: ',
+    'common.delete': 'Löschen',
+    'common.copy': 'Kopieren',
+    'common.copied': 'Kopiert!',
+
+    'account.manage_sub': 'Abo verwalten',
+    'account.logout': 'Abmelden',
+    'account.inactive': ' (inaktiv)',
+    'account.free': 'Free',
+    'account.choose_plan': 'Plan wählen',
+
+    'usage.title': 'Guthaben',
+    'usage.subtitle': 'Dein verbleibendes Kontingent',
+    'usage.used': '{n} Tokens verbraucht',
+    'usage.total': '{n} Tokens gesamt',
+    'usage.eco_mode': 'Eco-Modus',
+    'usage.eco_active': 'aktiv',
+    'usage.eco_hint': 'Günstigere KI-Modelle. 2.5× mehr Gesprächszeit, Antwortqualität kann variieren.',
+    'usage.topup': 'Tokens auftanken',
+    'usage.plans': 'Pläne & Tokens',
+
+    'integrations.title': 'Verbindungen',
+    'integrations.subtitle': 'Kalender & Dienste',
+    'integrations.connected_n': '{n} verbunden',
+    'integrations.not_connected': 'Nicht verbunden',
+    'integrations.disconnect': 'Trennen',
+    'integrations.connect': 'Verbinden',
+    'integrations.update_services': 'Services aktualisieren',
+    'integrations.connecting': 'Verbinde...',
+    'integrations.disconnect_confirm': 'Verbindung zu {provider} trennen?',
+    'integrations.disconnect_failed': 'Trennen fehlgeschlagen',
+    'integrations.connect_failed': 'Verbindung fehlgeschlagen',
+    'integrations.connect_failed_with': 'Verbindung fehlgeschlagen: {err}',
+    'integrations.select_at_least_one': 'Bitte mindestens einen Service auswählen.',
+    'integrations.service_calendar': 'Kalender',
+    'integrations.service_calendar_desc': 'Termine lesen & erstellen',
+    'integrations.service_contacts': 'Kontakte',
+    'integrations.service_contacts_desc': 'Suche & Geburtstage',
+    'integrations.service_email': 'Email',
+    'integrations.service_email_desc': 'Lesen & Senden',
+
+    'import.title': 'KI-Import',
+    'import.subtitle': 'Bring deine KI-History mit',
+    'import.tab_paste': 'Text einfügen',
+    'import.tab_upload': 'Datei hochladen',
+    'import.select_ai': 'Wähle deine bisherige KI — Sophie generiert einen Extraktions-Prompt zum Kopieren.',
+    'import.step1': '1. Kopiere diesen Prompt und füge ihn in deine andere KI ein:',
+    'import.step2': '2. Füge die Antwort hier ein:',
+    'import.paste_placeholder': 'Antwort hier einfügen...',
+    'import.import_btn': 'Importieren',
+    'import.importing': 'Importiere...',
+    'import.prompt_load_error': 'Fehler beim Laden des Prompts',
+    'import.upload_desc': 'Lade einen Export deiner bisherigen KI hoch. Unterstützte Formate:',
+    'import.drop_here': 'Datei hierher ziehen oder klicken',
+    'import.upload_btn': 'Datei importieren',
+    'import.insights_prompt': 'Sophie hat folgende Insights extrahiert. Wähle was in ihr Gedächtnis übernommen werden soll:',
+    'import.approve_btn': 'In Gedächtnis übernehmen',
+    'import.done': 'Erledigt',
+    'import.done_msg': 'Erledigt.',
+    'import.import_processed': 'Import verarbeitet.',
+    'import.file_processed': 'Datei verarbeitet.',
+    'import.no_candidates': 'Keine Memory-Kandidaten gefunden.',
+    'import.insight_fallback': 'Insight',
+    'import.upload_failed': 'Upload fehlgeschlagen',
+    'import.import_failed': 'Import fehlgeschlagen',
+
+    'sources.title': 'Quellen',
+    'sources.subtitle': 'Was weiß Sophie über mich?',
+    'sources.empty': 'Keine importierten Quellen. Nutze den KI-Import oben.',
+    'sources.items': 'Items',
+    'sources.decouple': 'Entkoppeln',
+    'sources.delete_confirm': 'Alle Daten dieser Quelle wirklich löschen?',
+
+    'rules.title': 'Meine Regeln',
+    'rules.subtitle': 'Was Sophie von dir gelernt hat',
+    'rules.reset_all': 'Alle Regeln zurücksetzen',
+    'rules.empty': 'Sophie hat noch keine Regeln von dir gelernt. Sage ihr im Chat z.B. „Merk dir: fass immer zuerst zusammen" — sie lernt mit der Zeit.',
+    'rules.delete_title': 'Regel löschen',
+    'rules.reset_confirm': 'Alle gelernten Regeln zurücksetzen? Sophie vergisst alle individuellen Anweisungen.',
+
+    'reports.title': 'Reports',
+    'reports.subtitle': 'Deine bisherigen Reports',
+    'reports.delete_selected': '🗑 Ausgewählte löschen',
+    'reports.empty': 'Noch keine Reports vorhanden.',
+    'reports.group_meeting': 'Meeting',
+    'reports.group_salespitch': 'Sales Pitch',
+    'reports.group_brainstorm': 'Brainstorming',
+    'reports.group_talk': 'Gespräche',
+    'reports.n_selected': '{n} ausgewählt',
+    'reports.delete_n_meeting_confirm': '{n} Report(s) löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt.',
+    'reports.delete_n_confirm': '{n} Report(s) wirklich löschen?',
+    'reports.deleting': 'Lösche...',
+    'reports.delete_meeting_confirm': 'Report löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt.',
+    'reports.delete_confirm': 'Report wirklich löschen?',
+    'reports.save_template': 'Als Vorlage speichern',
+    'reports.template_saved': 'Als Vorlage gespeichert!',
+    'reports.pitch_again': 'Pitch again',
+    'reports.sophie_pitches': '🎧 Sophie pitcht für dich',
+    'reports.section_decisions': 'Beschlüsse',
+    'reports.section_actions': 'Action Items',
+    'reports.section_open': 'Offene Punkte',
+    'reports.none_available': 'Kein Report vorhanden.',
+    'reports.load_failed': 'Report konnte nicht geladen werden.',
+    'reports.no_session': 'Keine Session-Daten gefunden.',
+    'reports.preparing': 'Wird vorbereitet...',
+    'reports.sophie_preparing': 'Sophie bereitet sich vor...',
+    'reports.demo_failed': 'Demo konnte nicht erstellt werden',
+    'reports.not_logged_in': 'Nicht eingeloggt',
+    'reports.no_pitch_data': 'Nicht genug Pitch-Daten vorhanden. Pitche mindestens einmal, damit Sophie dir zeigen kann wie es geht.',
+    'reports.stop': '⏹ Stop',
+
+    'templates.title': 'Meine Vorlagen',
+    'templates.subtitle': 'Gespeicherte Report-Designs',
+    'templates.empty': 'Keine Vorlagen vorhanden.',
+    'templates.mode_default': 'Standard Report',
+    'templates.mode_brainstorm': 'Brainstorm',
+    'templates.mode_salespitch': 'Sales Pitch',
+    'templates.mode_meeting': 'Meeting',
+    'templates.badge_system': 'STANDARD',
+    'templates.badge_user': 'INDIVIDUELL',
+    'templates.reset_title': 'Entfernt deine individuelle Vorlage, Standard wird wiederhergestellt',
+    'templates.reset': 'Zurücksetzen',
+    'templates.active': 'Vorlage aktiv',
+    'templates.delete_confirm': 'Individuelle Vorlage für „{mode}" entfernen und auf Standard zurücksetzen?',
+  },
+  en: {
+    'title.page': 'Sophie — Settings',
+    'topbar.back': '← Back',
+    'topbar.title': 'Settings',
+    'topbar.logout': 'Sign out',
+    'common.loading': 'Loading...',
+    'common.error_loading': 'Loading failed',
+    'common.error_loading_dot': 'Loading failed.',
+    'common.error_prefix': 'Error: ',
+    'common.delete': 'Delete',
+    'common.copy': 'Copy',
+    'common.copied': 'Copied!',
+
+    'account.manage_sub': 'Manage subscription',
+    'account.logout': 'Sign out',
+    'account.inactive': ' (inactive)',
+    'account.free': 'Free',
+    'account.choose_plan': 'Choose plan',
+
+    'usage.title': 'Balance',
+    'usage.subtitle': 'Your remaining quota',
+    'usage.used': '{n} tokens used',
+    'usage.total': '{n} tokens total',
+    'usage.eco_mode': 'Eco mode',
+    'usage.eco_active': 'active',
+    'usage.eco_hint': 'Cheaper AI models. 2.5× more talk time, response quality may vary.',
+    'usage.topup': 'Top up tokens',
+    'usage.plans': 'Plans & tokens',
+
+    'integrations.title': 'Connections',
+    'integrations.subtitle': 'Calendar & services',
+    'integrations.connected_n': '{n} connected',
+    'integrations.not_connected': 'Not connected',
+    'integrations.disconnect': 'Disconnect',
+    'integrations.connect': 'Connect',
+    'integrations.update_services': 'Update services',
+    'integrations.connecting': 'Connecting...',
+    'integrations.disconnect_confirm': 'Disconnect from {provider}?',
+    'integrations.disconnect_failed': 'Disconnect failed',
+    'integrations.connect_failed': 'Connection failed',
+    'integrations.connect_failed_with': 'Connection failed: {err}',
+    'integrations.select_at_least_one': 'Please select at least one service.',
+    'integrations.service_calendar': 'Calendar',
+    'integrations.service_calendar_desc': 'Read & create events',
+    'integrations.service_contacts': 'Contacts',
+    'integrations.service_contacts_desc': 'Search & birthdays',
+    'integrations.service_email': 'Email',
+    'integrations.service_email_desc': 'Read & send',
+
+    'import.title': 'AI import',
+    'import.subtitle': 'Bring your AI history with you',
+    'import.tab_paste': 'Paste text',
+    'import.tab_upload': 'Upload file',
+    'import.select_ai': 'Pick your previous AI — Sophie will generate an extraction prompt to copy.',
+    'import.step1': '1. Copy this prompt and paste it into your other AI:',
+    'import.step2': '2. Paste the response here:',
+    'import.paste_placeholder': 'Paste the response here...',
+    'import.import_btn': 'Import',
+    'import.importing': 'Importing...',
+    'import.prompt_load_error': 'Failed to load prompt',
+    'import.upload_desc': 'Upload an export from your previous AI. Supported formats:',
+    'import.drop_here': 'Drag a file here or click to select',
+    'import.upload_btn': 'Import file',
+    'import.insights_prompt': 'Sophie extracted the following insights. Pick what she should remember:',
+    'import.approve_btn': 'Add to memory',
+    'import.done': 'Done',
+    'import.done_msg': 'Done.',
+    'import.import_processed': 'Import processed.',
+    'import.file_processed': 'File processed.',
+    'import.no_candidates': 'No memory candidates found.',
+    'import.insight_fallback': 'Insight',
+    'import.upload_failed': 'Upload failed',
+    'import.import_failed': 'Import failed',
+
+    'sources.title': 'Sources',
+    'sources.subtitle': 'What does Sophie know about me?',
+    'sources.empty': 'No imported sources yet. Use AI import above.',
+    'sources.items': 'items',
+    'sources.decouple': 'Decouple',
+    'sources.delete_confirm': 'Really delete all data from this source?',
+
+    'rules.title': 'My rules',
+    'rules.subtitle': 'What Sophie has learned from you',
+    'rules.reset_all': 'Reset all rules',
+    'rules.empty': 'Sophie has not learned any rules from you yet. Tell her in chat e.g. "Remember: always summarize first" — she learns over time.',
+    'rules.delete_title': 'Delete rule',
+    'rules.reset_confirm': 'Reset all learned rules? Sophie will forget all individual instructions.',
+
+    'reports.title': 'Reports',
+    'reports.subtitle': 'Your previous reports',
+    'reports.delete_selected': '🗑 Delete selected',
+    'reports.empty': 'No reports yet.',
+    'reports.group_meeting': 'Meeting',
+    'reports.group_salespitch': 'Sales Pitch',
+    'reports.group_brainstorm': 'Brainstorming',
+    'reports.group_talk': 'Talks',
+    'reports.n_selected': '{n} selected',
+    'reports.delete_n_meeting_confirm': 'Delete {n} report(s)?\n\nMeeting structure (participants, agenda, links) is preserved — only the report is removed.',
+    'reports.delete_n_confirm': 'Really delete {n} report(s)?',
+    'reports.deleting': 'Deleting...',
+    'reports.delete_meeting_confirm': 'Delete report?\n\nMeeting structure (participants, agenda, links) is preserved — only the report is removed.',
+    'reports.delete_confirm': 'Really delete this report?',
+    'reports.save_template': 'Save as template',
+    'reports.template_saved': 'Saved as template!',
+    'reports.pitch_again': 'Pitch again',
+    'reports.sophie_pitches': '🎧 Sophie pitches for you',
+    'reports.section_decisions': 'Decisions',
+    'reports.section_actions': 'Action items',
+    'reports.section_open': 'Open points',
+    'reports.none_available': 'No report available.',
+    'reports.load_failed': 'Report could not be loaded.',
+    'reports.no_session': 'No session data found.',
+    'reports.preparing': 'Preparing...',
+    'reports.sophie_preparing': 'Sophie is getting ready...',
+    'reports.demo_failed': 'Demo could not be created',
+    'reports.not_logged_in': 'Not signed in',
+    'reports.no_pitch_data': 'Not enough pitch data yet. Pitch at least once so Sophie can show you how.',
+    'reports.stop': '⏹ Stop',
+
+    'templates.title': 'My templates',
+    'templates.subtitle': 'Saved report designs',
+    'templates.empty': 'No templates yet.',
+    'templates.mode_default': 'Standard report',
+    'templates.mode_brainstorm': 'Brainstorm',
+    'templates.mode_salespitch': 'Sales Pitch',
+    'templates.mode_meeting': 'Meeting',
+    'templates.badge_system': 'STANDARD',
+    'templates.badge_user': 'CUSTOM',
+    'templates.reset_title': 'Removes your custom template and restores the standard',
+    'templates.reset': 'Reset',
+    'templates.active': 'Template active',
+    'templates.delete_confirm': 'Remove custom template for "{mode}" and restore standard?',
+  },
+  fr: {
+    'title.page': 'Sophie — Paramètres',
+    'topbar.back': '← Retour',
+    'topbar.title': 'Paramètres',
+    'topbar.logout': 'Déconnexion',
+    'common.loading': 'Chargement...',
+    'common.error_loading': 'Échec du chargement',
+    'common.error_loading_dot': 'Échec du chargement.',
+    'common.error_prefix': 'Erreur : ',
+    'common.delete': 'Supprimer',
+    'common.copy': 'Copier',
+    'common.copied': 'Copié !',
+
+    'account.manage_sub': 'Gérer l\'abonnement',
+    'account.logout': 'Déconnexion',
+    'account.inactive': ' (inactif)',
+    'account.free': 'Free',
+    'account.choose_plan': 'Choisir un plan',
+
+    'usage.title': 'Solde',
+    'usage.subtitle': 'Ton quota restant',
+    'usage.used': '{n} tokens utilisés',
+    'usage.total': '{n} tokens au total',
+    'usage.eco_mode': 'Mode éco',
+    'usage.eco_active': 'actif',
+    'usage.eco_hint': 'Modèles IA moins coûteux. 2,5× plus de temps de conversation, la qualité des réponses peut varier.',
+    'usage.topup': 'Recharger des tokens',
+    'usage.plans': 'Plans & tokens',
+
+    'integrations.title': 'Connexions',
+    'integrations.subtitle': 'Agenda & services',
+    'integrations.connected_n': '{n} connecté(s)',
+    'integrations.not_connected': 'Non connecté',
+    'integrations.disconnect': 'Déconnecter',
+    'integrations.connect': 'Connecter',
+    'integrations.update_services': 'Mettre à jour les services',
+    'integrations.connecting': 'Connexion...',
+    'integrations.disconnect_confirm': 'Se déconnecter de {provider} ?',
+    'integrations.disconnect_failed': 'Échec de la déconnexion',
+    'integrations.connect_failed': 'Échec de la connexion',
+    'integrations.connect_failed_with': 'Échec de la connexion : {err}',
+    'integrations.select_at_least_one': 'Sélectionne au moins un service.',
+    'integrations.service_calendar': 'Agenda',
+    'integrations.service_calendar_desc': 'Lire & créer des événements',
+    'integrations.service_contacts': 'Contacts',
+    'integrations.service_contacts_desc': 'Recherche & anniversaires',
+    'integrations.service_email': 'E-mail',
+    'integrations.service_email_desc': 'Lire & envoyer',
+
+    'import.title': 'Import IA',
+    'import.subtitle': 'Apporte ton historique IA',
+    'import.tab_paste': 'Coller le texte',
+    'import.tab_upload': 'Téléverser un fichier',
+    'import.select_ai': 'Choisis ton IA précédente — Sophie génère un prompt d\'extraction à copier.',
+    'import.step1': '1. Copie ce prompt et colle-le dans ton autre IA :',
+    'import.step2': '2. Colle la réponse ici :',
+    'import.paste_placeholder': 'Colle la réponse ici...',
+    'import.import_btn': 'Importer',
+    'import.importing': 'Import en cours...',
+    'import.prompt_load_error': 'Échec du chargement du prompt',
+    'import.upload_desc': 'Téléverse un export de ton IA précédente. Formats pris en charge :',
+    'import.drop_here': 'Glisse un fichier ici ou clique pour sélectionner',
+    'import.upload_btn': 'Importer le fichier',
+    'import.insights_prompt': 'Sophie a extrait les insights suivants. Choisis ce qu\'elle doit retenir :',
+    'import.approve_btn': 'Ajouter à la mémoire',
+    'import.done': 'Terminé',
+    'import.done_msg': 'Terminé.',
+    'import.import_processed': 'Import traité.',
+    'import.file_processed': 'Fichier traité.',
+    'import.no_candidates': 'Aucun candidat mémoire trouvé.',
+    'import.insight_fallback': 'Insight',
+    'import.upload_failed': 'Échec du téléversement',
+    'import.import_failed': 'Échec de l\'import',
+
+    'sources.title': 'Sources',
+    'sources.subtitle': 'Que sait Sophie de moi ?',
+    'sources.empty': 'Aucune source importée. Utilise l\'import IA ci-dessus.',
+    'sources.items': 'éléments',
+    'sources.decouple': 'Découpler',
+    'sources.delete_confirm': 'Vraiment supprimer toutes les données de cette source ?',
+
+    'rules.title': 'Mes règles',
+    'rules.subtitle': 'Ce que Sophie a appris de toi',
+    'rules.reset_all': 'Réinitialiser toutes les règles',
+    'rules.empty': 'Sophie n\'a encore rien appris de toi. Dis-lui dans le chat par ex. « Souviens-toi : résume toujours d\'abord » — elle apprend avec le temps.',
+    'rules.delete_title': 'Supprimer la règle',
+    'rules.reset_confirm': 'Réinitialiser toutes les règles apprises ? Sophie oubliera toutes les instructions individuelles.',
+
+    'reports.title': 'Rapports',
+    'reports.subtitle': 'Tes rapports précédents',
+    'reports.delete_selected': '🗑 Supprimer la sélection',
+    'reports.empty': 'Aucun rapport pour le moment.',
+    'reports.group_meeting': 'Meeting',
+    'reports.group_salespitch': 'Sales Pitch',
+    'reports.group_brainstorm': 'Brainstorming',
+    'reports.group_talk': 'Conversations',
+    'reports.n_selected': '{n} sélectionné(s)',
+    'reports.delete_n_meeting_confirm': 'Supprimer {n} rapport(s) ?\n\nLa structure du meeting (participants, agenda, liens) est conservée — seul le rapport est retiré.',
+    'reports.delete_n_confirm': 'Vraiment supprimer {n} rapport(s) ?',
+    'reports.deleting': 'Suppression...',
+    'reports.delete_meeting_confirm': 'Supprimer le rapport ?\n\nLa structure du meeting (participants, agenda, liens) est conservée — seul le rapport est retiré.',
+    'reports.delete_confirm': 'Vraiment supprimer ce rapport ?',
+    'reports.save_template': 'Enregistrer comme modèle',
+    'reports.template_saved': 'Enregistré comme modèle !',
+    'reports.pitch_again': 'Pitch again',
+    'reports.sophie_pitches': '🎧 Sophie pitche pour toi',
+    'reports.section_decisions': 'Décisions',
+    'reports.section_actions': 'Actions',
+    'reports.section_open': 'Points ouverts',
+    'reports.none_available': 'Aucun rapport disponible.',
+    'reports.load_failed': 'Le rapport n\'a pas pu être chargé.',
+    'reports.no_session': 'Aucune donnée de session trouvée.',
+    'reports.preparing': 'Préparation...',
+    'reports.sophie_preparing': 'Sophie se prépare...',
+    'reports.demo_failed': 'La démo n\'a pas pu être créée',
+    'reports.not_logged_in': 'Non connecté',
+    'reports.no_pitch_data': 'Pas assez de données pitch. Pitche au moins une fois pour que Sophie puisse te montrer.',
+    'reports.stop': '⏹ Stop',
+
+    'templates.title': 'Mes modèles',
+    'templates.subtitle': 'Designs de rapport enregistrés',
+    'templates.empty': 'Aucun modèle pour le moment.',
+    'templates.mode_default': 'Rapport standard',
+    'templates.mode_brainstorm': 'Brainstorm',
+    'templates.mode_salespitch': 'Sales Pitch',
+    'templates.mode_meeting': 'Meeting',
+    'templates.badge_system': 'STANDARD',
+    'templates.badge_user': 'PERSONNALISÉ',
+    'templates.reset_title': 'Retire ton modèle personnalisé et restaure le standard',
+    'templates.reset': 'Réinitialiser',
+    'templates.active': 'Modèle actif',
+    'templates.delete_confirm': 'Retirer le modèle personnalisé pour « {mode} » et restaurer le standard ?',
+  },
+};
+
+function _detectLang() {
+  try {
+    const saved = localStorage.getItem('preferredLanguage');
+    if (saved && _i18nDict[saved]) return saved;
+  } catch {}
+  const nav = (navigator.language || 'en').toLowerCase();
+  if (nav.startsWith('de')) return 'de';
+  if (nav.startsWith('fr')) return 'fr';
+  return 'en';
+}
+const _uiLang = _detectLang();
+document.documentElement.lang = _uiLang;
+
+function t(key, vars) {
+  const dict = _i18nDict[_uiLang] || _i18nDict.en;
+  let s = dict[key] ?? _i18nDict.en[key] ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) s = s.replaceAll('{' + k + '}', String(v));
+  }
+  return s;
+}
+
+function _localeTag() {
+  return _uiLang === 'de' ? 'de-DE' : _uiLang === 'fr' ? 'fr-FR' : 'en-US';
+}
+
+function applyStaticI18n() {
+  document.title = t('title.page');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const txt = t(el.dataset.i18n);
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = txt;
+    else el.textContent = txt;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+}
+
 let session = null;
 let currentSource = null;
 let importSourceId = null;
@@ -479,6 +923,7 @@ try {
 if (!session?.user) {
   window.location.href = "/login";
 } else {
+  applyStaticI18n();
   authLoading.classList.add("hidden");
   mainContent.classList.remove("hidden");
   loadAccount();
@@ -491,9 +936,9 @@ const INTEGRATIONS = [
   { id: 'google', name: 'Google',
     iconBg: '#E6F1FB', iconColor: '#378ADD', available: true,
     services: [
-      { key: 'calendar', label: 'Kalender', desc: 'Termine lesen & erstellen', default: true },
-      { key: 'contacts', label: 'Kontakte', desc: 'Suche & Geburtstage', default: true },
-      { key: 'email',    label: 'Email',    desc: 'Lesen & Senden', default: false },
+      { key: 'calendar', labelKey: 'integrations.service_calendar', descKey: 'integrations.service_calendar_desc', default: true },
+      { key: 'contacts', labelKey: 'integrations.service_contacts', descKey: 'integrations.service_contacts_desc', default: true },
+      { key: 'email',    labelKey: 'integrations.service_email',    descKey: 'integrations.service_email_desc',    default: false },
     ],
   },
 ];
@@ -513,8 +958,8 @@ async function loadIntegrations() {
 
     const connectedCount = integrations.length;
     subEl.textContent = connectedCount > 0
-      ? connectedCount + " verbunden"
-      : "Kalender & Dienste";
+      ? t('integrations.connected_n', { n: connectedCount })
+      : t('integrations.subtitle');
 
     let html = '';
     for (const cfg of INTEGRATIONS) {
@@ -532,12 +977,12 @@ async function loadIntegrations() {
           ${state === 'connected'
             ? `<div style="font-size:11px;color:#7a6a5a">${status.label} &middot; ${activeServices.map(s => {
                 const svc = cfg.services?.find(x => x.key === s);
-                return svc?.label || s;
+                return svc ? t(svc.labelKey) : s;
               }).join(', ')}</div>`
-            : `<div style="font-size:11px;color:#a09080">Nicht verbunden</div>`}
+            : `<div style="font-size:11px;color:#a09080">${t('integrations.not_connected')}</div>`}
         </div>
         ${state === 'connected'
-          ? `<button class="btn btn-secondary btn-sm" onclick="disconnectIntegration('${cfg.id}','${status?.id || ''}')" style="font-size:11px;padding:4px 10px">Trennen</button>`
+          ? `<button class="btn btn-secondary btn-sm" onclick="disconnectIntegration('${cfg.id}','${status?.id || ''}')" style="font-size:11px;padding:4px 10px">${t('integrations.disconnect')}</button>`
           : ''}
       </div>`;
 
@@ -548,17 +993,17 @@ async function loadIntegrations() {
           const checked = state === 'disconnected' ? svc.default : activeServices.includes(svc.key);
           html += `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:#2a2420">
             <input type="checkbox" data-service="${svc.key}" ${checked ? 'checked' : ''} style="accent-color:#378ADD;width:16px;height:16px">
-            <span><b>${svc.label}</b> <span style="color:#a09080">${svc.desc}</span></span>
+            <span><b>${t(svc.labelKey)}</b> <span style="color:#a09080">${t(svc.descKey)}</span></span>
           </label>`;
         }
         html += `<button class="btn btn-primary btn-sm" onclick="connectWithServices('${cfg.id}')" style="font-size:11px;padding:5px 14px;margin-top:6px">
-          ${state === 'connected' ? 'Services aktualisieren' : 'Verbinden'}
+          ${state === 'connected' ? t('integrations.update_services') : t('integrations.connect')}
         </button></div>`;
       }
     }
     container.innerHTML = html;
   } catch (e) {
-    container.innerHTML = '<p class="msg" style="color:#c44">Fehler beim Laden</p>';
+    container.innerHTML = `<p class="msg" style="color:#c44">${t('common.error_loading')}</p>`;
   }
 }
 
@@ -572,11 +1017,11 @@ async function connectWithServices(providerId) {
   if (!container) { _connecting = false; return; }
   const checks = container.querySelectorAll('input[data-service]:checked');
   const services = [...checks].map(c => c.dataset.service);
-  if (!services.length) { _connecting = false; alert('Bitte mindestens einen Service auswählen.'); return; }
+  if (!services.length) { _connecting = false; alert(t('integrations.select_at_least_one')); return; }
 
   // Button deaktivieren
   const btn = container.querySelector('button');
-  if (btn) { btn.disabled = true; btn.textContent = 'Verbinde...'; }
+  if (btn) { btn.disabled = true; btn.textContent = t('integrations.connecting'); }
 
   try {
     const res = await fetch(`/api/oauth-google?action=connect&services=${services.join(',')}`, {
@@ -597,7 +1042,7 @@ async function connectWithServices(providerId) {
       if (!event.data?.type?.startsWith('sophie-oauth-')) return;
       cleanup();
       if (event.data.type === 'sophie-oauth-success') loadIntegrations();
-      else alert(event.data.error || 'Verbindung fehlgeschlagen');
+      else alert(event.data.error || t('integrations.connect_failed'));
     }
 
     const pollTimer = setInterval(() => {
@@ -620,14 +1065,14 @@ async function connectWithServices(providerId) {
     window.addEventListener('message', onMessage);
   } catch (e) {
     _connecting = false;
-    alert('Verbindung fehlgeschlagen');
+    alert(t('integrations.connect_failed'));
   }
 }
 // Legacy alias
 async function connectIntegration(provider) { connectWithServices(provider); }
 
 async function disconnectIntegration(provider, integrationId) {
-  if (!confirm('Verbindung zu ' + provider.replace('_', ' ') + ' trennen?')) return;
+  if (!confirm(t('integrations.disconnect_confirm', { provider: provider.replace('_', ' ') }))) return;
   try {
     await fetch('/api/oauth-google?action=disconnect', {
       method: 'POST',
@@ -639,7 +1084,7 @@ async function disconnectIntegration(provider, integrationId) {
     });
     loadIntegrations();
   } catch (e) {
-    alert('Trennen fehlgeschlagen');
+    alert(t('integrations.disconnect_failed'));
   }
 }
 
@@ -655,7 +1100,7 @@ window.disconnectIntegration = disconnectIntegration;
     history.replaceState(null, '', window.location.pathname);
   }
   if (params.has('integration_error')) {
-    alert('Verbindung fehlgeschlagen: ' + params.get('integration_error'));
+    alert(t('integrations.connect_failed_with', { err: params.get('integration_error') }));
     history.replaceState(null, '', window.location.pathname);
   }
 })();
@@ -688,18 +1133,18 @@ async function loadAccount() {
     }
     const active = !!(sub?.is_active || sub?.status === "active" || sub?.status === "trialing");
     if (sub?.plan) {
-      planEl.textContent = sub.plan + (active ? "" : " (inaktiv)");
+      planEl.textContent = sub.plan + (active ? "" : t('account.inactive'));
       planEl.className = "badge " + (active ? "badge-active" : "badge-decoupled");
       planEl.style.display = "";
     } else {
-      planEl.textContent = "Free";
+      planEl.textContent = t('account.free');
       planEl.className = "badge badge-decoupled";
       planEl.style.display = "";
     }
     // Show manage button for active subscribers, pricing link for others
     manageBtn.style.display = "";
     if (active) {
-      manageBtn.textContent = "Abo verwalten";
+      manageBtn.textContent = t('account.manage_sub');
       manageBtn.onclick = async () => {
         manageBtn.disabled = true;
         try {
@@ -709,11 +1154,11 @@ async function loadAccount() {
           });
           const data = await res.json();
           if (data.url) window.location.href = data.url;
-        } catch (e) { alert("Fehler: " + e?.message); }
+        } catch (e) { alert(t('common.error_prefix') + (e?.message || '')); }
         manageBtn.disabled = false;
       };
     } else {
-      manageBtn.textContent = "Plan wählen";
+      manageBtn.textContent = t('account.choose_plan');
       manageBtn.onclick = () => { window.location.href = "/pricing"; };
     }
   } catch (e) { console.error("[account] sub load failed:", e); }
@@ -751,15 +1196,15 @@ async function loadUsage() {
     const used = Math.max(0, total - remaining);
 
     // Subtitle update
-    sub.textContent = used + " Tokens verbraucht";
+    sub.textContent = t('usage.used', { n: used });
 
     // CTA if low
     const lowBalance = total > 0 && (remaining / total) < 0.2;
 
     el.innerHTML = `
       <div class="usage-label">
-        <span>${used} Tokens verbraucht</span>
-        <span>${total} Tokens gesamt</span>
+        <span>${t('usage.used', { n: used })}</span>
+        <span>${t('usage.total', { n: total })}</span>
       </div>
       <div class="usage-bar-wrap">
         <div class="usage-bar ${barColor}" style="width:${Math.min(pct, 100)}%"></div>
@@ -772,15 +1217,15 @@ async function loadUsage() {
           <span style="position:absolute;height:18px;width:18px;left:${ecoOn ? '20px' : '2px'};bottom:2px;background:#fff;border-radius:50%;transition:.3s"></span>
         </label>
         <div>
-          <div style="font-size:13px;font-weight:600;color:#2a2420">Eco-Modus ${ecoOn ? '<span style="color:#4a8c5c;font-size:11px;margin-left:4px">aktiv</span>' : ''}</div>
-          <div style="font-size:11px;color:#a09080;margin-top:1px">G\u00fcnstigere KI-Modelle. 2.5\u00d7 mehr Gespr\u00e4chszeit, Antwortqualit\u00e4t kann variieren.</div>
+          <div style="font-size:13px;font-weight:600;color:#2a2420">${t('usage.eco_mode')} ${ecoOn ? `<span style="color:#4a8c5c;font-size:11px;margin-left:4px">${t('usage.eco_active')}</span>` : ''}</div>
+          <div style="font-size:11px;color:#a09080;margin-top:1px">${t('usage.eco_hint')}</div>
         </div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <a href="/pricing" class="btn btn-secondary btn-sm">${lowBalance ? 'Tokens auftanken' : 'Pläne & Tokens'}</a>
+        <a href="/pricing" class="btn btn-secondary btn-sm">${lowBalance ? t('usage.topup') : t('usage.plans')}</a>
       </div>
     `;
-  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+  } catch { el.innerHTML = `<p class="msg msg-error">${t('common.error_loading')}</p>`; }
 }
 
 async function toggleEcoMode(enabled) {
@@ -836,12 +1281,17 @@ async function loadReports() {
     try { journeyData = await api("pitch-journey"); } catch (_) {}
 
     if (!data.reports?.length && !journeyData?.journeys?.length) {
-      list.innerHTML = '<p class="msg">Noch keine Reports vorhanden.</p>'; return;
+      list.innerHTML = `<p class="msg">${t('reports.empty')}</p>`; return;
     }
 
     // Group by category
     const groups = { meeting: [], salespitch: [], brainstorm: [], talk: [] };
-    const groupLabels = { meeting: "Meeting", salespitch: "Sales Pitch", brainstorm: "Brainstorming", talk: "Gespräche" };
+    const groupLabels = {
+      meeting: t('reports.group_meeting'),
+      salespitch: t('reports.group_salespitch'),
+      brainstorm: t('reports.group_brainstorm'),
+      talk: t('reports.group_talk'),
+    };
     for (const r of (data.reports || [])) {
       const cat = (r.source === 'meeting' || r.report_style === 'meeting') ? 'meeting'
         : (r.source === 'salespitch' || r.report_style === 'salespitch' || r.report_style === 'pitch') ? 'salespitch'
@@ -853,8 +1303,8 @@ async function loadReports() {
     let html = '';
     const renderCard = (r) => {
       const d = new Date(r.created_at);
-      const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
-      const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+      const date = d.toLocaleDateString(_localeTag(), { day: "2-digit", month: "short" });
+      const time = d.toLocaleTimeString(_localeTag(), { hour: "2-digit", minute: "2-digit" });
       const source = r.source || 'talk';
       return `<div class="card" style="display:flex;align-items:center;gap:10px">
         <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
@@ -894,7 +1344,7 @@ async function loadReports() {
           if (items.length === 1) {
             const r = items[0];
             const d = new Date(r.created_at);
-            const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+            const date = d.toLocaleDateString(_localeTag(), { day: "2-digit", month: "short" });
             const source = r.source || 'talk';
             html += `<div class="card" style="display:flex;align-items:center;gap:10px">
               <input type="checkbox" class="report-cb" data-id="${r.session_id || r.id}" data-source="${source}" onchange="updateDeleteBar()" style="width:18px;height:18px;accent-color:#c4a882;cursor:pointer;flex-shrink:0">
@@ -922,7 +1372,7 @@ async function loadReports() {
       html += '</div></div>';
     }
     list.innerHTML = html;
-  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+  } catch (e) { list.innerHTML = `<p class="msg">${t('common.error_loading_dot')}</p>`; }
 }
 
 function updateDeleteBar() {
@@ -932,7 +1382,7 @@ function updateDeleteBar() {
   if (checked.length > 0) {
     bar.style.display = "flex";
     bar.style.alignItems = "center";
-    count.textContent = checked.length + " ausgewählt";
+    count.textContent = t('reports.n_selected', { n: checked.length });
   } else {
     bar.style.display = "none";
   }
@@ -943,13 +1393,13 @@ async function deleteSelectedReports() {
   if (!checked.length) return;
   const meetingCount = [...checked].filter(cb => cb.dataset.source === "meeting").length;
   const msg = meetingCount > 0
-    ? `${checked.length} Report(s) löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt.`
-    : `${checked.length} Report(s) wirklich löschen?`;
+    ? t('reports.delete_n_meeting_confirm', { n: checked.length })
+    : t('reports.delete_n_confirm', { n: checked.length });
   if (!confirm(msg)) return;
 
   const btn = document.getElementById("deleteSelectedBtn");
   btn.disabled = true;
-  btn.textContent = "Lösche...";
+  btn.textContent = t('reports.deleting');
 
   for (const cb of checked) {
     const id = cb.dataset.id;
@@ -962,7 +1412,7 @@ async function deleteSelectedReports() {
   }
 
   btn.disabled = false;
-  btn.textContent = "🗑 Ausgewählte löschen";
+  btn.textContent = t('reports.delete_selected');
   document.getElementById("deleteSelectedBar").style.display = "none";
   await loadReports();
 }
@@ -985,9 +1435,9 @@ async function openReportDetail(sessionId, source = 'talk') {
         return `<div style="margin-bottom:14px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a09080;margin:0 0 8px">${label}</h4>`
           + items.map(i => `<div style="padding:6px 0;border-bottom:1px solid #f0ece6;font-size:13px">${typeof i === 'string' ? i : i.text || i}</div>`).join('') + '</div>';
       };
-      htmlContent += renderSection(data.decisions, "Beschlüsse");
-      htmlContent += renderSection(data.action_items, "Action Items");
-      htmlContent += renderSection(data.open_points, "Offene Punkte");
+      htmlContent += renderSection(data.decisions, t('reports.section_decisions'));
+      htmlContent += renderSection(data.action_items, t('reports.section_actions'));
+      htmlContent += renderSection(data.open_points, t('reports.section_open'));
     }
 
     // Report-Objekt für Overlay-Modul
@@ -1012,7 +1462,7 @@ async function openReportDetail(sessionId, source = 'talk') {
     // Overlay via Modul öffnen
     if (window.SophieReportOverlay) {
       SophieReportOverlay.open(reportData, {
-        lang: "de",
+        lang: _uiLang,
         onSaveTemplate: type === "meeting" ? async () => {
           await api("save-report-template", { mode: "default", report_html: htmlContent }, "POST");
         } : null,
@@ -1027,12 +1477,12 @@ async function openReportDetail(sessionId, source = 'talk') {
       if (overlay) {
         overlay.style.display = "block";
         document.getElementById("reportDetailTitle").textContent = data.title || "Report";
-        document.getElementById("reportDetailContent").innerHTML = htmlContent || '<p class="msg">Kein Report vorhanden.</p>';
+        document.getElementById("reportDetailContent").innerHTML = htmlContent || `<p class="msg">${t('reports.none_available')}</p>`;
       }
     }
   } catch (e) {
     console.error("[openReportDetail]", e);
-    alert("Report konnte nicht geladen werden.");
+    alert(t('reports.load_failed'));
   }
 }
 window.openReportDetail = openReportDetail;
@@ -1068,8 +1518,8 @@ async function saveReportAsTemplate() {
   if (!_reportDetailData?.report_html) return;
   try {
     await api("save-report-template", { mode: "default", report_html: _reportDetailData.report_html }, "POST");
-    alert("Als Vorlage gespeichert!");
-  } catch (e) { alert("Fehler: " + e?.message); }
+    alert(t('reports.template_saved'));
+  } catch (e) { alert(t('common.error_prefix') + (e?.message || '')); }
 }
 window.saveReportAsTemplate = saveReportAsTemplate;
 
@@ -1134,10 +1584,10 @@ window.pitchAgain = pitchAgain;
 async function pitchDemoFromReport() {
   if (!_reportDetailData) return;
   const sessionId = _reportDetailData.session_id;
-  if (!sessionId) { alert("Keine Session-Daten gefunden."); return; }
+  if (!sessionId) { alert(t('reports.no_session')); return; }
 
   const btn = document.getElementById("pitchDemoBtn");
-  if (btn) { btn.disabled = true; btn.textContent = "Wird vorbereitet..."; }
+  if (btn) { btn.disabled = true; btn.textContent = t('reports.preparing'); }
 
   // Unlock audio IMMEDIATELY in user gesture context (before any async)
   const prelockedAudio = _unlockAudioForMobile();
@@ -1145,16 +1595,16 @@ async function pitchDemoFromReport() {
   try {
     // Step 1: Generate optimized pitch text (GPT-4o)
     const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
-    if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
+    if (!result?.demoPitch) throw new Error(t('reports.demo_failed'));
 
-    if (btn) btn.textContent = "Sophie bereitet sich vor...";
+    if (btn) btn.textContent = t('reports.sophie_preparing');
 
     // Step 2: Convert to audio via TTS (gpt-4o-mini-tts, emotional keynote delivery)
     await _playDemoPitchTTS(result.demoPitch, btn, () => pitchDemoFromReport(), prelockedAudio);
   } catch (e) {
     console.error("pitchDemoFromReport failed:", e);
-    if (btn) { btn.disabled = false; btn.textContent = "\u26A0 " + (e?.message || "Fehler").slice(0, 40); }
-    setTimeout(() => { if (btn) btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }, 5000);
+    if (btn) { btn.disabled = false; btn.textContent = "\u26A0 " + (e?.message || t('common.error_prefix').replace(/[:\s]+$/, '')).slice(0, 40); }
+    setTimeout(() => { if (btn) btn.textContent = t('reports.sophie_pitches'); }, 5000);
   }
 }
 
@@ -1180,7 +1630,7 @@ async function _playDemoPitchTTS(text, btn, replayFn, prelockedAudio) {
 
   const { data: { session: authSession } } = await supabase.auth.getSession();
   const token = authSession?.access_token;
-  if (!token) throw new Error("Nicht eingeloggt");
+  if (!token) throw new Error(t('reports.not_logged_in'));
 
   const resp = await fetch("/api/ai/tts", {
     method: "POST",
@@ -1203,7 +1653,7 @@ async function _playDemoPitchTTS(text, btn, replayFn, prelockedAudio) {
     _demoAudio = null;
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich";
+      btn.textContent = t('reports.sophie_pitches');
       btn.onclick = replayFn;
     }
     URL.revokeObjectURL(url);
@@ -1211,7 +1661,7 @@ async function _playDemoPitchTTS(text, btn, replayFn, prelockedAudio) {
 
   if (btn) {
     btn.disabled = false;
-    btn.textContent = "\u23F9 Stop";
+    btn.textContent = t('reports.stop');
     btn.onclick = () => { if (_demoAudio) { _demoAudio.pause(); } reset(); };
   }
 
@@ -1292,21 +1742,21 @@ window.pitchAgainFromJourney = pitchAgainFromJourney;
 
 // Sophie Demo Pitch — Sophie pitches FOR the user as an example (TTS, no talk session)
 async function pitchDemoFromJourney(topic, btnEl) {
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = "Wird vorbereitet..."; }
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = t('reports.preparing'); }
   const prelockedAudio = _unlockAudioForMobile();
   try {
     const data = await api("pitch-journey-detail&topic=" + encodeURIComponent(topic));
     const sessionId = data?.session_id;
-    if (!sessionId) throw new Error("Keine Session gefunden");
+    if (!sessionId) throw new Error(t('reports.no_session'));
 
     const result = await api("generate-demo-pitch", { session_id: sessionId }, "POST");
-    if (!result?.demoPitch) throw new Error("Demo konnte nicht erstellt werden");
+    if (!result?.demoPitch) throw new Error(t('reports.demo_failed'));
 
-    if (btnEl) btnEl.textContent = "Sophie bereitet sich vor...";
+    if (btnEl) btnEl.textContent = t('reports.sophie_preparing');
     await _playDemoPitchTTS(result.demoPitch, btnEl, () => pitchDemoFromJourney(topic, btnEl), prelockedAudio);
   } catch (e) {
-    alert("Nicht genug Pitch-Daten vorhanden. Pitche mindestens einmal, damit Sophie dir zeigen kann wie es geht.");
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = "\uD83C\uDFA7 Sophie pitcht f\u00fcr dich"; }
+    alert(t('reports.no_pitch_data'));
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = t('reports.sophie_pitches'); }
   }
 }
 window.pitchDemoFromJourney = pitchDemoFromJourney;
@@ -1318,12 +1768,12 @@ async function loadRules() {
     const data = await api("custom-rules");
     const rules = data.rules || [];
     if (!rules.length) {
-      list.innerHTML = '<p class="msg">Sophie hat noch keine Regeln von dir gelernt. Sage ihr im Chat z.B. "Merk dir: fass immer zuerst zusammen" — sie lernt mit der Zeit.</p>';
+      list.innerHTML = `<p class="msg">${t('rules.empty')}</p>`;
       return;
     }
     list.innerHTML = rules.map((r, i) => {
       const d = new Date(r.created_at);
-      const date = d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+      const date = d.toLocaleDateString(_localeTag(), { day: "2-digit", month: "short" });
       const title = r.title || '';
       return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 0">
         <div style="flex:1">
@@ -1331,10 +1781,10 @@ async function loadRules() {
           <div style="font-size:12px;color:#5a5045">${r.rule}</div>
           <div style="font-size:10px;color:#a09080;margin-top:2px">${date}</div>
         </div>
-        <button onclick="deleteRule(${i})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px" title="Regel löschen">&times;</button>
+        <button onclick="deleteRule(${i})" style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px" title="${t('rules.delete_title')}">&times;</button>
       </div>`;
     }).join('');
-  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+  } catch (e) { list.innerHTML = `<p class="msg">${t('common.error_loading_dot')}</p>`; }
 }
 
 async function deleteRule(index) {
@@ -1346,7 +1796,7 @@ async function deleteRule(index) {
 window.deleteRule = deleteRule;
 
 async function resetAllRules() {
-  if (!confirm("Alle gelernten Regeln zurücksetzen? Sophie vergisst alle individuellen Anweisungen.")) return;
+  if (!confirm(t('rules.reset_confirm'))) return;
   try {
     await api("reset-custom-rules", {}, "POST");
     loadRules();
@@ -1355,60 +1805,66 @@ async function resetAllRules() {
 window.resetAllRules = resetAllRules;
 
 // ── Section: Meine Vorlagen ──
-const MODE_LABELS = { default: "Standard Report", brainstorm: "Brainstorm", salespitch: "Sales Pitch", meeting: "Meeting" };
+function _modeLabel(mode) {
+  const map = {
+    default: t('templates.mode_default'),
+    brainstorm: t('templates.mode_brainstorm'),
+    salespitch: t('templates.mode_salespitch'),
+    meeting: t('templates.mode_meeting'),
+  };
+  return map[mode] || mode;
+}
 
 async function loadTemplates() {
   const list = document.getElementById("templatesList");
   try {
     const data = await api("templates");
     if (!data.templates?.length) {
-      list.innerHTML = '<p class="msg">Keine Vorlagen vorhanden.</p>';
+      list.innerHTML = `<p class="msg">${t('templates.empty')}</p>`;
       return;
     }
-    list.innerHTML = data.templates.map(t => {
-      const label = MODE_LABELS[t.mode] || t.mode;
-      const isSystem = t.type === 'system';
+    list.innerHTML = data.templates.map(tpl => {
+      const label = _modeLabel(tpl.mode);
+      const isSystem = tpl.type === 'system';
       const badge = isSystem
-        ? '<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(52,196,122,.15);color:#34c47a;font-weight:600;letter-spacing:.03em;">STANDARD</span>'
-        : '<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(142,178,255,.15);color:#8eb2ff;font-weight:600;letter-spacing:.03em;">INDIVIDUELL</span>';
+        ? `<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(52,196,122,.15);color:#34c47a;font-weight:600;letter-spacing:.03em;">${t('templates.badge_system')}</span>`
+        : `<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(142,178,255,.15);color:#8eb2ff;font-weight:600;letter-spacing:.03em;">${t('templates.badge_user')}</span>`;
       const action = isSystem
         ? ''
-        : `<button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.mode}')" title="Entfernt deine individuelle Vorlage, Standard wird wiederhergestellt">Zurücksetzen</button>`;
+        : `<button class="btn btn-danger btn-sm" onclick="deleteTemplate('${tpl.mode}')" title="${t('templates.reset_title')}">${t('templates.reset')}</button>`;
       return `<div class="card" style="display:flex;align-items:center;gap:10px;">
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:13px;font-weight:600;color:#2a2420">${label}</span>
             ${badge}
           </div>
-          <div style="font-size:11px;color:#a09080;margin-top:4px">${t.preview ? t.preview.slice(0, 80) + '…' : 'Vorlage aktiv'}</div>
+          <div style="font-size:11px;color:#a09080;margin-top:4px">${tpl.preview ? tpl.preview.slice(0, 80) + '…' : t('templates.active')}</div>
         </div>
         ${action}
       </div>`;
     }).join("");
-  } catch (e) { list.innerHTML = '<p class="msg">Fehler beim Laden.</p>'; }
+  } catch (e) { list.innerHTML = `<p class="msg">${t('common.error_loading_dot')}</p>`; }
 }
 
 async function deleteTemplate(mode) {
-  if (!confirm("Individuelle Vorlage für '" + (MODE_LABELS[mode] || mode) + "' entfernen und auf Standard zurücksetzen?")) return;
+  if (!confirm(t('templates.delete_confirm', { mode: _modeLabel(mode) }))) return;
   try {
     await api("delete-template", { mode }, "POST");
     loadTemplates();
-  } catch (e) { alert("Fehler: " + e?.message); }
+  } catch (e) { alert(t('common.error_prefix') + (e?.message || '')); }
 }
 window.deleteTemplate = deleteTemplate;
 
 async function deleteReport() {
   if (!_reportDetailData?.session_id) return;
   const source = _reportDetailData.source || 'talk';
-  const msg = source === 'meeting'
-    ? "Report löschen?\n\nMeeting-Struktur (Teilnehmer, Agenda, Verknüpfungen) bleibt erhalten — nur der Report wird entfernt."
-    : "Report wirklich löschen?";
+  const msg = source === 'meeting' ? t('reports.delete_meeting_confirm') : t('reports.delete_confirm');
   if (!confirm(msg)) return;
   try {
     await api("delete-report", { session_id: _reportDetailData.session_id, source }, "POST");
     closeReportDetail();
     loadReports();
-  } catch (e) { alert("Fehler: " + e?.message); }
+  } catch (e) { alert(t('common.error_prefix') + (e?.message || '')); }
 }
 window.deleteReport = deleteReport;
 
@@ -1419,27 +1875,27 @@ async function loadSources() {
   try {
     const data = await api("sources");
     if (!data.sources?.length) {
-      el.innerHTML = '<p class="msg">Keine importierten Quellen. Nutze den KI-Import oben.</p>';
+      el.innerHTML = `<p class="msg">${t('sources.empty')}</p>`;
       return;
     }
     el.innerHTML = data.sources.map(s => `
       <div class="source-item">
         <div class="s-info">
           <div class="s-name">${s.source_name}</div>
-          <div class="s-meta">${s.source_type} &middot; ${s.item_count || 0} Items &middot; ${new Date(s.created_at).toLocaleDateString("de-DE")}</div>
+          <div class="s-meta">${s.source_type} &middot; ${s.item_count || 0} ${t('sources.items')} &middot; ${new Date(s.created_at).toLocaleDateString(_localeTag())}</div>
         </div>
         <span class="badge badge-${s.status}">${s.status}</span>
         <div class="s-actions">
-          ${s.status === "active" ? `<button class="btn btn-sm btn-secondary" onclick="sourceAction('decouple','${s.id}')">Entkoppeln</button>` : ""}
-          <button class="btn btn-sm btn-danger" onclick="sourceAction('delete-all','${s.id}')">L&ouml;schen</button>
+          ${s.status === "active" ? `<button class="btn btn-sm btn-secondary" onclick="sourceAction('decouple','${s.id}')">${t('sources.decouple')}</button>` : ""}
+          <button class="btn btn-sm btn-danger" onclick="sourceAction('delete-all','${s.id}')">${t('common.delete')}</button>
         </div>
       </div>
     `).join("");
-  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
+  } catch { el.innerHTML = `<p class="msg msg-error">${t('common.error_loading')}</p>`; }
 }
 
 window.sourceAction = async function(action, sourceId) {
-  if (action === "delete-all" && !confirm("Alle Daten dieser Quelle wirklich l\u00f6schen?")) return;
+  if (action === "delete-all" && !confirm(t('sources.delete_confirm'))) return;
   await api(action, { sourceId }, "POST");
   loadSources();
 };
@@ -1483,7 +1939,7 @@ function handleFileSelect(file) {
 uploadBtn.addEventListener("click", async () => {
   if (!selectedFile) return;
   uploadBtn.disabled = true;
-  uploadBtn.textContent = "Importiere...";
+  uploadBtn.textContent = t('import.importing');
 
   try {
     // Read file as base64
@@ -1502,10 +1958,10 @@ uploadBtn.addEventListener("click", async () => {
     const res = await fetch("/api/ai/import-file", opts);
     const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error || "Upload fehlgeschlagen");
+    if (!res.ok) throw new Error(data.error || t('import.upload_failed'));
 
     importSourceId = data.sourceId;
-    document.getElementById("importStatus").textContent = data.message || "Datei verarbeitet.";
+    document.getElementById("importStatus").textContent = data.message || t('import.file_processed');
     document.getElementById("importStatus").classList.remove("msg-error");
     document.getElementById("importStatus").classList.add("msg-success");
 
@@ -1513,13 +1969,13 @@ uploadBtn.addEventListener("click", async () => {
     const candidates = data.memoryCandidates || [];
     const container = document.getElementById("importCandidates");
     if (candidates.length === 0) {
-      container.innerHTML = '<p class="msg">Keine Memory-Kandidaten gefunden.</p>';
+      container.innerHTML = `<p class="msg">${t('import.no_candidates')}</p>`;
       approveBtn.classList.add("hidden");
     } else {
       container.innerHTML = candidates.map((c, i) => `
         <div class="candidate">
           <input type="checkbox" checked data-idx="${i}">
-          <span class="c-text">${c.summary || c.content?.slice(0, 100) || "Insight"}</span>
+          <span class="c-text">${c.summary || c.content?.slice(0, 100) || t('import.insight_fallback')}</span>
           <span class="c-type">${c.type || "?"}</span>
         </div>
       `).join("");
@@ -1537,12 +1993,12 @@ uploadBtn.addEventListener("click", async () => {
     if (sourcesSection.classList.contains("collapsed")) sourcesSection.classList.remove("collapsed");
     loadSources();
   } catch (e) {
-    document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Upload fehlgeschlagen");
+    document.getElementById("importStatus").textContent = t('common.error_prefix') + (e.message || t('import.upload_failed'));
     document.getElementById("importStatus").classList.add("msg-error");
     document.getElementById("importStatus").classList.remove("hidden");
     step2.classList.remove("hidden");
   } finally {
-    uploadBtn.textContent = "Datei importieren";
+    uploadBtn.textContent = t('import.upload_btn');
     uploadBtn.disabled = false;
   }
 });
@@ -1566,14 +2022,14 @@ importPills.forEach(pill => {
 
     // Fetch extraction prompt
     const data = await importApi({ action: "get-prompt", source: currentSource });
-    promptEl.value = data.prompt || "Fehler beim Laden des Prompts";
+    promptEl.value = data.prompt || t('import.prompt_load_error');
   });
 });
 
 document.getElementById("copyPromptBtn").addEventListener("click", () => {
   navigator.clipboard.writeText(promptEl.value);
-  document.getElementById("copyPromptBtn").textContent = "Kopiert!";
-  setTimeout(() => document.getElementById("copyPromptBtn").textContent = "Kopieren", 2000);
+  document.getElementById("copyPromptBtn").textContent = t('common.copied');
+  setTimeout(() => document.getElementById("copyPromptBtn").textContent = t('common.copy'), 2000);
 });
 
 pasteEl.addEventListener("input", () => {
@@ -1582,23 +2038,23 @@ pasteEl.addEventListener("input", () => {
 
 importBtn.addEventListener("click", async () => {
   importBtn.disabled = true;
-  importBtn.textContent = "Importiere...";
+  importBtn.textContent = t('import.importing');
   try {
     const data = await importApi({ action: "import", source: currentSource, content: pasteEl.value.trim() });
     importSourceId = data.sourceId;
-    document.getElementById("importStatus").textContent = data.message || "Import verarbeitet.";
+    document.getElementById("importStatus").textContent = data.message || t('import.import_processed');
 
     // Show candidates
     const candidates = data.memoryCandidates || [];
     const container = document.getElementById("importCandidates");
     if (candidates.length === 0) {
-      container.innerHTML = '<p class="msg">Keine Memory-Kandidaten gefunden.</p>';
+      container.innerHTML = `<p class="msg">${t('import.no_candidates')}</p>`;
       approveBtn.classList.add("hidden");
     } else {
       container.innerHTML = candidates.map((c, i) => `
         <div class="candidate">
           <input type="checkbox" checked data-idx="${i}">
-          <span class="c-text">${c.summary || c.content?.slice(0, 100) || "Insight"}</span>
+          <span class="c-text">${c.summary || c.content?.slice(0, 100) || t('import.insight_fallback')}</span>
           <span class="c-type">${c.type || "?"}</span>
         </div>
       `).join("");
@@ -1613,10 +2069,10 @@ importBtn.addEventListener("click", async () => {
     if (sourcesSection2.classList.contains("collapsed")) sourcesSection2.classList.remove("collapsed");
     loadSources();
   } catch (e) {
-    document.getElementById("importStatus").textContent = "Fehler: " + (e.message || "Import fehlgeschlagen");
+    document.getElementById("importStatus").textContent = t('common.error_prefix') + (e.message || t('import.import_failed'));
     document.getElementById("importStatus").classList.add("msg-error");
   } finally {
-    importBtn.textContent = "Importieren";
+    importBtn.textContent = t('import.import_btn');
     importBtn.disabled = false;
   }
 });
@@ -1629,10 +2085,10 @@ approveBtn.addEventListener("click", async () => {
   try {
     const data = await importApi({ action: "approve", sourceId: importSourceId, itemIds });
     const statusEl = document.getElementById("approveStatus");
-    statusEl.textContent = data.message || "Erledigt.";
+    statusEl.textContent = data.message || t('import.done_msg');
     statusEl.classList.remove("hidden");
     statusEl.classList.add("msg-success");
-    approveBtn.textContent = "Erledigt";
+    approveBtn.textContent = t('import.done');
   } catch {
     approveBtn.disabled = false;
   }
