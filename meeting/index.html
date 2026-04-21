@@ -1926,12 +1926,12 @@ async function updateBalanceBar() {
     });
     if (!res.ok) return;
     const data = await res.json();
+    const u = data.usage || {};
     const remaining = Number.isFinite(data.remaining_tokens) ? data.remaining_tokens : 0;
-    const planKey = String(data.plan || "").toLowerCase();
-    const planCap = PLAN_TOKEN_CAPS[planKey] || 0;
-    const total = Math.max(planCap, remaining);
+    const total = (u.free_tokens_total || 0) + (u.paid_tokens_total || 0) + (u.topup_tokens_balance || 0);
     if (total <= 0) { wrap.classList.add("hidden"); return; }
     const pct = Math.max(0, Math.min(1, remaining / total));
+    if (pct > 0.2) { wrap.classList.add("hidden"); return; }
     wrap.classList.remove("hidden");
     const valEl = document.getElementById("balanceValLabel");
     const maxEl = document.getElementById("balanceMaxLabel");
@@ -1940,7 +1940,7 @@ async function updateBalanceBar() {
     if (maxEl) maxEl.textContent = String(total);
     if (fillEl) {
       fillEl.style.width = (pct * 100).toFixed(1) + "%";
-      fillEl.className = "balance-fill" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+      fillEl.className = "balance-fill" + (pct <= 0.1 ? " danger" : " warn");
     }
   } catch (e) {
     console.warn("[meeting-balance] poll failed:", e.message);
