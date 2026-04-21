@@ -433,30 +433,6 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
-  <!-- Section 3: Kosten -->
-  <div class="section collapsed" id="sectionCosts">
-    <div class="section-toggle" onclick="toggleSection('sectionCosts')">
-      <span class="arrow">&#9660;</span>
-      <span class="s-title">Kosten</span>
-      <span class="s-sub">Deine AI-Kosten heute</span>
-    </div>
-    <div class="section-body">
-      <div id="costsContent"><p class="msg">Laden...</p></div>
-    </div>
-  </div>
-
-  <!-- Section 4: Provider-Status -->
-  <div class="section collapsed" id="sectionHealth">
-    <div class="section-toggle" onclick="toggleSection('sectionHealth')">
-      <span class="arrow">&#9660;</span>
-      <span class="s-title">Provider-Status</span>
-      <span class="s-sub">KI-Provider Live-Status</span>
-    </div>
-    <div class="section-body">
-      <div class="provider-grid" id="healthGrid"><p class="msg">Laden...</p></div>
-    </div>
-  </div>
-
 </main>
 
 <script src="/lib/sophie-export.js"></script>
@@ -505,8 +481,6 @@ if (!session?.user) {
 } else {
   authLoading.classList.add("hidden");
   mainContent.classList.remove("hidden");
-  loadHealth();
-  loadCosts();
   loadAccount();
   loadUsage();
   loadIntegrations();
@@ -774,29 +748,21 @@ async function loadUsage() {
     const barColor = pct < 80 ? "green" : pct < 95 ? "orange" : "red";
     const remaining = d.remainingTokens || 0;
     const total = d.totalTokens || 0;
+    const used = Math.max(0, total - remaining);
 
     // Subtitle update
-    sub.textContent = remaining + " Tokens \u00fcbrig";
-
-    // Daily cost bar
-    const costPct = d.dailyCap > 0 ? Math.min(100, Math.round((d.dailyCost / d.dailyCap) * 100)) : 0;
+    sub.textContent = used + " Tokens verbraucht";
 
     // CTA if low
     const lowBalance = total > 0 && (remaining / total) < 0.2;
 
     el.innerHTML = `
       <div class="usage-label">
-        <span>${remaining} Tokens \u00fcbrig</span>
+        <span>${used} Tokens verbraucht</span>
         <span>${total} Tokens gesamt</span>
       </div>
       <div class="usage-bar-wrap">
         <div class="usage-bar ${barColor}" style="width:${Math.min(pct, 100)}%"></div>
-      </div>
-      <div class="usage-cost">
-        <div class="usage-cost-label">AI-Budget heute: $${parseFloat(d.dailyCost).toFixed(2)} / $${parseFloat(d.dailyCap).toFixed(2)}</div>
-        <div class="usage-cost-bar-wrap">
-          <div class="usage-cost-bar" style="width:${costPct}%"></div>
-        </div>
       </div>
       <div style="margin-top:14px;display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f0ece6">
         <label style="position:relative;width:40px;height:22px;flex-shrink:0">
@@ -1446,57 +1412,6 @@ async function deleteReport() {
 }
 window.deleteReport = deleteReport;
 
-// ── Section 4: Provider-Status ──
-async function loadHealth() {
-  const grid = document.getElementById("healthGrid");
-  try {
-    const data = await api("health");
-    if (!data.providers?.length) { grid.innerHTML = '<p class="msg">Keine Daten</p>'; return; }
-    grid.innerHTML = data.providers.map(p => `
-      <div class="provider-card">
-        ${icon(p.provider)}
-        <div class="p-info">
-          <div class="p-name">${NAMES[p.provider] || p.provider}</div>
-          <div class="p-latency">${p.latency_ms || "?"}ms</div>
-        </div>
-        <span class="badge badge-${p.status}">${p.status}</span>
-      </div>
-    `).join("");
-  } catch { grid.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
-}
-// Auto-refresh every 60s
-setInterval(loadHealth, 60000);
-
-// ── Section 3: Kosten ──
-async function loadCosts() {
-  const el = document.getElementById("costsContent");
-  try {
-    const data = await api("costs");
-    const total = parseFloat(data.totalCost || 0);
-    const providers = data.perProvider || {};
-    const count = data.requestCount || 0;
-
-    if (count === 0) {
-      el.innerHTML = '<p class="msg">Noch keine Kosten heute.</p>';
-      return;
-    }
-
-    let rows = "";
-    for (const [p, cost] of Object.entries(providers)) {
-      rows += `<div class="cost-row">
-        ${icon(p)}
-        <span class="c-name">${NAMES[p] || p}</span>
-        <span class="c-value">$${parseFloat(cost).toFixed(4)}</span>
-      </div>`;
-    }
-
-    el.innerHTML = `
-      <div class="cost-total">$${total.toFixed(4)}</div>
-      <div class="cost-count">${count} Requests &middot; ${data.date}</div>
-      ${rows}
-    `;
-  } catch { el.innerHTML = '<p class="msg msg-error">Fehler beim Laden</p>'; }
-}
 
 // ── Section 2: Source Ledger ──
 async function loadSources() {

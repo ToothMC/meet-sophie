@@ -1515,8 +1515,7 @@ function updateTokenDisplay() {
   }
 
   // Plan-Balance-Balken live aktualisieren.
-  // Balken = VERBRAUCH (leer=viel uebrig, voll=aufgebraucht). Metapher: Tank-Anzeige
-  // die sich fuellt, je mehr konsumiert wurde. Gruen bis 80%, Warn ab 80%, Danger ab 90%.
+  // Nur sichtbar ab 80% verbraucht (= <=20% uebrig) — Warn/Danger-Zone.
   if (planTotalTokens > 0 && initialRemainingTokens != null) {
     const planLeft = Math.max(0, initialRemainingTokens - used);
     const usedPct = Math.max(0, Math.min(1, 1 - (planLeft / planTotalTokens)));
@@ -1524,12 +1523,16 @@ function updateTokenDisplay() {
     const balanceFill = document.getElementById("balanceFill");
     const balanceVal = document.getElementById("balanceValLabel");
     const balanceMax = document.getElementById("balanceMaxLabel");
-    if (balanceWrap) balanceWrap.style.display = "block";
-    if (balanceVal) balanceVal.textContent = String(planLeft);
-    if (balanceMax) balanceMax.textContent = String(planTotalTokens);
-    if (balanceFill) {
-      balanceFill.style.width = (usedPct * 100).toFixed(1) + "%";
-      balanceFill.className = "balance-fill" + (usedPct >= 0.9 ? " danger" : usedPct >= 0.8 ? " warn" : "");
+    if (usedPct < 0.8) {
+      if (balanceWrap) balanceWrap.style.display = "none";
+    } else {
+      if (balanceWrap) balanceWrap.style.display = "block";
+      if (balanceVal) balanceVal.textContent = String(planLeft);
+      if (balanceMax) balanceMax.textContent = String(planTotalTokens);
+      if (balanceFill) {
+        balanceFill.style.width = (usedPct * 100).toFixed(1) + "%";
+        balanceFill.className = "balance-fill" + (usedPct >= 0.9 ? " danger" : " warn");
+      }
     }
   }
 }

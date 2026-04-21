@@ -4620,32 +4620,62 @@ function renderTimer(){
   renderBalanceBar();
 }
 
-// Live-Balken: plan_left = remainingSeconds / secPerToken (serverseitige Formel).
-// Zeigt Rest-Guthaben vs Plan-Cap in Gruen/Gelb/Rot je Prozent.
-// ceil statt floor, damit der Balken nicht bei jeder Sekunde um 1 runterzaehlt
-// — soll nur in vollen secPerToken-Intervallen (3s Normal / 7.5s Eco) springen.
+// Live-Balken: echte DB-Balance (freie + bezahlte + topup) — konsistent mit Settings.
+// Nur sichtbar, wenn Restguthaben <= 20% (Warn/Danger). Poll alle 30s.
+let _balanceRemaining = 0;
+let _balanceTotal = 0;
+let _balancePollInterval = null;
+
+async function updateBalanceData() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+    const res = await fetch("/api/user?action=balance", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const u = data.usage || {};
+    _balanceRemaining = Number.isFinite(data.remaining_tokens) ? data.remaining_tokens : 0;
+    _balanceTotal = (u.free_tokens_total || 0) + (u.paid_tokens_total || 0) + (u.topup_tokens_balance || 0);
+    renderBalanceBar();
+  } catch (e) {
+    console.warn("[talk-balance] poll failed:", e?.message);
+  }
+}
+
+function startBalancePoll() {
+  stopBalancePoll();
+  updateBalanceData();
+  _balancePollInterval = setInterval(updateBalanceData, 30000);
+}
+
+function stopBalancePoll() {
+  if (_balancePollInterval) { clearInterval(_balancePollInterval); _balancePollInterval = null; }
+}
+
 function renderBalanceBar(){
   const wrap = document.getElementById("balanceWrap");
   if (!wrap) return;
-  if (planTotalTokens <= 0 || remainingSeconds <= 0) { wrap.style.display = "none"; return; }
-  const secPerToken = window._ecoMode ? 7.5 : 3;
-  const planLeft = Math.max(0, Math.ceil(remainingSeconds / secPerToken));
-  const pct = Math.max(0, Math.min(1, planLeft / planTotalTokens));
+  if (_balanceTotal <= 0) { wrap.style.display = "none"; return; }
+  const pct = Math.max(0, Math.min(1, _balanceRemaining / _balanceTotal));
+  if (pct > 0.2) { wrap.style.display = "none"; return; }
   wrap.style.display = "block";
   const valEl = document.getElementById("balanceValLabel");
   const maxEl = document.getElementById("balanceMaxLabel");
   const fillEl = document.getElementById("balanceFill");
-  if (valEl) valEl.textContent = String(planLeft);
-  if (maxEl) maxEl.textContent = String(planTotalTokens);
+  if (valEl) valEl.textContent = String(_balanceRemaining);
+  if (maxEl) maxEl.textContent = String(_balanceTotal);
   if (fillEl) {
     fillEl.style.width = (pct * 100).toFixed(1) + "%";
-    fillEl.className = "balance-fill" + (pct <= 0.1 ? " danger" : pct <= 0.2 ? " warn" : "");
+    fillEl.className = "balance-fill" + (pct <= 0.1 ? " danger" : " warn");
   }
 }
 renderTimer();
 
 function stopCountdown(){
   if (countdown) { clearInterval(countdown); countdown = null; }
+  stopBalancePoll();
 }
 
 function stopDynamicResets(){
@@ -5502,6 +5532,7 @@ function startCountdown(){
   { const bw = document.getElementById("balanceWrap"); if (bw) bw.style.display = "none"; }
   touchActivity(); // baseline — prevents timer from firing immediately
   startInactivityTimer();
+  startBalancePoll();
 
   countdown = setInterval(() => {
     remainingSeconds -= 1;
