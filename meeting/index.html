@@ -3222,7 +3222,13 @@ async function startAudioRecording() {
       segmentRotationTimer = null;
     }
 
-    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // AEC/NS/AGC explizit AUS: Meetings haben oft mehrere Sprecher und/oder Phone-Audio
+    // über Lautsprecher am Mic. Browser-AEC behandelt Phone-Speaker als "Echo" und
+    // unterdrückt es → Gegenseite verschwindet, Whisper halluziniert. Default-Processing
+    // ist für 1:1 Voice-Chat (Sophie-Talk) gebaut, nicht für Meeting-Capture.
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
 
     // Monitor track health — if OS kills the mic, we know immediately
     sharedMicStream.getAudioTracks().forEach(track => {
@@ -4045,7 +4051,9 @@ async function connectSophieVoice(phase = "live") {
     // Only re-request if stream died (e.g. hardware disconnect)
     if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
       console.log("[meeting-voice] sharedMicStream unavailable, requesting new one...");
-      sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      sharedMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
     }
     const sophieStream = sharedMicStream.clone();
     sophieVoiceStream = sophieStream;
