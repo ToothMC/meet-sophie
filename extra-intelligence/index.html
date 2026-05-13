@@ -356,9 +356,10 @@ function applyOutputMode() {
 }
 
 function outputModalities() {
+  // GA: nur ["text"] ODER ["audio"] erlaubt — Audio enthaelt das Transcript
+  // bereits. Mischen ist explizit verboten.
   if (outputMode === "text")  return ["text"];
-  if (outputMode === "voice") return ["audio", "text"];  // Audio fuer Sprechen, Text fuer Transcript
-  return ["audio", "text"];
+  return ["audio"];
 }
 
 // Cache der aktuell an Sophie gesendeten modalities — damit wir Aenderungen erkennen
