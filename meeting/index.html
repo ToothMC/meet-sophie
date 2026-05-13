@@ -3892,11 +3892,11 @@ function cleanupMicStream() {
 // ---------------------------------------------------------------------------
 
 async function fetchRealtimeAnswerSdp(offerSdp, clientSecret) {
-  const baseUrl = "https://api.openai.com/v1/realtime";
-  const model = "gpt-realtime";
+  // GA-Endpoint: /v1/realtime/calls — Modell ist im Ephemeral-Token gebacken.
+  const baseUrl = "https://api.openai.com/v1/realtime/calls";
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const res = await fetch(`${baseUrl}?model=${model}`, {
+      const res = await fetch(baseUrl, {
         method: "POST",
         body: offerSdp,
         headers: {

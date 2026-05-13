@@ -593,7 +593,9 @@ async function buildRealtimeConnection(data) {
   await pc.setLocalDescription(offer);
 
   // xi laeuft immer auf dem mini-Modell — matcht isEco=true in api/session.js.
-  const sdpRes = await fetch(`https://api.openai.com/v1/realtime?model=${cachedModel}`, {
+  // GA-Endpoint: /v1/realtime/calls (Modell ist im Ephemeral-Token gebacken,
+  // kein ?model= URL-Param mehr noetig).
+  const sdpRes = await fetch("https://api.openai.com/v1/realtime/calls", {
     method: "POST",
     body: offer.sdp,
     headers: {

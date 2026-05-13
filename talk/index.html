@@ -4836,14 +4836,15 @@ async function resumeSession() {
 // ────────────────────────────────────────────────────────────────────────────
 
 async function fetchRealtimeAnswerSdp({ offerSdp, clientSecret, maxAttempts = 3 }) {
-  const baseUrl = "https://api.openai.com/v1/realtime";
-  const model = "gpt-realtime";
+  // GA-Endpoint: /v1/realtime/calls (kein ?model=, das Modell ist bereits
+  // im Ephemeral-Token aus /v1/realtime/client_secrets gebacken).
+  const baseUrl = "https://api.openai.com/v1/realtime/calls";
 
   let lastError = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const sdpRes = await fetch(`${baseUrl}?model=${model}`, {
+      const sdpRes = await fetch(baseUrl, {
         method: "POST",
         body: offerSdp,
         headers: {
