@@ -1222,7 +1222,11 @@ Exaggerate slightly — it always sounds less than you think.
     // Fakten ein, das volle gpt-realtime waere ueberdimensioniert und wuerde
     // die Marge killen. Fuer andere Modi zaehlt das Profil-Flag.
     const isEco = sessionMode === "extra_intelligence" ? true : !!profile.eco_mode;
-    const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-realtime";
+    // Pro-Tier auf gpt-realtime-2 (GA seit 2026-05-07): bessere Instruction-
+    // Following, configurable reasoning, reliablere Tool-Use. Pricing identisch
+    // zu gpt-realtime ($32/$64 per 1M). Eco bleibt auf gpt-realtime-mini —
+    // ein mini-2 ist (Stand 2026-05) nicht verfuegbar.
+    const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-realtime-2";
 
     // ---------------------------------------------------------------------
     // Realtime API GA: POST /v1/realtime/client_secrets
