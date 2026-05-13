@@ -1224,48 +1224,77 @@ Exaggerate slightly — it always sounds less than you think.
     const isEco = sessionMode === "extra_intelligence" ? true : !!profile.eco_mode;
     const realtimeModel = isEco ? "gpt-realtime-mini" : "gpt-realtime";
 
-    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+    // ---------------------------------------------------------------------
+    // Realtime API GA: POST /v1/realtime/client_secrets
+    // ---------------------------------------------------------------------
+    // Migration vom Preview-Endpoint /v1/realtime/sessions (deprecated 2026-04-30).
+    // Body-Shape: { session: { type, model, instructions, output_modalities,
+    //                          audio: { input: {...}, output: {...} } } }
+    // Response:   { value, expires_at, session: {...} }
+    //   → wir packen value zusaetzlich als client_secret.value zurueck, damit
+    //     die bestehenden Frontends (talk/meeting/xi) unveraendert weiterlaufen.
+    // Modell bleibt zunaechst gpt-realtime / gpt-realtime-mini — der Swap auf
+    // gpt-realtime-2 ist eine separate Phase.
+    // ---------------------------------------------------------------------
+    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: realtimeModel,
-        voice: "shimmer",
-        modalities: ["audio", "text"],
-        temperature: 0.7,
-        speed: 1.0,
-        instructions: fullPrompt,
-        input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-        input_audio_format: "pcm16",
-        turn_detection: {
-          type: "server_vad",
-          threshold: 0.75,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 800,
-          idle_timeout_ms: null,
-          create_response: false,
-          interrupt_response: true,
-        },
-        input_audio_noise_reduction: {
-          type: "far_field",
+        session: {
+          type: "realtime",
+          model: realtimeModel,
+          output_modalities: ["audio"],
+          instructions: fullPrompt,
+          audio: {
+            input: {
+              format: "pcm16",
+              transcription: { model: "gpt-4o-mini-transcribe" },
+              turn_detection: {
+                type: "server_vad",
+                threshold: 0.75,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 800,
+                create_response: false,
+                interrupt_response: true,
+              },
+              noise_reduction: { type: "far_field" },
+            },
+            output: {
+              voice: "shimmer",
+              speed: 1.0,
+            },
+          },
         },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("[session] OpenAI client_secrets failed:", response.status, errorText.slice(0, 500));
       return res.status(response.status).json({ error: errorText });
     }
 
     const data = await response.json();
+
+    // Compat-Shim: GA liefert { value } auf Top-Level. Frontend erwartet aber
+    // { client_secret: { value } } (Preview-Shape). Wir bauen das nach, damit
+    // die WebRTC-Clients in talk/meeting/xi keine Aenderung brauchen — die
+    // eigentliche Frontend-Migration auf /v1/realtime/calls kommt in Phase 3.
+    if (data && data.value && !data.client_secret) {
+      data.client_secret = { value: data.value, expires_at: data.expires_at };
+    }
 
     const secPerToken = isEco ? SECONDS_PER_TOKEN_ECO : SECONDS_PER_TOKEN;
     const remainingVoiceSeconds = remaining * secPerToken;
 
     return res.status(200).json({
       ...data,
+      // Modell explizit zurueckgeben — Frontend kann darauf umstellen statt
+      // hardcoded "gpt-realtime" zu nutzen (vorbereitet fuer Phase 3).
+      realtime_model: realtimeModel,
       remaining_tokens: remaining,
       remaining_seconds: remainingVoiceSeconds,
       is_premium: isPremium,
