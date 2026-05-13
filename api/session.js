@@ -1249,9 +1249,12 @@ Exaggerate slightly — it always sounds less than you think.
           output_modalities: ["audio"],
           instructions: fullPrompt,
           audio: {
+            // WebRTC verhandelt Audio-Codec via SDP (Opus). audio.input.format
+            // / audio.output.format werden hier weggelassen — wenn gesetzt,
+            // kollidiert "audio/pcm" mit dem WebRTC-Opus-Stream und der
+            // Output-Pfad bleibt stumm. (Format-Felder waeren nur fuer den
+            // WebSocket-Audio-Buffer-Flow relevant.)
             input: {
-              // GA: format ist ein Objekt, nicht mehr der String "pcm16".
-              format: { type: "audio/pcm", rate: 24000 },
               transcription: { model: "gpt-4o-mini-transcribe" },
               turn_detection: {
                 type: "server_vad",
@@ -1264,7 +1267,6 @@ Exaggerate slightly — it always sounds less than you think.
               noise_reduction: { type: "far_field" },
             },
             output: {
-              format: { type: "audio/pcm", rate: 24000 },
               voice: "shimmer",
               speed: 1.0,
             },
