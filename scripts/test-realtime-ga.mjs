@@ -28,7 +28,7 @@ const body = {
     instructions: "You are a friendly test assistant. Reply briefly in German.",
     audio: {
       input: {
-        format: "pcm16",
+        format: { type: "audio/pcm", rate: 24000 },
         transcription: { model: "gpt-4o-mini-transcribe" },
         turn_detection: {
           type: "server_vad",
@@ -41,6 +41,7 @@ const body = {
         noise_reduction: { type: "far_field" },
       },
       output: {
+        format: { type: "audio/pcm", rate: 24000 },
         voice: "shimmer",
         speed: 1.0,
       },

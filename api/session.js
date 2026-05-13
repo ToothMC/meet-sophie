@@ -1250,7 +1250,8 @@ Exaggerate slightly — it always sounds less than you think.
           instructions: fullPrompt,
           audio: {
             input: {
-              format: "pcm16",
+              // GA: format ist ein Objekt, nicht mehr der String "pcm16".
+              format: { type: "audio/pcm", rate: 24000 },
               transcription: { model: "gpt-4o-mini-transcribe" },
               turn_detection: {
                 type: "server_vad",
@@ -1263,6 +1264,7 @@ Exaggerate slightly — it always sounds less than you think.
               noise_reduction: { type: "far_field" },
             },
             output: {
+              format: { type: "audio/pcm", rate: 24000 },
               voice: "shimmer",
               speed: 1.0,
             },
