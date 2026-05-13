@@ -2848,7 +2848,8 @@ async function applyNoiseReduction(state, { sendUpdate = true } = {}) {
   try {
     await sendWhenChannelOpen({
       type: "session.update",
-      session: { input_audio_noise_reduction: noiseStateToPayload(state) }
+      // GA: noise_reduction lebt unter audio.input, nicht mehr Top-Level.
+      session: { audio: { input: { noise_reduction: noiseStateToPayload(state) } } }
     }, 2000);
     console.log(`[${runId}] [noise] ${state}`);
   } catch (_) {
@@ -4960,7 +4961,7 @@ async function setMicSensitivity(mode = "normal") {
   try {
     await sendWhenChannelOpen({
       type: "session.update",
-      session: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } }
+      session: { audio: { input: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } } } }
     }, 2000);
     console.log(`[${runId}] [mic] sensitivity → ${mode} (threshold: ${cfg.threshold})`);
   } catch (_) {}
@@ -4986,13 +4987,17 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
     await sendWhenChannelOpen({
       type: "session.update",
       session: {
-        turn_detection: {
-          type: "server_vad",
-          silence_duration_ms: 500,
-          threshold: 0.75,
-          prefix_padding_ms: 300,
-          create_response: !!createResponse,
-          interrupt_response: !!interruptResponse
+        audio: {
+          input: {
+            turn_detection: {
+              type: "server_vad",
+              silence_duration_ms: 500,
+              threshold: 0.75,
+              prefix_padding_ms: 300,
+              create_response: !!createResponse,
+              interrupt_response: !!interruptResponse
+            }
+          }
         }
       }
     }, 5000);
@@ -5561,20 +5566,26 @@ function attachChannel(ch) {
     try {
       const sessionUpdate = {
         type: "session.update",
+        // GA: input_audio_* Felder leben unter audio.input. Transcription,
+        // turn_detection und noise_reduction wandern dorthin.
         session: {
-          input_audio_transcription: { model: "gpt-4o-mini-transcribe", language: _uiLang || "en" },
-          turn_detection: {
-            type: "server_vad",
-            // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
-            silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 500,
-            threshold: selectedVoiceMode === "salespitch" ? 0.65 : 0.75,
-            prefix_padding_ms: 300,
-            create_response: false,
-            interrupt_response: true
-          },
-          // Noise reduction driven by the live noise-toggle state (localStorage).
-          // null payload = "off" → server-side reduction disabled.
-          input_audio_noise_reduction: noiseStateToPayload(noiseState)
+          audio: {
+            input: {
+              transcription: { model: "gpt-4o-mini-transcribe", language: _uiLang || "en" },
+              turn_detection: {
+                type: "server_vad",
+                // Salespitch: longer silence tolerance (user pauses during pitch), higher threshold (less echo sensitivity)
+                silence_duration_ms: selectedVoiceMode === "salespitch" ? 1200 : 500,
+                threshold: selectedVoiceMode === "salespitch" ? 0.65 : 0.75,
+                prefix_padding_ms: 300,
+                create_response: false,
+                interrupt_response: true
+              },
+              // Noise reduction driven by the live noise-toggle state (localStorage).
+              // null payload = "off" → server-side reduction disabled.
+              noise_reduction: noiseStateToPayload(noiseState)
+            }
+          }
         }
       };
       // Mode indicator defaults to "chill" (displayed as "Talk") for normal conversations
@@ -5888,7 +5899,11 @@ function attachChannel(ch) {
       try { dcSend(sessionUpdate); } catch (e) { console.error(`[${runId}] [dc] dcSend session.update failed:`, e); }
       console.log(`[${runId}] [dc] session.update sent — waiting for confirmation`);
       const updatedSession = await waitForSessionUpdated(3000);
-      if (updatedSession?.turn_detection?.create_response === false) {
+      // GA: turn_detection liegt jetzt unter session.audio.input.turn_detection.
+      // Fallback auf Top-Level bleibt fuer den Fall, dass der Server beides liefert.
+      const confirmedTD = updatedSession?.audio?.input?.turn_detection
+                       ?? updatedSession?.turn_detection;
+      if (confirmedTD?.create_response === false) {
         console.log(`[${runId}] [dc] session.updated confirmed: create_response=false`);
       } else {
         console.warn(`[${runId}] [dc] session.updated: create_response not confirmed (timeout or unexpected value)`);

@@ -381,7 +381,8 @@ function syncModalitiesToSession() {
     } catch {}
   }
 
-  dcSend({ type: "session.update", session: { modalities: newMods } });
+  // GA: 'modalities' wurde zu 'output_modalities' und ist Top-Level.
+  dcSend({ type: "session.update", session: { output_modalities: newMods } });
   lastSessionModalities = newMods;
 }
 
@@ -914,12 +915,18 @@ function onDataChannelOpen() {
   lastSessionModalities = outputModalities();
   dcSend({
     type: "session.update",
+    // GA: voice/audio.output, transcription/turn_detection unter audio.input,
+    // modalities -> output_modalities (Top-Level).
     session: {
       instructions: buildNativeSystemPrompt(lang),
-      modalities: lastSessionModalities,
-      voice: "alloy",
-      input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-      turn_detection: LISTENING_TURN_DETECTION,
+      output_modalities: lastSessionModalities,
+      audio: {
+        input: {
+          transcription: { model: "gpt-4o-mini-transcribe" },
+          turn_detection: LISTENING_TURN_DETECTION,
+        },
+        output: { voice: "alloy" },
+      },
       tools: [
         {
           type: "function",
@@ -1150,7 +1157,8 @@ function transitionTo(nextPhase, reason = "") {
   if (nextPhase === "researching") {
     // Server-VAD aus — User-Weiter-Sprechen triggert keine neue Response mehr,
     // also kann nichts die laufende Tool-Call-Response cancelen.
-    dcSend({ type: "session.update", session: { turn_detection: null } });
+    // GA: turn_detection lebt unter audio.input.
+    dcSend({ type: "session.update", session: { audio: { input: { turn_detection: null } } } });
     // Audio-Buffer weg, damit nach Antwort nicht akkumuliertes Rauschen
     // als neue Utterance interpretiert wird.
     dcSend({ type: "input_audio_buffer.clear" });
@@ -1177,7 +1185,8 @@ function transitionTo(nextPhase, reason = "") {
 
   if (nextPhase === "listening") {
     // Server-VAD wieder an — User kann Sophie neue Fragen stellen.
-    dcSend({ type: "session.update", session: { turn_detection: LISTENING_TURN_DETECTION } });
+    // GA: turn_detection lebt unter audio.input.
+    dcSend({ type: "session.update", session: { audio: { input: { turn_detection: LISTENING_TURN_DETECTION } } } });
     // Buffer clear — alles was waehrend researching/answering akkumulierte
     // (User-Weiter-Sprechen, Hintergrundgeraeusche) wird verworfen.
     dcSend({ type: "input_audio_buffer.clear" });

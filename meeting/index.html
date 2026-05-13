@@ -4011,14 +4011,19 @@ async function connectSophieVoice(phase = "live") {
       // Enable auto-response after user speech + keep transcription
       sophieVoiceDc.send(JSON.stringify({
         type: "session.update",
+        // GA: turn_detection unter audio.input, nicht mehr Top-Level.
         session: {
-          turn_detection: {
-            type: "server_vad",
-            threshold: 0.6,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 800,
-            create_response: true,
-            interrupt_response: true,
+          audio: {
+            input: {
+              turn_detection: {
+                type: "server_vad",
+                threshold: 0.6,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 800,
+                create_response: true,
+                interrupt_response: true,
+              },
+            },
           },
         },
       }));
