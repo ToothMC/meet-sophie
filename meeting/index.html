@@ -3996,7 +3996,23 @@ async function connectSophieVoice(phase = "live") {
     // 2. Set up WebRTC (same as Talk)
     sophieVoicePc = new RTCPeerConnection();
 
-    // DataChannel for transcript (MUST be created before offer)
+    // GA-WebRTC: Audio-Track ZUERST hinzufuegen, dann DataChannel erstellen.
+    // Reihenfolge der m-Sections in der SDP muss audio vor application sein,
+    // sonst feuert Server-VAD keine speech_started/stopped Events.
+
+    // Reuse the shared mic stream (created at meeting start — single permission dialog)
+    // Only re-request if stream died (e.g. hardware disconnect)
+    if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
+      console.log("[meeting-voice] sharedMicStream unavailable, requesting new one...");
+      sharedMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
+    }
+    const sophieStream = sharedMicStream.clone();
+    sophieVoiceStream = sophieStream;
+    sophieStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieStream));
+
+    // DataChannel for transcript (created AFTER addTrack — siehe Hinweis oben)
     sophieVoiceDc = sophieVoicePc.createDataChannel("oai-events");
     sophieVoiceDc.onerror = (e) => {
       console.error("[meeting-voice] DataChannel error:", e);
@@ -4053,18 +4069,6 @@ async function connectSophieVoice(phase = "live") {
         handleVoiceTranscriptEvent(msg);
       } catch (_) {}
     };
-
-    // Reuse the shared mic stream (created at meeting start — single permission dialog)
-    // Only re-request if stream died (e.g. hardware disconnect)
-    if (!sharedMicStream || sharedMicStream.getTracks().some(t => t.readyState === "ended")) {
-      console.log("[meeting-voice] sharedMicStream unavailable, requesting new one...");
-      sharedMicStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-      });
-    }
-    const sophieStream = sharedMicStream.clone();
-    sophieVoiceStream = sophieStream;
-    sophieStream.getTracks().forEach(track => sophieVoicePc.addTrack(track, sophieStream));
 
     // Sophie's audio output
     sophieVoiceAudio = document.createElement("audio");
