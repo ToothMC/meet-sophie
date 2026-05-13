@@ -4012,7 +4012,9 @@ async function connectSophieVoice(phase = "live") {
       sophieVoiceDc.send(JSON.stringify({
         type: "session.update",
         // GA: turn_detection unter audio.input, nicht mehr Top-Level.
+        // type: "realtime" ist Diskriminator des Session-Union-Types.
         session: {
+          type: "realtime",
           audio: {
             input: {
               turn_detection: {

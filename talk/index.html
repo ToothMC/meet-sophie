@@ -2849,7 +2849,7 @@ async function applyNoiseReduction(state, { sendUpdate = true } = {}) {
     await sendWhenChannelOpen({
       type: "session.update",
       // GA: noise_reduction lebt unter audio.input, nicht mehr Top-Level.
-      session: { audio: { input: { noise_reduction: noiseStateToPayload(state) } } }
+      session: { type: "realtime", audio: { input: { noise_reduction: noiseStateToPayload(state) } } }
     }, 2000);
     console.log(`[${runId}] [noise] ${state}`);
   } catch (_) {
@@ -3061,7 +3061,7 @@ function _updateSessionVoiceStyle(emoKey) {
     var style = emoKey ? _pickVoiceStyle(emoKey) : "";
     dcSend({
       type: "session.update",
-      session: { instructions: style ? (baseInstr + "\n\n" + style) : baseInstr }
+      session: { type: "realtime", instructions: style ? (baseInstr + "\n\n" + style) : baseInstr }
     });
   } catch (_ve) {
     console.warn('[voiceStyle] session.update failed', _ve);
@@ -4961,7 +4961,7 @@ async function setMicSensitivity(mode = "normal") {
   try {
     await sendWhenChannelOpen({
       type: "session.update",
-      session: { audio: { input: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } } } }
+      session: { type: "realtime", audio: { input: { turn_detection: { type: "server_vad", prefix_padding_ms: 300, ...cfg } } } }
     }, 2000);
     console.log(`[${runId}] [mic] sensitivity → ${mode} (threshold: ${cfg.threshold})`);
   } catch (_) {}
@@ -4987,6 +4987,7 @@ async function setTurnBehavior({ createResponse, interruptResponse }) {
     await sendWhenChannelOpen({
       type: "session.update",
       session: {
+        type: "realtime",
         audio: {
           input: {
             turn_detection: {
@@ -5568,7 +5569,9 @@ function attachChannel(ch) {
         type: "session.update",
         // GA: input_audio_* Felder leben unter audio.input. Transcription,
         // turn_detection und noise_reduction wandern dorthin.
+        // type: "realtime" ist Diskriminator des Session-Union-Types.
         session: {
+          type: "realtime",
           audio: {
             input: {
               transcription: { model: "gpt-4o-mini-transcribe", language: _uiLang || "en" },

@@ -382,7 +382,8 @@ function syncModalitiesToSession() {
   }
 
   // GA: 'modalities' wurde zu 'output_modalities' und ist Top-Level.
-  dcSend({ type: "session.update", session: { output_modalities: newMods } });
+  // type: "realtime" ist Diskriminator des Session-Union-Types.
+  dcSend({ type: "session.update", session: { type: "realtime", output_modalities: newMods } });
   lastSessionModalities = newMods;
 }
 
@@ -917,7 +918,9 @@ function onDataChannelOpen() {
     type: "session.update",
     // GA: voice/audio.output, transcription/turn_detection unter audio.input,
     // modalities -> output_modalities (Top-Level).
+    // type: "realtime" ist Diskriminator des Session-Union-Types.
     session: {
+      type: "realtime",
       instructions: buildNativeSystemPrompt(lang),
       output_modalities: lastSessionModalities,
       audio: {
@@ -1158,7 +1161,7 @@ function transitionTo(nextPhase, reason = "") {
     // Server-VAD aus — User-Weiter-Sprechen triggert keine neue Response mehr,
     // also kann nichts die laufende Tool-Call-Response cancelen.
     // GA: turn_detection lebt unter audio.input.
-    dcSend({ type: "session.update", session: { audio: { input: { turn_detection: null } } } });
+    dcSend({ type: "session.update", session: { type: "realtime", audio: { input: { turn_detection: null } } } });
     // Audio-Buffer weg, damit nach Antwort nicht akkumuliertes Rauschen
     // als neue Utterance interpretiert wird.
     dcSend({ type: "input_audio_buffer.clear" });
@@ -1186,7 +1189,7 @@ function transitionTo(nextPhase, reason = "") {
   if (nextPhase === "listening") {
     // Server-VAD wieder an — User kann Sophie neue Fragen stellen.
     // GA: turn_detection lebt unter audio.input.
-    dcSend({ type: "session.update", session: { audio: { input: { turn_detection: LISTENING_TURN_DETECTION } } } });
+    dcSend({ type: "session.update", session: { type: "realtime", audio: { input: { turn_detection: LISTENING_TURN_DETECTION } } } });
     // Buffer clear — alles was waehrend researching/answering akkumulierte
     // (User-Weiter-Sprechen, Hintergrundgeraeusche) wird verworfen.
     dcSend({ type: "input_audio_buffer.clear" });
