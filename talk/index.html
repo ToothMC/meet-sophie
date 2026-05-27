@@ -7712,9 +7712,11 @@ async function stopVoice(triggeredByLimit = false){
   setUnfilteredToggleUI("off");
   window._talkBaseTools = [];
 
-  // Memory-Proposal anstoßen — fire-and-forget, blockiert den Stop-Pfad nicht.
+  // Auto-Condense anstoßen — fire-and-forget, blockiert den Stop-Pfad
+  // nicht. Sophie speichert automatisch was sich gemerkt zu werden lohnt.
+  // Verwalten + Löschen passiert in Settings → "Unfiltered Memory".
   if (_wasUnfiltered && _unfilteredTranscript) {
-    void maybeShowMemoryProposal({ transcript: _unfilteredTranscript, language: "de" });
+    void autoCondenseUnfiltered({ transcript: _unfilteredTranscript, language: "de" });
   }
 
   // Stop hyper visualizer
