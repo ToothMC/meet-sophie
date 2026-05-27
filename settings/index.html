@@ -437,14 +437,15 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionUnfiltered">
     <div class="section-toggle" onclick="toggleSection('sectionUnfiltered')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Unfiltered Memory</span>
-      <span class="s-sub">Was Sophie sich aus Unfiltered-Gesprächen gemerkt hat</span>
+      <span class="s-title" data-i18n="unfiltered.title">Unfiltered Memory</span>
+      <span class="s-sub" data-i18n="unfiltered.subtitle">Was Sophie sich aus Unfiltered-Gesprächen gemerkt hat</span>
     </div>
     <div class="section-body">
-      <div id="unfThreadsList"><p class="msg">Laden...</p></div>
+      <div id="unfThreadsList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
       <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <span id="unfMemoryCount" style="font-size:11px;color:#a09080"></span>
         <button onclick="wipeUnfilteredMemory()" id="unfWipeBtn"
+          data-i18n="unfiltered.wipe_button"
           style="background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">
           Alle löschen
         </button>
@@ -616,6 +617,23 @@ const _i18nDict = {
     'templates.reset': 'Zurücksetzen',
     'templates.active': 'Vorlage aktiv',
     'templates.delete_confirm': 'Individuelle Vorlage für „{mode}" entfernen und auf Standard zurücksetzen?',
+
+    'unfiltered.title': 'Unfiltered Memory',
+    'unfiltered.subtitle': 'Was Sophie sich aus Unfiltered-Gesprächen gemerkt hat',
+    'unfiltered.empty': 'Noch nichts gespeichert. Sophie merkt sich automatisch was nach Unfiltered-Gesprächen zählt.',
+    'unfiltered.count': '{threads} Threads · {events} Events',
+    'unfiltered.count_one_thread': '{threads} Thread · {events} Events',
+    'unfiltered.count_one_event': '{threads} Threads · {events} Event',
+    'unfiltered.count_one_both': '{threads} Thread · {events} Event',
+    'unfiltered.event_one': '1 Event',
+    'unfiltered.events_n': '{n} Events',
+    'unfiltered.suspected_prefix': 'Vermutung: ',
+    'unfiltered.delete_one': 'Diesen Thread löschen',
+    'unfiltered.delete_confirm': 'Diesen Thread und alle zugehörigen Events löschen?',
+    'unfiltered.delete_failed': 'Konnte den Thread nicht löschen.',
+    'unfiltered.wipe_button': 'Alle löschen',
+    'unfiltered.wipe_confirm': 'Wirklich ALLES aus dem Unfiltered-Memory löschen?\n\nDanach kennt Sophie keine deiner privaten Story-Threads mehr.\nKann nicht rückgängig gemacht werden.',
+    'unfiltered.wipe_failed': 'Konnte das Memory nicht löschen.',
   },
   en: {
     'title.page': 'Sophie — Settings',
@@ -749,6 +767,23 @@ const _i18nDict = {
     'templates.reset': 'Reset',
     'templates.active': 'Template active',
     'templates.delete_confirm': 'Remove custom template for "{mode}" and restore standard?',
+
+    'unfiltered.title': 'Unfiltered Memory',
+    'unfiltered.subtitle': 'What Sophie remembers from your unfiltered sessions',
+    'unfiltered.empty': 'Nothing saved yet. Sophie remembers what counts after Unfiltered sessions automatically.',
+    'unfiltered.count': '{threads} threads · {events} events',
+    'unfiltered.count_one_thread': '{threads} thread · {events} events',
+    'unfiltered.count_one_event': '{threads} threads · {events} event',
+    'unfiltered.count_one_both': '{threads} thread · {events} event',
+    'unfiltered.event_one': '1 event',
+    'unfiltered.events_n': '{n} events',
+    'unfiltered.suspected_prefix': 'Suspected: ',
+    'unfiltered.delete_one': 'Delete this thread',
+    'unfiltered.delete_confirm': 'Delete this thread and all its events?',
+    'unfiltered.delete_failed': 'Could not delete the thread.',
+    'unfiltered.wipe_button': 'Delete all',
+    'unfiltered.wipe_confirm': 'Really wipe ALL Unfiltered memory?\n\nSophie will lose every private story thread you have.\nCannot be undone.',
+    'unfiltered.wipe_failed': 'Could not wipe the memory.',
   },
   fr: {
     'title.page': 'Sophie — Paramètres',
@@ -882,6 +917,23 @@ const _i18nDict = {
     'templates.reset': 'Réinitialiser',
     'templates.active': 'Modèle actif',
     'templates.delete_confirm': 'Retirer le modèle personnalisé pour « {mode} » et restaurer le standard ?',
+
+    'unfiltered.title': 'Mémoire Unfiltered',
+    'unfiltered.subtitle': 'Ce que Sophie a retenu de tes sessions Unfiltered',
+    'unfiltered.empty': "Rien d'enregistré pour l'instant. Sophie retient automatiquement ce qui compte après les sessions Unfiltered.",
+    'unfiltered.count': '{threads} fils · {events} événements',
+    'unfiltered.count_one_thread': '{threads} fil · {events} événements',
+    'unfiltered.count_one_event': '{threads} fils · {events} événement',
+    'unfiltered.count_one_both': '{threads} fil · {events} événement',
+    'unfiltered.event_one': '1 événement',
+    'unfiltered.events_n': '{n} événements',
+    'unfiltered.suspected_prefix': 'Suspecté: ',
+    'unfiltered.delete_one': 'Supprimer ce fil',
+    'unfiltered.delete_confirm': 'Supprimer ce fil et tous ses événements ?',
+    'unfiltered.delete_failed': 'Impossible de supprimer le fil.',
+    'unfiltered.wipe_button': 'Tout supprimer',
+    'unfiltered.wipe_confirm': "Vraiment supprimer TOUTE la mémoire Unfiltered ?\n\nSophie perdra tous tes fils privés.\nIrréversible.",
+    'unfiltered.wipe_failed': 'Impossible de vider la mémoire.',
   },
 };
 
@@ -1893,6 +1945,14 @@ async function _unfFetch(path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+function _unfCountText(threads, events) {
+  const key = threads === 1 && events === 1 ? "unfiltered.count_one_both"
+            : threads === 1                   ? "unfiltered.count_one_thread"
+            : events  === 1                   ? "unfiltered.count_one_event"
+            : "unfiltered.count";
+  return t(key, { threads, events });
+}
+
 async function loadUnfilteredMemory() {
   const list  = document.getElementById("unfThreadsList");
   const count = document.getElementById("unfMemoryCount");
@@ -1901,43 +1961,46 @@ async function loadUnfilteredMemory() {
     const data = await _unfFetch("/api/unfiltered/threads?include_events=1");
     const threads = Array.isArray(data?.threads) ? data.threads : [];
     if (!threads.length) {
-      list.innerHTML = `<p class="msg">Noch nichts gespeichert. Sophie merkt sich automatisch was nach Unfiltered-Gesprächen zählt.</p>`;
+      list.innerHTML = `<p class="msg">${_unfEscape(t('unfiltered.empty'))}</p>`;
       count.textContent = "";
       if (wipe) wipe.style.display = "none";
       return;
     }
     let totalEvents = 0;
-    list.innerHTML = threads.map(t => {
-      const events = Array.isArray(t.unf_events) ? t.unf_events : [];
+    list.innerHTML = threads.map(th => {
+      const events = Array.isArray(th.unf_events) ? th.unf_events : [];
       totalEvents += events.length;
-      const people = Array.isArray(t.people) ? t.people : [];
+      const people = Array.isArray(th.people) ? th.people : [];
+      const eventLabel = events.length
+        ? (events.length === 1 ? t('unfiltered.event_one') : t('unfiltered.events_n', { n: events.length }))
+        : null;
       const meta = [
         people.length ? people.join(", ") : null,
-        t.context || null,
-        t.suspected_dynamic ? "Vermutung: " + t.suspected_dynamic : null,
-        events.length ? events.length + (events.length === 1 ? " Event" : " Events") : null,
+        th.context || null,
+        th.suspected_dynamic ? t('unfiltered.suspected_prefix') + th.suspected_dynamic : null,
+        eventLabel,
       ].filter(Boolean).join(" · ");
-      const lastDate = t.last_update
-        ? new Date(t.last_update).toLocaleDateString(_localeTag(), { day: "2-digit", month: "short" })
+      const lastDate = th.last_update
+        ? new Date(th.last_update).toLocaleDateString(_localeTag(), { day: "2-digit", month: "short" })
         : "";
-      const statusBadge = t.status && t.status !== "open"
-        ? `<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(160,144,128,.15);color:#a09080;font-weight:600;letter-spacing:.03em;margin-left:6px">${_unfEscape(t.status)}</span>`
+      const statusBadge = th.status && th.status !== "open"
+        ? `<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(160,144,128,.15);color:#a09080;font-weight:600;letter-spacing:.03em;margin-left:6px">${_unfEscape(th.status)}</span>`
         : "";
       return `<div class="card" style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.04)">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600;color:#2a2420">${_unfEscape(t.title)}</span>
+            <span style="font-size:13px;font-weight:600;color:#2a2420">${_unfEscape(th.title)}</span>
             ${statusBadge}
           </div>
           ${meta ? `<div style="font-size:11px;color:#a09080;margin-top:3px">${_unfEscape(meta)}</div>` : ""}
           ${lastDate ? `<div style="font-size:10px;color:#c4b8a8;margin-top:3px">${lastDate}</div>` : ""}
         </div>
-        <button onclick="deleteUnfilteredThread('${t.id}', this)"
+        <button onclick="deleteUnfilteredThread('${th.id}', this)"
           style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px"
-          title="Diesen Thread löschen">&times;</button>
+          title="${_unfEscape(t('unfiltered.delete_one'))}">&times;</button>
       </div>`;
     }).join("");
-    count.textContent = `${threads.length} Thread${threads.length === 1 ? "" : "s"} · ${totalEvents} Event${totalEvents === 1 ? "" : "s"}`;
+    count.textContent = _unfCountText(threads.length, totalEvents);
     if (wipe) wipe.style.display = "";
   } catch (e) {
     console.warn("loadUnfilteredMemory failed:", e?.message || e);
@@ -1948,28 +2011,28 @@ window.loadUnfilteredMemory = loadUnfilteredMemory;
 
 async function deleteUnfilteredThread(id, btnEl) {
   if (!id) return;
-  if (!confirm("Diesen Thread und alle zugehörigen Events löschen?")) return;
+  if (!confirm(t('unfiltered.delete_confirm'))) return;
   if (btnEl) btnEl.disabled = true;
   try {
     await _unfFetch("/api/unfiltered/threads?id=" + encodeURIComponent(id), { method: "DELETE" });
     await loadUnfilteredMemory();
   } catch (e) {
     console.warn("deleteUnfilteredThread failed:", e?.message || e);
-    alert("Konnte den Thread nicht löschen.");
+    alert(t('unfiltered.delete_failed'));
     if (btnEl) btnEl.disabled = false;
   }
 }
 window.deleteUnfilteredThread = deleteUnfilteredThread;
 
 async function wipeUnfilteredMemory() {
-  if (!confirm("Wirklich ALLES aus dem Unfiltered-Memory löschen?\n\nDanach kennt Sophie keine deiner privaten Story-Threads mehr.\nKann nicht rückgängig gemacht werden.")) return;
+  if (!confirm(t('unfiltered.wipe_confirm'))) return;
   try {
     const data = await _unfFetch("/api/unfiltered/wipe", { method: "POST", body: JSON.stringify({ confirm: "WIPE" }) });
     console.log("[unfiltered] wiped:", data);
     await loadUnfilteredMemory();
   } catch (e) {
     console.warn("wipeUnfilteredMemory failed:", e?.message || e);
-    alert("Konnte das Memory nicht löschen.");
+    alert(t('unfiltered.wipe_failed'));
   }
 }
 window.wipeUnfilteredMemory = wipeUnfilteredMemory;

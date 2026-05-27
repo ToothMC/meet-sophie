@@ -1409,6 +1409,13 @@ body::after{
     <button class="noise-toggle" id="noiseToggle" type="button" aria-label="Noise filter"></button>
   </div>
 
+  <!-- Unfiltered: Receipts-Upload (verstecktes file-input, geöffnet via analyze_receipt)
+       HEIC/HEIF bewusst NICHT im accept-Attribut: iOS Safari konvertiert
+       Fotos dann automatisch zu JPEG, sonst kämen HEIC-bytes hier an die
+       gpt-4o-vision nicht parsen kann. -->
+  <input type="file" id="unfReceiptInput" accept="image/png,image/jpeg,image/webp" style="display:none">
+  <div id="unfReceiptIndicator" style="display:none;position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 18px;border-radius:20px;background:rgba(217,70,239,.18);border:1px solid rgba(217,70,239,.4);color:#fff;font-size:13px;font-weight:500;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.4)">Analysiere…</div>
+
   <!-- Live chat input during voice session -->
   <div class="voice-chat" id="voiceChat" style="display:none">
     <div class="voice-chat-messages" id="voiceChatMessages"></div>
@@ -3056,6 +3063,105 @@ if (unfilteredToggleEl) {
 // Transcript an /api/unfiltered/condense?apply=1 — das Backend extrahiert
 // Threads/Events/Resolutions und speichert sie direkt. Kein User-Modal,
 // kein Friction. Verwalten + Löschen passiert in Settings.
+
+// ─── Receipts-Upload (analyze_receipt Tool) ──────────────────────────────
+// Sophie ruft analyze_receipt(purpose) → wir öffnen den File-Picker,
+// lesen das Bild als base64, schicken es an /api/unfiltered/receipts und
+// geben Sophie das JSON als function_call_output zurück.
+
+const unfReceiptInput     = document.getElementById("unfReceiptInput");
+const unfReceiptIndicator = document.getElementById("unfReceiptIndicator");
+
+function showReceiptIndicator(label) {
+  if (!unfReceiptIndicator) return;
+  unfReceiptIndicator.textContent = label || "Analysiere…";
+  unfReceiptIndicator.style.display = "block";
+}
+function hideReceiptIndicator() {
+  if (unfReceiptIndicator) unfReceiptIndicator.style.display = "none";
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const url = String(r.result || "");
+      // Strip dataURL prefix to give backend a clean base64 string
+      const comma = url.indexOf(",");
+      resolve({ base64: comma >= 0 ? url.slice(comma + 1) : url, mime: file.type || "image/jpeg" });
+    };
+    r.onerror = () => reject(new Error("file_read_failed"));
+    r.readAsDataURL(file);
+  });
+}
+
+function awaitReceiptFile() {
+  return new Promise((resolve) => {
+    if (!unfReceiptInput) { resolve(null); return; }
+    let done = false;
+    const onChange = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      const file = unfReceiptInput.files && unfReceiptInput.files[0];
+      unfReceiptInput.value = "";   // erlaubt erneutes Wählen desselben Files später
+      resolve(file || null);
+    };
+    const onCancel = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(null);
+    };
+    const cleanup = () => {
+      unfReceiptInput.removeEventListener("change", onChange);
+      unfReceiptInput.removeEventListener("cancel", onCancel);
+      clearTimeout(timeout);
+    };
+    // Hard timeout — falls der User den picker offen lässt und nichts wählt
+    const timeout = setTimeout(() => { if (!done) { done = true; cleanup(); resolve(null); } }, 60000);
+
+    unfReceiptInput.addEventListener("change", onChange, { once: true });
+    unfReceiptInput.addEventListener("cancel", onCancel, { once: true });
+    try { unfReceiptInput.click(); } catch (e) { console.warn("[unfiltered] picker click failed:", e); cleanup(); resolve(null); }
+  });
+}
+
+async function runReceiptAnalysis({ purpose, language }) {
+  const file = await awaitReceiptFile();
+  if (!file) return { ok: false, reason: "no_file" };
+
+  try {
+    showReceiptIndicator("Sophie schaut sich das Bild an…");
+    const { base64, mime } = await readFileAsBase64(file);
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) { hideReceiptIndicator(); return { ok: false, reason: "no_auth" }; }
+
+    const r = await fetch("/api/unfiltered/receipts", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_base64: base64,
+        image_mime:   mime,
+        purpose:      purpose || "",
+        language:     language || "de",
+      }),
+    });
+    hideReceiptIndicator();
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      console.warn("[unfiltered] receipts POST failed:", r.status, text.slice(0, 120));
+      return { ok: false, reason: "endpoint_" + r.status };
+    }
+    const j = await r.json();
+    return { ok: true, ...j };
+  } catch (err) {
+    hideReceiptIndicator();
+    console.warn("[unfiltered] runReceiptAnalysis threw:", err?.message || err);
+    return { ok: false, reason: "exception" };
+  }
+}
 
 async function autoCondenseUnfiltered({ transcript, language }) {
   if (!transcript || transcript.length < 80) return;
@@ -6416,6 +6522,85 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           dcSend({ type: "response.create" });
         } catch (err) {
           console.warn(`[${runId}] [unfiltered] handler threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
+      // ── analyze_receipt Tool Call Handler ──
+      // Sophie hat im Unfiltered-Substate gesagt "schick mir das Bild" —
+      // wir öffnen den File-Picker, schicken das Foto an Vision und geben
+      // Sophie die Analyse als function_call_output zurück.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "analyze_receipt") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [unfiltered] analyze_receipt called:`, args?.purpose?.slice(0, 80));
+          const result = await runReceiptAnalysis({ purpose: args.purpose || "", language: "de" });
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify(result),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] analyze_receipt threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false, reason: "exception" }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
+      // ── get_daily_briefing Tool Call Handler ──
+      // Sophie hat im Unfiltered-Substate nach dem heutigen Klatsch
+      // gefragt. Wir holen das gecachte (oder frische) Briefing und
+      // geben es ihr als function_call_output zurück.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "get_daily_briefing") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const { data: { session: authSession } } = await supabase.auth.getSession();
+          const token = authSession?.access_token;
+          let out = { ok: false, stories: [] };
+          if (token) {
+            const url = "/api/unfiltered/daily" + (args.refresh ? "?refresh=1" : "");
+            const r = await fetch(url, { headers: { Authorization: "Bearer " + token } });
+            if (r.ok) {
+              const j = await r.json();
+              out = {
+                ok: true,
+                cached: !!j.cached,
+                stories: Array.isArray(j.stories) ? j.stories : [],
+                source_count: j.source_count || 0,
+                language: j.language || "de",
+              };
+            } else {
+              const text = await r.text().catch(() => "");
+              console.warn(`[${runId}] [unfiltered] daily GET failed:`, r.status, text.slice(0, 120));
+              out = { ok: false, error: "daily_" + r.status };
+            }
+          } else {
+            out = { ok: false, error: "no_auth" };
+          }
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify(out),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] get_daily_briefing threw:`, err?.message || err);
           try {
             dcSend({ type: "conversation.item.create", item: {
               type: "function_call_output",
