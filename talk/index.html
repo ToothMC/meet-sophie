@@ -6531,6 +6531,35 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
+      // ── analyze_receipt Tool Call Handler ──
+      // Sophie hat im Unfiltered-Substate gesagt "schick mir das Bild" —
+      // wir öffnen den File-Picker, schicken das Foto an Vision und geben
+      // Sophie die Analyse als function_call_output zurück.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "analyze_receipt") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [unfiltered] analyze_receipt called:`, args?.purpose?.slice(0, 80));
+          const result = await runReceiptAnalysis({ purpose: args.purpose || "", language: "de" });
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify(result),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] analyze_receipt threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false, reason: "exception" }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
       // ── get_daily_briefing Tool Call Handler ──
       // Sophie hat im Unfiltered-Substate nach dem heutigen Klatsch
       // gefragt. Wir holen das gecachte (oder frische) Briefing und
