@@ -1390,12 +1390,17 @@ body::after{
   <button id="pauseBtn" class="btn btn-pause" style="display:none"><span class="pause-icon"><svg viewBox="0 0 14 16" fill="currentColor"><rect x="1" y="1" width="4" height="14" rx="1.5"/><rect x="9" y="1" width="4" height="14" rx="1.5"/></svg></span> <span id="pauseBtnText">Pause</span></button>
   <button id="end" class="btn" disabled style="display:none">End conversation</button>
 
-  <!-- Session bar (report toggle + noise filter toggle) -->
+  <!-- Session bar (report toggle + unfiltered toggle + noise filter) -->
   <div class="session-bar" id="sessionBar" style="display:none">
     <label class="sb-report-toggle">
       <input type="checkbox" id="sessionBarReportToggle">
       <span class="sb-report-slider"></span>
       <span class="sb-report-text">Report</span>
+    </label>
+    <label class="sb-unfiltered-toggle" id="sessionBarUnfilteredLabel" title="Unfiltered Mode — ungeschönt lästern. Sophie kann ihn auch selbst vorschlagen.">
+      <input type="checkbox" id="sessionBarUnfilteredToggle">
+      <span class="sb-unfiltered-slider"></span>
+      <span class="sb-unfiltered-text">Unfiltered</span>
     </label>
     <button class="noise-toggle" id="noiseToggle" type="button" aria-label="Noise filter"></button>
   </div>
