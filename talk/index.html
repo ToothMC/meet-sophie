@@ -1409,6 +1409,10 @@ body::after{
     <button class="noise-toggle" id="noiseToggle" type="button" aria-label="Noise filter"></button>
   </div>
 
+  <!-- Unfiltered: Receipts-Upload (verstecktes file-input, geöffnet via analyze_receipt) -->
+  <input type="file" id="unfReceiptInput" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" style="display:none">
+  <div id="unfReceiptIndicator" style="display:none;position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 18px;border-radius:20px;background:rgba(217,70,239,.18);border:1px solid rgba(217,70,239,.4);color:#fff;font-size:13px;font-weight:500;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.4)">Analysiere…</div>
+
   <!-- Live chat input during voice session -->
   <div class="voice-chat" id="voiceChat" style="display:none">
     <div class="voice-chat-messages" id="voiceChatMessages"></div>
