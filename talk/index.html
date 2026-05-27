@@ -6428,6 +6428,56 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
+      // ── get_daily_briefing Tool Call Handler ──
+      // Sophie hat im Unfiltered-Substate nach dem heutigen Klatsch
+      // gefragt. Wir holen das gecachte (oder frische) Briefing und
+      // geben es ihr als function_call_output zurück.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "get_daily_briefing") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const { data: { session: authSession } } = await supabase.auth.getSession();
+          const token = authSession?.access_token;
+          let out = { ok: false, stories: [] };
+          if (token) {
+            const url = "/api/unfiltered/daily" + (args.refresh ? "?refresh=1" : "");
+            const r = await fetch(url, { headers: { Authorization: "Bearer " + token } });
+            if (r.ok) {
+              const j = await r.json();
+              out = {
+                ok: true,
+                cached: !!j.cached,
+                stories: Array.isArray(j.stories) ? j.stories : [],
+                source_count: j.source_count || 0,
+                language: j.language || "de",
+              };
+            } else {
+              const text = await r.text().catch(() => "");
+              console.warn(`[${runId}] [unfiltered] daily GET failed:`, r.status, text.slice(0, 120));
+              out = { ok: false, error: "daily_" + r.status };
+            }
+          } else {
+            out = { ok: false, error: "no_auth" };
+          }
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify(out),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] get_daily_briefing threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
       // ── save_thread_event Tool Call Handler ──
       // Sophie ist im Unfiltered-Modus und will eine Beobachtung als
       // Event in einen (neuen oder bestehenden) Story-Thread schreiben.
