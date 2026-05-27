@@ -16,11 +16,19 @@ const DEFAULTS = {
   anonymize_names:        false,
   interests:              [],
   geo_country:            "DE",
+  custom_feeds:           [],
+  custom_feeds_meta:      {},
 };
 
 function arr(v) {
   if (!Array.isArray(v)) return null;
   return v.map(x => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 50);
+}
+
+// custom_feeds dürfen länger sein (URLs) und behalten ihre Originalcase
+function feedArr(v) {
+  if (!Array.isArray(v)) return null;
+  return v.map(x => String(x).trim().slice(0, 500)).filter(Boolean).slice(0, 25);
 }
 function intOrNull(v) {
   if (v == null) return null;
