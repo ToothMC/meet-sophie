@@ -77,6 +77,16 @@ export default async function handler(req, res) {
       if (body.anonymize_names  !== undefined) patch.anonymize_names = !!body.anonymize_names;
       if (body.default_retention_days !== undefined) patch.default_retention_days = intOrNull(body.default_retention_days);
       if (body.geo_country      !== undefined) { const c = cleanCountry(body.geo_country); if (c) patch.geo_country = c; }
+      if (body.custom_feeds     !== undefined) {
+        const v = feedArr(body.custom_feeds);
+        if (v) {
+          patch.custom_feeds = v;
+          // Beim Hinzufügen/Entfernen die meta-Cache invalidieren: nur
+          // resolved-URLs für noch existierende Einträge behalten.
+          // (Die echte Auto-Discover passiert dann beim nächsten daily.js-Lauf.)
+          patch.custom_feeds_meta = {};
+        }
+      }
 
       const { data, error } = await supabase
         .from("unf_boundaries")
