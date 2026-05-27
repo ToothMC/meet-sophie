@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  Visual-only sandbox for the Memory-Proposal-Modal.
+  NOT shipped (file is prefixed with _). Used purely to screenshot the
+  modal during W3 development.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Unfiltered modal preview</title>
+<style>
+body{margin:0;background:#0b0b12;color:#e9e7f1;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+.unf-proposal-overlay{
+  position:fixed;inset:0;z-index:300;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(6px);
+}
+.unf-proposal-card{
+  width:min(92vw,540px);max-height:88vh;overflow-y:auto;
+  background:#15151c;color:#e9e7f1;
+  border:1px solid rgba(217,70,239,.35);
+  border-radius:16px;padding:22px 22px 18px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 0 1px rgba(217,70,239,.08);
+}
+.unf-proposal-card h3{
+  margin:0 0 4px;font-size:18px;font-weight:700;color:#fff;
+  display:flex;align-items:center;gap:8px;
+}
+.unf-proposal-card h3::before{ content:"●";color:#d946ef;font-size:14px; }
+.unf-proposal-card .unf-sub{ margin:0 0 18px;font-size:13px;color:rgba(233,231,241,.6); }
+.unf-proposal-item{
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;padding:12px 14px;margin-bottom:12px;
+}
+.unf-proposal-item .unf-pi-kind{ font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#d946ef;font-weight:700;margin-bottom:4px; }
+.unf-proposal-item .unf-pi-title{ font-size:15px;font-weight:600;color:#fff;margin-bottom:4px; }
+.unf-proposal-item .unf-pi-meta{ font-size:12px;color:rgba(233,231,241,.55);margin-bottom:8px; }
+.unf-proposal-item .unf-pi-take{ font-size:13px;color:rgba(233,231,241,.85);font-style:italic;margin:6px 0 10px;border-left:2px solid rgba(217,70,239,.35);padding-left:10px; }
+.unf-proposal-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.unf-pi-btn{
+  flex:1 1 auto;min-width:90px;padding:7px 10px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e9e7f1;
+  font-size:12px;font-weight:500;cursor:pointer;
+  transition:background .15s,border-color .15s,opacity .15s;
+}
+.unf-pi-btn:hover{background:rgba(217,70,239,.12);border-color:rgba(217,70,239,.4)}
+.unf-pi-btn.is-primary{ background:rgba(217,70,239,.18);border-color:rgba(217,70,239,.5);color:#fff; }
+.unf-pi-btn.is-primary:hover{background:rgba(217,70,239,.32)}
+.unf-pi-btn.is-resolved{ background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#bbf7d0; }
+.unf-proposal-footer{display:flex;justify-content:flex-end;margin-top:10px}
+.unf-proposal-footer .unf-pi-btn{flex:0 0 auto;min-width:110px}
+</style>
+</head>
+<body>
+<div class="unf-proposal-overlay">
+  <div class="unf-proposal-card">
+    <h3>Soll ich mir was merken?</h3>
+    <p class="unf-sub">Aus dem Gespräch hab ich Folgendes mitgenommen. Sag mir, was bleiben darf.</p>
+
+    <div class="unf-proposal-item">
+      <div class="unf-pi-kind">Neuer Thread</div>
+      <div class="unf-pi-title">Lisa wirkt komisch bei Anna-Themen</div>
+      <div class="unf-pi-meta">Lisa, Anna · Freundeskreis · Vermutung: Eifersucht</div>
+      <div class="unf-pi-take">Klassischer Vergleichs-Komplex — Lisa fühlt sich neben Anna offenbar zweite Wahl.</div>
+      <div class="unf-proposal-actions">
+        <button class="unf-pi-btn is-primary">Merken</button>
+        <button class="unf-pi-btn">Nur heute</button>
+        <button class="unf-pi-btn">Anonymisieren &amp; merken</button>
+        <button class="unf-pi-btn">Vergessen</button>
+      </div>
+    </div>
+
+    <div class="unf-proposal-item">
+      <div class="unf-pi-kind">Update zu bestehendem Thread</div>
+      <div class="unf-pi-title">Lisa kommentierte „mutig 😂" auf deine Story</div>
+      <div class="unf-pi-take">Das war kein Witz, das war ein Seitenhieb mit Schleife drum.</div>
+      <div class="unf-proposal-actions">
+        <button class="unf-pi-btn is-primary">Merken</button>
+        <button class="unf-pi-btn">Vergessen</button>
+      </div>
+    </div>
+
+    <div class="unf-proposal-item">
+      <div class="unf-pi-kind">Erledigt</div>
+      <div class="unf-pi-title">Tom-Thema hat sich aufgelöst — er hat sich heute erklärt</div>
+      <div class="unf-proposal-actions">
+        <button class="unf-pi-btn is-resolved">Als erledigt markieren</button>
+        <button class="unf-pi-btn">Doch nicht</button>
+      </div>
+    </div>
+
+    <div class="unf-proposal-footer">
+      <button class="unf-pi-btn is-primary">Fertig</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
