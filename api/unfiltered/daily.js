@@ -91,6 +91,23 @@ export default async function handler(req, res) {
     const rawSignals = await runCrawlers({ interests, country, avoid_topics: avoid });
     const stories    = await synthesizeBriefing(rawSignals, { language: lang, max_stories: 5 });
 
+    // Wenn aus dünnen/leeren Quellen nichts gekommen ist, NICHT im Cache
+    // speichern — sonst bleibt der Müll bis Mitternacht stehen und
+    // blockiert spätere Versuche. Ehrlich an Sophie melden.
+    if (!Array.isArray(stories) || stories.length === 0) {
+      console.warn(`[unf/daily] no grounded stories (signals=${rawSignals.length}) — returning empty, NOT caching`);
+      return res.status(200).json({
+        stories: [],
+        source_count: rawSignals.length,
+        generated_at: new Date().toISOString(),
+        language: lang,
+        cached: false,
+        empty_reason: rawSignals.length === 0
+          ? "no_signals_from_crawlers"
+          : "no_groundable_stories",
+      });
+    }
+
     // Cache schreiben (upsert auf unique user_id+briefing_date+language)
     try {
       await supabase.from("unf_briefings").upsert({
