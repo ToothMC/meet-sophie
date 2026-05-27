@@ -7605,6 +7605,13 @@ async function stopVoice(triggeredByLimit = false){
   showSessionBar(false);
   isPaused = false;
 
+  // Reset Unfiltered state — sonst bleibt _unfilteredActive über die
+  // nächste Session hinaus stale (UI-Checkbox=off, State=on → kein API-Call).
+  _unfilteredActive = false;
+  _unfilteredBusy = false;
+  setUnfilteredToggleUI("off");
+  window._talkBaseTools = [];
+
   // Stop hyper visualizer
   stopHyperWave();
   stopSvTimer();
