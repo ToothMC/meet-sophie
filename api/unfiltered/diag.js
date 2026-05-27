@@ -11,6 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchNewsApiSignals } from "../../lib/unfiltered/crawlers/news-api.js";
 import { fetchRedditGossip }   from "../../lib/unfiltered/crawlers/reddit.js";
 import { fetchRSSBoulevard }   from "../../lib/unfiltered/crawlers/rss-boulevard.js";
+import { fetchCustomFeeds }    from "../../lib/unfiltered/crawlers/custom-feeds.js";
 import { loadBoundaries }      from "../../lib/unfiltered/memory.js";
 
 export default async function handler(req, res) {
