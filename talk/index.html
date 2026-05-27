@@ -3132,6 +3132,270 @@ if (unfilteredToggleEl) {
   });
 }
 
+// ─── Memory-Proposal-Modal (post-session) ─────────────────────────────────
+// Wird nach Session-Ende aufgerufen, wenn Unfiltered aktiv war.
+// Fragt das condense-Endpoint nach Vorschlägen, zeigt sie als Karten mit
+// Buttons (Merken / Nur heute / Vergessen / Anonymisieren). Speichern
+// geht über die normalen CRUD-Endpoints (threads + events).
+
+const unfProposalOverlay = document.getElementById("unfProposalOverlay");
+const unfProposalList    = document.getElementById("unfProposalList");
+const unfProposalClose   = document.getElementById("unfProposalClose");
+
+if (unfProposalClose) {
+  unfProposalClose.addEventListener("click", () => {
+    if (unfProposalOverlay) unfProposalOverlay.classList.remove("is-open");
+  });
+}
+
+function anonymizePeople(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(p => {
+    const s = String(p).trim();
+    if (!s) return s;
+    return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + ".").join(" ");
+  });
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+async function unfPostJson(path, body) {
+  const { data: { session: authSession } } = await supabase.auth.getSession();
+  const token = authSession?.access_token;
+  if (!token) throw new Error("no_auth");
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(path + " " + r.status + " " + text.slice(0, 120));
+  }
+  return r.json();
+}
+
+async function unfPatchJson(path, body) {
+  const { data: { session: authSession } } = await supabase.auth.getSession();
+  const token = authSession?.access_token;
+  if (!token) throw new Error("no_auth");
+  const r = await fetch(path, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(path + " " + r.status + " " + text.slice(0, 120));
+  }
+  return r.json();
+}
+
+function renderNewThreadCard(item, idx) {
+  const people = Array.isArray(item.people) ? item.people : [];
+  const meta = [
+    people.length ? people.join(", ") : null,
+    item.context || null,
+    item.suspected_dynamic ? "Vermutung: " + item.suspected_dynamic : null,
+  ].filter(Boolean).join(" · ");
+
+  const card = document.createElement("div");
+  card.className = "unf-proposal-item";
+  card.dataset.idx = String(idx);
+  card.innerHTML = `
+    <div class="unf-pi-kind">Neuer Thread</div>
+    <div class="unf-pi-title">${escapeHtml(item.title || "(ohne Titel)")}</div>
+    <div class="unf-pi-meta">${escapeHtml(meta)}</div>
+    ${item.sophie_take ? `<div class="unf-pi-take">${escapeHtml(item.sophie_take)}</div>` : ""}
+    <div class="unf-proposal-actions">
+      <button type="button" class="unf-pi-btn is-primary" data-action="keep">Merken</button>
+      <button type="button" class="unf-pi-btn" data-action="today">Nur heute</button>
+      <button type="button" class="unf-pi-btn" data-action="anon">Anonymisieren &amp; merken</button>
+      <button type="button" class="unf-pi-btn" data-action="forget">Vergessen</button>
+    </div>
+    <div class="unf-pi-status" data-role="status" style="display:none"></div>
+  `;
+
+  const status = card.querySelector('[data-role="status"]');
+  const setStatus = (txt, isErr) => {
+    status.textContent = txt;
+    status.style.display = txt ? "block" : "none";
+    status.classList.toggle("is-error", !!isErr);
+  };
+  const disable = () => card.querySelectorAll(".unf-pi-btn").forEach(b => b.disabled = true);
+
+  card.addEventListener("click", async (ev) => {
+    const action = ev.target?.dataset?.action;
+    if (!action) return;
+    if (action === "forget") {
+      disable();
+      setStatus("Vergessen.");
+      return;
+    }
+    try {
+      disable();
+      setStatus("Speichere…");
+      const usePeople = action === "anon" ? anonymizePeople(people) : people;
+      const retentionDays = action === "today" ? 1 : null;
+
+      const threadRes = await unfPostJson("/api/unfiltered/threads", {
+        title:             item.title,
+        people:            usePeople,
+        context:           item.context,
+        suspected_dynamic: item.suspected_dynamic,
+        retention_days:    retentionDays,
+      });
+      const newThreadId = threadRes?.thread?.id;
+
+      if (newThreadId && item.first_event && item.first_event.what) {
+        await unfPostJson("/api/unfiltered/events", {
+          thread_id:         newThreadId,
+          what:              item.first_event.what,
+          quote:             item.first_event.quote || null,
+          user_feeling:      item.first_event.user_feeling || null,
+          sophie_take:       item.sophie_take || null,
+          next_watch_signal: item.first_event.next_watch_signal || null,
+          source:            "voice",
+        });
+      }
+      setStatus(action === "today" ? "Gemerkt (nur heute)." : action === "anon" ? "Anonymisiert gemerkt." : "Gemerkt.");
+    } catch (err) {
+      console.warn("[unfiltered] new-thread keep failed:", err?.message || err);
+      setStatus("Fehler beim Speichern.", true);
+    }
+  });
+
+  return card;
+}
+
+function renderUpdateCard(item, idx) {
+  const card = document.createElement("div");
+  card.className = "unf-proposal-item";
+  card.dataset.idx = String(idx);
+  card.innerHTML = `
+    <div class="unf-pi-kind">Update zu bestehendem Thread</div>
+    <div class="unf-pi-title">${escapeHtml(item.what || "(neue Beobachtung)")}</div>
+    ${item.sophie_take ? `<div class="unf-pi-take">${escapeHtml(item.sophie_take)}</div>` : ""}
+    <div class="unf-proposal-actions">
+      <button type="button" class="unf-pi-btn is-primary" data-action="keep">Merken</button>
+      <button type="button" class="unf-pi-btn" data-action="forget">Vergessen</button>
+    </div>
+    <div class="unf-pi-status" data-role="status" style="display:none"></div>
+  `;
+  const status = card.querySelector('[data-role="status"]');
+  const setStatus = (txt, isErr) => {
+    status.textContent = txt;
+    status.style.display = txt ? "block" : "none";
+    status.classList.toggle("is-error", !!isErr);
+  };
+  const disable = () => card.querySelectorAll(".unf-pi-btn").forEach(b => b.disabled = true);
+
+  card.addEventListener("click", async (ev) => {
+    const action = ev.target?.dataset?.action;
+    if (!action) return;
+    if (action === "forget") { disable(); setStatus("Vergessen."); return; }
+    try {
+      disable();
+      setStatus("Speichere…");
+      await unfPostJson("/api/unfiltered/events", {
+        thread_id:         item.thread_id,
+        what:              item.what,
+        sophie_take:       item.sophie_take,
+        next_watch_signal: item.next_watch_signal,
+        source:            "voice",
+      });
+      setStatus("Gemerkt.");
+    } catch (err) {
+      console.warn("[unfiltered] update keep failed:", err?.message || err);
+      setStatus("Fehler beim Speichern.", true);
+    }
+  });
+  return card;
+}
+
+function renderResolutionCard(item, idx) {
+  const card = document.createElement("div");
+  card.className = "unf-proposal-item";
+  card.dataset.idx = String(idx);
+  card.innerHTML = `
+    <div class="unf-pi-kind">Erledigt</div>
+    <div class="unf-pi-title">${escapeHtml(item.why || "Thread auf erledigt setzen")}</div>
+    <div class="unf-proposal-actions">
+      <button type="button" class="unf-pi-btn is-resolved" data-action="resolve">Als erledigt markieren</button>
+      <button type="button" class="unf-pi-btn" data-action="forget">Doch nicht</button>
+    </div>
+    <div class="unf-pi-status" data-role="status" style="display:none"></div>
+  `;
+  const status = card.querySelector('[data-role="status"]');
+  const setStatus = (txt, isErr) => {
+    status.textContent = txt;
+    status.style.display = txt ? "block" : "none";
+    status.classList.toggle("is-error", !!isErr);
+  };
+  const disable = () => card.querySelectorAll(".unf-pi-btn").forEach(b => b.disabled = true);
+
+  card.addEventListener("click", async (ev) => {
+    const action = ev.target?.dataset?.action;
+    if (!action) return;
+    if (action === "forget") { disable(); setStatus("Bleibt offen."); return; }
+    try {
+      disable();
+      setStatus("Speichere…");
+      await unfPatchJson("/api/unfiltered/threads", { id: item.thread_id, status: "resolved" });
+      setStatus("Auf erledigt gesetzt.");
+    } catch (err) {
+      console.warn("[unfiltered] resolution patch failed:", err?.message || err);
+      setStatus("Fehler beim Speichern.", true);
+    }
+  });
+  return card;
+}
+
+async function maybeShowMemoryProposal({ transcript, language }) {
+  if (!unfProposalOverlay || !unfProposalList) return;
+  if (!transcript || transcript.length < 80) return; // zu wenig Material
+
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) return;
+
+    const r = await fetch("/api/unfiltered/condense", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, transcript, language: language || "de" }),
+    });
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      console.warn("[unfiltered] condense failed:", r.status, text.slice(0, 120));
+      return;
+    }
+    const j = await r.json();
+    const nt = Array.isArray(j.new_threads) ? j.new_threads : [];
+    const up = Array.isArray(j.updates)     ? j.updates     : [];
+    const re = Array.isArray(j.resolutions) ? j.resolutions : [];
+    if (!nt.length && !up.length && !re.length) {
+      console.log("[unfiltered] condense: nothing to propose");
+      return;
+    }
+
+    // Cards rendern
+    unfProposalList.innerHTML = "";
+    let idx = 0;
+    nt.forEach(item => unfProposalList.appendChild(renderNewThreadCard(item, idx++)));
+    up.forEach(item => unfProposalList.appendChild(renderUpdateCard(item, idx++)));
+    re.forEach(item => unfProposalList.appendChild(renderResolutionCard(item, idx++)));
+
+    unfProposalOverlay.classList.add("is-open");
+  } catch (err) {
+    console.warn("[unfiltered] maybeShowMemoryProposal threw:", err?.message || err);
+  }
+}
+
 // Research indicator — shows which providers are being queried
 const researchEl = document.getElementById("researchIndicator");
 // Import toast — shows settings link during voice when Sophie mentions import
