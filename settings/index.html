@@ -453,6 +453,29 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
+  <!-- Section: Unfiltered Custom News-Quellen -->
+  <div class="section collapsed" id="sectionUnfFeeds">
+    <div class="section-toggle" onclick="toggleSection('sectionUnfFeeds')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title" data-i18n="unfFeeds.title">Eigene News-Quellen</span>
+      <span class="s-sub" data-i18n="unfFeeds.subtitle">RSS-Feeds oder Domains für das Daily Briefing</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:11px;color:#a09080;margin:0 0 10px" data-i18n="unfFeeds.hint">
+        Trag URL oder Domain ein (z.B. <code>tagesschau.de</code> oder <code>https://cyprus-mail.com/feed/</code>). Sophie findet den RSS-Feed automatisch.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="text" id="unfFeedInput" placeholder="cyprus-mail.com" data-i18n-ph="unfFeeds.placeholder"
+          style="flex:1;min-width:200px;padding:8px 10px;border:1px solid #ede8e2;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#2a2420" />
+        <button id="unfFeedAddBtn" onclick="addUnfilteredFeed()" data-i18n="unfFeeds.add"
+          style="background:#2a2420;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          Hinzufügen
+        </button>
+      </div>
+      <div id="unfFeedsList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
+    </div>
+  </div>
+
 </main>
 
 <script src="/lib/sophie-export.js"></script>
@@ -634,6 +657,19 @@ const _i18nDict = {
     'unfiltered.wipe_button': 'Alle löschen',
     'unfiltered.wipe_confirm': 'Wirklich ALLES aus dem Unfiltered-Memory löschen?\n\nDanach kennt Sophie keine deiner privaten Story-Threads mehr.\nKann nicht rückgängig gemacht werden.',
     'unfiltered.wipe_failed': 'Konnte das Memory nicht löschen.',
+
+    'unfFeeds.title': 'Eigene News-Quellen',
+    'unfFeeds.subtitle': 'RSS-Feeds oder Domains für das Daily Briefing',
+    'unfFeeds.hint': 'Trag URL oder Domain ein (z.B. <code>tagesschau.de</code> oder <code>https://cyprus-mail.com/feed/</code>). Sophie findet den RSS-Feed automatisch.',
+    'unfFeeds.placeholder': 'cyprus-mail.com',
+    'unfFeeds.add': 'Hinzufügen',
+    'unfFeeds.empty': 'Noch keine eigenen Quellen. Sophie nutzt nur die Standard-Mischung.',
+    'unfFeeds.pending': 'Wird beim nächsten Briefing-Lauf gesucht…',
+    'unfFeeds.remove_title': 'Diese Quelle entfernen',
+    'unfFeeds.remove_confirm': 'Diese News-Quelle wirklich entfernen?',
+    'unfFeeds.duplicate': 'Diese Quelle ist schon hinterlegt.',
+    'unfFeeds.max_reached': 'Maximal 25 eigene Quellen erlaubt.',
+    'unfFeeds.save_failed': 'Konnte nicht speichern.',
   },
   en: {
     'title.page': 'Sophie — Settings',
@@ -784,6 +820,19 @@ const _i18nDict = {
     'unfiltered.wipe_button': 'Delete all',
     'unfiltered.wipe_confirm': 'Really wipe ALL Unfiltered memory?\n\nSophie will lose every private story thread you have.\nCannot be undone.',
     'unfiltered.wipe_failed': 'Could not wipe the memory.',
+
+    'unfFeeds.title': 'Your News Sources',
+    'unfFeeds.subtitle': 'RSS feeds or domains for the Daily Briefing',
+    'unfFeeds.hint': 'Enter a URL or domain (e.g. <code>bbc.com</code> or <code>https://cyprus-mail.com/feed/</code>). Sophie will auto-discover the RSS feed.',
+    'unfFeeds.placeholder': 'cyprus-mail.com',
+    'unfFeeds.add': 'Add',
+    'unfFeeds.empty': 'No custom sources yet. Sophie uses only the default mix.',
+    'unfFeeds.pending': 'Will be resolved on next briefing run…',
+    'unfFeeds.remove_title': 'Remove this source',
+    'unfFeeds.remove_confirm': 'Really remove this news source?',
+    'unfFeeds.duplicate': 'This source is already added.',
+    'unfFeeds.max_reached': 'Max 25 custom sources allowed.',
+    'unfFeeds.save_failed': 'Could not save.',
   },
   fr: {
     'title.page': 'Sophie — Paramètres',
@@ -934,6 +983,19 @@ const _i18nDict = {
     'unfiltered.wipe_button': 'Tout supprimer',
     'unfiltered.wipe_confirm': "Vraiment supprimer TOUTE la mémoire Unfiltered ?\n\nSophie perdra tous tes fils privés.\nIrréversible.",
     'unfiltered.wipe_failed': 'Impossible de vider la mémoire.',
+
+    'unfFeeds.title': 'Tes sources d\'actu',
+    'unfFeeds.subtitle': 'Flux RSS ou domaines pour le Daily Briefing',
+    'unfFeeds.hint': 'Saisis une URL ou un domaine (par ex. <code>lemonde.fr</code> ou <code>https://cyprus-mail.com/feed/</code>). Sophie trouve le flux RSS automatiquement.',
+    'unfFeeds.placeholder': 'cyprus-mail.com',
+    'unfFeeds.add': 'Ajouter',
+    'unfFeeds.empty': 'Aucune source personnalisée. Sophie utilise le mix par défaut.',
+    'unfFeeds.pending': 'Sera résolue au prochain briefing…',
+    'unfFeeds.remove_title': 'Retirer cette source',
+    'unfFeeds.remove_confirm': 'Vraiment retirer cette source ?',
+    'unfFeeds.duplicate': 'Cette source est déjà ajoutée.',
+    'unfFeeds.max_reached': 'Maximum 25 sources personnalisées.',
+    'unfFeeds.save_failed': 'Impossible d\'enregistrer.',
   },
 };
 
@@ -1316,6 +1378,7 @@ function toggleSection(id) {
   if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
   if (id === "sectionTemplates" && !document.getElementById(id).classList.contains("collapsed")) loadTemplates();
   if (id === "sectionUnfiltered" && !document.getElementById(id).classList.contains("collapsed")) loadUnfilteredMemory();
+  if (id === "sectionUnfFeeds" && !document.getElementById(id).classList.contains("collapsed")) loadUnfilteredFeeds();
 }
 window.toggleSection = toggleSection;
 
@@ -2036,6 +2099,103 @@ async function wipeUnfilteredMemory() {
   }
 }
 window.wipeUnfilteredMemory = wipeUnfilteredMemory;
+
+// ── Section: Eigene News-Quellen (custom feeds) ──
+let _unfFeedsState = { feeds: [], meta: {} };
+
+async function loadUnfilteredFeeds() {
+  const list = document.getElementById("unfFeedsList");
+  try {
+    const data = await _unfFetch("/api/unfiltered/boundaries");
+    const b = data?.boundaries || {};
+    _unfFeedsState.feeds = Array.isArray(b.custom_feeds) ? b.custom_feeds : [];
+    _unfFeedsState.meta  = (b.custom_feeds_meta && typeof b.custom_feeds_meta === "object") ? b.custom_feeds_meta : {};
+    renderUnfFeeds();
+  } catch (e) {
+    console.warn("loadUnfilteredFeeds failed:", e?.message || e);
+    list.innerHTML = `<p class="msg">${t('common.error_loading_dot')}</p>`;
+  }
+}
+window.loadUnfilteredFeeds = loadUnfilteredFeeds;
+
+function renderUnfFeeds() {
+  const list = document.getElementById("unfFeedsList");
+  if (!_unfFeedsState.feeds.length) {
+    list.innerHTML = `<p class="msg">${_unfEscape(t('unfFeeds.empty'))}</p>`;
+    return;
+  }
+  list.innerHTML = _unfFeedsState.feeds.map(entry => {
+    const meta = _unfFeedsState.meta[entry];
+    const label = meta?.label ? `<div style="font-size:11px;color:#a09080;margin-top:2px">${_unfEscape(meta.label)}</div>` : "";
+    const resolved = meta?.feed_url
+      ? `<div style="font-size:10px;color:#c4b8a8;margin-top:2px;word-break:break-all">${_unfEscape(meta.feed_url)}</div>`
+      : `<div style="font-size:10px;color:#c4b8a8;margin-top:2px;font-style:italic">${_unfEscape(t('unfFeeds.pending'))}</div>`;
+    return `<div class="card" style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.04)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#2a2420;word-break:break-all">${_unfEscape(entry)}</div>
+        ${label}
+        ${resolved}
+      </div>
+      <button onclick="removeUnfilteredFeed('${entry.replace(/'/g, "\\'")}', this)"
+        style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px"
+        title="${_unfEscape(t('unfFeeds.remove_title'))}">&times;</button>
+    </div>`;
+  }).join("");
+}
+
+async function addUnfilteredFeed() {
+  const input = document.getElementById("unfFeedInput");
+  const raw = (input?.value || "").trim();
+  if (!raw) return;
+  if (_unfFeedsState.feeds.includes(raw)) {
+    alert(t('unfFeeds.duplicate'));
+    return;
+  }
+  if (_unfFeedsState.feeds.length >= 25) {
+    alert(t('unfFeeds.max_reached'));
+    return;
+  }
+  const next = [..._unfFeedsState.feeds, raw];
+  const btn = document.getElementById("unfFeedAddBtn");
+  if (btn) btn.disabled = true;
+  try {
+    const data = await _unfFetch("/api/unfiltered/boundaries", {
+      method: "PATCH",
+      body: JSON.stringify({ custom_feeds: next }),
+    });
+    _unfFeedsState.feeds = data?.boundaries?.custom_feeds || next;
+    _unfFeedsState.meta  = data?.boundaries?.custom_feeds_meta || {};
+    if (input) input.value = "";
+    renderUnfFeeds();
+  } catch (e) {
+    console.warn("addUnfilteredFeed failed:", e?.message || e);
+    alert(t('unfFeeds.save_failed'));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.addUnfilteredFeed = addUnfilteredFeed;
+
+async function removeUnfilteredFeed(entry, btnEl) {
+  if (!entry) return;
+  if (!confirm(t('unfFeeds.remove_confirm'))) return;
+  if (btnEl) btnEl.disabled = true;
+  const next = _unfFeedsState.feeds.filter(e => e !== entry);
+  try {
+    const data = await _unfFetch("/api/unfiltered/boundaries", {
+      method: "PATCH",
+      body: JSON.stringify({ custom_feeds: next }),
+    });
+    _unfFeedsState.feeds = data?.boundaries?.custom_feeds || next;
+    _unfFeedsState.meta  = data?.boundaries?.custom_feeds_meta || {};
+    renderUnfFeeds();
+  } catch (e) {
+    console.warn("removeUnfilteredFeed failed:", e?.message || e);
+    alert(t('unfFeeds.save_failed'));
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+window.removeUnfilteredFeed = removeUnfilteredFeed;
 
 async function deleteReport() {
   if (!_reportDetailData?.session_id) return;
