@@ -2918,6 +2918,135 @@ if (noiseToggleEl) noiseToggleEl.addEventListener("click", cycleNoiseReduction);
 function updateModeIndicator(_mode) {}
 function clearModeIndicator() {}
 
+// ─── Unfiltered Substate (Talk-Modus) ─────────────────────────────────────
+// Live-Toggle der Sophies Persona-Overlay + neue Function-Tools (save_thread_event,
+// analyze_receipt) in die laufende Realtime-Session injiziert. Aktiviert
+// entweder per UI-Click (sessionBarUnfilteredToggle) oder per Sophie-Tool-Call
+// (enable_unfiltered_mode). Beide Pfade landen in applyUnfilteredToggle().
+//
+// Realtime-Mechanik: System-Overlay als conversation.item (role=system) +
+// session.update mit tools=[...base, ...unfiltered]. Bei OFF: tools = base,
+// und ein kurzer System-Item "Unfiltered Mode beendet".
+
+let _unfilteredActive  = false;
+let _unfilteredBusy    = false;
+const unfilteredToggleEl  = document.getElementById("sessionBarUnfilteredToggle");
+const unfilteredToggleLbl = document.getElementById("sessionBarUnfilteredLabel");
+
+function setUnfilteredToggleUI(state) {
+  if (!unfilteredToggleEl) return;
+  unfilteredToggleEl.checked = state === "on";
+  if (unfilteredToggleLbl) {
+    unfilteredToggleLbl.classList.toggle("is-pending", state === "pending");
+  }
+}
+
+async function applyUnfilteredToggle(nextActive, source) {
+  if (_unfilteredBusy) return { ok: false, reason: "busy" };
+  if (nextActive === _unfilteredActive) return { ok: true, noop: true };
+
+  // Voice session must be live — otherwise the dc isn't open and the toggle
+  // has nothing to inject into.
+  if (!dc || dc.readyState !== "open") {
+    console.warn("[unfiltered] toggle without open DataChannel — ignored");
+    setUnfilteredToggleUI(_unfilteredActive ? "on" : "off");
+    return { ok: false, reason: "no_session" };
+  }
+  if (!sessionId) {
+    console.warn("[unfiltered] toggle without sessionId — ignored");
+    setUnfilteredToggleUI(_unfilteredActive ? "on" : "off");
+    return { ok: false, reason: "no_session_id" };
+  }
+
+  _unfilteredBusy = true;
+  if (source === "voice") setUnfilteredToggleUI("pending");
+
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) throw new Error("no_auth_token");
+
+    const res = await fetch("/api/unfiltered/toggle", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        active: !!nextActive,
+        source: source || "manual",
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn("[unfiltered] toggle endpoint failed:", res.status, text.slice(0, 200));
+      setUnfilteredToggleUI(_unfilteredActive ? "on" : "off");
+      return { ok: false, reason: "endpoint_" + res.status };
+    }
+
+    const payload = await res.json();
+    const base = Array.isArray(window._talkBaseTools) ? window._talkBaseTools : [];
+
+    if (payload.active) {
+      // System-Overlay als zusätzliches conversation item, damit die
+      // initial-instructions vom Server unangetastet bleiben.
+      if (payload.overlay) {
+        dcSend({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "system",
+            content: [{ type: "input_text", text: payload.overlay }],
+          },
+        });
+      }
+      const newTools = base.concat(Array.isArray(payload.tools) ? payload.tools : []);
+      dcSend({
+        type: "session.update",
+        session: { type: "realtime", tools: newTools, tool_choice: "auto" },
+      });
+      _unfilteredActive = true;
+      setUnfilteredToggleUI("on");
+    } else {
+      dcSend({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "system",
+          content: [{ type: "input_text", text: "Unfiltered-Modus beendet. Zurück zum normalen Talk-Modus." }],
+        },
+      });
+      dcSend({
+        type: "session.update",
+        session: { type: "realtime", tools: base, tool_choice: "auto" },
+      });
+      _unfilteredActive = false;
+      setUnfilteredToggleUI("off");
+    }
+
+    return { ok: true, active: _unfilteredActive, source };
+  } catch (err) {
+    console.warn("[unfiltered] toggle threw:", err?.message || err);
+    setUnfilteredToggleUI(_unfilteredActive ? "on" : "off");
+    return { ok: false, reason: "exception" };
+  } finally {
+    _unfilteredBusy = false;
+  }
+}
+
+if (unfilteredToggleEl) {
+  unfilteredToggleEl.addEventListener("change", async (e) => {
+    const wanted = !!e.target.checked;
+    const result = await applyUnfilteredToggle(wanted, "manual");
+    if (!result.ok) {
+      // Roll the visible checkbox back if the API/dc call failed.
+      e.target.checked = _unfilteredActive;
+    }
+  });
+}
+
 // Research indicator — shows which providers are being queried
 const researchEl = document.getElementById("researchIndicator");
 // Import toast — shows settings link during voice when Sophie mentions import
