@@ -433,6 +433,25 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
+  <!-- Section: Unfiltered Memory -->
+  <div class="section collapsed" id="sectionUnfiltered">
+    <div class="section-toggle" onclick="toggleSection('sectionUnfiltered')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title">Unfiltered Memory</span>
+      <span class="s-sub">Was Sophie sich aus Unfiltered-Gesprächen gemerkt hat</span>
+    </div>
+    <div class="section-body">
+      <div id="unfThreadsList"><p class="msg">Laden...</p></div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span id="unfMemoryCount" style="font-size:11px;color:#a09080"></span>
+        <button onclick="wipeUnfilteredMemory()" id="unfWipeBtn"
+          style="background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">
+          Alle löschen
+        </button>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script src="/lib/sophie-export.js"></script>
@@ -1244,6 +1263,7 @@ function toggleSection(id) {
   if (id === "sectionRules" && !document.getElementById(id).classList.contains("collapsed")) loadRules();
   if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
   if (id === "sectionTemplates" && !document.getElementById(id).classList.contains("collapsed")) loadTemplates();
+  if (id === "sectionUnfiltered" && !document.getElementById(id).classList.contains("collapsed")) loadUnfilteredMemory();
 }
 window.toggleSection = toggleSection;
 
@@ -1854,6 +1874,105 @@ async function deleteTemplate(mode) {
   } catch (e) { alert(t('common.error_prefix') + (e?.message || '')); }
 }
 window.deleteTemplate = deleteTemplate;
+
+// ── Section: Unfiltered Memory ──
+function _unfEscape(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+async function _unfFetch(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (session?.access_token) headers.Authorization = "Bearer " + session.access_token;
+  const res = await fetch(path, { ...opts, headers });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(path + " " + res.status + " " + text.slice(0, 120));
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+async function loadUnfilteredMemory() {
+  const list  = document.getElementById("unfThreadsList");
+  const count = document.getElementById("unfMemoryCount");
+  const wipe  = document.getElementById("unfWipeBtn");
+  try {
+    const data = await _unfFetch("/api/unfiltered/threads?include_events=1");
+    const threads = Array.isArray(data?.threads) ? data.threads : [];
+    if (!threads.length) {
+      list.innerHTML = `<p class="msg">Noch nichts gespeichert. Sophie merkt sich automatisch was nach Unfiltered-Gesprächen zählt.</p>`;
+      count.textContent = "";
+      if (wipe) wipe.style.display = "none";
+      return;
+    }
+    let totalEvents = 0;
+    list.innerHTML = threads.map(t => {
+      const events = Array.isArray(t.unf_events) ? t.unf_events : [];
+      totalEvents += events.length;
+      const people = Array.isArray(t.people) ? t.people : [];
+      const meta = [
+        people.length ? people.join(", ") : null,
+        t.context || null,
+        t.suspected_dynamic ? "Vermutung: " + t.suspected_dynamic : null,
+        events.length ? events.length + (events.length === 1 ? " Event" : " Events") : null,
+      ].filter(Boolean).join(" · ");
+      const lastDate = t.last_update
+        ? new Date(t.last_update).toLocaleDateString(_localeTag(), { day: "2-digit", month: "short" })
+        : "";
+      const statusBadge = t.status && t.status !== "open"
+        ? `<span style="font-size:9px;padding:2px 8px;border-radius:8px;background:rgba(160,144,128,.15);color:#a09080;font-weight:600;letter-spacing:.03em;margin-left:6px">${_unfEscape(t.status)}</span>`
+        : "";
+      return `<div class="card" style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.04)">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:600;color:#2a2420">${_unfEscape(t.title)}</span>
+            ${statusBadge}
+          </div>
+          ${meta ? `<div style="font-size:11px;color:#a09080;margin-top:3px">${_unfEscape(meta)}</div>` : ""}
+          ${lastDate ? `<div style="font-size:10px;color:#c4b8a8;margin-top:3px">${lastDate}</div>` : ""}
+        </div>
+        <button onclick="deleteUnfilteredThread('${t.id}', this)"
+          style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px"
+          title="Diesen Thread löschen">&times;</button>
+      </div>`;
+    }).join("");
+    count.textContent = `${threads.length} Thread${threads.length === 1 ? "" : "s"} · ${totalEvents} Event${totalEvents === 1 ? "" : "s"}`;
+    if (wipe) wipe.style.display = "";
+  } catch (e) {
+    console.warn("loadUnfilteredMemory failed:", e?.message || e);
+    list.innerHTML = `<p class="msg">${t('common.error_loading_dot')}</p>`;
+  }
+}
+window.loadUnfilteredMemory = loadUnfilteredMemory;
+
+async function deleteUnfilteredThread(id, btnEl) {
+  if (!id) return;
+  if (!confirm("Diesen Thread und alle zugehörigen Events löschen?")) return;
+  if (btnEl) btnEl.disabled = true;
+  try {
+    await _unfFetch("/api/unfiltered/threads?id=" + encodeURIComponent(id), { method: "DELETE" });
+    await loadUnfilteredMemory();
+  } catch (e) {
+    console.warn("deleteUnfilteredThread failed:", e?.message || e);
+    alert("Konnte den Thread nicht löschen.");
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+window.deleteUnfilteredThread = deleteUnfilteredThread;
+
+async function wipeUnfilteredMemory() {
+  if (!confirm("Wirklich ALLES aus dem Unfiltered-Memory löschen?\n\nDanach kennt Sophie keine deiner privaten Story-Threads mehr.\nKann nicht rückgängig gemacht werden.")) return;
+  try {
+    const data = await _unfFetch("/api/unfiltered/wipe", { method: "POST", body: JSON.stringify({ confirm: "WIPE" }) });
+    console.log("[unfiltered] wiped:", data);
+    await loadUnfilteredMemory();
+  } catch (e) {
+    console.warn("wipeUnfilteredMemory failed:", e?.message || e);
+    alert("Konnte das Memory nicht löschen.");
+  }
+}
+window.wipeUnfilteredMemory = wipeUnfilteredMemory;
 
 async function deleteReport() {
   if (!_reportDetailData?.session_id) return;

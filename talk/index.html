@@ -414,6 +414,10 @@ body::after{
   50%{box-shadow:0 0 0 4px rgba(217,70,239,0)}
 }
 
+/* (Unfiltered Memory-Proposal-Modal entfernt — Sophie speichert jetzt
+   automatisch nach Session-Ende. Verwalten/Löschen in Settings →
+   Section "Unfiltered Memory".) */
+
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
 .status{ margin-bottom:6px; opacity:.88; }
@@ -3045,6 +3049,39 @@ if (unfilteredToggleEl) {
       e.target.checked = _unfilteredActive;
     }
   });
+}
+
+// ─── Auto-Condense nach Session-Ende ──────────────────────────────────────
+// Wird in stopVoice() aufgerufen wenn Unfiltered aktiv war. Schickt das
+// Transcript an /api/unfiltered/condense?apply=1 — das Backend extrahiert
+// Threads/Events/Resolutions und speichert sie direkt. Kein User-Modal,
+// kein Friction. Verwalten + Löschen passiert in Settings.
+
+async function autoCondenseUnfiltered({ transcript, language }) {
+  if (!transcript || transcript.length < 80) return;
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) return;
+
+    const r = await fetch("/api/unfiltered/condense?apply=1", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, transcript, language: language || "de" }),
+    });
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      console.warn("[unfiltered] auto-condense failed:", r.status, text.slice(0, 120));
+      return;
+    }
+    const j = await r.json().catch(() => ({}));
+    console.log("[unfiltered] auto-condense saved:",
+      "new_threads=" + (j.saved_new_threads ?? 0),
+      "events=" + (j.saved_events ?? 0),
+      "resolutions=" + (j.saved_resolutions ?? 0));
+  } catch (err) {
+    console.warn("[unfiltered] autoCondenseUnfiltered threw:", err?.message || err);
+  }
 }
 
 // Research indicator — shows which providers are being queried
@@ -6391,6 +6428,62 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
+      // ── save_thread_event Tool Call Handler ──
+      // Sophie ist im Unfiltered-Modus und will eine Beobachtung als
+      // Event in einen (neuen oder bestehenden) Story-Thread schreiben.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "save_thread_event") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const { data: { session: authSession } } = await supabase.auth.getSession();
+          const token = authSession?.access_token;
+          let out = { ok: false };
+          if (token) {
+            const r = await fetch("/api/unfiltered/events", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                thread_id:         args.thread_id || null,
+                title:             args.title     || null,
+                people:            Array.isArray(args.people) ? args.people : [],
+                what:              args.what      || "",
+                quote:             args.quote     || null,
+                user_feeling:      args.user_feeling || null,
+                sophie_take:       args.sophie_take || "",
+                next_watch_signal: args.next_watch_signal || null,
+                source:            "voice",
+              }),
+            });
+            if (r.ok) {
+              const j = await r.json().catch(() => ({}));
+              out = { ok: true, thread_id: j?.thread?.id || j?.event?.thread_id || null };
+            } else {
+              const text = await r.text().catch(() => "");
+              console.warn(`[${runId}] [unfiltered] events POST failed:`, r.status, text.slice(0, 120));
+              out = { ok: false, error: "events_" + r.status };
+            }
+          } else {
+            out = { ok: false, error: "no_auth" };
+          }
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify(out),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] save_thread_event threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
       // ── deep_research Tool Call Handler ──
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "deep_research") {
         try {
@@ -7605,12 +7698,26 @@ async function stopVoice(triggeredByLimit = false){
   showSessionBar(false);
   isPaused = false;
 
+  // Unfiltered state vor Reset einfangen, damit wir das Memory-Proposal-
+  // Modal nach Session-Ende anbieten können.
+  const _wasUnfiltered = _unfilteredActive;
+  const _unfilteredTranscript = _wasUnfiltered
+    ? convoLog.map(m => (m.role === "user" ? "User: " : "Sophie: ") + (m.text || "")).join("\n")
+    : "";
+
   // Reset Unfiltered state — sonst bleibt _unfilteredActive über die
   // nächste Session hinaus stale (UI-Checkbox=off, State=on → kein API-Call).
   _unfilteredActive = false;
   _unfilteredBusy = false;
   setUnfilteredToggleUI("off");
   window._talkBaseTools = [];
+
+  // Auto-Condense anstoßen — fire-and-forget, blockiert den Stop-Pfad
+  // nicht. Sophie speichert automatisch was sich gemerkt zu werden lohnt.
+  // Verwalten + Löschen passiert in Settings → "Unfiltered Memory".
+  if (_wasUnfiltered && _unfilteredTranscript) {
+    void autoCondenseUnfiltered({ transcript: _unfilteredTranscript, language: "de" });
+  }
 
   // Stop hyper visualizer
   stopHyperWave();
