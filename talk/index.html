@@ -8010,12 +8010,24 @@ async function stopVoice(triggeredByLimit = false){
   showSessionBar(false);
   isPaused = false;
 
+  // Unfiltered state vor Reset einfangen, damit wir das Memory-Proposal-
+  // Modal nach Session-Ende anbieten können.
+  const _wasUnfiltered = _unfilteredActive;
+  const _unfilteredTranscript = _wasUnfiltered
+    ? convoLog.map(m => (m.role === "user" ? "User: " : "Sophie: ") + (m.text || "")).join("\n")
+    : "";
+
   // Reset Unfiltered state — sonst bleibt _unfilteredActive über die
   // nächste Session hinaus stale (UI-Checkbox=off, State=on → kein API-Call).
   _unfilteredActive = false;
   _unfilteredBusy = false;
   setUnfilteredToggleUI("off");
   window._talkBaseTools = [];
+
+  // Memory-Proposal anstoßen — fire-and-forget, blockiert den Stop-Pfad nicht.
+  if (_wasUnfiltered && _unfilteredTranscript) {
+    void maybeShowMemoryProposal({ transcript: _unfilteredTranscript, language: "de" });
+  }
 
   // Stop hyper visualizer
   stopHyperWave();
