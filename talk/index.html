@@ -6391,6 +6391,62 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
+      // ── save_thread_event Tool Call Handler ──
+      // Sophie ist im Unfiltered-Modus und will eine Beobachtung als
+      // Event in einen (neuen oder bestehenden) Story-Thread schreiben.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "save_thread_event") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          const { data: { session: authSession } } = await supabase.auth.getSession();
+          const token = authSession?.access_token;
+          let out = { ok: false };
+          if (token) {
+            const r = await fetch("/api/unfiltered/events", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                thread_id:         args.thread_id || null,
+                title:             args.title     || null,
+                people:            Array.isArray(args.people) ? args.people : [],
+                what:              args.what      || "",
+                quote:             args.quote     || null,
+                user_feeling:      args.user_feeling || null,
+                sophie_take:       args.sophie_take || "",
+                next_watch_signal: args.next_watch_signal || null,
+                source:            "voice",
+              }),
+            });
+            if (r.ok) {
+              const j = await r.json().catch(() => ({}));
+              out = { ok: true, thread_id: j?.thread?.id || j?.event?.thread_id || null };
+            } else {
+              const text = await r.text().catch(() => "");
+              console.warn(`[${runId}] [unfiltered] events POST failed:`, r.status, text.slice(0, 120));
+              out = { ok: false, error: "events_" + r.status };
+            }
+          } else {
+            out = { ok: false, error: "no_auth" };
+          }
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify(out),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] save_thread_event threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
       // ── deep_research Tool Call Handler ──
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "deep_research") {
         try {
