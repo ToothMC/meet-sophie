@@ -207,11 +207,105 @@ export default async function handler(req, res) {
     const resolutions = Array.isArray(parsed.resolutions) ? parsed.resolutions.filter(u => validIds.has(u.thread_id)) : [];
     const new_threads = Array.isArray(parsed.new_threads) ? parsed.new_threads.slice(0, 3) : [];
 
+    // ?apply=1 → direkt in DB schreiben (Auto-Save-Pfad, von stopVoice
+    // aufgerufen). Ohne den Param: nur Vorschläge zurückgeben (dry-run,
+    // z.B. für interne Tools oder spätere Settings-Vorschau).
+    const apply = req.query?.apply === "1";
+    let saved_new_threads = 0;
+    let saved_events      = 0;
+    let saved_resolutions = 0;
+
+    if (apply) {
+      // Neue Threads + initial event jeweils anlegen
+      for (const nt of new_threads) {
+        if (!nt?.title) continue;
+        try {
+          const { data: created, error: tErr } = await supabase
+            .from("unf_threads")
+            .insert({
+              user_id:           user.id,
+              title:             String(nt.title).slice(0, 500),
+              people:            Array.isArray(nt.people) ? nt.people.slice(0, 20).map(p => String(p).slice(0, 80)) : [],
+              context:           nt.context ? String(nt.context).slice(0, 500) : null,
+              suspected_dynamic: nt.suspected_dynamic ? String(nt.suspected_dynamic).slice(0, 500) : null,
+            })
+            .select("id")
+            .single();
+          if (tErr || !created?.id) {
+            console.warn("[unf/condense apply] new thread insert failed:", tErr?.message);
+            continue;
+          }
+          saved_new_threads++;
+
+          const fe = nt.first_event || {};
+          if (fe.what) {
+            await supabase.from("unf_events").insert({
+              thread_id:         created.id,
+              user_id:           user.id,
+              what:              String(fe.what).slice(0, 1000),
+              quote:             fe.quote ? String(fe.quote).slice(0, 1000) : null,
+              user_feeling:      fe.user_feeling ? String(fe.user_feeling).slice(0, 200) : null,
+              sophie_take:       nt.sophie_take ? String(nt.sophie_take).slice(0, 1000) : null,
+              next_watch_signal: fe.next_watch_signal ? String(fe.next_watch_signal).slice(0, 500) : null,
+              source:            "voice",
+            });
+            saved_events++;
+          }
+        } catch (err) {
+          console.warn("[unf/condense apply] new thread loop threw:", err?.message);
+        }
+      }
+
+      // Updates → Event an bestehenden Thread + last_update bump
+      for (const up of updates) {
+        if (!up?.what || !up?.thread_id) continue;
+        try {
+          const { error: eErr } = await supabase.from("unf_events").insert({
+            thread_id:         up.thread_id,
+            user_id:           user.id,
+            what:              String(up.what).slice(0, 1000),
+            sophie_take:       up.sophie_take ? String(up.sophie_take).slice(0, 1000) : null,
+            next_watch_signal: up.next_watch_signal ? String(up.next_watch_signal).slice(0, 500) : null,
+            source:            "voice",
+          });
+          if (!eErr) {
+            saved_events++;
+            await supabase
+              .from("unf_threads")
+              .update({ last_update: new Date().toISOString() })
+              .eq("id", up.thread_id)
+              .eq("user_id", user.id);
+          }
+        } catch (err) {
+          console.warn("[unf/condense apply] update loop threw:", err?.message);
+        }
+      }
+
+      // Resolutions → status='resolved'
+      for (const re of resolutions) {
+        if (!re?.thread_id) continue;
+        try {
+          await supabase
+            .from("unf_threads")
+            .update({ status: "resolved", last_update: new Date().toISOString() })
+            .eq("id", re.thread_id)
+            .eq("user_id", user.id);
+          saved_resolutions++;
+        } catch (err) {
+          console.warn("[unf/condense apply] resolution loop threw:", err?.message);
+        }
+      }
+    }
+
     return res.status(200).json({
       new_threads,
       updates,
       resolutions,
       skipped_sensitive: Number(parsed.skipped_sensitive) || 0,
+      applied: apply,
+      saved_new_threads,
+      saved_events,
+      saved_resolutions,
       model: EXTRACTION_MODEL,
     });
   } catch (err) {
