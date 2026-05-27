@@ -1263,6 +1263,7 @@ function toggleSection(id) {
   if (id === "sectionRules" && !document.getElementById(id).classList.contains("collapsed")) loadRules();
   if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
   if (id === "sectionTemplates" && !document.getElementById(id).classList.contains("collapsed")) loadTemplates();
+  if (id === "sectionUnfiltered" && !document.getElementById(id).classList.contains("collapsed")) loadUnfilteredMemory();
 }
 window.toggleSection = toggleSection;
 
