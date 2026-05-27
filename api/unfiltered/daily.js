@@ -91,8 +91,32 @@ export default async function handler(req, res) {
     }
 
     // Frischer Lauf: crawl + synth
-    const rawSignals = await runCrawlers({ interests, country, avoid_topics: avoid });
-    const stories    = await synthesizeBriefing(rawSignals, { language: lang, max_stories: 5 });
+    const crawl = await runCrawlers({
+      interests,
+      country,
+      avoid_topics: avoid,
+      custom_feeds: customFeeds,
+      custom_meta:  customMeta,
+    });
+    const rawSignals = crawl.signals;
+    const newCustomMeta = crawl.custom_resolved_map || {};
+
+    // Lazy: wenn der Crawler neue Custom-Feed-URLs aufgelöst hat, in
+    // unf_boundaries.custom_feeds_meta zurückschreiben. So spart der
+    // nächste Lauf den Auto-Discover.
+    if (Object.keys(newCustomMeta).length > 0) {
+      try {
+        await supabase.from("unf_boundaries").upsert({
+          user_id:           user.id,
+          custom_feeds_meta: { ...customMeta, ...newCustomMeta },
+          updated_at:        new Date().toISOString(),
+        }, { onConflict: "user_id" });
+      } catch (err) {
+        console.warn("[unf/daily] custom_feeds_meta upsert failed:", err?.message || err);
+      }
+    }
+
+    const stories = await synthesizeBriefing(rawSignals, { language: lang, max_stories: 5 });
 
     // Wenn aus dünnen/leeren Quellen nichts gekommen ist, NICHT im Cache
     // speichern — sonst bleibt der Müll bis Mitternacht stehen und
