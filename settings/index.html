@@ -2061,6 +2061,103 @@ async function wipeUnfilteredMemory() {
 }
 window.wipeUnfilteredMemory = wipeUnfilteredMemory;
 
+// ── Section: Eigene News-Quellen (custom feeds) ──
+let _unfFeedsState = { feeds: [], meta: {} };
+
+async function loadUnfilteredFeeds() {
+  const list = document.getElementById("unfFeedsList");
+  try {
+    const data = await _unfFetch("/api/unfiltered/boundaries");
+    const b = data?.boundaries || {};
+    _unfFeedsState.feeds = Array.isArray(b.custom_feeds) ? b.custom_feeds : [];
+    _unfFeedsState.meta  = (b.custom_feeds_meta && typeof b.custom_feeds_meta === "object") ? b.custom_feeds_meta : {};
+    renderUnfFeeds();
+  } catch (e) {
+    console.warn("loadUnfilteredFeeds failed:", e?.message || e);
+    list.innerHTML = `<p class="msg">${t('common.error_loading_dot')}</p>`;
+  }
+}
+window.loadUnfilteredFeeds = loadUnfilteredFeeds;
+
+function renderUnfFeeds() {
+  const list = document.getElementById("unfFeedsList");
+  if (!_unfFeedsState.feeds.length) {
+    list.innerHTML = `<p class="msg">${_unfEscape(t('unfFeeds.empty'))}</p>`;
+    return;
+  }
+  list.innerHTML = _unfFeedsState.feeds.map(entry => {
+    const meta = _unfFeedsState.meta[entry];
+    const label = meta?.label ? `<div style="font-size:11px;color:#a09080;margin-top:2px">${_unfEscape(meta.label)}</div>` : "";
+    const resolved = meta?.feed_url
+      ? `<div style="font-size:10px;color:#c4b8a8;margin-top:2px;word-break:break-all">${_unfEscape(meta.feed_url)}</div>`
+      : `<div style="font-size:10px;color:#c4b8a8;margin-top:2px;font-style:italic">${_unfEscape(t('unfFeeds.pending'))}</div>`;
+    return `<div class="card" style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.04)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#2a2420;word-break:break-all">${_unfEscape(entry)}</div>
+        ${label}
+        ${resolved}
+      </div>
+      <button onclick="removeUnfilteredFeed('${entry.replace(/'/g, "\\'")}', this)"
+        style="background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:4px 8px"
+        title="${_unfEscape(t('unfFeeds.remove_title'))}">&times;</button>
+    </div>`;
+  }).join("");
+}
+
+async function addUnfilteredFeed() {
+  const input = document.getElementById("unfFeedInput");
+  const raw = (input?.value || "").trim();
+  if (!raw) return;
+  if (_unfFeedsState.feeds.includes(raw)) {
+    alert(t('unfFeeds.duplicate'));
+    return;
+  }
+  if (_unfFeedsState.feeds.length >= 25) {
+    alert(t('unfFeeds.max_reached'));
+    return;
+  }
+  const next = [..._unfFeedsState.feeds, raw];
+  const btn = document.getElementById("unfFeedAddBtn");
+  if (btn) btn.disabled = true;
+  try {
+    const data = await _unfFetch("/api/unfiltered/boundaries", {
+      method: "PATCH",
+      body: JSON.stringify({ custom_feeds: next }),
+    });
+    _unfFeedsState.feeds = data?.boundaries?.custom_feeds || next;
+    _unfFeedsState.meta  = data?.boundaries?.custom_feeds_meta || {};
+    if (input) input.value = "";
+    renderUnfFeeds();
+  } catch (e) {
+    console.warn("addUnfilteredFeed failed:", e?.message || e);
+    alert(t('unfFeeds.save_failed'));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.addUnfilteredFeed = addUnfilteredFeed;
+
+async function removeUnfilteredFeed(entry, btnEl) {
+  if (!entry) return;
+  if (!confirm(t('unfFeeds.remove_confirm'))) return;
+  if (btnEl) btnEl.disabled = true;
+  const next = _unfFeedsState.feeds.filter(e => e !== entry);
+  try {
+    const data = await _unfFetch("/api/unfiltered/boundaries", {
+      method: "PATCH",
+      body: JSON.stringify({ custom_feeds: next }),
+    });
+    _unfFeedsState.feeds = data?.boundaries?.custom_feeds || next;
+    _unfFeedsState.meta  = data?.boundaries?.custom_feeds_meta || {};
+    renderUnfFeeds();
+  } catch (e) {
+    console.warn("removeUnfilteredFeed failed:", e?.message || e);
+    alert(t('unfFeeds.save_failed'));
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+window.removeUnfilteredFeed = removeUnfilteredFeed;
+
 async function deleteReport() {
   if (!_reportDetailData?.session_id) return;
   const source = _reportDetailData.source || 'talk';
