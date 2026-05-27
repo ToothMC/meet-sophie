@@ -6030,6 +6030,10 @@ function attachChannel(ch) {
             required: ["reason"]
           }
         }];
+        // Cache the base talk-tools so the Unfiltered toggle can merge in
+        // its additional tools without losing the standard set on the way
+        // back out (toggle OFF restores this exact array).
+        window._talkBaseTools = sessionUpdate.session.tools.slice();
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
         const isDemoMode = voiceHandover?.pitchDemo === true;
