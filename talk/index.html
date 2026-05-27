@@ -5889,6 +5889,17 @@ function attachChannel(ch) {
             },
             required: ["note"]
           }
+        }, {
+          type: "function",
+          name: "enable_unfiltered_mode",
+          description: "Switches Sophie into the Unfiltered substate. ONLY call after the user clearly confirms ('yes', 'ja', 'mach', 'go') in response to your one-time question 'Want me to go unfiltered? Just say yes.' / 'Soll ich ungeschönt antworten? Sag einfach Ja.'. Never activate unsolicited. Not for minors, not for unconfirmed claims about real people's illness / pregnancy / orientation / crime, not for celebrities unrelated to the user.",
+          parameters: {
+            type: "object",
+            properties: {
+              reason: { type: "string", description: "One sentence describing why now — e.g. 'User vents about coworker dynamic'." }
+            },
+            required: ["reason"]
+          }
         }];
         sessionUpdate.session.tool_choice = "auto";
       } else if (selectedVoiceMode === "salespitch") {
