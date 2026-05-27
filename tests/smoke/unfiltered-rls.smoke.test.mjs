@@ -22,7 +22,6 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createClient } from "@supabase/supabase-js";
 
 const url     = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
@@ -34,8 +33,14 @@ const idB     = process.env.UNF_RLS_TEST_USER_B_ID;
 const ready = !!(url && anonKey && jwtA && jwtB && idA && idB);
 
 if (!ready) {
+  // Skip BEFORE importing @supabase/supabase-js — CI's workflow runs
+  // node --test directly (no `npm install` step), so the package isn't
+  // installed there. A static top-level import would crash the entire
+  // test file with ERR_MODULE_NOT_FOUND.
   test("unfiltered RLS smoke — skipped (env not provided)", { skip: true }, () => {});
 } else {
+  // Dynamic import so CI without supabase env never touches this code path.
+  const { createClient } = await import("@supabase/supabase-js");
   const clientA = createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${jwtA}` } }, auth: { persistSession: false } });
   const clientB = createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${jwtB}` } }, auth: { persistSession: false } });
 
