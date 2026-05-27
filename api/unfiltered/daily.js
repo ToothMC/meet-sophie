@@ -53,13 +53,16 @@ export default async function handler(req, res) {
     const reqLang  = req.query?.language;
     const language = reqLang === "en" ? "en" : reqLang === "de" ? "de" : null;
 
-    // Boundaries laden — bestimmt Interests + Country + Avoid-Topics
+    // Boundaries laden — bestimmt Interests + Country + Avoid-Topics + Custom-Feeds
     const boundaries = await loadBoundaries(supabase, user.id);
     const interests  = Array.isArray(boundaries?.interests) && boundaries.interests.length
       ? boundaries.interests
       : ["royals", "reality-tv", "celebs"];
     const country    = boundaries?.geo_country || "DE";
     const avoid      = Array.isArray(boundaries?.avoid_topics) ? boundaries.avoid_topics : [];
+    const customFeeds = Array.isArray(boundaries?.custom_feeds) ? boundaries.custom_feeds : [];
+    const customMeta  = (boundaries?.custom_feeds_meta && typeof boundaries.custom_feeds_meta === "object")
+      ? boundaries.custom_feeds_meta : {};
     const lang       = language || (country === "GB" || country === "US" ? "en" : "de");
 
     // Cache lookup
