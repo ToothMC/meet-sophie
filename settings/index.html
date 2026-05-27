@@ -1339,6 +1339,7 @@ function toggleSection(id) {
   if (id === "sectionReports" && !document.getElementById(id).classList.contains("collapsed")) loadReports();
   if (id === "sectionTemplates" && !document.getElementById(id).classList.contains("collapsed")) loadTemplates();
   if (id === "sectionUnfiltered" && !document.getElementById(id).classList.contains("collapsed")) loadUnfilteredMemory();
+  if (id === "sectionUnfFeeds" && !document.getElementById(id).classList.contains("collapsed")) loadUnfilteredFeeds();
 }
 window.toggleSection = toggleSection;
 
