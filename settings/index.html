@@ -453,6 +453,29 @@ main{max-width:520px;margin:0 auto;padding:12px}
     </div>
   </div>
 
+  <!-- Section: Unfiltered Custom News-Quellen -->
+  <div class="section collapsed" id="sectionUnfFeeds">
+    <div class="section-toggle" onclick="toggleSection('sectionUnfFeeds')">
+      <span class="arrow">&#9660;</span>
+      <span class="s-title" data-i18n="unfFeeds.title">Eigene News-Quellen</span>
+      <span class="s-sub" data-i18n="unfFeeds.subtitle">RSS-Feeds oder Domains für das Daily Briefing</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:11px;color:#a09080;margin:0 0 10px" data-i18n="unfFeeds.hint">
+        Trag URL oder Domain ein (z.B. <code>tagesschau.de</code> oder <code>https://cyprus-mail.com/feed/</code>). Sophie findet den RSS-Feed automatisch.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="text" id="unfFeedInput" placeholder="cyprus-mail.com" data-i18n-ph="unfFeeds.placeholder"
+          style="flex:1;min-width:200px;padding:8px 10px;border:1px solid #ede8e2;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#2a2420" />
+        <button id="unfFeedAddBtn" onclick="addUnfilteredFeed()" data-i18n="unfFeeds.add"
+          style="background:#2a2420;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          Hinzufügen
+        </button>
+      </div>
+      <div id="unfFeedsList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
+    </div>
+  </div>
+
 </main>
 
 <script src="/lib/sophie-export.js"></script>
