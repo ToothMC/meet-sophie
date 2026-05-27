@@ -372,6 +372,48 @@ body::after{
   color:rgba(255,255,255,.6);
 }
 
+/* Unfiltered toggle — same shape as report, magenta accent so the user
+   sees at a glance which mode is active. */
+.sb-unfiltered-toggle{
+  display:flex;align-items:center;gap:5px;
+  flex-shrink:0;cursor:pointer;
+  -webkit-user-select:none;user-select:none;
+}
+.sb-unfiltered-toggle input{display:none}
+.sb-unfiltered-slider{
+  width:26px;height:14px;
+  background:rgba(255,255,255,.12);
+  border-radius:7px;position:relative;
+  transition:background .2s;
+}
+.sb-unfiltered-slider::after{
+  content:'';position:absolute;
+  left:2px;top:2px;width:10px;height:10px;
+  background:rgba(255,255,255,.35);border-radius:50%;
+  transition:transform .2s,background .2s;
+}
+.sb-unfiltered-toggle input:checked + .sb-unfiltered-slider{
+  background:#d946ef;
+}
+.sb-unfiltered-toggle input:checked + .sb-unfiltered-slider::after{
+  transform:translateX(12px);background:#fff;
+}
+.sb-unfiltered-text{
+  font-size:10px;color:rgba(255,255,255,.5);
+  transition:color .2s;
+}
+.sb-unfiltered-toggle input:checked ~ .sb-unfiltered-text{
+  color:#d946ef;
+}
+.sb-unfiltered-toggle.is-pending .sb-unfiltered-slider{
+  background:rgba(217,70,239,.45);
+  animation:sbUnfPulse 1.2s ease-in-out infinite;
+}
+@keyframes sbUnfPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(217,70,239,.55)}
+  50%{box-shadow:0 0 0 4px rgba(217,70,239,0)}
+}
+
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
 .status{ margin-bottom:6px; opacity:.88; }
