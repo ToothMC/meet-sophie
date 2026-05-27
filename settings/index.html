@@ -437,14 +437,15 @@ main{max-width:520px;margin:0 auto;padding:12px}
   <div class="section collapsed" id="sectionUnfiltered">
     <div class="section-toggle" onclick="toggleSection('sectionUnfiltered')">
       <span class="arrow">&#9660;</span>
-      <span class="s-title">Unfiltered Memory</span>
-      <span class="s-sub">Was Sophie sich aus Unfiltered-Gesprächen gemerkt hat</span>
+      <span class="s-title" data-i18n="unfiltered.title">Unfiltered Memory</span>
+      <span class="s-sub" data-i18n="unfiltered.subtitle">Was Sophie sich aus Unfiltered-Gesprächen gemerkt hat</span>
     </div>
     <div class="section-body">
-      <div id="unfThreadsList"><p class="msg">Laden...</p></div>
+      <div id="unfThreadsList"><p class="msg" data-i18n="common.loading">Laden...</p></div>
       <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <span id="unfMemoryCount" style="font-size:11px;color:#a09080"></span>
         <button onclick="wipeUnfilteredMemory()" id="unfWipeBtn"
+          data-i18n="unfiltered.wipe_button"
           style="background:none;border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">
           Alle löschen
         </button>
