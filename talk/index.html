@@ -6362,6 +6362,35 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
+      // ── enable_unfiltered_mode Tool Call Handler ──
+      // Sophie has asked the user 'Want me to go unfiltered?' and the user
+      // said yes. Switch the substate on; the helper also injects the
+      // persona-overlay + new tools into the live realtime session.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "enable_unfiltered_mode") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [unfiltered] enable_unfiltered_mode called:`, args?.reason?.slice(0, 80));
+          const result = await applyUnfilteredToggle(true, "voice");
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output",
+            call_id: msg.call_id,
+            output: JSON.stringify({ ok: !!result?.ok, active: !!result?.active }),
+          }});
+          dcSend({ type: "response.create" });
+        } catch (err) {
+          console.warn(`[${runId}] [unfiltered] handler threw:`, err?.message || err);
+          try {
+            dcSend({ type: "conversation.item.create", item: {
+              type: "function_call_output",
+              call_id: msg.call_id,
+              output: JSON.stringify({ ok: false }),
+            }});
+            dcSend({ type: "response.create" });
+          } catch (_) {}
+        }
+        return;
+      }
+
       // ── deep_research Tool Call Handler ──
       if (msg?.type === "response.function_call_arguments.done" && msg?.name === "deep_research") {
         try {
