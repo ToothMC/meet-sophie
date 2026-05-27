@@ -64,6 +64,22 @@ export default async function handler(req, res) {
       sample: rssSignals.slice(0, 3).map(s => ({ headline: s.headline?.slice(0, 100), publisher: s.publisher })),
     };
 
+    // Custom feeds (user-defined)
+    const customFeeds = Array.isArray(boundaries?.custom_feeds) ? boundaries.custom_feeds : [];
+    const customMeta  = (boundaries?.custom_feeds_meta && typeof boundaries.custom_feeds_meta === "object")
+      ? boundaries.custom_feeds_meta : {};
+    const customPayload = await fetchCustomFeeds({ custom_feeds: customFeeds, meta: customMeta });
+    const custom = {
+      configured: customFeeds.length,
+      signal_count: customPayload.signals.length,
+      resolved: Object.entries(customPayload.resolved_map || {}).map(([entry, info]) => ({
+        entry,
+        feed_url: info?.feed_url || null,
+        label:    info?.label || null,
+      })),
+      sample: customPayload.signals.slice(0, 3).map(s => ({ headline: s.headline?.slice(0, 100), publisher: s.publisher })),
+    };
+
     return res.status(200).json({
       ok: true,
       interests,
@@ -71,7 +87,8 @@ export default async function handler(req, res) {
       news,
       reddit,
       rss,
-      total_signals: news.signal_count + reddit.signal_count + rss.signal_count,
+      custom,
+      total_signals: news.signal_count + reddit.signal_count + rss.signal_count + custom.signal_count,
       env: {
         BING_API_KEY:        process.env.BING_API_KEY        ? "set" : "missing",
         BRAVE_API_KEY:       process.env.BRAVE_API_KEY       ? "set" : "missing",
