@@ -69,12 +69,20 @@ export default async function handler(req, res) {
     }
 
     // Mark this event as processed BEFORE doing anything (prevents race with parallel deliveries)
+    // NOTE: the Supabase query builder is thenable but NOT a real Promise — it has no
+    // .catch()/.finally(). Calling .catch() directly on the chain throws
+    // "TypeError: ...insert(...).catch is not a function" and crashes the whole handler
+    // with a 500, before any event-type logic ever runs. Fixed by using try/await/catch.
     const eventUserId = event.data?.object?.metadata?.user_id || null;
-    await supabase.from("analytics_events").insert({
-      user_id: eventUserId,
-      event_name: "stripe_webhook_" + event.type,
-      meta: { stripe_event_id: event.id, event_type: event.type },
-    }).catch(() => {}); // don't block on analytics failure
+    try {
+      await supabase.from("analytics_events").insert({
+        user_id: eventUserId,
+        event_name: "stripe_webhook_" + event.type,
+        meta: { stripe_event_id: event.id, event_type: event.type },
+      });
+    } catch (e) {
+      console.warn("Webhook analytics insert failed:", e?.message || e); // don't block on analytics failure
+    }
 
     // 1) Checkout completed
     if (event.type === "checkout.session.completed") {
