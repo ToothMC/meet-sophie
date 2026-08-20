@@ -124,6 +124,31 @@ export default async function handler(req, res) {
         }
       }
 
+      // Sync customer name from Stripe checkout into user_profile. Stripe collects the
+      // cardholder name automatically during card entry (visible in the Stripe customer
+      // portal) — we never read it back before, so user_profile.first_name stayed empty
+      // for anyone who never typed a name into the app itself. Only fills in first_name
+      // when it's not already set, so an in-app name is never overwritten.
+      const stripeCustomerName = (session?.customer_details?.name || "").trim();
+      if (stripeCustomerName) {
+        try {
+          const { data: existingProfile } = await supabase
+            .from("user_profile")
+            .select("first_name")
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (!existingProfile?.first_name) {
+            const firstName = stripeCustomerName.split(/\s+/)[0].slice(0, 100);
+            await supabase.from("user_profile").upsert(
+              { user_id: userId, first_name: firstName },
+              { onConflict: "user_id" }
+            );
+          }
+        } catch (e) {
+          console.warn("[webhook] name sync failed:", e?.message || e);
+        }
+      }
+
       // A) Subscription
       if (mode === "subscription") {
         const stripeSubscriptionId = session?.subscription || null;
