@@ -1,6 +1,6 @@
 // api/admin.js — Admin Dashboard API
 import { createClient } from '@supabase/supabase-js';
-import { PLAN_PRICES, DEFAULT_FREE_TOKENS } from '../lib/billing-constants.js';
+import { PLAN_PRICES, DEFAULT_FREE_TOKENS, isSubscriptionActive } from '../lib/billing-constants.js';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
 
     const [subsRes, usageRes, costTodayRes, costWeekRes, costMonthRes, healthRes] = await Promise.all([
-      supabase.from('user_subscriptions').select('plan, is_active, status'),
+      supabase.from('user_subscriptions').select('plan, is_active, status, trial_end'),
       supabase.from('user_usage').select('free_tokens_used, paid_tokens_used, topup_tokens_balance'),
       supabase.from('ai_cost_daily').select('total_cost').eq('date', today),
       supabase.from('ai_cost_daily').select('total_cost').gte('date', weekAgo),
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     ]);
 
     const subs = subsRes.data || [];
-    const activeSubs = subs.filter(s => s.is_active || s.status === 'active' || s.status === 'trialing');
+    const activeSubs = subs.filter(isSubscriptionActive);
     const planCounts = { start: 0, plus: 0, premium: 0 };
     for (const s of activeSubs) {
       if (s.plan && planCounts[s.plan] !== undefined) planCounts[s.plan]++;
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
         .in('user_id', ids);
       const { data: subs } = await supabase
         .from('user_subscriptions')
-        .select('user_id, plan, is_active')
+        .select('user_id, plan, is_active, status, trial_end')
         .in('user_id', ids);
 
       const profMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
       for (const u of topUsers) {
         u.name = profMap[u.user_id]?.preferred_name || profMap[u.user_id]?.first_name || u.user_id.slice(0, 8);
         u.plan = subMap[u.user_id]?.plan || 'free';
-        u.active = subMap[u.user_id]?.is_active || false;
+        u.active = isSubscriptionActive(subMap[u.user_id]);
       }
     }
 
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
     const monthStart = new Date().toISOString().slice(0, 8) + '01';
 
     const [subsRes, usageRes, profRes, costRes] = await Promise.all([
-      supabase.from('user_subscriptions').select('user_id, plan, is_active, status, current_period_end'),
+      supabase.from('user_subscriptions').select('user_id, plan, is_active, status, current_period_end, trial_end'),
       supabase.from('user_usage').select('user_id, free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance'),
       supabase.from('user_profile').select('user_id, preferred_name, first_name'),
       supabase.from('ai_cost_daily').select('user_id, total_cost').gte('date', monthStart),
@@ -186,7 +186,7 @@ export default async function handler(req, res) {
         id,
         name: prof?.preferred_name || prof?.first_name || id.slice(0, 8),
         plan: sub?.plan || 'free',
-        active: !!(sub?.is_active || sub?.status === 'active' || sub?.status === 'trialing'),
+        active: isSubscriptionActive(sub),
         remaining: freeRem + paidRem + topupRem,
         costMonth: costMap[id] || 0,
         periodEnd: sub?.current_period_end || null,

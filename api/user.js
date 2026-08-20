@@ -91,11 +91,20 @@ async function handleUsage(req, res) {
     if (rpcErr) {
       // If RPC fails (e.g. user has no row), try creating the row first
       if (rpcErr.message?.includes("NOT FOUND") || !result?.length) {
-        await supabase.from("user_usage").insert({
-          user_id: user.id,
-          free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
-          paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
-        }).catch(() => {});
+        // Bug fix (2026-08-20): Supabase's query builder is thenable but NOT a real
+        // Promise — it has no .catch()/.finally(). Calling .catch() directly on the
+        // chain throws "TypeError: ...insert(...).catch is not a function" and crashes
+        // the whole handler with a 500 (caught by the outer try/catch below) instead of
+        // the intended 402. Same bug class fixed in api/stripe-webhook.js on 2026-08-12.
+        try {
+          await supabase.from("user_usage").insert({
+            user_id: user.id,
+            free_tokens_total: DEFAULT_FREE_TOKENS, free_tokens_used: 0,
+            paid_tokens_total: 0, paid_tokens_used: 0, topup_tokens_balance: 0,
+          });
+        } catch (e) {
+          console.warn("user_usage fallback insert failed:", e?.message || e);
+        }
         return res.status(402).json({ error: "No remaining tokens", remaining_tokens: 0, remaining_seconds: 0 });
       }
       return res.status(500).json({ error: rpcErr.message });

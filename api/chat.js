@@ -16,7 +16,7 @@ import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { getSecondOpinion } from "./ai/second-opinion.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
 import { buildSearchContext } from "../lib/search-context.js";
-import { TOKEN_COSTS, DEFAULT_FREE_TOKENS } from "../lib/billing-constants.js";
+import { TOKEN_COSTS, DEFAULT_FREE_TOKENS, isSubscriptionActive } from "../lib/billing-constants.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
@@ -928,8 +928,8 @@ async function handleMessage(req, res) {
   }
 
   if (user) {
-    const { data: sub } = await supabase.from("user_subscriptions").select("is_active,status").eq("user_id", user.id).maybeSingle();
-    const isPremium = !!(sub?.is_active || sub?.status === "active");
+    const { data: sub } = await supabase.from("user_subscriptions").select("is_active,status,trial_end").eq("user_id", user.id).maybeSingle();
+    const isPremium = isSubscriptionActive(sub);
     if (!isPremium && session.turn_count >= FREE_TURNS_LIMIT) {
       return res.status(402).json({ error: "Free limit reached", turns_used: session.turn_count, upgrade_required: true });
     }
@@ -1151,8 +1151,8 @@ async function handleMessage(req, res) {
   // Determine user tier for routing
   let userTier = "free";
   if (user) {
-    const { data: sub } = await supabase.from("user_subscriptions").select("plan,is_active,status").eq("user_id", user.id).maybeSingle();
-    const isActive = !!(sub?.is_active || sub?.status === "active");
+    const { data: sub } = await supabase.from("user_subscriptions").select("plan,is_active,status,trial_end").eq("user_id", user.id).maybeSingle();
+    const isActive = isSubscriptionActive(sub);
     if (isActive) {
       const planName = sub?.plan || "";
       userTier = planName === "premium" ? "premium" : "abo";
@@ -1747,10 +1747,10 @@ async function handleContext(req, res) {
   const [profRes, relRes, subRes] = await Promise.all([
     supabase.from("user_profile").select("first_name,preferred_name,preferred_language,onboarding_completed").eq("user_id", user.id).maybeSingle(),
     supabase.from("user_relationship").select("last_interaction_summary").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_subscriptions").select("is_active,status,plan").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_subscriptions").select("is_active,status,plan,trial_end").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const isPremium = !!(subRes.data?.is_active || subRes.data?.status === "active");
+  const isPremium = isSubscriptionActive(subRes.data);
   const plan = subRes.data?.plan || null;
 
   return res.status(200).json({

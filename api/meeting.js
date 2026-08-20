@@ -20,7 +20,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
-import { TOKEN_COSTS } from "../lib/billing-constants.js";
+import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
 import mammoth from "mammoth";
@@ -578,11 +578,11 @@ async function handleMessage(req, res) {
   // Load user profile for tier/prompt
   const [profRes, subRes] = await Promise.all([
     supabase.from("user_profile").select("first_name,preferred_name,preferred_addressing,preferred_pronoun,preferred_language,occupation,conversation_style").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_subscriptions").select("is_active,status,plan").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_subscriptions").select("is_active,status,plan,trial_end").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const profile = profRes.data || {};
-  const isPremium = !!(subRes.data?.is_active || subRes.data?.status === "active");
+  const isPremium = isSubscriptionActive(subRes.data);
   const plan = subRes.data?.plan || null;
   const tier = mapPlanToTier(plan, isPremium);
 
@@ -1252,18 +1252,30 @@ async function handleAnalyze(req, res) {
     }
 
     // Update analysis cost
+    // Bug fix (2026-08-20): Supabase's query builder is thenable but NOT a real Promise
+    // — it has no .catch()/.finally(). Calling .catch() directly on the chain threw
+    // "TypeError: ...rpc(...).catch is not a function", so neither the RPC call nor the
+    // fallback nested inside .catch() ever actually ran — analysis_cost_usd was silently
+    // never incremented for any meeting. Same bug class fixed in api/stripe-webhook.js
+    // on 2026-08-12. Internal cost bookkeeping only — does not affect customer token
+    // billing (that runs through separate, correctly-awaited deduct_tokens RPC calls).
     if (llmCostUsd > 0) {
-      await supabase.rpc('increment_meeting_cost', {
-        p_meeting_id: meeting_id,
-        p_cost_field: 'analysis_cost_usd',
-        p_amount: llmCostUsd,
-      }).catch(() => {
-        // Fallback: direct update
-        supabase.from("meetings")
-          .update({ analysis_cost_usd: (meeting.analysis_cost_usd || 0) + llmCostUsd })
-          .eq("id", meeting_id)
-          .then(() => {});
-      });
+      try {
+        await supabase.rpc('increment_meeting_cost', {
+          p_meeting_id: meeting_id,
+          p_cost_field: 'analysis_cost_usd',
+          p_amount: llmCostUsd,
+        });
+      } catch (e) {
+        console.warn("[meeting-analyze] increment_meeting_cost RPC failed, falling back to direct update:", e?.message || e);
+        try {
+          await supabase.from("meetings")
+            .update({ analysis_cost_usd: (meeting.analysis_cost_usd || 0) + llmCostUsd })
+            .eq("id", meeting_id);
+        } catch (e2) {
+          console.error("[meeting-analyze] fallback direct update also failed:", e2?.message || e2);
+        }
+      }
     }
 
     // Track cost internally
