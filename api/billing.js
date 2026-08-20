@@ -387,6 +387,30 @@ async function handleConfirm(req, res) {
       }
     }
 
+    // Sync customer name from Stripe checkout into user_profile — same fix as in
+    // api/stripe-webhook.js (see comment there). Kept in both places since this
+    // confirm endpoint is an independent fallback path, not guaranteed to race
+    // behind the webhook.
+    const stripeCustomerName = (session?.customer_details?.name || "").trim();
+    if (stripeCustomerName) {
+      try {
+        const { data: existingProfile } = await supabase
+          .from("user_profile")
+          .select("first_name")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!existingProfile?.first_name) {
+          const firstName = stripeCustomerName.split(/\s+/)[0].slice(0, 100);
+          await supabase.from("user_profile").upsert(
+            { user_id: userId, first_name: firstName },
+            { onConflict: "user_id" }
+          );
+        }
+      } catch (e) {
+        console.warn("[billing/confirm] name sync failed:", e?.message || e);
+      }
+    }
+
     if (mode === "subscription") {
       const stripeSubscriptionId =
         typeof session.subscription === "string"
