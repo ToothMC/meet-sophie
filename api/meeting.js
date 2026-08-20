@@ -1252,18 +1252,30 @@ async function handleAnalyze(req, res) {
     }
 
     // Update analysis cost
+    // Bug fix (2026-08-20): Supabase's query builder is thenable but NOT a real Promise
+    // — it has no .catch()/.finally(). Calling .catch() directly on the chain threw
+    // "TypeError: ...rpc(...).catch is not a function", so neither the RPC call nor the
+    // fallback nested inside .catch() ever actually ran — analysis_cost_usd was silently
+    // never incremented for any meeting. Same bug class fixed in api/stripe-webhook.js
+    // on 2026-08-12. Internal cost bookkeeping only — does not affect customer token
+    // billing (that runs through separate, correctly-awaited deduct_tokens RPC calls).
     if (llmCostUsd > 0) {
-      await supabase.rpc('increment_meeting_cost', {
-        p_meeting_id: meeting_id,
-        p_cost_field: 'analysis_cost_usd',
-        p_amount: llmCostUsd,
-      }).catch(() => {
-        // Fallback: direct update
-        supabase.from("meetings")
-          .update({ analysis_cost_usd: (meeting.analysis_cost_usd || 0) + llmCostUsd })
-          .eq("id", meeting_id)
-          .then(() => {});
-      });
+      try {
+        await supabase.rpc('increment_meeting_cost', {
+          p_meeting_id: meeting_id,
+          p_cost_field: 'analysis_cost_usd',
+          p_amount: llmCostUsd,
+        });
+      } catch (e) {
+        console.warn("[meeting-analyze] increment_meeting_cost RPC failed, falling back to direct update:", e?.message || e);
+        try {
+          await supabase.from("meetings")
+            .update({ analysis_cost_usd: (meeting.analysis_cost_usd || 0) + llmCostUsd })
+            .eq("id", meeting_id);
+        } catch (e2) {
+          console.error("[meeting-analyze] fallback direct update also failed:", e2?.message || e2);
+        }
+      }
     }
 
     // Track cost internally
