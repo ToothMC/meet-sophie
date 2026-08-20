@@ -2,7 +2,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
-import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO } from "../lib/billing-constants.js";
+import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
 import { CURRENT_XI_PRIVACY_VERSION } from "../lib/xi-constants.js";
 
 // ── Resume: build structured prompt block per session type ──
@@ -242,7 +242,7 @@ export default async function handler(req, res) {
     const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
     const [subResult, usageResult, lockResult, googleIntResult] = await Promise.all([
-      supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at, trial_end").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
       supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
       supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google").eq("is_active", true).maybeSingle(),
@@ -268,7 +268,7 @@ export default async function handler(req, res) {
       console.warn("Subscription lookup error:", subResult.error.message);
     } else if (subResult.data) {
       const sub = subResult.data;
-      isPremium = !!(sub.is_active || sub.status === "active" || sub.status === "trialing");
+      isPremium = isSubscriptionActive(sub);
       plan = sub.plan || null;
     }
 

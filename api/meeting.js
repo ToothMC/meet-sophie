@@ -20,7 +20,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
-import { TOKEN_COSTS } from "../lib/billing-constants.js";
+import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
 import mammoth from "mammoth";
@@ -578,11 +578,11 @@ async function handleMessage(req, res) {
   // Load user profile for tier/prompt
   const [profRes, subRes] = await Promise.all([
     supabase.from("user_profile").select("first_name,preferred_name,preferred_addressing,preferred_pronoun,preferred_language,occupation,conversation_style").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_subscriptions").select("is_active,status,plan").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_subscriptions").select("is_active,status,plan,trial_end").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const profile = profRes.data || {};
-  const isPremium = !!(subRes.data?.is_active || subRes.data?.status === "active");
+  const isPremium = isSubscriptionActive(subRes.data);
   const plan = subRes.data?.plan || null;
   const tier = mapPlanToTier(plan, isPremium);
 

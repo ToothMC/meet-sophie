@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { listSources, decoupleSource, deleteRawData, deleteAll } from '../lib/import/source-ledger.js';
 import { TOKEN_COSTS, SECONDS_PER_TOKEN, DEFAULT_FREE_TOKENS } from '../lib/billing-constants.js';
 import { trackCost } from '../lib/ai/cost-tracker.js';
+import { isSubscriptionActive } from '../lib/billing-constants.js';
 
 export default async function handler(req, res) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -38,7 +39,7 @@ export default async function handler(req, res) {
         .select('free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance')
         .eq('user_id', user.id).maybeSingle(),
       supabase.from('user_subscriptions')
-        .select('is_active, status, plan, current_period_end')
+        .select('is_active, status, plan, current_period_end, trial_end')
         .eq('user_id', user.id).maybeSingle(),
       supabase.from('ai_cost_daily')
         .select('total_cost')
@@ -49,7 +50,7 @@ export default async function handler(req, res) {
 
     let usage = usageRes.data;
     const sub = subRes.data;
-    const active = !!(sub?.is_active || sub?.status === 'active' || sub?.status === 'trialing');
+    const active = isSubscriptionActive(sub);
 
     // Ensure user_usage row exists (new users won't have one yet)
     if (!usage) {

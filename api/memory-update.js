@@ -5,6 +5,7 @@ import { normalizeResponse } from "../lib/ai/persona-normalizer.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
 import { mapPlanToTier } from "../lib/sophie-core.js";
+import { isSubscriptionActive } from "../lib/billing-constants.js";
 import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
 import { runRecapForSession } from "../lib/memory-recap-core.js";
 import { cleanText, buildSessionTitle } from "../lib/session-title.js";
@@ -1105,6 +1106,17 @@ export default async function handler(req, res) {
     const SESSION_TYPE_MAP = { brainstorm: "brainstorm", salespitch: "sales_pitch", meeting: "meeting" };
     const sessionType = SESSION_TYPE_MAP[sessionMode] || "talk";
 
+    // Bug fix (2026-08-20): turn_count for voice sessions. Unlike text chat — which
+    // increments turn_count per exchange in api/chat.js — neither the realtime voice
+    // session nor the send_chat_note tool (api/session.js) ever touch turn_count, so it
+    // stayed at its DB default of 0 for every voice session regardless of how many turns
+    // actually happened. Derive it here from the transcript at session end. One "turn" =
+    // one completed exchange; take whichever role has more entries to stay robust if the
+    // transcript starts or ends mid-turn.
+    const voiceUserTurns = transcriptArr.filter((t) => t.role === "user").length;
+    const voiceAssistantTurns = transcriptArr.filter((t) => t.role === "assistant").length;
+    const voiceTurnCount = Math.max(voiceUserTurns, voiceAssistantTurns);
+
     const baseSession = {
       user_id: user.id,
       session_mode: sessionMode || "voice", // backward-compat
@@ -1114,6 +1126,13 @@ export default async function handler(req, res) {
       started_at: sessionStartedAt,
       ended_at: sessionEndedAt || nowIso,
       duration_seconds: secondsUsed,
+      turn_count: voiceTurnCount,
+      // Bug fix (2026-08-20): this insert path (brand-new voice session row, no prior
+      // chat_note placeholder) never set `status`, so it kept the column default
+      // ('active') forever even though ended_at/duration were already correct — the
+      // session had actually finished. Confirmed live: 326 of 358 sessions stuck on
+      // 'active' already had ended_at + a finished report, just this flag was missing.
+      status: "completed",
       has_transcript: false,
       has_output: false,
     };
@@ -1146,13 +1165,13 @@ export default async function handler(req, res) {
     ] = await Promise.all([
       supabase.from("user_relationship").select("tone_baseline, openness_level, emotional_patterns, last_interaction_summary").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_profile").select("first_name, preferred_name, preferred_addressing, preferred_pronoun, preferred_language, notes, age, occupation, conversation_style, topics_like, topics_avoid, memory_confidence, eco_mode, memory_file").eq("user_id", user.id).maybeSingle(),
-      supabase.from("user_subscriptions").select("is_active, status, plan").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_subscriptions").select("is_active, status, plan, trial_end").eq("user_id", user.id).maybeSingle(),
       supabase.from("sophie_long_term_memory").select("*").eq("user_id", user.id).maybeSingle(),
     ]);
     if (relSelErr) console.error("user_relationship select failed:", relSelErr);
     if (profSelErr) console.error("user_profile select failed:", profSelErr);
 
-    const isPremium = !!(sub?.is_active || sub?.status === "active");
+    const isPremium = isSubscriptionActive(sub);
     const tier = mapPlanToTier(sub?.plan, isPremium);
     const memConfig = TIER_MEMORY_CONFIG[tier] || TIER_MEMORY_CONFIG.free;
 
@@ -1862,6 +1881,11 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
           updateFields.primary_modality = "voice";
           updateFields.started_at = sessionStartedAt;
           updateFields.session_date = sessionEndedAt || nowIso;
+          // Bug fix (2026-08-20): same turn_count gap as the insert path below — this
+          // row started life as a chat_note placeholder (session_type='voice'), so it
+          // never got a turn_count either. Real text-chat sessions (session_type='chat')
+          // are excluded from this branch and keep their per-turn count from api/chat.js.
+          updateFields.turn_count = voiceTurnCount;
         }
         const { error: updErr } = await supabase
           .from("user_sessions")
