@@ -4157,7 +4157,9 @@ function handleVoiceTranscriptEvent(msg) {
   }
 
   // Sophie speech transcript (final)
-  if (msg?.type === "response.audio_transcript.done") {
+  // GA Realtime API (/v1/realtime/calls) renamed these to
+  // response.output_audio_transcript.*; both names are handled.
+  if (msg?.type === "response.audio_transcript.done" || msg?.type === "response.output_audio_transcript.done") {
     const full = String(msg?.transcript || msg?.text || "").trim();
     if (full) partialAssistant = full;
     return;

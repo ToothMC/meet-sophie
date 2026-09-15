@@ -126,6 +126,26 @@ main{max-width:900px;margin:0 auto;padding:16px}
 .b-inactive{background:rgba(239,68,68,.12);color:#ef4444}
 .b-free{background:rgba(255,255,255,.06);color:#7a6a5a}
 
+/* Council */
+.council-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.council-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px}
+.pill-on{background:rgba(34,197,94,.15);color:#22c55e}
+.pill-off{background:rgba(239,68,68,.12);color:#ef4444}
+.pill-hard{background:rgba(245,158,11,.12);color:#f59e0b}
+.council-btn{
+  background:none;border:1px solid rgba(255,255,255,.12);color:#e8e0d6;
+  border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;
+}
+.council-btn:hover{border-color:#c4a882;color:#c4a882}
+.council-btn:disabled{opacity:.4;cursor:default}
+.council-advisors{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px}
+.council-advisors fieldset{border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px 12px;min-width:170px}
+.council-advisors legend{font-size:10px;color:#a09080;text-transform:uppercase;letter-spacing:.05em;padding:0 4px}
+.council-advisors label{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;cursor:pointer}
+.council-msg{font-size:12px;margin:8px 0;min-height:16px}
+.council-msg.err{color:#ef4444}
+.council-msg.ok{color:#22c55e}
+
 @media(max-width:600px){
   .kpi-grid{grid-template-columns:1fr 1fr}
   .prov-grid{grid-template-columns:1fr 1fr}
@@ -162,6 +182,11 @@ main{max-width:900px;margin:0 auto;padding:16px}
     <div class="section-body">
       <div class="prov-grid" id="provGrid"></div>
     </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Council</div>
+    <div class="section-body" id="councilSection"><div style="color:#a09080;font-size:13px">Loading...</div></div>
   </div>
 
   <div class="section">
@@ -244,7 +269,7 @@ async function api(action, opts = {}) {
 
 async function loadAll() {
   try {
-    const [overview, costs, users, budgetStatus, alertsData, errorsData, funnelData] = await Promise.all([
+    const [overview, costs, users, budgetStatus, alertsData, errorsData, funnelData, councilConfig, councilRuns] = await Promise.all([
       api("overview"),
       api("costs"),
       api("users"),
@@ -252,6 +277,8 @@ async function loadAll() {
       api("alerts").catch(() => ({ alerts: [] })),
       api("errors").catch(() => ({ groups: [] })),
       api("funnel").catch(() => ({ steps: [] })),
+      api("council-config").catch(() => null),
+      api("council-runs").catch(() => null),
     ]);
     loadingEl.classList.add("hidden");
     mainContent.classList.remove("hidden");
@@ -260,6 +287,7 @@ async function loadAll() {
     renderChart(costs.daily);
     renderProviders(overview.providers, costs.providers);
     renderBudgetMonitor(budgetStatus.providers, alertsData.alerts, budgetStatus.unacknowledgedAlerts);
+    renderCouncil(councilConfig, councilRuns);
     renderFunnel(funnelData.steps);
     renderErrors(errorsData.groups);
     usersData = users.users;
@@ -370,6 +398,119 @@ function renderUsers(users) {
     <td>${fmtSec(u.remaining)}</td>
     <td><span class="badge-sm ${u.active ? "b-active" : "b-inactive"}">${u.active ? "active" : "inactive"}</span></td>
   </tr>`).join("");
+}
+
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+let councilState = null;
+
+function renderCouncil(config, runsData) {
+  const el = $("councilSection");
+  if (!config) {
+    el.innerHTML = `<div style="color:#f59e0b;font-size:13px">Council-Config nicht lesbar — Council ist aus (fail-closed). Migration ai_council_config angewendet?</div>`;
+    return;
+  }
+  councilState = config;
+  const stats = runsData?.stats || { total: 0, degradedPct: 0, invalidPct: 0, avgLatencyMs: 0, costUsd: 0, redactions: 0, byProvider: {} };
+  const runs = runsData?.runs || [];
+
+  const pill = config.hardDisabled
+    ? `<span class="council-pill pill-hard">Hard-Kill aktiv (Env)</span>`
+    : config.enabled
+      ? `<span class="council-pill pill-on">aktiv</span>`
+      : `<span class="council-pill pill-off">aus</span>`;
+
+  const advisorBox = (legend, all, selected, kind) => {
+    const keys = new Set((selected || []).map(a => `${a.provider}/${a.model}`));
+    return `<fieldset><legend>${esc(legend)}</legend>` + all.map(a => {
+      const key = `${a.provider}/${a.model}`;
+      return `<label><input type="checkbox" data-kind="${kind}" value="${esc(key)}" ${keys.has(key) ? "checked" : ""}>${esc(a.provider)}</label>`;
+    }).join("") + `</fieldset>`;
+  };
+
+  const kpi = (label, value, sub, cls = "") =>
+    `<div class="kpi ${cls}"><div class="k-label">${esc(label)}</div><div class="k-value">${esc(value)}</div><div class="k-sub">${esc(sub)}</div></div>`;
+
+  const providerCounts = Object.entries(stats.byProvider || {})
+    .sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p} ${n}`).join(" · ") || "—";
+
+  el.innerHTML =
+    `<div class="council-head">
+      ${pill}
+      <button class="council-btn" id="councilToggleBtn" ${config.hardDisabled ? "disabled" : ""}>${config.enabled ? "Council deaktivieren" : "Council aktivieren"}</button>
+      ${config.missing ? `<span style="font-size:11px;color:#f59e0b">Config-Zeile fehlt — Defaults aktiv</span>` : ""}
+    </div>
+    <div class="council-advisors">
+      ${advisorBox("Berater", config.available.advisors, config.advisors, "advisors")}
+      ${advisorBox("Berater (Eco)", config.available.ecoAdvisors, config.ecoAdvisors, "eco")}
+    </div>
+    <button class="council-btn" id="councilSaveBtn">Berater speichern</button>
+    <div class="council-msg" id="councilMsg"></div>
+    <div class="kpi-grid" style="margin:14px 0">
+      ${kpi("Läufe 7d", stats.total, providerCounts)}
+      ${kpi("Degraded", stats.degradedPct + "%", `ungültige Briefings ${stats.invalidPct}%`, stats.degradedPct > 20 ? "red" : "")}
+      ${kpi("Ø Latenz", (stats.avgLatencyMs / 1000).toFixed(1) + "s", "pro Lauf")}
+      ${kpi("Kosten 7d", "$" + Number(stats.costUsd || 0).toFixed(2), `${stats.redactions} Redaktionen`, "gold")}
+    </div>
+    <div style="overflow-x:auto">
+      <table class="user-table">
+        <thead><tr><th>Zeit</th><th>Kanal</th><th>Modus</th><th>Berater</th><th>Konsens</th><th>Status</th><th>Kosten</th><th>Latenz</th></tr></thead>
+        <tbody>${runs.length ? runs.map(r => {
+          const status = r.disabled ? `<span class="badge-sm b-free">aus</span>`
+            : r.degraded ? `<span class="badge-sm b-inactive">${esc(r.reason || "degraded")}</span>`
+            : `<span class="badge-sm b-active">ok</span>`;
+          return `<tr>
+            <td>${esc(new Date(r.at).toLocaleString("de-DE"))}</td>
+            <td>${esc(r.channel || "—")}</td>
+            <td>${esc(r.mode || "—")}</td>
+            <td>${esc((r.advisors || []).join(", ") || "—")}</td>
+            <td>${esc(r.agreement || "—")}</td>
+            <td>${status}</td>
+            <td>$${Number(r.costUsd || 0).toFixed(4)}</td>
+            <td>${Math.round((r.latencyMs || 0) / 1000)}s</td>
+          </tr>`;
+        }).join("") : `<tr><td colspan="8" style="color:#7a6a5a">Noch keine Läufe.</td></tr>`}</tbody>
+      </table>
+    </div>`;
+
+  $("councilToggleBtn")?.addEventListener("click", async () => {
+    const turningOff = councilState.enabled;
+    if (turningOff && !confirm("Council für alle Nutzer deaktivieren? Sophie antwortet dann allein, Vergleiche/Challenge sind nicht verfügbar.")) return;
+    await saveCouncil({ enabled: !councilState.enabled });
+  });
+
+  $("councilSaveBtn")?.addEventListener("click", async () => {
+    const pick = (kind, all) => all.filter(a =>
+      document.querySelector(`input[data-kind="${kind}"][value="${a.provider}/${a.model}"]`)?.checked);
+    await saveCouncil({
+      advisors: pick("advisors", councilState.available.advisors),
+      ecoAdvisors: pick("eco", councilState.available.ecoAdvisors),
+    });
+  });
+}
+
+async function saveCouncil(patch) {
+  const msg = $("councilMsg");
+  msg.className = "council-msg";
+  msg.textContent = "Speichern...";
+  try {
+    const res = await fetch("/api/admin?action=council-config", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    msg.className = "council-msg ok";
+    msg.textContent = "Gespeichert.";
+    const [config, runs] = await Promise.all([api("council-config"), api("council-runs").catch(() => null)]);
+    renderCouncil(config, runs);
+  } catch (e) {
+    msg.className = "council-msg err";
+    msg.textContent = e.message;
+  }
 }
 
 function renderBudgetMonitor(providers, alerts, unackedCount) {

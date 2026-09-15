@@ -4410,10 +4410,29 @@
       openai: "GPT", anthropic: "Claude", google: "Gemini", mistral: "Mistral",
     };
 
-    function appendBubble(role, text, providers, secondOpinion, files, searchSources) {
+    function updateTokenCounter(remaining) {
+      const tcEl = document.getElementById("tokenCounter");
+      if (!tcEl) return;
+      tcEl.textContent = remaining + " Tokens";
+      tcEl.style.display = "block";
+      if (remaining <= 5) tcEl.style.color = "#ff6b6b";
+      else if (remaining <= 15) tcEl.style.color = "#ffa94d";
+      else tcEl.style.color = "#c8d8ff";
+    }
+
+    function councilHintText(council) {
+      const n = (council?.advisors || []).length;
+      const map = { high: "weitgehender Konsens", medium: "geteilte Meinung", low: "kein Konsens" };
+      const word = map[council?.agreement];
+      if (!n || !word) return null;
+      return `${n} Berater – ${word} · Sophie hat entschieden`;
+    }
+
+    function appendBubble(role, text, providers, council, files, searchSources) {
       const wrap   = document.createElement("div");
       wrap.className = `chat-msg ${role}`;
-      if (role === "sophie" && secondOpinion) wrap.classList.add("verified");
+      const councilHint = role === "sophie" ? councilHintText(council) : null;
+      if (councilHint) wrap.classList.add("verified");
 
       // Show file attachments for user messages
       if (role === "user" && files && files.length > 0) {
@@ -4442,7 +4461,7 @@
       wrap.appendChild(bubble);
 
       // Show provider icon(s) for Sophie's responses
-      if (role === "sophie" && providers && providers.length > 0 && !secondOpinion) {
+      if (role === "sophie" && providers && providers.length > 0 && !councilHint) {
         const badgeWrap = document.createElement("div");
         badgeWrap.className = "chat-provider-badges";
         for (const p of providers) {
@@ -4459,14 +4478,11 @@
         wrap.appendChild(badgeWrap);
       }
 
-      // Show verified badge for second opinion responses
-      if (role === "sophie" && secondOpinion && secondOpinion.providers) {
+      // Council hint — advisors consulted, Sophie decided (consensus, never certainty)
+      if (councilHint) {
         const badge = document.createElement("div");
         badge.className = "chat-verified-badge";
-        const txt = document.createElement("span");
-        txt.textContent = "Verified by";
-        badge.appendChild(txt);
-        for (const p of secondOpinion.providers) {
+        for (const p of (council.advisors || [])) {
           const icon = PROVIDER_ICONS[p];
           if (icon) {
             const img = document.createElement("img");
@@ -4477,9 +4493,9 @@
             badge.appendChild(img);
           }
         }
-        const conf = document.createElement("span");
-        conf.textContent = `· Confidence ${Math.round((secondOpinion.confidence || 0) * 100)}%`;
-        badge.appendChild(conf);
+        const txt = document.createElement("span");
+        txt.textContent = councilHint;
+        badge.appendChild(txt);
         wrap.appendChild(badge);
       }
 
@@ -5127,23 +5143,16 @@
         const voiceConfirmed = !!data.voice_confirmed;
         const detectedMode   = data.detected_mode || null;
         const aiProvider     = data.provider ? [data.provider] : [];
-        const secondOpinion  = data.second_opinion || null;
+        const council        = data.council || null;
         const searchSources  = data.search_sources || null;
         turnCount++;
 
         // Update token counter
-        if (data.remaining_tokens != null) {
-          const tcEl = document.getElementById("tokenCounter");
-          tcEl.textContent = data.remaining_tokens + " Tokens";
-          tcEl.style.display = "block";
-          if (data.remaining_tokens <= 5) tcEl.style.color = "#ff6b6b";
-          else if (data.remaining_tokens <= 15) tcEl.style.color = "#ffa94d";
-          else tcEl.style.color = "#c8d8ff";
-        }
+        if (data.remaining_tokens != null) updateTokenCounter(data.remaining_tokens);
 
         if (voiceConfirmed) {
           history.push({ role: "assistant", content: reply });
-          appendBubble("sophie", reply, aiProvider, secondOpinion, null, searchSources);
+          appendBubble("sophie", reply, aiProvider, council, null, searchSources);
           saveChatState();
           goToVoiceFromChat();
           return;
@@ -5156,7 +5165,7 @@
         }
 
         history.push({ role: "assistant", content: reply });
-        appendBubble("sophie", reply, aiProvider, secondOpinion, null, searchSources);
+        appendBubble("sophie", reply, aiProvider, council, null, searchSources);
         maybeShowActionBar();
 
         // ── Import Hint: show settings link ──
@@ -5388,14 +5397,9 @@
         stopPulse();
         // Remove status bubble
         if (statusBubble && statusBubble.parentElement) statusBubble.parentElement.remove();
+        if (res.status === 503) { appendBubble("sophie", "Der Rat ist gerade nicht verfügbar — Sophie antwortet allein."); return; }
         if (!res.ok) throw new Error("Compare failed");
         const data = await res.json();
-
-        // Build compare result
-        const wrap = document.createElement("div");
-        wrap.className = "chat-msg sophie";
-        const result = document.createElement("div");
-        result.className = "chat-msg-bubble chat-compare-result";
 
         // Detect light mode
         const isLight = document.getElementById("sophieChat")?.classList.contains("foreground");
@@ -5404,53 +5408,62 @@
         const hdrColor = isLight ? "#1a1a1a" : "rgba(200,216,255,.95)";
         const borderColor = isLight ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.1)";
 
-        result.style.color = txtColor;
-        if (isLight) { result.style.background = "rgba(0,0,0,.04)"; result.style.borderColor = "rgba(0,0,0,.08)"; }
+        // Advisor answers — foreign-model output, explicitly NOT Sophie's answer.
+        // Rendered via textContent only and never pushed into the conversation.
+        const evidence = data.evidence || [];
+        if (evidence.length) {
+          const wrap = document.createElement("div");
+          wrap.className = "chat-msg sophie";
+          const result = document.createElement("div");
+          result.className = "chat-msg-bubble chat-compare-result";
+          result.style.color = txtColor;
+          if (isLight) { result.style.background = "rgba(0,0,0,.04)"; result.style.borderColor = "rgba(0,0,0,.08)"; }
 
-        // Header: fastest
-        const hdr = document.createElement("div");
-        hdr.className = "compare-header";
-        hdr.style.color = hdrColor;
-        const fIcon = PROVIDER_ICONS[data.fastest.provider];
-        if (fIcon) { const img = document.createElement("img"); img.src = fIcon; img.style.cssText = "width:12px;height:12px;"; hdr.appendChild(img); }
-        hdr.appendChild(document.createTextNode(`${PROVIDER_LABELS[data.fastest.provider] || data.fastest.provider} — ${data.fastest.latencyMs}ms`));
-        result.appendChild(hdr);
+          const hdr = document.createElement("div");
+          hdr.className = "compare-header";
+          hdr.style.color = hdrColor;
+          hdr.textContent = "Beraterantwort (Fremdmodell) — nicht Sophies Antwort";
+          result.appendChild(hdr);
 
-        // Fastest answer
-        const fBubble = document.createElement("div");
-        fBubble.style.cssText = `margin:6px 0 8px;font-size:14px;line-height:1.5;word-break:break-word;color:${txtColor}`;
-        fBubble.textContent = data.fastest.content.slice(0, 600) + (data.fastest.content.length > 600 ? "…" : "");
-        result.appendChild(fBubble);
+          for (const adv of evidence) {
+            const row = document.createElement("div");
+            row.className = "compare-provider";
+            row.style.borderTopColor = borderColor;
+            const icon = PROVIDER_ICONS[adv.provider];
+            if (icon) { const img = document.createElement("img"); img.src = icon; img.alt = adv.provider; row.appendChild(img); }
+            const label = document.createElement("span");
+            label.className = "provider-label";
+            label.style.color = hdrColor;
+            label.textContent = PROVIDER_LABELS[adv.provider] || adv.provider;
+            row.appendChild(label);
+            const diff = document.createElement("span");
+            diff.className = "compare-diff";
+            diff.style.color = subColor;
+            diff.textContent = adv.content || "";
+            row.appendChild(diff);
+            result.appendChild(row);
+          }
 
-        // Others: deviations
-        for (const other of (data.others || [])) {
-          const row = document.createElement("div");
-          row.className = "compare-provider";
-          row.style.borderTopColor = borderColor;
-          const oIcon = PROVIDER_ICONS[other.provider];
-          if (oIcon) { const img = document.createElement("img"); img.src = oIcon; img.alt = other.provider; row.appendChild(img); }
-          const label = document.createElement("span");
-          label.className = "provider-label";
-          label.style.color = hdrColor;
-          label.textContent = PROVIDER_LABELS[other.provider] || other.provider;
-          row.appendChild(label);
-          const diff = document.createElement("span");
-          diff.className = "compare-diff";
-          diff.style.color = subColor;
-          diff.textContent = other.content.slice(0, 300) + (other.content.length > 300 ? "…" : "");
-          row.appendChild(diff);
-          result.appendChild(row);
+          const cost = document.createElement("div");
+          cost.className = "chat-compare-cost";
+          cost.style.color = isLight ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.5)";
+          cost.textContent = `${evidence.length} Berater · $${(data.totalCost || 0).toFixed(4)}`;
+          result.appendChild(cost);
+
+          wrap.appendChild(result);
+          messagesEl.appendChild(wrap);
         }
 
-        // Cost
-        const cost = document.createElement("div");
-        cost.className = "chat-compare-cost";
-        cost.style.color = isLight ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.5)";
-        cost.textContent = `${data.providerCount} Provider · $${data.totalCost.toFixed(4)}`;
-        result.appendChild(cost);
-
-        wrap.appendChild(result);
-        messagesEl.appendChild(wrap);
+        // Sophie's verdict — the only part that is her answer and enters history
+        if (data.sophieVerdict) {
+          history.push({ role: "assistant", content: data.sophieVerdict });
+          appendBubble("sophie", data.sophieVerdict, [], {
+            advisors: data.advisors || [],
+            agreement: data.briefing?.agreement || null,
+          });
+          saveChatState();
+        }
+        if (data.remaining_tokens != null) updateTokenCounter(data.remaining_tokens);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       } catch (err) {
         hide(typingEl);
@@ -5502,23 +5515,35 @@
         hide(typingEl);
         stopPulse();
         if (challengeStatus && challengeStatus.parentElement) challengeStatus.parentElement.remove();
+        if (res.status === 503) { appendBubble("sophie", "Der Rat ist gerade nicht verfügbar — Sophie antwortet allein."); return; }
         if (!res.ok) throw new Error("Challenge failed");
         const data = await res.json();
 
-        // Show final synthesized answer with all provider icons
-        // NOTE: Don't push to history — challenge results are separate from conversation
-        appendBubble("sophie", data.finalAnswer, data.providers || []);
+        // Sophie's verdict is her answer — it enters the conversation
+        history.push({ role: "assistant", content: data.finalAnswer });
+        appendBubble("sophie", data.finalAnswer, [], {
+          advisors: data.advisors || data.providers || [],
+          agreement: data.briefing?.agreement || null,
+        });
+        saveChatState();
+        if (data.remaining_tokens != null) updateTokenCounter(data.remaining_tokens);
 
-        // Show meta info
         const meta = document.createElement("div");
         meta.className = "chat-msg sophie";
         const metaResult = document.createElement("div");
         metaResult.className = "chat-msg-bubble chat-compare-result";
         const cIsLight = document.getElementById("sophieChat")?.classList.contains("foreground");
         if (cIsLight) { metaResult.style.cssText = "background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08);color:#1a1a1a"; }
-        metaResult.innerHTML =
-          `<div class="compare-header" style="color:${cIsLight ? '#1a1a1a' : 'rgba(200,216,255,.95)'}">🏆 Challenge — ${data.rounds} Runden</div>` +
-          `<div class="chat-compare-cost" style="color:${cIsLight ? 'rgba(0,0,0,.45)' : 'rgba(255,255,255,.5)'}">${(data.providers || []).length} Provider · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}</div>`;
+        const mHdr = document.createElement("div");
+        mHdr.className = "compare-header";
+        mHdr.style.color = cIsLight ? "#1a1a1a" : "rgba(200,216,255,.95)";
+        mHdr.textContent = `Challenge — ${data.rounds} Runden`;
+        const mCost = document.createElement("div");
+        mCost.className = "chat-compare-cost";
+        mCost.style.color = cIsLight ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.5)";
+        mCost.textContent = `${(data.advisors || data.providers || []).length} Berater · ${data.totalLatencyMs ? Math.round(data.totalLatencyMs / 1000) + "s" : "?"} · $${(data.totalCost || 0).toFixed(4)}`;
+        metaResult.appendChild(mHdr);
+        metaResult.appendChild(mCost);
         meta.appendChild(metaResult);
         messagesEl.appendChild(meta);
         messagesEl.scrollTop = messagesEl.scrollHeight;
