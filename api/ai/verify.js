@@ -37,6 +37,15 @@ async function search(query) {
   return { text: '', sources: [] };
 }
 
+function logAttempt(supabase, userId, sessionId, meta) {
+  return supabase.from('analytics_events').insert({
+    user_id: userId || null,
+    session_id: typeof sessionId === 'string' && /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : null,
+    event_name: 'fact_check',
+    meta,
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -53,7 +62,10 @@ export default async function handler(req, res) {
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return res.status(401).json({ error: 'invalid_token' });
-  if (isRateLimited(user.id)) return res.status(200).json({ corrections: [], skipped: 'rate_limited' });
+  if (isRateLimited(user.id)) {
+    await logAttempt(supabase, user.id, null, { skipped: 'rate_limited' }).catch(() => {});
+    return res.status(200).json({ corrections: [], skipped: 'rate_limited' });
+  }
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -67,7 +79,10 @@ export default async function handler(req, res) {
     .from('user_subscriptions').select('plan, is_active, status, trial_end').eq('user_id', user.id).maybeSingle();
   const tier = isSubscriptionActive(sub) ? (sub?.plan === 'premium' ? 'premium' : 'abo') : 'free';
   try {
-    if (!(await checkDailyBudget(user.id, tier))) return res.status(200).json({ corrections: [], skipped: 'budget_cap' });
+    if (!(await checkDailyBudget(user.id, tier))) {
+      await logAttempt(supabase, user.id, body.session_id, { skipped: 'budget_cap' }).catch(() => {});
+      return res.status(200).json({ corrections: [], skipped: 'budget_cap' });
+    }
   } catch (_) {}
 
   const started = Date.now();
@@ -77,6 +92,7 @@ export default async function handler(req, res) {
     result = await verifyAnswer({ question, answer, search, onCost: e => costs.push(e) });
   } catch (e) {
     console.error('[verify] failed:', e?.message?.slice(0, 200));
+    await logAttempt(supabase, user.id, body.session_id, { skipped: 'failed', error: e?.message?.slice(0, 160) }).catch(() => {});
     return res.status(200).json({ corrections: [], skipped: 'failed' });
   }
 
@@ -87,15 +103,10 @@ export default async function handler(req, res) {
   }));
   const costUsd = costs.reduce((s, c) => s + (c.usage?.costUsd || 0), 0);
 
-  writes.push(supabase.from('analytics_events').insert({
-    user_id: user.id,
-    session_id: typeof body.session_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.session_id) ? body.session_id : null,
-    event_name: 'fact_check',
-    meta: {
-      checked: result.checked, verdicts: result.verdicts,
-      corrections: result.corrections.length,
-      costUsd: Number(costUsd.toFixed(6)), latencyMs: Date.now() - started,
-    },
+  writes.push(logAttempt(supabase, user.id, body.session_id, {
+    checked: result.checked, verdicts: result.verdicts,
+    corrections: result.corrections.length,
+    costUsd: Number(costUsd.toFixed(6)), latencyMs: Date.now() - started,
   }));
   await Promise.allSettled(writes);
 
