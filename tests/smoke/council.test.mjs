@@ -3,6 +3,7 @@
 // Run: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   assertCouncilInput, parseCouncilTag, buildCouncilContext, selectAdvisors, orderReviewerChain,
   parseBriefing, validateBriefing, sanitizeAdvisorOutput, prepareForNextProvider, formatCouncilData, agreementLabel,
@@ -115,6 +116,18 @@ test("selectAdvisors honours admin config lists", () => {
   assert.deepEqual(r.advisors.map(a => a.provider), ["anthropic", "google"]);
 });
 
+test("one synthesis attempt fits after the slowest advisor", () => {
+  // Measured in production: advisors up to ~11s (anthropic is the slow one),
+  // synthesis 9-11s. If the deadline cannot hold both, every run where the
+  // advisors are slow degrades — which is exactly what happened at 16:12.
+  const SLOWEST_ADVISOR_MS = 11000;
+  for (const channel of ["voice", "chat"]) {
+    const b = timeBudget({ mode: "quick", channel });
+    assert.ok(SLOWEST_ADVISOR_MS + b.synthesisMs <= b.totalMs,
+      `${channel}: no room for a full synthesis attempt after slow advisors`);
+  }
+});
+
 test("every phase gets enough time to actually finish", () => {
   // Regression, twice burned: both phases once ran on a 6s budget and timed out,
   // which reached the user as "council unreachable". Advisors write reasoned
@@ -131,14 +144,26 @@ test("the run deadline survives a full reviewer chain", () => {
   // Regression: per-attempt timeouts multiplied across the chain. Three
   // providers at 10s each let the synthesis phase alone reach 30s, and the
   // serverless function was killed mid-run — 504, no answer, no audit entry.
-  for (const [mode, ceiling, afterRun] of [["quick", 45000, 12000], ["deep", 60000, 12000]]) {
-    const b = timeBudget({ mode });
+  // The ceilings are read from the endpoints themselves so this cannot drift.
+  const maxDurationOf = file =>
+    Number(readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")
+      .match(/maxDuration:\s*(\d+)/)[1]) * 1000;
+
+  const cases = [
+    { mode: "quick", channel: "voice", file: "api/ai/council.js", afterRun: 0 },
+    // chat also pays for the primary answer (5s) and Sophie's formulation (12s)
+    { mode: "quick", channel: "chat", file: "api/chat.js", afterRun: 17000 },
+    { mode: "deep", channel: "chat", file: "api/ai/challenge.js", afterRun: 12000 },
+  ];
+
+  for (const { mode, channel, file, afterRun } of cases) {
+    const b = timeBudget({ mode, channel });
+    const ceiling = maxDurationOf(file);
     const chainWorstCase = b.advisorMs + REVIEWER_CHAIN.length * Math.max(b.reviewMs, b.synthesisMs);
     assert.ok(chainWorstCase >= b.totalMs,
-      `${mode}: the deadline must be the binding constraint, otherwise it is decoration`);
-    // afterRun covers Sophie's own formulation, which happens after the council returns.
+      `${mode}/${channel}: the deadline must be the binding constraint, otherwise it is decoration`);
     assert.ok(b.totalMs + afterRun + 4000 <= ceiling,
-      `${mode}: deadline + follow-up work must stay under maxDuration ${ceiling}`);
+      `${mode}/${channel}: deadline (${b.totalMs}) + follow-up (${afterRun}) must stay under ${file}'s maxDuration (${ceiling})`);
   }
 });
 
@@ -152,15 +177,14 @@ test("remainingBudget clamps to whichever is smaller: attempt or time left", () 
   assert.equal(remainingBudget(started, 26000, 8000, started + 30000), 0);
 });
 
-test("time budgets fit inside the endpoint ceilings", () => {
-  const q = timeBudget({ mode: "quick" });
-  const d = timeBudget({ mode: "deep" });
-  // voice endpoint: maxDuration 30s, council is the only work
-  assert.ok(q.advisorMs + q.synthesisMs <= 25000, "voice: leave headroom for auth, config and audit writes");
-  // chat: 5s primary answer + council + 12s for Sophie's formulation, ceiling 45s
-  assert.ok(5000 + q.advisorMs + q.synthesisMs + 12000 <= 43000, "chat must fit maxDuration 45");
-  // challenge endpoint: maxDuration 60s, three rounds plus the verdict
-  assert.ok(d.advisorMs + d.reviewMs + d.synthesisMs + 12000 <= 58000, "deep must fit maxDuration 60");
+test("phase budgets never exceed the run deadline that bounds them", () => {
+  // The deadline is the guarantee; a single phase must never be able to blow it
+  // on its own, or the run degrades before it has really tried.
+  for (const [mode, channel] of [["quick", "voice"], ["quick", "chat"], ["deep", "chat"]]) {
+    const b = timeBudget({ mode, channel });
+    assert.ok(b.advisorMs + b.synthesisMs <= b.totalMs,
+      `${mode}/${channel}: advisors + one synthesis attempt must fit the deadline`);
+  }
 });
 
 test("synthesis prompt says \"JSON\" — OpenAI's json mode refuses without it", () => {
