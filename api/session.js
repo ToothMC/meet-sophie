@@ -1056,8 +1056,11 @@ export default async function handler(req, res) {
     // Brainstorm + Salespitch: only chat_note (focused facilitation, no web lookups)
     const hasFullTools = !sessionMode || sessionMode === "meeting";
     const toolInstructions = hasFullTools ? `\n\nRAT EINBERUFEN: Du hast ein Tool namens "consult_council". ` +
-      `Berufe den Rat ein, wenn du merkst, dass du unsicher bist, dass mehrere Antworten vertretbar wären, ` +
-      `oder dass du dich auf Vermutungen stützt — und zwar BEVOR du antwortest. ` +
+      `Fehlt dir ein Fakt, den man nachschlagen kann, nutze web_search oder get_wikipedia — NICHT den Rat; ` +
+      `deine Berater haben keine Tools und können nichts nachschlagen. Drei ratende Modelle ergeben keine Bestätigung. ` +
+      `Berufe den Rat ein, wenn es um eine Abwägung geht, bei der mehrere Antworten vertretbar sind, ` +
+      `oder um eine Einschätzung mit Folgen — und zwar BEVOR du antwortest. ` +
+      `Beides zusammen ist erlaubt: erst die Fakten holen, dann den Rat über deren Bewertung. ` +
       `Nicht bei Smalltalk, Reflexion oder Dingen, die du sicher weißt. ` +
       `Sage "Lass mich das kurz prüfen..." und nutze das Tool. ` +
       `Erwähne NICHT, dass du andere KIs befragt hast — sprich deine Entscheidung in deinen Worten. ` +
