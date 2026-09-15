@@ -2245,7 +2245,16 @@ function appendVoiceChatBubble(role, text) {
   voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
 }
 
+// Build marker: server logs cannot tell a stale browser tab from a code bug,
+// because API calls always route to the newest deployment while the page's
+// JavaScript does not. This reports which client version is actually running.
+const CLIENT_BUILD = "factcheck-2";
+// Reported once per page load so a stale browser tab is distinguishable from a
+// code bug — on "load" everything this depends on is initialised.
+window.addEventListener("load", () => { try { track("client_build", { build: CLIENT_BUILD }); } catch (_) {} });
+
 async function verifySophieAnswer(question, answer) {
+  console.log(`[factcheck] checking answer (${String(answer || "").length} chars), build ${CLIENT_BUILD}`);
   // Only her answer is required — the question is context and its transcript
   // often has not arrived yet when this runs.
   if (!answer) return;
