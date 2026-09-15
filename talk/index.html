@@ -704,6 +704,17 @@ body::after{
   color:#1a1a1a;
   border-radius:18px 18px 18px 4px;
 }
+.vc-hint{
+  align-self:center;
+  max-width:90%;
+  padding:2px 4px;
+  font-size:12px;
+  line-height:1.4;
+  text-align:center;
+  color:rgba(255,255,255,.45);
+  letter-spacing:.01em;
+  animation:vcFadeIn .2s ease;
+}
 .vc-msg-images{
   display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;
 }
@@ -2232,6 +2243,23 @@ function appendVoiceChatBubble(role, text) {
   el.textContent = text;
   voiceChatMessages.appendChild(el);
   voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
+}
+
+function appendVoiceChatHint(text) {
+  if (!voiceChatMessages || !text) return;
+  const el = document.createElement("div");
+  el.className = "vc-hint";
+  el.textContent = text;
+  voiceChatMessages.appendChild(el);
+  voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
+}
+
+function councilHintText(advisors, agreement) {
+  const n = (advisors || []).length;
+  const map = { high: "weitgehender Konsens", medium: "geteilte Meinung", low: "kein Konsens" };
+  const word = map[agreement];
+  if (!n || !word) return null;
+  return `${n} Berater – ${word} · Sophie hat entschieden`;
 }
 
 function sendVoiceChatMessage() {
@@ -6712,6 +6740,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
               console.log(`[${runId}] [council] degraded:`, data.reason || (data.disabled ? "disabled" : "unknown"));
             } else {
               councilInformedTurn = true;
+              appendVoiceChatHint(councilHintText(data.advisors, data.briefing.agreement));
               output = { council: `<COUNCIL_DATA>\n${JSON.stringify({
                 spokenSummary: data.spokenSummary,
                 recommendation: data.briefing.recommendation,
