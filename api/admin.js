@@ -1,6 +1,7 @@
 // api/admin.js — Admin Dashboard API
 import { createClient } from '@supabase/supabase-js';
 import { PLAN_PRICES, DEFAULT_FREE_TOKENS, isSubscriptionActive } from '../lib/billing-constants.js';
+import { ADVISORS, ECO_ADVISORS, MIN_DISTINCT_PROVIDERS, getCouncilConfig, resolveCouncilConfig } from '../lib/ai/council-config.js';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -310,6 +311,125 @@ export default async function handler(req, res) {
       .eq('acknowledged', false);
 
     return res.status(200).json({ providers: status, unacknowledgedAlerts: count || 0 });
+  }
+
+
+  // ── Council: runs + 7-day aggregates ──
+  if (action === 'council-runs' && req.method === 'GET') {
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+
+    const { data: rows } = await supabase
+      .from('analytics_events')
+      .select('created_at, user_id, session_id, meta')
+      .eq('event_name', 'council_run')
+      .gte('created_at', weekAgo)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    const runs = (rows || []).map(r => ({
+      at: r.created_at,
+      channel: r.meta?.channel || null,
+      mode: r.meta?.mode || null,
+      advisors: r.meta?.advisors || [],
+      agreement: r.meta?.agreement || null,
+      degraded: !!r.meta?.degraded,
+      disabled: !!r.meta?.disabled,
+      invalidBriefing: !!r.meta?.invalidBriefing,
+      reason: r.meta?.reason || null,
+      redactions: Number(r.meta?.redactions || 0),
+      costUsd: Number(r.meta?.costUsd || 0),
+      latencyMs: Number(r.meta?.latencyMs || 0),
+    }));
+
+    const byProvider = {};
+    const byChannel = {};
+    const byMode = {};
+    let degraded = 0, invalid = 0, redactions = 0, cost = 0, latency = 0;
+    for (const r of runs) {
+      if (r.degraded) degraded++;
+      if (r.invalidBriefing) invalid++;
+      redactions += r.redactions;
+      cost += r.costUsd;
+      latency += r.latencyMs;
+      byChannel[r.channel || 'unknown'] = (byChannel[r.channel || 'unknown'] || 0) + 1;
+      byMode[r.mode || 'unknown'] = (byMode[r.mode || 'unknown'] || 0) + 1;
+      for (const p of r.advisors) byProvider[p] = (byProvider[p] || 0) + 1;
+    }
+
+    return res.status(200).json({
+      runs: runs.slice(0, 50),
+      stats: {
+        total: runs.length,
+        degradedPct: runs.length ? Math.round((degraded / runs.length) * 100) : 0,
+        invalidPct: runs.length ? Math.round((invalid / runs.length) * 100) : 0,
+        avgLatencyMs: runs.length ? Math.round(latency / runs.length) : 0,
+        costUsd: cost,
+        redactions,
+        byProvider, byChannel, byMode,
+      },
+    });
+  }
+
+  // ── Council: kill switch + advisor sets ──
+  if (action === 'council-config') {
+    const hardDisabled = String(process.env.COUNCIL_HARD_DISABLED || '').toLowerCase() === 'true';
+
+    if (req.method === 'GET') {
+      const config = await getCouncilConfig(supabase);
+      return res.status(200).json({
+        hardDisabled,
+        enabled: config.enabled,
+        invalid: !!config.invalid,
+        missing: !!config.error,
+        advisors: config.advisors,
+        ecoAdvisors: config.ecoAdvisors,
+        available: { advisors: ADVISORS, ecoAdvisors: ECO_ADVISORS },
+        minDistinctProviders: MIN_DISTINCT_PROVIDERS,
+      });
+    }
+
+    if (req.method === 'POST') {
+      const body = req.body || {};
+      const current = await getCouncilConfig(supabase);
+      const next = {
+        enabled: body.enabled != null ? body.enabled : current.enabled,
+        advisors: body.advisors != null ? body.advisors : current.advisors,
+        eco_advisors: body.ecoAdvisors != null ? body.ecoAdvisors : current.ecoAdvisors,
+      };
+      if (typeof next.enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be boolean' });
+
+      const resolved = resolveCouncilConfig(next);
+      if (resolved.invalid) {
+        return res.status(400).json({
+          error: `Berater müssen aus der bekannten Liste stammen und mindestens ${MIN_DISTINCT_PROVIDERS} verschiedene Provider umfassen.`,
+        });
+      }
+
+      const { error } = await supabase.from('ai_council_config').upsert({
+        id: 'global',
+        enabled: next.enabled,
+        advisors: resolved.advisors,
+        eco_advisors: resolved.ecoAdvisors,
+        updated_at: new Date().toISOString(),
+        updated_by: user.id,
+      }, { onConflict: 'id' });
+      if (error) return res.status(500).json({ error: error.message });
+
+      supabase.from('analytics_events').insert({
+        user_id: user.id,
+        event_name: 'council_config_changed',
+        meta: {
+          enabled: next.enabled,
+          advisors: resolved.advisors.map(a => a.provider),
+          eco_advisors: resolved.ecoAdvisors.map(a => a.provider),
+        },
+      }).then(() => {}, () => {});
+
+      return res.status(200).json({
+        ok: true, hardDisabled,
+        enabled: next.enabled, advisors: resolved.advisors, ecoAdvisors: resolved.ecoAdvisors,
+      });
+    }
   }
 
   // ── Errors & Friction ──
