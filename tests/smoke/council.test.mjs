@@ -182,22 +182,47 @@ test("parseBriefing accepts only a whole-response JSON object", () => {
   assert.equal(parseBriefing("").ok, false);
 });
 
-test("validateBriefing rejects missing fields, bad enums, unknown fields, bad shapes", () => {
+test("validateBriefing fails closed when there is no recommendation", () => {
   const b = validBriefing();
-  const { recommendation, ...missing } = b;
-  assert.equal(validateBriefing(missing).ok, false);
-  assert.equal(validateBriefing({ ...b, agreement: "certain" }).ok, false);
-  // Unknown fields are dropped, not rejected — the result is rebuilt whitelisted.
-  const extra = validateBriefing({ ...b, tool_calls: [{ name: "send_email" }], note: "hi" });
-  assert.equal(extra.ok, true);
-  assert.ok(!("tool_calls" in extra.briefing));
-  assert.ok(!("note" in extra.briefing));
-  assert.equal(validateBriefing({ ...b, consensus: "nicht ein array" }).ok, false);
-  assert.equal(validateBriefing({ ...b, dissent: [{ position: "x" }] }).ok, false);
+  const { recommendation, ...noRec } = b;
+  assert.equal(validateBriefing(noRec).ok, false);
+  assert.equal(validateBriefing({ ...b, recommendation: "" }).ok, false);
+  assert.equal(validateBriefing({ ...b, recommendation: null }).ok, false);
   assert.equal(validateBriefing([b]).ok, false);
+  assert.equal(validateBriefing("Ich empfehle B.").ok, false);
 });
 
-test("validateBriefing never falls back to raw text and clamps lengths", () => {
+test("validateBriefing normalises the shapes models actually return", () => {
+  // Every one of these cost a live test round before the validator stopped
+  // rejecting on shape. Substance is present in all of them.
+  const variants = [
+    { label: "lists given as plain strings", consensus: "B ist günstiger", uncertainty: "Preise unklar" },
+    { label: "dissent as strings", dissent: ["A ist sicherer"] },
+    { label: "dissent without severity", dissent: [{ position: "A ist sicherer", reason: "weniger Risiko" }] },
+    { label: "localised enums", agreement: "hoch", assessmentConfidence: "Mittel" },
+    { label: "recommendation as array", recommendation: ["Nimm B,", "es ist günstiger."] },
+    { label: "text wrapped in objects", consensus: [{ text: "B ist günstiger" }] },
+    { label: "spokenSummary missing", spokenSummary: undefined },
+    { label: "extra fields", note: "hope this helps", tool_calls: [{ name: "send_email" }] },
+  ];
+  for (const v of variants) {
+    const { label, ...patch } = v;
+    const r = validateBriefing({ ...validBriefing(), ...patch });
+    assert.equal(r.ok, true, `${label}: should be accepted`);
+    assert.equal(typeof r.briefing.recommendation, "string");
+    assert.ok(r.briefing.recommendation.length > 0, `${label}: recommendation must survive`);
+    assert.ok(Array.isArray(r.briefing.consensus), `${label}: consensus must be a list`);
+    assert.ok(["high", "medium", "low"].includes(r.briefing.agreement), `${label}: agreement enum`);
+    assert.ok(typeof r.briefing.spokenSummary === "string" && r.briefing.spokenSummary.length > 0);
+    for (const d of r.briefing.dissent) {
+      assert.equal(typeof d.position, "string");
+      assert.ok(["high", "medium", "low"].includes(d.severity));
+    }
+    assert.ok(!("note" in r.briefing) && !("tool_calls" in r.briefing), `${label}: unknown fields must not survive`);
+  }
+});
+
+test("validateBriefing clamps lengths and list sizes", () => {
   const long = validBriefing();
   long.recommendation = "r".repeat(5000);
   long.consensus = Array.from({ length: 20 }, () => "c".repeat(1000));
