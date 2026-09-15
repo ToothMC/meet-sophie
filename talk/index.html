@@ -2245,6 +2245,68 @@ function appendVoiceChatBubble(role, text) {
   voiceChatMessages.scrollTop = voiceChatMessages.scrollHeight;
 }
 
+async function verifySophieAnswer(question, answer) {
+  if (!question || !answer) return;
+  if (correctionsThisSession >= MAX_CORRECTIONS_PER_SESSION) return;
+  if (CORRECTION_MODES_EXCLUDED.includes(selectedVoiceMode)) return;
+  try {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.access_token) return;
+    const res = await fetch("/api/ai/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token },
+      body: JSON.stringify({ question, answer, session_id: sessionId || null }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const first = (data.corrections || [])[0];
+    if (!first) return;
+    console.log(`[factcheck] correction pending: "${String(first.claim).slice(0, 80)}"`);
+    pendingCorrection = first;
+    deliverCorrectionWhenQuiet();
+  } catch (e) {
+    console.warn("[factcheck] verify failed:", e?.message);
+  }
+}
+
+function deliverCorrectionWhenQuiet(attempt = 0) {
+  if (!pendingCorrection) return;
+  if (attempt > 20) {
+    console.log("[factcheck] correction expired — conversation moved on");
+    pendingCorrection = null;
+    return;
+  }
+  if (userIsSpeaking || sophieIsResponding || softEndFinalizing || limitTriggered || !dc || dc.readyState !== "open") {
+    setTimeout(() => deliverCorrectionWhenQuiet(attempt + 1), 700);
+    return;
+  }
+
+  const c = pendingCorrection;
+  pendingCorrection = null;
+  correctionsThisSession++;
+  lastTurnWasCorrection = true;
+
+  try {
+    dcSend({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text:
+          `[FAKTENPRUEFUNG] Eine deiner Aussagen hält der Recherche nicht stand: "${c.claim}". ` +
+          `Richtig ist: ${c.correction}. ` +
+          `Sag das jetzt kurz und beiläufig in deinen Worten — eine Richtigstellung, keine Entschuldigungsarie. ` +
+          `Erwähne weder eine Prüfung noch Quellen.` }],
+      },
+    });
+    dcSend({ type: "response.create" });
+    const src = (c.sources || []).map(x => { try { return new URL(x.url).hostname; } catch { return null; } }).filter(Boolean)[0];
+    appendVoiceChatHint(src ? `Richtigstellung · Quelle: ${src}` : "Richtigstellung");
+  } catch (e) {
+    console.warn("[factcheck] correction delivery failed:", e?.message);
+  }
+}
+
 function appendVoiceChatHint(text) {
   if (!voiceChatMessages || !text) return;
   const el = document.createElement("div");
@@ -2500,6 +2562,15 @@ let closingForceTimeout = null;
 let closingRetryTimeout = null;
 let closingFinishTimeout = null;
 let sophieIsResponding = false;
+// Fact check: Sophie speaks first, the check runs afterwards. Only a claim the
+// research clearly contradicts comes back, and she corrects herself once the
+// room is quiet. A late correction about a turn the user has moved past is
+// worse than none, so it expires.
+let pendingCorrection = null;
+let correctionsThisSession = 0;
+let lastTurnWasCorrection = false;
+const MAX_CORRECTIONS_PER_SESSION = 2;
+const CORRECTION_MODES_EXCLUDED = ["salespitch", "brainstorm"];
 let pendingClosing = false;
 let userIsSpeaking = false;
 let closingResponseExpected = false;
@@ -7063,6 +7134,14 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         if (final && final !== last) {
           convoLog.push({ role: "assistant", text: final });
           lastAssistantFinal = final;
+
+          // Check what she just asserted — but never check a correction itself.
+          if (lastTurnWasCorrection) {
+            lastTurnWasCorrection = false;
+          } else {
+            const lastUser = [...convoLog].reverse().find(m => m.role === "user");
+            if (lastUser) verifySophieAnswer(lastUser.text, final);
+          }
 
           // Show settings link toast if Sophie mentions import/Einstellungen
           // Suppressed in brainstorm mode — words like "import" appear in normal brainstorm language
