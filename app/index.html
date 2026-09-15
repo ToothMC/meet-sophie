@@ -626,6 +626,12 @@
       color: #ffffff;
       border-bottom-right-radius: 4px;
     }
+    .chat-council-hint {
+      margin: 3px 2px 0;
+      font-size: 11px;
+      color: #7a6a5a;
+      letter-spacing: .01em;
+    }
     .chat-typing {
       align-self: flex-start;
       display: none;
@@ -1334,13 +1340,32 @@
       chatRenderFilePreview();
     };
 
-    function appendBubble(role, text) {
+    function councilHintText(council) {
+      const n = (council?.advisors || []).length;
+      const map = { high: "weitgehender Konsens", medium: "geteilte Meinung", low: "kein Konsens" };
+      const mapEn = { high: "broad consensus", medium: "mixed views", low: "no consensus" };
+      const isDe = (currentLang || "de") === "de";
+      const word = (isDe ? map : mapEn)[council?.agreement];
+      if (!n || !word) return null;
+      return isDe
+        ? `${n} Berater – ${word} · Sophie hat entschieden`
+        : `${n} advisors – ${word} · Sophie decided`;
+    }
+
+    function appendBubble(role, text, council) {
       const wrap = document.createElement("div");
       wrap.className = `chat-msg ${role}`;
       const bubble = document.createElement("div");
       bubble.className = "chat-msg-bubble";
       bubble.textContent = text || "";
       wrap.appendChild(bubble);
+      const hint = role === "sophie" ? councilHintText(council) : null;
+      if (hint) {
+        const hintEl = document.createElement("div");
+        hintEl.className = "chat-council-hint";
+        hintEl.textContent = hint;
+        wrap.appendChild(hintEl);
+      }
       chatMessages.appendChild(wrap);
       chatMessages.scrollTop = chatMessages.scrollHeight;
       return bubble;
@@ -1457,7 +1482,7 @@
         chatTyping.classList.remove("visible");
 
         if (result?.reply) {
-          appendBubble("sophie", result.reply);
+          appendBubble("sophie", result.reply, result.council || null);
           chatHistory.push({ role: "assistant", content: result.reply });
           if (result.session_id) chatSessionId = result.session_id;
           // Messages now persisted server-side via RPC in /api/chat
