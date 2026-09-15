@@ -184,6 +184,15 @@ test("shouldRunCouncil: hard env kill beats DB config; missing config fails clos
   assert.equal(shouldRunCouncil({ env: {}, config: { enabled: "true" } }), false);
 });
 
+test("shouldRunCouncil: the deployed env value is the string \"false\" — must not disable", () => {
+  // Vercel stores env vars as strings. "false" means "switch present, not armed".
+  assert.equal(shouldRunCouncil({ env: { COUNCIL_HARD_DISABLED: "false" }, config: { enabled: true } }), true);
+  assert.equal(shouldRunCouncil({ env: { COUNCIL_HARD_DISABLED: "" }, config: { enabled: true } }), true);
+  assert.equal(shouldRunCouncil({ env: { COUNCIL_HARD_DISABLED: "TRUE" }, config: { enabled: true } }), false);
+  // Armed env kill beats an enabled DB switch, and never re-enables a disabled one.
+  assert.equal(shouldRunCouncil({ env: { COUNCIL_HARD_DISABLED: "false" }, config: { enabled: false } }), false);
+});
+
 test("resolveCouncilConfig drops unknown providers and falls back below 2 distinct providers", () => {
   const r = resolveCouncilConfig({ enabled: true, advisors: [{ provider: "evil", model: "x" }, ADVISORS[0]], eco_advisors: ECO_ADVISORS });
   assert.equal(r.enabled, true);
