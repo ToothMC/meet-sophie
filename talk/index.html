@@ -2440,6 +2440,10 @@ let audioSource = null;
 // selectedVoiceMode declared above (before mode-pill handlers)
 
 let convoLog = [];
+// True while Sophie is answering a turn in which her council was consulted.
+// Council-informed turns may not execute real actions on an earlier blanket
+// approval — the user has to confirm the concrete action in a new turn.
+let councilInformedTurn = false;
 let partialAssistant = "";
 const userTranscriptBuffer = new Map();
 let lastAssistantFinal = "";
@@ -5926,12 +5930,12 @@ function attachChannel(ch) {
           }
         }, {
           type: "function",
-          name: "deep_research",
-          description: "Query multiple AI models (Claude, Gemini, Mistral) in parallel to get diverse perspectives on a question. Use when the user asks complex questions, needs fact-checking, a second opinion, or deeper analysis. The result contains answers from all available AI providers.",
+          name: "consult_council",
+          description: "Consult Sophie's council of independent AI models for a complex, contested or high-stakes question. Use only when independent perspectives materially improve the answer and the gain outweighs latency and cost. Returns advisory data only — you decide.",
           parameters: {
             type: "object",
             properties: {
-              question: { type: "string", description: "The question or topic to research across AI models" },
+              question: { type: "string", description: "The question to put to the council" },
               context: { type: "string", description: "Optional additional context from the conversation" }
             },
             required: ["question"]
@@ -6371,6 +6375,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
       if (msg?.type === "input_audio_buffer.speech_started") {
         hideReadyStatus();
+        councilInformedTurn = false;
         userIsSpeaking = true;
         cs.metrics.userAudioDetected = true;
         // Fade out Sophie's voice when user starts speaking (smooth to avoid click/pop)
@@ -6669,65 +6674,67 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
-      // ── deep_research Tool Call Handler ──
-      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "deep_research") {
+      // ── consult_council Tool Call Handler ──
+      // The council only advises: Sophie receives a briefing as untrusted data
+      // and speaks her own decision. Raw advisor answers never reach her.
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "consult_council") {
         try {
           const args = JSON.parse(msg.arguments || "{}");
-          console.log(`[${runId}] [research] deep_research called:`, args.question?.slice(0, 80));
+          console.log(`[${runId}] [council] consult_council called:`, args.question?.slice(0, 80));
           showResearchIndicator();
 
-          // Build messages from conversation log for the compare endpoint
-          const researchMessages = [
-            ...convoLog.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text })),
-            { role: "user", content: args.question + (args.context ? "\n\nKontext: " + args.context : "") },
-          ];
-
-          // Call compare endpoint (queries all providers in parallel)
-          const researchHeaders = { "Content-Type": "application/json" };
+          const councilHeaders = { "Content-Type": "application/json" };
           try {
             const { data: { session: authSession } } = await supabase.auth.getSession();
-            if (authSession?.access_token) researchHeaders["Authorization"] = "Bearer " + authSession.access_token;
+            if (authSession?.access_token) councilHeaders["Authorization"] = "Bearer " + authSession.access_token;
           } catch (_) {}
 
-          const compareRes = await fetch("/api/ai/compare", {
+          const contextTail = convoLog.slice(-6)
+            .map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.text}`)
+            .join("\n\n").slice(-2000);
+
+          const councilRes = await fetch("/api/ai/council", {
             method: "POST",
-            headers: researchHeaders,
+            headers: councilHeaders,
             body: JSON.stringify({
-              messages: researchMessages,
-              priorAnswer: null,
-              userId: null,
+              question: String(args.question || "").slice(0, 2000),
+              context: (args.context ? String(args.context).slice(0, 500) + "\n\n" : "") + contextTail,
+              session_id: sessionId || null,
+              channel: "voice",
             }),
           });
 
-          let resultText = "";
-          if (compareRes.ok) {
-            const data = await compareRes.json();
-            // Build a concise summary of all provider answers
-            const parts = [];
-            if (data.fastest) {
-              parts.push(`[Schnellste Antwort — ${data.fastest.provider}]:\n${data.fastest.content}`);
+          let output;
+          if (councilRes.ok) {
+            const data = await councilRes.json();
+            if (data.degraded || data.disabled || !data.briefing) {
+              output = { council: null, note: "Dein Rat ist gerade nicht erreichbar — antworte selbst, aus eigenem Wissen." };
+              console.log(`[${runId}] [council] degraded:`, data.reason || (data.disabled ? "disabled" : "unknown"));
+            } else {
+              councilInformedTurn = true;
+              output = { council: `<COUNCIL_DATA>\n${JSON.stringify({
+                spokenSummary: data.spokenSummary,
+                recommendation: data.briefing.recommendation,
+                dissent: data.briefing.dissent,
+                agreement: data.briefing.agreement,
+              })}\n</COUNCIL_DATA>` };
+              console.log(`[${runId}] [council] briefing from ${(data.advisors || []).join(",")}`);
             }
-            for (const other of (data.others || [])) {
-              parts.push(`[${other.provider}]:\n${other.content}`);
-            }
-            resultText = parts.join("\n\n---\n\n");
-            console.log(`[${runId}] [research] got ${data.providerCount} provider answers`);
           } else {
-            resultText = "Recherche nicht verfügbar — antworte mit deinem eigenen Wissen.";
-            console.log(`[${runId}] [research] compare failed:`, compareRes.status);
+            output = { council: null, note: "Dein Rat ist gerade nicht erreichbar — antworte selbst, aus eigenem Wissen." };
+            console.log(`[${runId}] [council] request failed:`, councilRes.status);
           }
 
           hideResearchIndicator();
-          // Return result to Sophie — she'll incorporate it into her spoken response
           dcSend({ type: "conversation.item.create", item: {
-            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ research: resultText })
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify(output)
           }});
           dcSend({ type: "response.create" });
         } catch (e) {
           hideResearchIndicator();
-          console.error(`[${runId}] [research] error:`, e);
+          console.error(`[${runId}] [council] error:`, e);
           dcSend({ type: "conversation.item.create", item: {
-            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Research failed" })
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ council: null, note: "Dein Rat ist gerade nicht erreichbar — antworte selbst." })
           }});
           dcSend({ type: "response.create" });
         }
@@ -6781,6 +6788,18 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       // ── Realtime Tools: Weather, Search, News ──
       if (msg?.type === "response.function_call_arguments.done" &&
           ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures", "get_calendar_events", "create_calendar_event", "update_calendar_event", "delete_calendar_event", "search_contacts", "search_emails", "read_email", "send_email", "search_places", "get_route"].includes(msg?.name)) {
+        // Human authority: an action informed by the council needs a fresh,
+        // explicit confirmation — an earlier blanket approval does not count.
+        if (councilInformedTurn && ["create_calendar_event", "update_calendar_event", "delete_calendar_event", "send_email"].includes(msg.name)) {
+          console.log(`[${runId}] [council] blocked ${msg.name} — confirmation required after council`);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id,
+            output: JSON.stringify({ ok: false, error: "confirmation_required", reason: "council_informed" }),
+          }});
+          dcSend({ type: "response.create" });
+          return;
+        }
+
         try {
           const args = JSON.parse(msg.arguments || "{}");
           const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures", get_calendar_events: "calendar", create_calendar_event: "calendar_create", update_calendar_event: "calendar_update", delete_calendar_event: "calendar_delete", search_contacts: "contacts", search_emails: "gmail_search", read_email: "gmail_read", send_email: "gmail_send", search_places: "places", get_route: "route" };
