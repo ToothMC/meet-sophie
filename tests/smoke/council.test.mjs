@@ -10,7 +10,8 @@ import {
 } from "../../lib/ai/council.js";
 import {
   ADVISORS, ECO_ADVISORS, REVIEWER_CHAIN, QUICK_REVIEWER_CHAIN, ECO_REVIEWER_CHAIN,
-  LIMITS, TIMEOUTS, ADVISOR_MAX_TOKENS, shouldRunCouncil, resolveCouncilConfig, pickReviewerChain, timeBudget,
+  LIMITS, TIMEOUTS, ADVISOR_MAX_TOKENS, REVIEWER_MAX_TOKENS, maxBriefingChars, BRIEFING_LIMITS,
+  shouldRunCouncil, resolveCouncilConfig, pickReviewerChain, timeBudget,
 } from "../../lib/ai/council-config.js";
 
 const validBriefing = () => ({
@@ -147,6 +148,21 @@ test("synthesis prompt says \"JSON\" — OpenAI's json mode refuses without it",
   }
 });
 
+test("the write budget covers the largest briefing the schema allows", () => {
+  // Regression: the schema permitted ~10k characters while synthesis could only
+  // write 1500 tokens, so the JSON arrived truncated mid-string as not_json.
+  const worstCaseTokens = maxBriefingChars() / 2.5; // German is ~2.5 chars/token
+  assert.ok(REVIEWER_MAX_TOKENS >= worstCaseTokens,
+    `write budget ${REVIEWER_MAX_TOKENS} must cover worst case ${Math.round(worstCaseTokens)}`);
+});
+
+test("synthesis prompt asks for brevity and English enum values", () => {
+  const all = buildSynthesisPrompt({ question: "Q", answers: [{ provider: "google", text: "A" }], review: null })
+    .map(m => m.content).join(" ");
+  assert.match(all, /knapp|kurz/i, "must ask for short entries");
+  assert.match(all, /high\|medium\|low/, "enum values must be pinned to English");
+});
+
 test("advisor completions stay short enough to come back in time", () => {
   assert.ok(ADVISOR_MAX_TOKENS <= 600, "long advisor answers only buy latency — evidence is clipped to 400 chars anyway");
 });
@@ -228,9 +244,9 @@ test("validateBriefing clamps lengths and list sizes", () => {
   long.consensus = Array.from({ length: 20 }, () => "c".repeat(1000));
   const r = validateBriefing(long);
   assert.equal(r.ok, true);
-  assert.equal(r.briefing.recommendation.length, 1200);
-  assert.equal(r.briefing.consensus.length, 6);
-  assert.equal(r.briefing.consensus[0].length, 300);
+  assert.equal(r.briefing.recommendation.length, BRIEFING_LIMITS.recommendation);
+  assert.equal(r.briefing.consensus.length, BRIEFING_LIMITS.listItems);
+  assert.equal(r.briefing.consensus[0].length, BRIEFING_LIMITS.listItem);
   assert.ok(!("raw" in r.briefing));
 });
 
