@@ -5,7 +5,8 @@ import { runCouncil } from '../../lib/ai/council.js';
 import { isSubscriptionActive } from '../../lib/billing-constants.js';
 import { LIMITS } from '../../lib/ai/council-config.js';
 
-export const config = { maxDuration: 30 };
+// 45s gives the 26s run budget room for auth, config and the audit writes.
+export const config = { maxDuration: 45 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
