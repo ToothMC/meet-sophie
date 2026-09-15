@@ -9,7 +9,7 @@ import {
 } from "../../lib/ai/council.js";
 import {
   ADVISORS, ECO_ADVISORS, REVIEWER_CHAIN, QUICK_REVIEWER_CHAIN, ECO_REVIEWER_CHAIN,
-  LIMITS, TIMEOUTS, shouldRunCouncil, resolveCouncilConfig, pickReviewerChain, timeBudget,
+  LIMITS, TIMEOUTS, ADVISOR_MAX_TOKENS, shouldRunCouncil, resolveCouncilConfig, pickReviewerChain, timeBudget,
 } from "../../lib/ai/council-config.js";
 
 const validBriefing = () => ({
@@ -113,20 +113,31 @@ test("selectAdvisors honours admin config lists", () => {
   assert.deepEqual(r.advisors.map(a => a.provider), ["anthropic", "google"]);
 });
 
-test("synthesis gets more time than a single advisor reply", () => {
-  // Regression: synthesis originally shared the 6s advisor timeout and always
-  // timed out, which surfaced to the user as "council unreachable".
-  const quick = timeBudget({ mode: "quick" });
-  const deep = timeBudget({ mode: "deep" });
-  assert.ok(quick.synthesisMs > quick.advisorMs, "quick synthesis must exceed advisor budget");
-  assert.ok(deep.synthesisMs > deep.advisorMs, "deep synthesis must exceed advisor budget");
-  assert.ok(quick.synthesisMs >= 10000);
-  assert.equal(quick.advisorMs, TIMEOUTS.advisorMs);
+test("every phase gets enough time to actually finish", () => {
+  // Regression, twice burned: both phases once ran on a 6s budget and timed out,
+  // which reached the user as "council unreachable". Advisors write reasoned
+  // prose, synthesis reshapes it into JSON on fast models — both need >= 10s.
+  for (const mode of ["quick", "deep"]) {
+    const b = timeBudget({ mode });
+    assert.ok(b.advisorMs >= 10000, `${mode}: advisors need at least 10s`);
+    assert.ok(b.synthesisMs >= 10000, `${mode}: synthesis needs at least 10s`);
+  }
+  assert.equal(timeBudget({ mode: "quick" }).advisorMs, TIMEOUTS.advisorMs);
 });
 
-test("quick mode fits inside the voice endpoint's 30s ceiling", () => {
+test("time budgets fit inside the endpoint ceilings", () => {
   const q = timeBudget({ mode: "quick" });
-  assert.ok(q.advisorMs + q.synthesisMs <= 25000, "leave headroom for auth, config and audit writes");
+  const d = timeBudget({ mode: "deep" });
+  // voice endpoint: maxDuration 30s, council is the only work
+  assert.ok(q.advisorMs + q.synthesisMs <= 25000, "voice: leave headroom for auth, config and audit writes");
+  // chat: 5s primary answer + council + 12s for Sophie's formulation, ceiling 45s
+  assert.ok(5000 + q.advisorMs + q.synthesisMs + 12000 <= 43000, "chat must fit maxDuration 45");
+  // challenge endpoint: maxDuration 60s, three rounds plus the verdict
+  assert.ok(d.advisorMs + d.reviewMs + d.synthesisMs + 12000 <= 58000, "deep must fit maxDuration 60");
+});
+
+test("advisor completions stay short enough to come back in time", () => {
+  assert.ok(ADVISOR_MAX_TOKENS <= 600, "long advisor answers only buy latency — evidence is clipped to 400 chars anyway");
 });
 
 test("pickReviewerChain: fast models for quick, thorough for deep, eco stays eco", () => {
