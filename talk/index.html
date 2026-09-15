@@ -7139,8 +7139,11 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           if (lastTurnWasCorrection) {
             lastTurnWasCorrection = false;
           } else {
+            // The user's transcript arrives asynchronously and often lags behind
+            // this event — waiting for it would skip the first turn entirely.
+            // The claims to check are in her answer; the question is only context.
             const lastUser = [...convoLog].reverse().find(m => m.role === "user");
-            if (lastUser) verifySophieAnswer(lastUser.text, final);
+            verifySophieAnswer(lastUser?.text || "", final);
           }
 
           // Show settings link toast if Sophie mentions import/Einstellungen

@@ -118,6 +118,18 @@ test("secrets in the answer never reach the checking model", async () => {
   assert.ok(!all.includes("Sommer2026!"), "password must be redacted");
 });
 
+test("works without the user's question — the claims are in her answer", async () => {
+  // Regression: the voice client required the user transcript, which arrives
+  // asynchronously and lags, so the first turn of a session was never checked.
+  const { complete, search, seen } = stub({
+    claims: [{ claim: "Die DSGVO gilt seit 2016", query: "DSGVO Inkrafttreten" }],
+    verdicts: { "Die DSGVO gilt seit 2016": { verdict: "contradicted", correction: "Sie gilt seit 25. Mai 2018." } },
+  });
+  const r = await verifyAnswer({ question: "", answer: "Die DSGVO gilt seit 2016.", search, complete });
+  assert.equal(r.corrections.length, 1);
+  assert.ok(!seen.prompts[0].includes("FRAGE DES NUTZERS"), "no empty question block in the prompt");
+});
+
 test("a failing detector degrades to silence, not to an error", async () => {
   const boom = async () => { throw new Error("provider down"); };
   const r = await verifyAnswer({ question: "F", answer: "Irgendeine Aussage.", search: async () => ({ text: "x" }), complete: boom });
