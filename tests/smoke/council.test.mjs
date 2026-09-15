@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   assertCouncilInput, parseCouncilTag, buildCouncilContext, selectAdvisors, orderReviewerChain,
   parseBriefing, validateBriefing, sanitizeAdvisorOutput, prepareForNextProvider, formatCouncilData, agreementLabel,
+  buildSynthesisPrompt,
 } from "../../lib/ai/council.js";
 import {
   ADVISORS, ECO_ADVISORS, REVIEWER_CHAIN, QUICK_REVIEWER_CHAIN, ECO_REVIEWER_CHAIN,
@@ -136,8 +137,23 @@ test("time budgets fit inside the endpoint ceilings", () => {
   assert.ok(d.advisorMs + d.reviewMs + d.synthesisMs + 12000 <= 58000, "deep must fit maxDuration 60");
 });
 
+test("synthesis prompt says \"JSON\" — OpenAI's json mode refuses without it", () => {
+  const msgs = buildSynthesisPrompt({ question: "Q", answers: [{ provider: "google", text: "A" }], review: null });
+  const all = msgs.map(m => m.content).join(" ");
+  assert.match(all, /json/i);
+  // And it must name every field the validator requires, or the model cannot comply.
+  for (const f of ["recommendation", "consensus", "dissent", "uncertainty", "criticalAssumptions", "agreement", "assessmentConfidence", "spokenSummary"]) {
+    assert.ok(all.includes(f), `synthesis prompt must name ${f}`);
+  }
+});
+
 test("advisor completions stay short enough to come back in time", () => {
   assert.ok(ADVISOR_MAX_TOKENS <= 600, "long advisor answers only buy latency — evidence is clipped to 400 chars anyway");
+});
+
+test("quick reviewer chain leads with a provider that has native JSON mode", () => {
+  // Regression: the synthesis came back wrapped in prose and failed as not_json.
+  assert.ok(["google", "openai"].includes(QUICK_REVIEWER_CHAIN[0].provider));
 });
 
 test("pickReviewerChain: fast models for quick, thorough for deep, eco stays eco", () => {
@@ -171,7 +187,11 @@ test("validateBriefing rejects missing fields, bad enums, unknown fields, bad sh
   const { recommendation, ...missing } = b;
   assert.equal(validateBriefing(missing).ok, false);
   assert.equal(validateBriefing({ ...b, agreement: "certain" }).ok, false);
-  assert.equal(validateBriefing({ ...b, tool_calls: [] }).ok, false);
+  // Unknown fields are dropped, not rejected — the result is rebuilt whitelisted.
+  const extra = validateBriefing({ ...b, tool_calls: [{ name: "send_email" }], note: "hi" });
+  assert.equal(extra.ok, true);
+  assert.ok(!("tool_calls" in extra.briefing));
+  assert.ok(!("note" in extra.briefing));
   assert.equal(validateBriefing({ ...b, consensus: "nicht ein array" }).ok, false);
   assert.equal(validateBriefing({ ...b, dissent: [{ position: "x" }] }).ok, false);
   assert.equal(validateBriefing([b]).ok, false);
