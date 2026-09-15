@@ -2246,7 +2246,9 @@ function appendVoiceChatBubble(role, text) {
 }
 
 async function verifySophieAnswer(question, answer) {
-  if (!question || !answer) return;
+  // Only her answer is required — the question is context and its transcript
+  // often has not arrived yet when this runs.
+  if (!answer) return;
   if (correctionsThisSession >= MAX_CORRECTIONS_PER_SESSION) return;
   if (CORRECTION_MODES_EXCLUDED.includes(selectedVoiceMode)) return;
   try {
