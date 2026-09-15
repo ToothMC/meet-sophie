@@ -1250,16 +1250,21 @@ function onDataChannelMessage(e) {
       break;
     }
 
+    // GA Realtime API (/v1/realtime/calls) renamed the transcript events to
+    // response.output_audio_transcript.*; both names are handled.
     case "response.audio.delta":
+    case "response.output_audio.delta":
     case "response.audio_transcript.delta":
+    case "response.output_audio_transcript.delta":
       // Silence-Clock laufend frisch halten, solange Sophie spricht.
       lastVoiceAt = Date.now();
       // Transcript-Stream fuer Chat-Log sammeln
-      if (msg.type === "response.audio_transcript.delta" && typeof msg.delta === "string") {
+      if (msg.type.endsWith("audio_transcript.delta") && typeof msg.delta === "string") {
         currentAssistantText += msg.delta;
       }
       break;
 
+    case "response.output_audio_transcript.done":
     case "response.audio_transcript.done": {
       const t = String(msg.transcript || currentAssistantText || "").trim();
       if (t) {

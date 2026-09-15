@@ -1851,7 +1851,7 @@ function attachChannel(ch) {
         }
       }
 
-      if (msg?.type === "response.audio_transcript.delta") {
+      if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) {
           partialAssistant += chunk;
@@ -1860,7 +1860,7 @@ function attachChannel(ch) {
         return;
       }
 
-      if (msg?.type === "response.audio_transcript.done") {
+      if (msg?.type === "response.audio_transcript.done" || msg?.type === "response.output_audio_transcript.done") {
         const full = String(msg?.transcript || msg?.text || "").trim();
         if (full) {
           partialAssistant = full;

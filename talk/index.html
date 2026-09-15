@@ -7064,7 +7064,10 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
-      if (msg?.type === "response.audio_transcript.delta") {
+      // The GA Realtime API (/v1/realtime/calls) renamed these to
+      // response.output_audio_transcript.*. Both names are handled so the
+      // transcript survives the migration in either direction.
+      if (msg?.type === "response.audio_transcript.delta" || msg?.type === "response.output_audio_transcript.delta") {
         const chunk = String(msg?.delta || "");
         if (chunk) {
           // First transcript delta = Sophie is actually speaking now
@@ -7079,7 +7082,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
-      if (msg?.type === "response.audio_transcript.done") {
+      if (msg?.type === "response.audio_transcript.done" || msg?.type === "response.output_audio_transcript.done") {
         const full = String(msg?.transcript || msg?.text || "").trim();
         if (full) {
           partialAssistant = full;
