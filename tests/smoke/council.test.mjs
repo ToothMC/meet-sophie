@@ -10,7 +10,7 @@ import {
 } from "../../lib/ai/council.js";
 import {
   ADVISORS, ECO_ADVISORS, REVIEWER_CHAIN, QUICK_REVIEWER_CHAIN, ECO_REVIEWER_CHAIN,
-  LIMITS, TIMEOUTS, ADVISOR_MAX_TOKENS, REVIEWER_MAX_TOKENS, maxBriefingChars, BRIEFING_LIMITS,
+  LIMITS, TIMEOUTS, ADVISOR_MAX_TOKENS, REVIEWER_MAX_TOKENS, maxBriefingChars, BRIEFING_LIMITS, remainingBudget,
   shouldRunCouncil, resolveCouncilConfig, pickReviewerChain, timeBudget,
 } from "../../lib/ai/council-config.js";
 
@@ -125,6 +125,31 @@ test("every phase gets enough time to actually finish", () => {
     assert.ok(b.synthesisMs >= 10000, `${mode}: synthesis needs at least 10s`);
   }
   assert.equal(timeBudget({ mode: "quick" }).advisorMs, TIMEOUTS.advisorMs);
+});
+
+test("the run deadline survives a full reviewer chain", () => {
+  // Regression: per-attempt timeouts multiplied across the chain. Three
+  // providers at 10s each let the synthesis phase alone reach 30s, and the
+  // serverless function was killed mid-run — 504, no answer, no audit entry.
+  for (const [mode, ceiling, afterRun] of [["quick", 45000, 12000], ["deep", 60000, 12000]]) {
+    const b = timeBudget({ mode });
+    const chainWorstCase = b.advisorMs + REVIEWER_CHAIN.length * Math.max(b.reviewMs, b.synthesisMs);
+    assert.ok(chainWorstCase >= b.totalMs,
+      `${mode}: the deadline must be the binding constraint, otherwise it is decoration`);
+    // afterRun covers Sophie's own formulation, which happens after the council returns.
+    assert.ok(b.totalMs + afterRun + 4000 <= ceiling,
+      `${mode}: deadline + follow-up work must stay under maxDuration ${ceiling}`);
+  }
+});
+
+test("remainingBudget clamps to whichever is smaller: attempt or time left", () => {
+  const started = 1_000_000;
+  // Plenty of time left → the per-attempt budget governs.
+  assert.equal(remainingBudget(started, 26000, 8000, started + 1000), 8000);
+  // Near the deadline → the remaining time governs.
+  assert.equal(remainingBudget(started, 26000, 8000, started + 22000), 4000);
+  // Past the deadline → nothing left, never negative.
+  assert.equal(remainingBudget(started, 26000, 8000, started + 30000), 0);
 });
 
 test("time budgets fit inside the endpoint ceilings", () => {
