@@ -8,7 +8,8 @@ import {
   parseBriefing, validateBriefing, sanitizeAdvisorOutput, prepareForNextProvider, formatCouncilData, agreementLabel,
 } from "../../lib/ai/council.js";
 import {
-  ADVISORS, ECO_ADVISORS, REVIEWER_CHAIN, LIMITS, shouldRunCouncil, resolveCouncilConfig,
+  ADVISORS, ECO_ADVISORS, REVIEWER_CHAIN, QUICK_REVIEWER_CHAIN, ECO_REVIEWER_CHAIN,
+  LIMITS, TIMEOUTS, shouldRunCouncil, resolveCouncilConfig, pickReviewerChain, timeBudget,
 } from "../../lib/ai/council-config.js";
 
 const validBriefing = () => ({
@@ -110,6 +111,31 @@ test("selectAdvisors honours admin config lists", () => {
   const config = { advisors: [ADVISORS[1], ADVISORS[2]], ecoAdvisors: ECO_ADVISORS };
   const r = selectAdvisors({ excludeProvider: "mistral", config });
   assert.deepEqual(r.advisors.map(a => a.provider), ["anthropic", "google"]);
+});
+
+test("synthesis gets more time than a single advisor reply", () => {
+  // Regression: synthesis originally shared the 6s advisor timeout and always
+  // timed out, which surfaced to the user as "council unreachable".
+  const quick = timeBudget({ mode: "quick" });
+  const deep = timeBudget({ mode: "deep" });
+  assert.ok(quick.synthesisMs > quick.advisorMs, "quick synthesis must exceed advisor budget");
+  assert.ok(deep.synthesisMs > deep.advisorMs, "deep synthesis must exceed advisor budget");
+  assert.ok(quick.synthesisMs >= 10000);
+  assert.equal(quick.advisorMs, TIMEOUTS.advisorMs);
+});
+
+test("quick mode fits inside the voice endpoint's 30s ceiling", () => {
+  const q = timeBudget({ mode: "quick" });
+  assert.ok(q.advisorMs + q.synthesisMs <= 25000, "leave headroom for auth, config and audit writes");
+});
+
+test("pickReviewerChain: fast models for quick, thorough for deep, eco stays eco", () => {
+  assert.deepEqual(pickReviewerChain({ mode: "quick" }), QUICK_REVIEWER_CHAIN);
+  assert.deepEqual(pickReviewerChain({ mode: "deep" }), REVIEWER_CHAIN);
+  assert.deepEqual(pickReviewerChain({ mode: "quick", isEco: true }), ECO_REVIEWER_CHAIN);
+  assert.deepEqual(pickReviewerChain({ mode: "deep", isEco: true }), ECO_REVIEWER_CHAIN);
+  // Every chain entry must be priceable, or cost tracking silently logs $0.
+  assert.ok(QUICK_REVIEWER_CHAIN.every(r => r.provider && r.model));
 });
 
 test("orderReviewerChain prefers a provider other than Sophie's and skips down ones", () => {

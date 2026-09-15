@@ -61,7 +61,9 @@ async function persistChatMessages(supabase, sessionId, userText, assistantText,
   }
 }
 
-export const config = { maxDuration: 30 };
+// 45s matches vercel.json. A council turn chains primary answer → advisors →
+// synthesis → Sophie's formulation, which does not fit in 30s.
+export const config = { maxDuration: 45 };
 
 const FREE_TURNS_LIMIT = 10;
 
