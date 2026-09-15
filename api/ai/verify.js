@@ -37,13 +37,21 @@ async function search(query) {
   return { text: '', sources: [] };
 }
 
-function logAttempt(supabase, userId, sessionId, meta) {
-  return supabase.from('analytics_events').insert({
-    user_id: userId || null,
-    session_id: typeof sessionId === 'string' && /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : null,
-    event_name: 'fact_check',
-    meta,
-  });
+// async on purpose: a Supabase query builder is thenable but has no .catch(),
+// so returning it and calling .catch() on it throws a TypeError before the
+// caller's next statement runs. That once skipped the budget gate entirely.
+async function logAttempt(supabase, userId, sessionId, meta) {
+  try {
+    const { error } = await supabase.from('analytics_events').insert({
+      user_id: userId || null,
+      session_id: typeof sessionId === 'string' && /^[0-9a-f-]{36}$/i.test(sessionId) ? sessionId : null,
+      event_name: 'fact_check',
+      meta,
+    });
+    if (error) console.warn('[verify] log failed:', error.message?.slice(0, 160));
+  } catch (e) {
+    console.warn('[verify] log threw:', e?.message?.slice(0, 160));
+  }
 }
 
 export default async function handler(req, res) {
@@ -63,7 +71,7 @@ export default async function handler(req, res) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return res.status(401).json({ error: 'invalid_token' });
   if (isRateLimited(user.id)) {
-    await logAttempt(supabase, user.id, null, { skipped: 'rate_limited' }).catch(() => {});
+    await logAttempt(supabase, user.id, null, { skipped: 'rate_limited' });
     return res.status(200).json({ corrections: [], skipped: 'rate_limited' });
   }
 
@@ -78,12 +86,16 @@ export default async function handler(req, res) {
   const { data: sub } = await supabase
     .from('user_subscriptions').select('plan, is_active, status, trial_end').eq('user_id', user.id).maybeSingle();
   const tier = isSubscriptionActive(sub) ? (sub?.plan === 'premium' ? 'premium' : 'abo') : 'free';
+  let withinBudget = true;
   try {
-    if (!(await checkDailyBudget(user.id, tier))) {
-      await logAttempt(supabase, user.id, body.session_id, { skipped: 'budget_cap' }).catch(() => {});
-      return res.status(200).json({ corrections: [], skipped: 'budget_cap' });
-    }
-  } catch (_) {}
+    withinBudget = await checkDailyBudget(user.id, tier);
+  } catch (e) {
+    console.warn('[verify] budget check failed:', e?.message?.slice(0, 160));
+  }
+  if (!withinBudget) {
+    await logAttempt(supabase, user.id, body.session_id, { skipped: 'budget_cap' });
+    return res.status(200).json({ corrections: [], skipped: 'budget_cap' });
+  }
 
   const started = Date.now();
   const costs = [];
@@ -92,7 +104,7 @@ export default async function handler(req, res) {
     result = await verifyAnswer({ question, answer, search, onCost: e => costs.push(e) });
   } catch (e) {
     console.error('[verify] failed:', e?.message?.slice(0, 200));
-    await logAttempt(supabase, user.id, body.session_id, { skipped: 'failed', error: e?.message?.slice(0, 160) }).catch(() => {});
+    await logAttempt(supabase, user.id, body.session_id, { skipped: 'failed', error: e?.message?.slice(0, 160) });
     return res.status(200).json({ corrections: [], skipped: 'failed' });
   }
 
