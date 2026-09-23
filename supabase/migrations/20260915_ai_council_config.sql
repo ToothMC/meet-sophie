@@ -1,5 +1,5 @@
 -- Council runtime config: kill switch + advisor sets, editable from /admin.
--- Admin-only table (service role via api/admin.js) — no RLS, same as api_budget_alerts.
+-- Admin-only table (service role via api/admin.js). RLS enabled in 20260923_ai_council_config_rls.sql.
 -- The code fails closed: if this row is missing or unreadable, the council stays off.
 
 CREATE TABLE IF NOT EXISTS ai_council_config (
