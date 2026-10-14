@@ -7368,13 +7368,50 @@ function showMicDeniedOverlay() {
   overlay.className = "mic-denied-overlay";
   overlay.innerHTML = `<div class="mic-denied-card">
     <h3>Mikrofon-Zugriff abgelehnt</h3>
-    <p>Sophie braucht dein Mikrofon fuer Voice-Gespraeche. Du kannst stattdessen per Chat starten.</p>
+    <p>Sophie braucht dein Mikrofon für Voice-Gespräche. Du kannst stattdessen per Chat starten.</p>
     <div class="mic-denied-actions">
       <button class="mic-denied-chat" onclick="window.location.href='/?mode=chat'">Per Chat starten</button>
-      <button class="mic-denied-retry" onclick="document.querySelector('.mic-denied-overlay')?.remove();startVoice()">Erneut versuchen</button>
+      <button class="mic-denied-retry" type="button">Erneut versuchen</button>
     </div>
   </div>`;
+  // Kein Inline-onclick: startVoice lebt im Modul-Scope und ist global nicht
+  // erreichbar — der Button hat das Overlay bisher nur geschlossen.
+  overlay.querySelector(".mic-denied-retry").addEventListener("click", () => {
+    overlay.remove();
+    startVoice();
+  });
   document.body.appendChild(overlay);
+}
+
+// Eigener Hinweis VOR dem System-Dialog (nur wenn das Mikro noch nie erlaubt
+// wurde). Der Tap auf den Button liefert die User-Geste fuer getUserMedia,
+// erst dann zeigt iOS/der Browser den eigentlichen Berechtigungs-Dialog.
+const MIC_PREPROMPT_TEXT = {
+  de: { text: "Damit Sophie dich hören kann, bitte Mikrofon freigeben.", btn: "Mikrofon freigeben" },
+  en: { text: "So Sophie can hear you, please allow microphone access.", btn: "Allow microphone" },
+  fr: { text: "Pour que Sophie puisse t’entendre, autorise l’accès au micro.", btn: "Autoriser le micro" },
+};
+function showMicPrePrompt() {
+  if (document.querySelector(".mic-denied-overlay")) return;
+  const txt = MIC_PREPROMPT_TEXT[_uiLang] || MIC_PREPROMPT_TEXT.en;
+  const overlay = document.createElement("div");
+  overlay.className = "mic-denied-overlay";
+  overlay.innerHTML = `<div class="mic-denied-card">
+    <h3></h3>
+    <div class="mic-denied-actions">
+      <button class="mic-denied-chat" type="button"></button>
+    </div>
+  </div>`;
+  overlay.querySelector("h3").textContent = txt.text;
+  const btn = overlay.querySelector("button");
+  btn.textContent = txt.btn;
+  btn.addEventListener("click", () => {
+    track("mic_preprompt_accepted");
+    overlay.remove();
+    startVoice();
+  });
+  document.body.appendChild(overlay);
+  track("mic_preprompt_shown");
 }
 
 async function reportUsage(seconds) {
@@ -8558,6 +8595,10 @@ if (session?.user && _subscriptionGateActive) {
   if (micState === "denied") {
     resetUI();
     showMicDeniedOverlay();
+  } else if (micState === "prompt") {
+    // Noch nie erlaubt → erst eigener Hinweis, dann System-Dialog per Tap
+    resetUI();
+    showMicPrePrompt();
   } else {
     _isAutoConnectAttempt = true;
     startVoice();
