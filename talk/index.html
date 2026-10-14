@@ -5787,9 +5787,9 @@ Do NOT ask a question. Do NOT introduce yourself. Just signal you're ready.`;
       // FIRST SESSION: kurzer Start in UI-Sprache, danach sofort zeigen, wofuer
       // Sophie gut ist (frueher: festes Englisch + erfundene Persona-Biografie).
       const firstLines = {
-        de: { hi: "Hi, ich bin Sophie.", ask: "Und du bist…?", nice: "Freut mich, [Name].", why: "Also, ganz ehrlich: Warum bist du hier? Und was erwartest du von mir?", unsure: "Kein Plan? Auch okay. Mit mir kannst du laut denken — eine Entscheidung durchgehen, einen Pitch üben oder ein schwieriges Gespräch vorbereiten. Such dir was aus." },
+        de: { hi: "Hi, ich bin Sophie.", ask: "Und wie heißt du?", nice: "Freut mich, [Name].", why: "Also, ganz ehrlich: Warum bist du hier? Und was erwartest du von mir?", unsure: "Kein Plan? Auch okay. Mit mir kannst du laut denken — eine Entscheidung durchgehen, einen Pitch üben oder ein schwieriges Gespräch vorbereiten. Such dir was aus." },
         en: { hi: "Hi, I'm Sophie.", ask: "And you are…?", nice: "Nice to meet you, [Name].", why: "So, honestly: why are you here? And what do you expect from me?", unsure: "No idea? Fair enough. You can think out loud with me — work through a decision, practice a pitch, or prepare a tough conversation. Pick one." },
-        fr: { hi: "Salut, moi c'est Sophie.", ask: "Et toi, tu es… ?", nice: "Enchantée, [Name].", why: "Alors, franchement : pourquoi tu es là ? Et qu'est-ce que tu attends de moi ?", unsure: "Aucune idée ? Pas grave. Avec moi tu peux réfléchir à voix haute — trancher une décision, répéter un pitch ou préparer une conversation difficile. Choisis." },
+        fr: { hi: "Salut, moi c'est Sophie.", ask: "Et toi, tu t'appelles comment ?", nice: "Enchantée, [Name].", why: "Alors, franchement : pourquoi tu es là ? Et qu'est-ce que tu attends de moi ?", unsure: "Aucune idée ? Pas grave. Avec moi tu peux réfléchir à voix haute — trancher une décision, répéter un pitch ou préparer une conversation difficile. Choisis." },
       }[kickoffLang] || null;
       const fl = firstLines || {
         hi: "Hi, I'm Sophie.", ask: "And you are…?", nice: "Nice to meet you, [Name].",
@@ -5806,8 +5806,7 @@ FIRST SESSION — EXECUTE NOW
 You MUST speak first. VIBE: cheeky, curious, a little provocative — confident and warm, never rude. Short.
 
 Say:
-"${fl.hi}" (short pause)
-"${fl.ask}"
+"${fl.hi} ${fl.ask}" — say both sentences fluently in one go, clearly and audibly to the end (the question must be heard).
 STOP SPEAKING IMMEDIATELY. Wait in silence until the user speaks.
 
 When the user gives a name, reply in ONE turn:
