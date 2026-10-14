@@ -23,6 +23,54 @@ async function safeTrack(supabase, userId, event_name, meta = {}) {
   }
 }
 
+// Abo-Status, bei denen kein Zugriff mehr besteht (Trial ohne Zahlung beendet,
+// Zahlung gescheitert, gekuendigt).
+const NO_ACCESS_STATUSES = new Set(["past_due", "unpaid", "canceled", "incomplete_expired"]);
+
+// Trial-Guthaben entziehen, wenn das Abo NIE bezahlt wurde.
+// Trial-User bekommen beim Checkout paid_tokens, ohne zu zahlen. Endet der
+// Trial ohne Zahlung, blieben diese Tokens bisher nutzbar (/api/session laesst
+// Voice bei paidRemaining > 0 zu) und wurden bei einem spaeteren Checkout sogar
+// als Topup gutgeschrieben.
+// Massgeblich ist Stripe selbst: gibt es eine bezahlte Rechnung mit Betrag > 0,
+// ist der User zahlender Kunde und behaelt sein Restguthaben (bezahlte Periode).
+// Topup-Guthaben wird nie angefasst. Bei Fehlern wird NICHT entzogen (fail-safe).
+async function revokeUnpaidTrialTokens(stripe, supabase, userId, stripeSubscriptionId, reason) {
+  try {
+    const paidInvoices = await stripe.invoices.list({ subscription: stripeSubscriptionId, status: "paid", limit: 100 });
+    if ((paidInvoices?.data || []).some((inv) => (inv.amount_paid || 0) > 0)) return;
+
+    const { data: usage, error: uErr } = await supabase
+      .from("user_usage")
+      .select("paid_tokens_total, paid_tokens_used")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (uErr) throw uErr;
+    const remaining = Math.max(0, (usage?.paid_tokens_total || 0) - (usage?.paid_tokens_used || 0));
+    if (!usage || remaining <= 0) return;
+
+    // Verbrauch bleibt erhalten, nur das Rest-Guthaben wird 0.
+    const { error: updErr } = await supabase
+      .from("user_usage")
+      .update({ paid_tokens_total: usage.paid_tokens_used || 0 })
+      .eq("user_id", userId);
+    if (updErr) throw updErr;
+
+    await safeTrack(supabase, userId, "trial_tokens_revoked", {
+      stripe_subscription_id: stripeSubscriptionId,
+      revoked_tokens: remaining,
+      reason,
+    });
+  } catch (e) {
+    console.error("[webhook] revokeUnpaidTrialTokens failed:", e?.message || e);
+    await safeTrack(supabase, userId, "trial_tokens_revoke_failed", {
+      stripe_subscription_id: stripeSubscriptionId,
+      reason,
+      error: String(e?.message || e).slice(0, 200),
+    });
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -439,6 +487,12 @@ export default async function handler(req, res) {
         }
       }
 
+      // Trial ohne Zahlung beendet / Zahlung gescheitert → Trial-Guthaben entziehen
+      // (nur wenn nie bezahlt wurde, siehe revokeUnpaidTrialTokens)
+      if (NO_ACCESS_STATUSES.has(status)) {
+        await revokeUnpaidTrialTokens(stripe, supabase, userId, stripeSubscriptionId, `subscription_updated:${status}`);
+      }
+
       await safeTrack(supabase, userId, "subscription_updated", {
         status,
         is_active: isActive,
@@ -472,7 +526,11 @@ export default async function handler(req, res) {
 
       if (findErr) return res.status(500).send("Supabase read failed (user_subscriptions)");
       if (!row?.user_id) return res.status(200).json({ received: true });
-      if (!row.is_active) return res.status(200).json({ received: true });
+      // KEIN is_active-Guard mehr: Seit customer.subscription.updated ankommt,
+      // steht ein Abo waehrend Zahlungs-Retries auf past_due (is_active=false).
+      // Klappt ein Retry, kommt invoice.paid u.U. VOR dem updated(active)-Event —
+      // mit Guard haette der zahlende Kunde kein neues Guthaben bekommen.
+      // Eine bezahlte subscription_cycle-Rechnung ist selbst der Beweis.
 
       const userId = row.user_id;
       const includedTokens = includedTokensForPlan(row.plan);
@@ -516,6 +574,8 @@ export default async function handler(req, res) {
     // has already paid for the period. Existing paid_tokens stay until they
     // expire naturally or get overwritten by a new checkout. Nulling them
     // here would void tokens the user already paid for.
+    // Ausnahme: Abo wurde NIE bezahlt (Trial ohne Zahlung beendet) → das
+    // Trial-Guthaben wird entzogen (revokeUnpaidTrialTokens prueft das in Stripe).
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object;
       const stripeSubscriptionId = sub.id;
@@ -543,6 +603,8 @@ export default async function handler(req, res) {
         .eq("user_id", userId);
 
       if (updErr) return res.status(500).send("Supabase write failed (user_subscriptions)");
+
+      await revokeUnpaidTrialTokens(stripe, supabase, userId, stripeSubscriptionId, "subscription_deleted");
 
       await safeTrack(supabase, userId, "subscription_deleted", {
         stripe_subscription_id: stripeSubscriptionId,
