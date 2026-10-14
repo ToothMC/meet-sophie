@@ -145,9 +145,16 @@ async function handleCheckout(req, res) {
     stripeBody.append("subscription_data[metadata][terms_version]", TERMS_VERSION);
     stripeBody.append("subscription_data[metadata][privacy_version]", PRIVACY_VERSION);
     stripeBody.append("subscription_data[metadata][waiver_version]", WAIVER_VERSION);
-    // Start plan: 30-day free trial (card collected upfront, first charge after 30 days)
+    // Start plan: 30-day free trial WITHOUT credit card.
+    // payment_method_collection=if_required → Stripe zeigt beim 0-€-Trial-Start
+    // keine Kartenfelder. Wird bis Trial-Ende keine Zahlungsmethode hinterlegt
+    // (Abo-Portal), endet das Abo automatisch (missing_payment_method=cancel) →
+    // customer.subscription.deleted → revokeUnpaidTrialTokens() entzieht das
+    // Trial-Guthaben (api/stripe-webhook.js).
     if (p === "start") {
       stripeBody.append("subscription_data[trial_period_days]", "30");
+      stripeBody.append("payment_method_collection", "if_required");
+      stripeBody.append("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel");
     }
     if (user?.email) stripeBody.append("customer_email", user.email);
 

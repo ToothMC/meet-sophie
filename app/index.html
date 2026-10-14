@@ -765,7 +765,7 @@
       <h2 id="lockedTitle">Sophie wartet auf dich</h2>
       <p id="lockedText">Starte dein kostenloses Probemonat und entdecke alle Funktionen von Sophie. 300 Tokens inklusive, jederzeit kündbar.</p>
       <a class="locked-cta" href="/pricing" id="lockedCta">1 Monat gratis starten</a>
-      <span class="locked-sub" id="lockedSub">Dann 9,90 €/Monat · Jederzeit kündbar</span>
+      <span class="locked-sub" id="lockedSub">Ohne Kreditkarte · endet automatisch, wenn du nichts tust</span>
     </div>
   </div>
 
@@ -983,11 +983,27 @@
         const overlay = document.getElementById("lockedOverlay");
         if (overlay) {
           // i18n for locked overlay
-          if (currentLang === "en") {
-            document.getElementById("lockedTitle").textContent = "Sophie is waiting for you";
-            document.getElementById("lockedText").textContent = "Start your free trial month and discover all of Sophie\u2019s features. 300 tokens included, cancel anytime.";
-            document.getElementById("lockedCta").textContent = "Start 1 month free";
-            document.getElementById("lockedSub").textContent = "Then \u20AC9.90/month \u00B7 Cancel anytime";
+          const LOCKED_TEXT = {
+            en: {
+              title: "Sophie is waiting for you",
+              text: "Start your free trial month and discover all of Sophie\u2019s features. 300 tokens included, cancel anytime.",
+              cta: "Start 1 month free",
+              sub: "No credit card \u00B7 ends automatically if you do nothing",
+            },
+            fr: {
+              title: "Sophie t\u2019attend",
+              text: "Commence ton mois d\u2019essai gratuit et découvre toutes les fonctions de Sophie. 300 tokens inclus, résiliable à tout moment.",
+              cta: "Commencer 1 mois gratuit",
+              sub: "Sans carte bancaire \u00B7 se termine automatiquement si tu ne fais rien",
+            },
+          };
+          // DE steht bereits im HTML
+          const lt = LOCKED_TEXT[currentLang];
+          if (lt) {
+            document.getElementById("lockedTitle").textContent = lt.title;
+            document.getElementById("lockedText").textContent = lt.text;
+            document.getElementById("lockedCta").textContent = lt.cta;
+            document.getElementById("lockedSub").textContent = lt.sub;
           }
           overlay.classList.add("active");
         }

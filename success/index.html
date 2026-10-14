@@ -190,8 +190,8 @@
       manage: "Abo verwalten",
       error: "Die Aktivierung konnte nicht bestätigt werden. Bitte versuche es gleich noch einmal.",
       trialActive: "Trial aktiv bis",
-      firstCharge: "Erste Abbuchung am",
-      cancelAnytime: "Jederzeit kündbar über dein Abo-Portal",
+      afterTrial: "Danach 9,90 €/Monat — nur wenn du eine Zahlungsmethode hinterlegst. Sonst endet der Trial automatisch.",
+      cancelAnytime: "Zahlungsmethode hinterlegen oder kündigen: über dein Abo-Portal",
       tokens: "300 Tokens sofort verfügbar",
     },
     en: {
@@ -204,8 +204,8 @@
       manage: "Manage subscription",
       error: "Activation could not be confirmed yet. Please try again in a moment.",
       trialActive: "Trial active until",
-      firstCharge: "First charge on",
-      cancelAnytime: "Cancel anytime via your subscription portal",
+      afterTrial: "After that €9.90/month — only if you add a payment method. Otherwise the trial simply ends.",
+      cancelAnytime: "Add a payment method or cancel via your subscription portal",
       tokens: "300 tokens available now",
     }
   };
@@ -264,7 +264,7 @@
         document.getElementById("trialInfoContent").innerHTML =
           `<div style="margin-bottom:6px">\u2705 ${t.tokens}</div>` +
           `<div style="margin-bottom:6px">\u{1F4C5} ${t.trialActive}: <strong style="color:#fff">${fmt}</strong></div>` +
-          `<div style="margin-bottom:6px">\u{1F4B3} ${t.firstCharge}: <strong style="color:#fff">${fmt}</strong></div>` +
+          `<div style="margin-bottom:6px">\u{1F4B3} ${t.afterTrial}</div>` +
           `<div>\u2714\uFE0F ${t.cancelAnytime}</div>`;
         document.getElementById("trialInfo").style.display = "block";
         document.getElementById("go").style.display = "inline-block";
