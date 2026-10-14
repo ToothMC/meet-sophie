@@ -6,6 +6,7 @@ import { trackCost } from "../lib/ai/cost-tracker.js";
 import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
 import { mapPlanToTier } from "../lib/sophie-core.js";
 import { isSubscriptionActive } from "../lib/billing-constants.js";
+import { isFirstSessionTest } from "../lib/test-mode.js";
 import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
 import { runRecapForSession } from "../lib/memory-recap-core.js";
 import { cleanText, buildSessionTitle } from "../lib/session-title.js";
@@ -1020,6 +1021,14 @@ export default async function handler(req, res) {
     } = await supabase.auth.getUser();
 
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
+
+    // TEMPORAER Testmodus: simuliertes Erst-Gespraech darf das echte Profil /
+    // Gedaechtnis nicht veraendern (siehe lib/test-mode.js). Gleiche Antwort-
+    // form wie der bestehende "No transcript"-Skip.
+    if (isFirstSessionTest(req, user)) {
+      console.log("[memory-update] TEST MODE: skipping all writes for", user.email);
+      return res.status(200).json({ ok: true, skipped: true, reason: "test_mode", session: null });
+    }
 
     const sessionMode = typeof body.session_mode === "string" ? body.session_mode.trim().toLowerCase() : null;
     const secondsUsed = Math.min(7200, Math.max(0, Number(body.seconds_used ?? 0) || 0));

@@ -679,28 +679,6 @@ async function guardQuestionLoop(reply, messages, providerConfig) {
 // ---------------------------------------------------------------------------
 const CURATED_TRIGGERS = [
   {
-    // "was kannst du?" / "what can you do?"
-    match: /was kannst du|what can you do|que peux-tu|was k[öo]nntest du|what are you capable/i,
-    responses: {
-      de: [
-        "Probier's aus — frag mich was, und du wirst sehen. Am besten was, wo du eine ehrliche Meinung brauchst.",
-        "Kommt drauf an. Ich hab zu fast allem eine Meinung — Musik, Essen, Lebensentscheidungen. Teste mich.",
-        "Wetter, News, Flugstatus — alles live. Oder wir streiten über dein Lieblingsgericht. Oder ich spiel Advocatus Diaboli bei einer Entscheidung. Du sagst's.",
-        "Statt aufzuzählen — sag mir worüber du gerade nachdenkst, und ich zeig's dir direkt.",
-      ],
-      en: [
-        "Try me — ask me something. Preferably something where you need an honest opinion.",
-        "Depends. I have opinions on almost everything — music, food, life decisions. Test me.",
-        "Weather, news, flight status — all live. Or we argue about your favorite dish. Or I play devil's advocate on a decision. Your call.",
-        "Instead of listing things — tell me what's on your mind and I'll show you.",
-      ],
-      fr: [
-        "Essaie — pose-moi une question. De préférence quelque chose où tu as besoin d'un avis honnête.",
-        "Ça dépend. J'ai un avis sur presque tout — musique, bouffe, décisions de vie. Teste-moi.",
-      ],
-    },
-  },
-  {
     // "bist du echt?" / "are you real?"
     match: /bist du echt|are you real|bist du eine ki|are you ai|are you a bot|es-tu r[ée]el/i,
     responses: {

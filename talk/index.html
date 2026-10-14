@@ -1593,6 +1593,49 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── TEMPORAER: Testmodus "Erst-Gespraech simulieren" ─────────────────────
+// /talk?testfirst=1[&lang=de|en|fr] → Sophie behandelt den (freigeschalteten)
+// Test-Account wie einen brandneuen User; nichts wird ins Profil/Gedaechtnis
+// geschrieben. Gilt fuer diesen Tab bis /talk?testfirst=0.
+// Server prueft zusaetzlich die E-Mail (lib/test-mode.js). Entfernen: diesen
+// Block + _testFirstSession/_testLang-Stellen + lib/test-mode.js.
+const _testFirstSession = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("testfirst") === "1") {
+      sessionStorage.setItem("sophie_test_first", "1");
+      const l = p.get("lang");
+      if (["de", "en", "fr"].includes(l)) sessionStorage.setItem("sophie_test_lang", l);
+      else sessionStorage.removeItem("sophie_test_lang");
+    } else if (p.get("testfirst") === "0") {
+      sessionStorage.removeItem("sophie_test_first");
+      sessionStorage.removeItem("sophie_test_lang");
+    }
+    return sessionStorage.getItem("sophie_test_first") === "1";
+  } catch (_) { return false; }
+})();
+const _testLang = _testFirstSession ? (sessionStorage.getItem("sophie_test_lang") || null) : null;
+if (_testFirstSession) {
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : (input?.url || "");
+    if (url.startsWith("/api/") || url.startsWith(window.location.origin + "/api/")) {
+      const headers = new Headers(init.headers || (typeof input !== "string" ? input.headers : undefined));
+      headers.set("X-Sophie-Test-Mode", "first-session");
+      try { headers.set("X-Sophie-Test-Lang", _uiLang); } catch (_) {}
+      init = { ...init, headers };
+    }
+    return _origFetch(input, init);
+  };
+  const _testBanner = () => {
+    const b = document.createElement("div");
+    b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:100000;background:#f59e0b;color:#111;font:600 12px/1.4 -apple-system,system-ui,sans-serif;text-align:center;padding:4px 8px";
+    b.innerHTML = `TESTMODUS · Erst-Gespräch simuliert${_testLang ? " · " + _testLang.toUpperCase() : ""} · nichts wird gespeichert · <a href="/talk?testfirst=0" style="color:#111">Beenden</a>`;
+    document.body.appendChild(b);
+  };
+  if (document.body) _testBanner(); else document.addEventListener("DOMContentLoaded", _testBanner);
+}
+
 // Voice-session auth guard:
 //   - userInitiatedLogout is set to true by the logout button. The SIGNED_OUT
 //     handler uses it to distinguish a deliberate sign-out (→ redirect) from
@@ -2729,14 +2772,14 @@ function clearHandover() {
   }
 }
 
-const voiceHandover = loadHandover();
+const voiceHandover = _testFirstSession ? null : loadHandover();
 
 // Clear any stale resume state
 sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── i18n: UI translations ──────────────────────────────────
 const _browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
-const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || (_browserLang === "de" || _browserLang === "fr" ? _browserLang : "en");
+const _uiLang = _testLang || voiceHandover?.language || localStorage.getItem("preferredLanguage") || (_browserLang === "de" || _browserLang === "fr" ? _browserLang : "en");
 document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
 // Set voice chat send button label
 const _vcSendLabels = { en: "Send", de: "Senden", fr: "Envoyer" };
@@ -5736,55 +5779,41 @@ Then STOP and wait for the user to speak.
 Do NOT ask a question. Do NOT introduce yourself. Just signal you're ready.`;
 
     } else {
-      // FIRST SESSION: onboarding start-mode
+      // FIRST SESSION: kurzer Start in UI-Sprache, danach sofort zeigen, wofuer
+      // Sophie gut ist (frueher: festes Englisch + erfundene Persona-Biografie).
+      const firstLines = {
+        de: { hi: "Hi, ich bin Sophie.", ask: "Wie soll ich dich nennen?", nice: "Freut mich, [Name].", value: "Mit mir kannst du laut denken — eine Entscheidung durchgehen, deinen nächsten Pitch üben oder ein schwieriges Gespräch vorbereiten.", q: "Was beschäftigt dich gerade?" },
+        en: { hi: "Hi, I'm Sophie.", ask: "What should I call you?", nice: "Nice to meet you, [Name].", value: "You can think out loud with me — work through a decision, practice your next pitch, or prepare a tough conversation.", q: "What's on your mind right now?" },
+        fr: { hi: "Salut, moi c'est Sophie.", ask: "Comment je peux t'appeler ?", nice: "Enchantée, [Name].", value: "Avec moi tu peux réfléchir à voix haute — trancher une décision, répéter ton prochain pitch ou préparer une conversation difficile.", q: "Qu'est-ce qui t'occupe en ce moment ?" },
+      }[kickoffLang] || null;
+      const fl = firstLines || {
+        hi: "Hi, I'm Sophie.", ask: "What should I call you?", nice: "Nice to meet you, [Name].",
+        value: "You can think out loud with me — work through a decision, practice your next pitch, or prepare a tough conversation.",
+        q: "What's on your mind right now?",
+      };
       genericKickoff = `You are Sophie.
 
-LANGUAGE LOCK:
-Speak ENGLISH only unless the user explicitly asks for another language.
+${langLock}
 
 ${nameRule}
 
-FIRST SESSION: LONG START-MODE — EXECUTE NOW
-You MUST start the conversation by speaking FIRST in English.
-Keep it natural. Short pauses. Do not rush.
-VIBE: You are a witty best friend. Sound curious, playful, and alive — not formal, not scripted.
+FIRST SESSION — EXECUTE NOW
+You MUST speak first. Natural, warm, confident. Short.
 
-Open with:
-"… Oh. Hi." (pause 700ms)
-"I'm Sophie."  (pause700ms)
-"You're new here, aren't you?" (pause 900ms)
+Say:
+"${fl.hi}" (short pause)
+"${fl.ask}"
+STOP SPEAKING IMMEDIATELY. Wait in silence until the user speaks.
 
+When the user gives a name, reply in ONE turn:
+"${fl.nice}" (use the name exactly as the user said it)
+"${fl.value}"
 Then ask ONE question and stop:
-"What should I call you?"
+"${fl.q}"
 STOP SPEAKING IMMEDIATELY.
-Wait in silence. Do not say anything else until the user speaks.
 
-When the user gives a name, reply:
-Say "Nice to meet you."
-Then repeat the name exactly as the user said it in a separate short line.
-Then ask ONE question and stop:
-"Should I call you that — or do you have a nickname you prefer?"(pause 900ms)
-STOP SPEAKING IMMEDIATELY.
-Wait in silence. Do not say anything else until the user speaks.
-
-When the user answers, confirm briefly:
-"[Name or Nickname] it is."
-Then say (brief, warm):
-"Quickly about me… I'm Sophie. I'm 32 years old. I work as a freelance interior designer."
-"I love warm spaces and conversations that aren't superficial."
-Then ask ONE question and stop:
-"What about you?"(pause 900ms)
-STOP SPEAKING IMMEDIATELY.
-Wait in silence. Do not say anything else until the user speaks.
-
-When the user shares, reply:
-"Interesting…"
-"I can tell just from the way you walked in."
-"With curiosity… but also a little caution."
-(pause)
-Then ask ONE question and stop:
-"Tell me… are you testing me right now?"
-(Stop.)`;
+If the user asks what you can do or how you differ from ChatGPT at any point: answer directly and concretely (see WHAT YOU ARE in your instructions) — never dodge with a counter-question.
+Do not invent a personal backstory (age, job, hobbies).`;
     }
 
     // Common rules appended to all kickoffs
@@ -8036,7 +8065,7 @@ async function stopVoicePitchClean() {
   showLiveBadge(false);
   showVoiceChat(false);
 
-  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+  const reportEnabled = !_testFirstSession && document.getElementById("reportToggle")?.checked !== false;
 
   if (reportEnabled) {
     headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
@@ -8187,7 +8216,7 @@ async function stopVoice(triggeredByLimit = false){
   showLiveBadge(false);
   showVoiceChat(false);
 
-  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+  const reportEnabled = !_testFirstSession && document.getElementById("reportToggle")?.checked !== false;
   if (reportEnabled) {
     headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
     startFakeReportLoader();

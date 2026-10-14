@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
+import { isFirstSessionTest, testModeLanguage } from "../lib/test-mode.js";
 import { CURRENT_XI_PRIVACY_VERSION } from "../lib/xi-constants.js";
 
 // ── Resume: build structured prompt block per session type ──
@@ -162,6 +163,10 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    // TEMPORAER: Testmodus "Erst-Gespraech simulieren" (siehe lib/test-mode.js)
+    const testFirstSession = isFirstSessionTest(req, user);
+    if (testFirstSession) console.log("[session] TEST MODE: simulating first session for", user.email);
+
 
     let handover = null;
     try {
@@ -252,8 +257,8 @@ export default async function handler(req, res) {
     ]);
     // Scope-basierte Feature-Flags aus dem einen Google-Provider
     if (googleIntResult?.error) console.warn('[session] Google integration query error:', googleIntResult.error.message);
-    const calIntResult = googleIntResult;
-    const gmailIntResult = { data: (googleIntResult?.data?.scopes || []).some(s => s.includes('gmail')) ? googleIntResult.data : null };
+    const calIntResult = testFirstSession ? { data: null } : googleIntResult;
+    const gmailIntResult = testFirstSession ? { data: null } : { data: (googleIntResult?.data?.scopes || []).some(s => s.includes('gmail')) ? googleIntResult.data : null };
 
     // --- Process subscription ---
     let isPremium = false;
@@ -494,6 +499,19 @@ export default async function handler(req, res) {
       console.warn("Memory lookup crashed:", e?.message || e);
     }
 
+    // TEMPORAER Testmodus: wie ein brandneuer User — kein Name, keine Historie.
+    // Dadurch greift auch isLikelyFirstSession unten (kein Gedaechtnis geladen).
+    if (testFirstSession) {
+      profile = {
+        first_name: "", preferred_name: "", preferred_addressing: "", preferred_pronoun: "",
+        preferred_language: testModeLanguage(req) || "en", notes: "", age: null, relationship_status: "",
+        occupation: "", conversation_style: "", topics_like: [], topics_avoid: [], memory_confidence: "",
+        last_confirmed_at: null, eco_mode: !!profile.eco_mode, memory_file: "",
+      };
+      rel = { tone_baseline: "", openness_level: "", emotional_patterns: "", last_interaction_summary: "" };
+      recentSessions = [];
+    }
+
     // ---------------------------
     // Structured memory (long-term + short-term + reports)
     // Skip for first-session users — they have no memory/reports/conversations yet
@@ -647,7 +665,7 @@ export default async function handler(req, res) {
 
     // Load imported context from other AIs
     let importedContext = "";
-    try {
+    if (!testFirstSession) try {
       const { data: sources } = await supabase
         .from("source_connections")
         .select("id")
