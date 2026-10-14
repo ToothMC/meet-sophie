@@ -26,7 +26,11 @@
       "source": "/pricing/",
       "destination": "/pricing",
       "permanent": true
-    }
+    },
+    { "source": "/api/(.*\\.(?:js|mjs|ts|json))", "destination": "/404", "permanent": false },
+    { "source": "/lib/((?!sophie-auth-helper\\.js$|sophie-emotion\\.js$|sophie-export\\.js$|sophie-face-visualizer\\.js$|sophie-report-overlay\\.js$|sophie-tab-manager\\.js$|sophie-transcript-cache\\.js$).*)", "destination": "/404", "permanent": false },
+    { "source": "/:dir(scripts|tests|supabase|docs|src|\\.claude|\\.github)/:path*", "destination": "/404", "permanent": false },
+    { "source": "/:file(README\\.md|vercel\\.json|package\\.json|package-lock\\.json|\\.gitignore)", "destination": "/404", "permanent": false }
   ],
   "crons": [
     {
