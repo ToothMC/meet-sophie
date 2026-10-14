@@ -1628,33 +1628,49 @@ const sophieTabManager = new SophieTabManager({
 });
 const tabManagerReady = sophieTabManager.init();
 
+// Sprache fuer Overlays, die frueh laufen koennen (vor der Definition von
+// _uiLang weiter unten → TDZ). Danach identisch zu _uiLang.
+function _overlayLang() {
+  try { return _uiLang; } catch (_) {}
+  let pref = null;
+  try { pref = localStorage.getItem("preferredLanguage"); } catch (_) {}
+  if (pref === "de" || pref === "fr" || pref === "en") return pref;
+  const b = (navigator.language || "en").slice(0, 2).toLowerCase();
+  return b === "de" || b === "fr" ? b : "en";
+}
+
+const DUP_TAB_TEXT = {
+  de: { title: "Sophie läuft in einem anderen Tab", text: "Voice-Sessions können nur in einem Tab gleichzeitig laufen.", btn: "Hier übernehmen", busy: "Übernehme…" },
+  en: { title: "Sophie is active in another tab", text: "Voice sessions can only run in one tab at a time.", btn: "Take over here", busy: "Taking over…" },
+  fr: { title: "Sophie est active dans un autre onglet", text: "Les sessions vocales ne peuvent tourner que dans un seul onglet à la fois.", btn: "Reprendre ici", busy: "Reprise…" },
+};
+
 function showDuplicateTabOverlay() {
   if (_dupTabShown) return;
   _dupTabShown = true;
-  const lang = localStorage.getItem("preferredLanguage") || "en";
-  const isDE = lang === "de";
+  const dt = DUP_TAB_TEXT[_overlayLang()] || DUP_TAB_TEXT.en;
   const overlay = document.createElement("div");
   overlay.id = "dupTabOverlay";
   overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(11,15,20,.92);display:flex;align-items:center;justify-content:center;text-align:center;padding:24px";
   overlay.innerHTML = `
     <div style="max-width:340px">
       <div style="font-size:40px;margin-bottom:16px">🔇</div>
-      <h2 style="color:white;font-size:20px;margin:0 0 8px">${isDE ? "Sophie läuft in einem anderen Tab" : "Sophie is active in another tab"}</h2>
-      <p style="color:rgba(255,255,255,.6);font-size:14px;margin:0 0 20px">${isDE ? "Voice-Sessions können nur in einem Tab gleichzeitig laufen." : "Voice sessions can only run in one tab at a time."}</p>
-      <button id="dupTabTakeoverBtn" style="padding:12px 24px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:white;color:#0b0f14;cursor:pointer">${isDE ? "Hier übernehmen" : "Take over here"}</button>
+      <h2 style="color:white;font-size:20px;margin:0 0 8px">${dt.title}</h2>
+      <p style="color:rgba(255,255,255,.6);font-size:14px;margin:0 0 20px">${dt.text}</p>
+      <button id="dupTabTakeoverBtn" style="padding:12px 24px;font-size:15px;font-weight:600;border:none;border-radius:10px;background:white;color:#0b0f14;cursor:pointer">${dt.btn}</button>
     </div>`;
   document.body.appendChild(overlay);
   document.getElementById("dupTabTakeoverBtn").addEventListener("click", async () => {
     const btn = document.getElementById("dupTabTakeoverBtn");
     btn.disabled = true;
-    btn.textContent = isDE ? "Übernehme…" : "Taking over…";
+    btn.textContent = dt.busy;
     const ok = await sophieTabManager.requestTakeover();
     if (ok) {
       overlay.remove();
       _dupTabShown = false;
     } else {
       btn.disabled = false;
-      btn.textContent = isDE ? "Hier übernehmen" : "Take over here";
+      btn.textContent = dt.btn;
     }
   });
 }
@@ -1723,12 +1739,27 @@ let _subscriptionGateActive = false;
   if (!subErr && !sub?.is_active) {
     const overlay = document.getElementById("lockedOverlay");
     if (overlay) {
-      const lang = localStorage.getItem("preferredLanguage") || "en";
-      if (lang === "en") {
-        document.getElementById("lockedTitle").textContent = "Sophie is waiting for you";
-        document.getElementById("lockedText").textContent = "Start your free trial month and discover all of Sophie\u2019s features. 300 tokens included, cancel anytime.";
-        document.getElementById("lockedCta").textContent = "Start 1 month free";
-        document.getElementById("lockedSub").textContent = "Then \u20AC9.90/month \u00B7 Cancel anytime";
+      const LOCKED_TEXT = {
+        en: {
+          title: "Sophie is waiting for you",
+          text: "Start your free trial month and discover all of Sophie\u2019s features. 300 tokens included, cancel anytime.",
+          cta: "Start 1 month free",
+          sub: "Then \u20AC9.90/month \u00B7 Cancel anytime",
+        },
+        fr: {
+          title: "Sophie t\u2019attend",
+          text: "Commence ton mois d\u2019essai gratuit et découvre toutes les fonctions de Sophie. 300 tokens inclus, résiliable à tout moment.",
+          cta: "Commencer 1 mois gratuit",
+          sub: "Ensuite 9,90 \u20AC/mois \u00B7 Résiliable à tout moment",
+        },
+      };
+      // DE steht bereits im HTML
+      const lt = LOCKED_TEXT[_overlayLang()];
+      if (lt) {
+        document.getElementById("lockedTitle").textContent = lt.title;
+        document.getElementById("lockedText").textContent = lt.text;
+        document.getElementById("lockedCta").textContent = lt.cta;
+        document.getElementById("lockedSub").textContent = lt.sub;
       }
       overlay.classList.add("active");
       _subscriptionGateActive = true;
@@ -7361,19 +7392,29 @@ async function getMicPermissionState() {
   return flagGranted ? "granted" : "prompt";
 }
 
+const MIC_DENIED_TEXT = {
+  de: { title: "Mikrofon-Zugriff abgelehnt", text: "Sophie braucht dein Mikrofon für Voice-Gespräche. Du kannst stattdessen per Chat starten.", chat: "Per Chat starten", retry: "Erneut versuchen" },
+  en: { title: "Microphone access denied", text: "Sophie needs your microphone for voice conversations. You can start via chat instead.", chat: "Start via chat", retry: "Try again" },
+  fr: { title: "Accès au micro refusé", text: "Sophie a besoin de ton micro pour les conversations vocales. Tu peux aussi commencer par chat.", chat: "Commencer par chat", retry: "Réessayer" },
+};
 function showMicDeniedOverlay() {
   const existing = document.querySelector(".mic-denied-overlay");
   if (existing) return;
   const overlay = document.createElement("div");
   overlay.className = "mic-denied-overlay";
+  const md = MIC_DENIED_TEXT[_uiLang] || MIC_DENIED_TEXT.en;
   overlay.innerHTML = `<div class="mic-denied-card">
-    <h3>Mikrofon-Zugriff abgelehnt</h3>
-    <p>Sophie braucht dein Mikrofon für Voice-Gespräche. Du kannst stattdessen per Chat starten.</p>
+    <h3></h3>
+    <p></p>
     <div class="mic-denied-actions">
-      <button class="mic-denied-chat" onclick="window.location.href='/?mode=chat'">Per Chat starten</button>
-      <button class="mic-denied-retry" type="button">Erneut versuchen</button>
+      <button class="mic-denied-chat" onclick="window.location.href='/?mode=chat'"></button>
+      <button class="mic-denied-retry" type="button"></button>
     </div>
   </div>`;
+  overlay.querySelector("h3").textContent = md.title;
+  overlay.querySelector("p").textContent = md.text;
+  overlay.querySelector(".mic-denied-chat").textContent = md.chat;
+  overlay.querySelector(".mic-denied-retry").textContent = md.retry;
   // Kein Inline-onclick: startVoice lebt im Modul-Scope und ist global nicht
   // erreichbar — der Button hat das Overlay bisher nur geschlossen.
   overlay.querySelector(".mic-denied-retry").addEventListener("click", () => {
@@ -7595,7 +7636,7 @@ async function startVoice(){
   try{
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      resetPreStartFailure(_uiLang === "de" ? "Sitzung abgelaufen. Bitte erneut anmelden." : "Session expired. Please log in again.");
+      resetPreStartFailure(_uiLang === "de" ? "Sitzung abgelaufen. Bitte erneut anmelden." : _uiLang === "fr" ? "Session expirée. Merci de te reconnecter." : "Session expired. Please log in again.");
       return;
     }
 
@@ -7722,13 +7763,13 @@ async function startVoice(){
 
     if (tokenRes.status === 429) {
       track("talk_start_failed", { http_status: 429, message: data?.error || "busy" });
-      resetToReadyState(_uiLang === "de" ? "Sophie ist gerade beschäftigt. Versuche es gleich nochmal." : "Sophie is busy. Try again in a moment.");
+      resetToReadyState(_uiLang === "de" ? "Sophie ist gerade beschäftigt. Versuche es gleich nochmal." : _uiLang === "fr" ? "Sophie est occupée. Réessaie dans un instant." : "Sophie is busy. Try again in a moment.");
       return;
     }
 
     if (!tokenRes.ok) {
       track("talk_start_failed", { http_status: tokenRes.status, message: data?.message || "" });
-      resetToReadyState(_uiLang === "de" ? "Verbindungsfehler. Versuche es nochmal." : "Connection error. Try again.");
+      resetToReadyState(_uiLang === "de" ? "Verbindungsfehler. Versuche es nochmal." : _uiLang === "fr" ? "Erreur de connexion. Réessaie." : "Connection error. Try again.");
       return;
     }
 
@@ -7801,7 +7842,7 @@ async function startVoice(){
       ) {
         const durAtDisconnect = talkStartedAt ? Math.round((Date.now() - talkStartedAt) / 1000) : null;
         track("disconnect", { duration_at_disconnect_s: durAtDisconnect });
-        setSoftHint("Die Voice-Verbindung wurde unterbrochen. Wenn Sophie im Hintergrund war, starte das Gespräch neu.");
+        setSoftHint(_uiLang === "de" ? "Die Voice-Verbindung wurde unterbrochen. Wenn Sophie im Hintergrund war, starte das Gespräch neu." : _uiLang === "fr" ? "La connexion vocale a été interrompue. Si Sophie était en arrière-plan, relance la conversation." : "The voice connection was interrupted. If Sophie was in the background, restart the conversation.");
       }
     };
 
@@ -7967,7 +8008,7 @@ async function startVoice(){
       message: String(err?.message || err).slice(0, 180),
       http_status: status || null,
     });
-    resetToReadyState(_uiLang === "de" ? "Verbindung fehlgeschlagen. Versuche es nochmal." : "Connection failed. Try again.");
+    resetToReadyState(_uiLang === "de" ? "Verbindung fehlgeschlagen. Versuche es nochmal." : _uiLang === "fr" ? "La connexion a échoué. Réessaie." : "Connection failed. Try again.");
   }
 }
 
