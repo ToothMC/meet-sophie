@@ -6,6 +6,7 @@ import { trackCost } from "../lib/ai/cost-tracker.js";
 import { calculateCost, estimateRealtimeCost } from "../lib/ai/types.js";
 import { mapPlanToTier } from "../lib/sophie-core.js";
 import { isSubscriptionActive } from "../lib/billing-constants.js";
+import { isFirstSessionTest } from "../lib/test-mode.js";
 import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
 import { runRecapForSession } from "../lib/memory-recap-core.js";
 import { cleanText, buildSessionTitle } from "../lib/session-title.js";
@@ -1020,6 +1021,29 @@ export default async function handler(req, res) {
     } = await supabase.auth.getUser();
 
     if (userErr || !user) return res.status(401).json({ error: "Invalid token" });
+
+    // TEMPORAER Testmodus: simuliertes Erst-Gespraech darf das echte Profil /
+    // Gedaechtnis nicht veraendern (siehe lib/test-mode.js). Gleiche Antwort-
+    // form wie der bestehende "No transcript"-Skip.
+    if (isFirstSessionTest(req, user)) {
+      console.log("[memory-update] TEST MODE: skipping all writes for", user.email);
+      // Nur den Verlauf zur Auswertung ablegen — separat in analytics_events,
+      // NICHT in conversation_messages / Profil / Gedaechtnis.
+      try {
+        const turns = (Array.isArray(body.transcript) ? body.transcript : [])
+          .slice(-100)
+          .map((t) => ({ role: t?.role === "user" ? "user" : "assistant", text: String(t?.text || "").slice(0, 600) }));
+        const logSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+        await logSupabase.from("analytics_events").insert({
+          user_id: user.id,
+          event_name: "test_first_session_transcript",
+          meta: { lang: body.ui_language || null, seconds_used: body.seconds_used ?? null, session_mode: body.session_mode || null, turns },
+        });
+      } catch (e) {
+        console.warn("[memory-update] test transcript log failed:", e?.message || e);
+      }
+      return res.status(200).json({ ok: true, skipped: true, reason: "test_mode", session: null });
+    }
 
     const sessionMode = typeof body.session_mode === "string" ? body.session_mode.trim().toLowerCase() : null;
     const secondsUsed = Math.min(7200, Math.max(0, Number(body.seconds_used ?? 0) || 0));

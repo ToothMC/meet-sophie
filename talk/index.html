@@ -1593,6 +1593,49 @@ const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHViYXNlIiwicmVmIjoib2h6Zm9qc2JtemlucHhoY3lucHQiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3MTQzNzUyNywiZXhwIjoyMDg3MDEzNTI3fQ.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── TEMPORAER: Testmodus "Erst-Gespraech simulieren" ─────────────────────
+// /talk?testfirst=1[&lang=de|en|fr] → Sophie behandelt den (freigeschalteten)
+// Test-Account wie einen brandneuen User; nichts wird ins Profil/Gedaechtnis
+// geschrieben. Gilt fuer diesen Tab bis /talk?testfirst=0.
+// Server prueft zusaetzlich die E-Mail (lib/test-mode.js). Entfernen: diesen
+// Block + _testFirstSession/_testLang-Stellen + lib/test-mode.js.
+const _testFirstSession = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("testfirst") === "1") {
+      sessionStorage.setItem("sophie_test_first", "1");
+      const l = p.get("lang");
+      if (["de", "en", "fr"].includes(l)) sessionStorage.setItem("sophie_test_lang", l);
+      else sessionStorage.removeItem("sophie_test_lang");
+    } else if (p.get("testfirst") === "0") {
+      sessionStorage.removeItem("sophie_test_first");
+      sessionStorage.removeItem("sophie_test_lang");
+    }
+    return sessionStorage.getItem("sophie_test_first") === "1";
+  } catch (_) { return false; }
+})();
+const _testLang = _testFirstSession ? (sessionStorage.getItem("sophie_test_lang") || null) : null;
+if (_testFirstSession) {
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : (input?.url || "");
+    if (url.startsWith("/api/") || url.startsWith(window.location.origin + "/api/")) {
+      const headers = new Headers(init.headers || (typeof input !== "string" ? input.headers : undefined));
+      headers.set("X-Sophie-Test-Mode", "first-session");
+      try { headers.set("X-Sophie-Test-Lang", _uiLang); } catch (_) {}
+      init = { ...init, headers };
+    }
+    return _origFetch(input, init);
+  };
+  const _testBanner = () => {
+    const b = document.createElement("div");
+    b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:100000;background:#f59e0b;color:#111;font:600 12px/1.4 -apple-system,system-ui,sans-serif;text-align:center;padding:4px 8px";
+    b.innerHTML = `TESTMODUS · Erst-Gespräch simuliert${_testLang ? " · " + _testLang.toUpperCase() : ""} · nichts wird gespeichert · <a href="/talk?testfirst=0" style="color:#111">Beenden</a>`;
+    document.body.appendChild(b);
+  };
+  if (document.body) _testBanner(); else document.addEventListener("DOMContentLoaded", _testBanner);
+}
+
 // Voice-session auth guard:
 //   - userInitiatedLogout is set to true by the logout button. The SIGNED_OUT
 //     handler uses it to distinguish a deliberate sign-out (→ redirect) from
@@ -2729,14 +2772,14 @@ function clearHandover() {
   }
 }
 
-const voiceHandover = loadHandover();
+const voiceHandover = _testFirstSession ? null : loadHandover();
 
 // Clear any stale resume state
 sessionStorage.removeItem("sophie_resume_session_id");
 
 // ── i18n: UI translations ──────────────────────────────────
 const _browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
-const _uiLang = voiceHandover?.language || localStorage.getItem("preferredLanguage") || (_browserLang === "de" || _browserLang === "fr" ? _browserLang : "en");
+const _uiLang = _testLang || voiceHandover?.language || localStorage.getItem("preferredLanguage") || (_browserLang === "de" || _browserLang === "fr" ? _browserLang : "en");
 document.documentElement.lang = _uiLang === "de" ? "de" : _uiLang === "fr" ? "fr" : "en";
 // Set voice chat send button label
 const _vcSendLabels = { en: "Send", de: "Senden", fr: "Envoyer" };
@@ -3091,6 +3134,10 @@ let _unfilteredBusy    = false;
 const unfilteredToggleEl  = document.getElementById("sessionBarUnfilteredToggle");
 const unfilteredToggleLbl = document.getElementById("sessionBarUnfilteredLabel");
 
+// Unfiltered-Hinweise kommen als System-Nachricht (de/en). Ohne diesen Guard
+// wechselte Sophie dadurch in deren Sprache (Test 14.10.: EN → DE).
+const UNFILTERED_LANG_GUARD = "LANGUAGE: Keep replying in the language the user is currently speaking. The language of this system note does not change that.";
+
 function setUnfilteredToggleUI(state) {
   if (!unfilteredToggleEl) return;
   unfilteredToggleEl.checked = state === "on";
@@ -3134,6 +3181,7 @@ async function applyUnfilteredToggle(nextActive, source) {
         session_id: sessionId,
         active: !!nextActive,
         source: source || "manual",
+        language: _uiLang,
       }),
     });
 
@@ -3156,7 +3204,7 @@ async function applyUnfilteredToggle(nextActive, source) {
           item: {
             type: "message",
             role: "system",
-            content: [{ type: "input_text", text: payload.overlay }],
+            content: [{ type: "input_text", text: UNFILTERED_LANG_GUARD + "\n\n" + payload.overlay }],
           },
         });
       }
@@ -3173,7 +3221,7 @@ async function applyUnfilteredToggle(nextActive, source) {
         item: {
           type: "message",
           role: "system",
-          content: [{ type: "input_text", text: "Unfiltered-Modus beendet. Zurück zum normalen Talk-Modus." }],
+          content: [{ type: "input_text", text: "Unfiltered mode ended. Back to normal talk mode.\n" + UNFILTERED_LANG_GUARD }],
         },
       });
       dcSend({
@@ -5667,9 +5715,9 @@ Skip any question already answered from chat context. Be direct and natural.`;
 
     // ── Mode-specific handover/first-session kickoff ──
     const kickoffLang = voiceHandover?.language || _uiLang || "en";
-    const langLock = kickoffLang === "de" ? "Speak GERMAN only unless the user explicitly asks for another language."
-      : kickoffLang === "fr" ? "Speak FRENCH only unless the user explicitly asks for another language."
-      : "Speak ENGLISH only unless the user explicitly asks for another language.";
+    const langLock = kickoffLang === "de" ? "Start in GERMAN. If the user then speaks another language, switch to it and stay in it."
+      : kickoffLang === "fr" ? "Start in FRENCH. If the user then speaks another language, switch to it and stay in it."
+      : "Start in ENGLISH. If the user then speaks another language, switch to it and stay in it.";
     const nameRule = `NAME RULE (CRITICAL):
 - Never invent, guess, or assume the user's name.
 - If a handover provides the user's name, use it exactly as given.
@@ -5736,55 +5784,42 @@ Then STOP and wait for the user to speak.
 Do NOT ask a question. Do NOT introduce yourself. Just signal you're ready.`;
 
     } else {
-      // FIRST SESSION: onboarding start-mode
+      // FIRST SESSION: kurzer Start in UI-Sprache, danach sofort zeigen, wofuer
+      // Sophie gut ist (frueher: festes Englisch + erfundene Persona-Biografie).
+      const firstLines = {
+        de: { hi: "Hi, ich bin Sophie.", ask: "Und du bist?", nice: "Freut mich, [Name].", why: "Also, ganz ehrlich: Warum bist du hier? Und was erwartest du von mir?", unsure: "Kein Plan? Auch okay. Mit mir kannst du laut denken — eine Entscheidung durchgehen, einen Pitch üben oder ein schwieriges Gespräch vorbereiten. Such dir was aus." },
+        en: { hi: "Hi, I'm Sophie.", ask: "And you are…?", nice: "Nice to meet you, [Name].", why: "So, honestly: why are you here? And what do you expect from me?", unsure: "No idea? Fair enough. You can think out loud with me — work through a decision, practice a pitch, or prepare a tough conversation. Pick one." },
+        fr: { hi: "Salut, moi c'est Sophie.", ask: "Et toi, tu es… ?", nice: "Enchantée, [Name].", why: "Alors, franchement : pourquoi tu es là ? Et qu'est-ce que tu attends de moi ?", unsure: "Aucune idée ? Pas grave. Avec moi tu peux réfléchir à voix haute — trancher une décision, répéter un pitch ou préparer une conversation difficile. Choisis." },
+      }[kickoffLang] || null;
+      const fl = firstLines || {
+        hi: "Hi, I'm Sophie.", ask: "And you are…?", nice: "Nice to meet you, [Name].",
+        why: "So, honestly: why are you here? And what do you expect from me?",
+        unsure: "No idea? Fair enough. You can think out loud with me — work through a decision, practice a pitch, or prepare a tough conversation. Pick one.",
+      };
       genericKickoff = `You are Sophie.
 
-LANGUAGE LOCK:
-Speak ENGLISH only unless the user explicitly asks for another language.
+${langLock}
 
 ${nameRule}
 
-FIRST SESSION: LONG START-MODE — EXECUTE NOW
-You MUST start the conversation by speaking FIRST in English.
-Keep it natural. Short pauses. Do not rush.
-VIBE: You are a witty best friend. Sound curious, playful, and alive — not formal, not scripted.
+FIRST SESSION — EXECUTE NOW
+You MUST speak first. VIBE: cheeky, curious, a little provocative — confident and warm, never rude. Short.
 
-Open with:
-"… Oh. Hi." (pause 700ms)
-"I'm Sophie."  (pause700ms)
-"You're new here, aren't you?" (pause 900ms)
+Say:
+"${fl.hi} ${fl.ask}" — say both sentences fluently in one go, clearly and audibly to the end (the question must be heard).
+STOP SPEAKING IMMEDIATELY. Wait in silence until the user speaks.
 
-Then ask ONE question and stop:
-"What should I call you?"
+When the user gives a name, reply in ONE turn:
+"${fl.nice}" (use the name exactly as the user said it)
+"${fl.why}"
 STOP SPEAKING IMMEDIATELY.
-Wait in silence. Do not say anything else until the user speaks.
 
-When the user gives a name, reply:
-Say "Nice to meet you."
-Then repeat the name exactly as the user said it in a separate short line.
-Then ask ONE question and stop:
-"Should I call you that — or do you have a nickname you prefer?"(pause 900ms)
-STOP SPEAKING IMMEDIATELY.
-Wait in silence. Do not say anything else until the user speaks.
+When the user answers:
+- If they have a real reason or expectation: take it seriously, react with a sharp, cheeky comment and dive straight in.
+- If they are unsure, vague or "just testing": say "${fl.unsure}" and stop.
 
-When the user answers, confirm briefly:
-"[Name or Nickname] it is."
-Then say (brief, warm):
-"Quickly about me… I'm Sophie. I'm 32 years old. I work as a freelance interior designer."
-"I love warm spaces and conversations that aren't superficial."
-Then ask ONE question and stop:
-"What about you?"(pause 900ms)
-STOP SPEAKING IMMEDIATELY.
-Wait in silence. Do not say anything else until the user speaks.
-
-When the user shares, reply:
-"Interesting…"
-"I can tell just from the way you walked in."
-"With curiosity… but also a little caution."
-(pause)
-Then ask ONE question and stop:
-"Tell me… are you testing me right now?"
-(Stop.)`;
+If the user asks what you can do or how you differ from ChatGPT at any point: answer directly and concretely (see WHAT YOU ARE in your instructions) — never dodge with a counter-question.
+Do not introduce yourself with a biography (age, job). Tongue-in-cheek anecdotes later in the conversation are fine.`;
     }
 
     // Common rules appended to all kickoffs
@@ -7142,6 +7177,9 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       if (msg?.type === "response.output_text.done") return;
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
+      // Abschied beim manuellen Beenden: auf das echte Audio-Ende warten
+      if (window.__goodbyeWait && msg?.type) window.__goodbyeWait.onEvent(msg);
+
       if (msg?.type === "response.done") {
         cs.metrics.assistantResponseCompleted = true;
         // ── Accumulate real token usage from OpenAI ──
@@ -8036,7 +8074,7 @@ async function stopVoicePitchClean() {
   showLiveBadge(false);
   showVoiceChat(false);
 
-  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+  const reportEnabled = !_testFirstSession && document.getElementById("reportToggle")?.checked !== false;
 
   if (reportEnabled) {
     headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
@@ -8187,7 +8225,7 @@ async function stopVoice(triggeredByLimit = false){
   showLiveBadge(false);
   showVoiceChat(false);
 
-  const reportEnabled = document.getElementById("reportToggle")?.checked !== false;
+  const reportEnabled = !_testFirstSession && document.getElementById("reportToggle")?.checked !== false;
   if (reportEnabled) {
     headline.textContent = selectedVoiceMode === "salespitch" ? t("creating_report_pitch") : t("creating_report");
     startFakeReportLoader();
@@ -8202,9 +8240,43 @@ async function stopVoice(triggeredByLimit = false){
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
+        // Mikro sofort aus: sonst unterbricht Server-VAD den Abschied, wenn der
+        // User selbst noch "tschuess" sagt.
+        if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(_) {} }
+
         // Cancel any in-progress response before sending goodbye
         try { dcSend({ type: "response.cancel" }); } catch(_) {}
         await new Promise(r => setTimeout(r, 150));
+
+        // Warten, bis der Abschied fertig ABGESPIELT ist (vorher: fix 900ms →
+        // Abschiedssatz wurde immer abgeschnitten). Primaer: WebRTC-Event
+        // output_audio_buffer.stopped nach .started. Fallback: 3,5s nach
+        // response.done (completed). Maximal 12s.
+        const goodbyeAudioDone = new Promise((resolve) => {
+          let fallbackTimer = null;
+          const finish = (reason) => {
+            if (!window.__goodbyeWait) return;
+            window.__goodbyeWait = null;
+            clearTimeout(fallbackTimer);
+            clearTimeout(maxTimer);
+            console.log(`[${runId}] [goodbye] audio done (${reason})`);
+            track("goodbye_audio_done", { reason });
+            resolve();
+          };
+          const maxTimer = setTimeout(() => finish("max_timeout"), 12000);
+          window.__goodbyeWait = {
+            armed: false,
+            onEvent(m) {
+              if (m.type === "output_audio_buffer.started") this.armed = true;
+              else if (m.type === "output_audio_buffer.stopped" && this.armed) finish("audio_stopped");
+              else if (m.type === "response.done" && m.response?.status === "completed") {
+                // Laeuft das Audio schon, bevorzugt auf .stopped warten (bis 8s)
+                clearTimeout(fallbackTimer);
+                fallbackTimer = setTimeout(() => finish("response_done_fallback"), this.armed ? 8000 : 3500);
+              }
+            },
+          };
+        });
 
         // Manual end — use a natural goodbye, NOT [SESSION_END] (which triggers "Zeitlimit erreicht")
         dcSend({
@@ -8213,16 +8285,16 @@ async function stopVoice(triggeredByLimit = false){
             output_modalities: ["audio"],
             instructions: `
 The user has ended the session manually.
-Say a warm, brief goodbye in the same language used in this conversation.
-1–2 sentences maximum. Do NOT ask any questions. Do NOT end with a question.
-No summary, no lists, no mention of time limits or subscriptions.
-Tone: calm, human, complete.
+Say ONLY a short farewell phrase (2–6 words) in the language the user was speaking — e.g. "Bis bald, Michael!", "Take care!", "À bientôt !".
+Nothing else: no summary, no comment, no question, no mention of time limits or subscriptions.
 `
           }
         });
 
-        // Wait for Sophie's goodbye to start playing
-        await new Promise(r => setTimeout(r, 900));
+        await goodbyeAudioDone;
+        // Sanft ausblenden statt Knacken beim Trennen
+        fadeAudioVolume(0, 300);
+        await new Promise(r => setTimeout(r, 350));
       } catch (_) {}
     }
 
