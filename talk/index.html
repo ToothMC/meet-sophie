@@ -7173,6 +7173,9 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
       if (msg?.type === "response.output_text.done") return;
       if (msg?.type === "response.content_part.added" || msg?.type === "response.content_part.done") return;
 
+      // Abschied beim manuellen Beenden: auf das echte Audio-Ende warten
+      if (window.__goodbyeWait && msg?.type) window.__goodbyeWait.onEvent(msg);
+
       if (msg?.type === "response.done") {
         cs.metrics.assistantResponseCompleted = true;
         // ── Accumulate real token usage from OpenAI ──
@@ -8233,9 +8236,42 @@ async function stopVoice(triggeredByLimit = false){
   try {
     if (!triggeredByLimit && dc && dc.readyState === "open" && hasUserSpoken) {
       try {
+        // Mikro sofort aus: sonst unterbricht Server-VAD den Abschied, wenn der
+        // User selbst noch "tschuess" sagt.
+        if (stream) { try { stream.getTracks().forEach(t => t.stop()); } catch(_) {} }
+
         // Cancel any in-progress response before sending goodbye
         try { dcSend({ type: "response.cancel" }); } catch(_) {}
         await new Promise(r => setTimeout(r, 150));
+
+        // Warten, bis der Abschied fertig ABGESPIELT ist (vorher: fix 900ms →
+        // Abschiedssatz wurde immer abgeschnitten). Primaer: WebRTC-Event
+        // output_audio_buffer.stopped nach .started. Fallback: 3,5s nach
+        // response.done (completed). Maximal 12s.
+        const goodbyeAudioDone = new Promise((resolve) => {
+          let fallbackTimer = null;
+          const finish = (reason) => {
+            if (!window.__goodbyeWait) return;
+            window.__goodbyeWait = null;
+            clearTimeout(fallbackTimer);
+            clearTimeout(maxTimer);
+            console.log(`[${runId}] [goodbye] audio done (${reason})`);
+            track("goodbye_audio_done", { reason });
+            resolve();
+          };
+          const maxTimer = setTimeout(() => finish("max_timeout"), 12000);
+          window.__goodbyeWait = {
+            armed: false,
+            onEvent(m) {
+              if (m.type === "output_audio_buffer.started") this.armed = true;
+              else if (m.type === "output_audio_buffer.stopped" && this.armed) finish("audio_stopped");
+              else if (m.type === "response.done" && m.response?.status === "completed") {
+                clearTimeout(fallbackTimer);
+                fallbackTimer = setTimeout(() => finish("response_done_fallback"), 3500);
+              }
+            },
+          };
+        });
 
         // Manual end — use a natural goodbye, NOT [SESSION_END] (which triggers "Zeitlimit erreicht")
         dcSend({
@@ -8252,8 +8288,10 @@ Tone: calm, human, complete.
           }
         });
 
-        // Wait for Sophie's goodbye to start playing
-        await new Promise(r => setTimeout(r, 900));
+        await goodbyeAudioDone;
+        // Sanft ausblenden statt Knacken beim Trennen
+        fadeAudioVolume(0, 300);
+        await new Promise(r => setTimeout(r, 350));
       } catch (_) {}
     }
 
