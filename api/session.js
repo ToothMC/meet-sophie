@@ -237,29 +237,23 @@ export default async function handler(req, res) {
         : 15;
 
     // ---------------------------
-    // PARALLEL BATCH 1: Subscription, Usage, Lock (independent queries)
+    // PARALLEL BATCH 1: Subscription, Usage (independent queries)
     // ---------------------------
+    // Realtime-Lock wird bewusst NICHT hier geholt, sondern erst nach den
+    // Abo-/Guthaben-Checks (siehe unten). Sonst verbraucht ein 402 (kein Abo
+    // → /pricing) den Lock und der naechste echte Start innerhalb der TTL
+    // bekommt 429 "busy".
     const SESSION_LOCK_TTL_SECONDS = parseInt(process.env.SESSION_LOCK_TTL_SECONDS || "12", 10);
 
-    const [subResult, usageResult, lockResult, googleIntResult] = await Promise.all([
+    const [subResult, usageResult, googleIntResult] = await Promise.all([
       supabase.from("user_subscriptions").select("is_active, status, plan, trial_started_at, trial_end").eq("user_id", user.id).maybeSingle(),
       supabase.from("user_usage").select("free_tokens_total, free_tokens_used, paid_tokens_total, paid_tokens_used, topup_tokens_balance, first_session_tracked").eq("user_id", user.id).maybeSingle(),
-      supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS }),
       supabase.from("user_integrations").select("id, scopes").eq("user_id", user.id).eq("provider", "google").eq("is_active", true).maybeSingle(),
     ]);
     // Scope-basierte Feature-Flags aus dem einen Google-Provider
     if (googleIntResult?.error) console.warn('[session] Google integration query error:', googleIntResult.error.message);
     const calIntResult = googleIntResult;
     const gmailIntResult = { data: (googleIntResult?.data?.scopes || []).some(s => s.includes('gmail')) ? googleIntResult.data : null };
-
-    // --- Process lock result (fail-fast) ---
-    const lockAllowed = Array.isArray(lockResult.data) && lockResult.data[0]?.allowed === true;
-    if (lockResult.error || !lockAllowed) {
-      return res.status(429).json({
-        error: "busy",
-        message: "Sophie is already in a call. Please close other tabs and try again.",
-      });
-    }
 
     // --- Process subscription ---
     let isPremium = false;
@@ -368,6 +362,24 @@ export default async function handler(req, res) {
         soft_end_enabled: true,
         soft_end_warning_seconds: softEndWarningSeconds,
         soft_end_summary_seconds: softEndSummarySeconds,
+      });
+    }
+
+    // --- Realtime lock (erst NACH allen 402-Checks) ---
+    // Schuetzt gegen Doppelstart (Doppel-Tap, zweiter Tab). Bei 429 liefern
+    // wir retry_after_ms mit, damit der Client still warten und einmal neu
+    // versuchen kann statt "beschaeftigt" anzuzeigen.
+    const lockResult = await supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS });
+    const lockRow = Array.isArray(lockResult.data) ? lockResult.data[0] : null;
+    if (lockResult.error || lockRow?.allowed !== true) {
+      const lockedUntilMs = lockRow?.locked_until ? new Date(lockRow.locked_until).getTime() : NaN;
+      const retryAfterMs = Number.isFinite(lockedUntilMs)
+        ? Math.min(SESSION_LOCK_TTL_SECONDS * 1000, Math.max(0, lockedUntilMs - Date.now()))
+        : null;
+      return res.status(429).json({
+        error: "busy",
+        message: "Sophie is already in a call. Please close other tabs and try again.",
+        retry_after_ms: retryAfterMs,
       });
     }
 

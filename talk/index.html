@@ -1712,6 +1712,7 @@ document.getElementById("authLoading").style.display = "none";
 document.querySelector(".wrap").style.display = "";
 
 // ── Subscription gate (locked overlay) ──────────────
+let _subscriptionGateActive = false;
 {
   const { data: sub, error: subErr } = await supabase
     .from("user_subscriptions")
@@ -1730,6 +1731,7 @@ document.querySelector(".wrap").style.display = "";
         document.getElementById("lockedSub").textContent = "Then \u20AC9.90/month \u00B7 Cancel anytime";
       }
       overlay.classList.add("active");
+      _subscriptionGateActive = true;
     }
   }
 }
@@ -7576,7 +7578,24 @@ async function startVoice(){
     if (reportToggleLabel) reportToggleLabel.style.display = "none";
     // modeIndicatorEl removed — noise-filter toggle replaced it and stays visible during session
 
-    const tokenRes = await fetch("/api/session", {
+    // Mikrofon VOR /api/session holen: /api/session setzt den serverseitigen
+    // Realtime-Lock (TTL). Scheitert das Mikro erst danach (iOS-Auto-Connect
+    // ohne Geste, echte Ablehnung), war der Lock verbraucht und der naechste
+    // Tap innerhalb der TTL bekam 429 "busy". Zusaetzlich laeuft getUserMedia
+    // so naeher an der User-Geste (iOS).
+    track("mic_permission_requested");
+    track("session_lifecycle", { phase: "mic_requesting", runId: cs.runId });
+    const micPromise = navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+    const micTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
+    stream = await Promise.race([micPromise, micTimeout]);
+    track("mic_permission_granted");
+    rememberMicGranted();
+
+    const startRunId = cs.runId;
+    const fetchSessionToken = () => fetch("/api/session", {
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
@@ -7594,10 +7613,28 @@ async function startVoice(){
       }
     });
 
-    const data = await safeJson(tokenRes);
+    let tokenRes = await fetchSessionToken();
+    let data = await safeJson(tokenRes);
+
+    // 429 = Realtime-Lock noch aktiv (z.B. Neustart direkt nach Abbruch).
+    // Statt "beschaeftigt" anzuzeigen: still bis zum Ablauf warten und genau
+    // einmal neu versuchen. Der Lock schuetzt weiterhin gegen Doppelstart.
+    const lockRetryMs = Number(data?.retry_after_ms);
+    if (tokenRes.status === 429 && Number.isFinite(lockRetryMs) && lockRetryMs <= 15000) {
+      track("talk_start_lock_wait", { retry_after_ms: lockRetryMs });
+      await new Promise(r => setTimeout(r, lockRetryMs + 300));
+      // User hat waehrenddessen abgebrochen oder neu gestartet → nichts tun
+      if (cs.runId !== startRunId || cs.state !== S.STARTING) {
+        if (cs.runId === startRunId) cleanupMediaResources();
+        return;
+      }
+      tokenRes = await fetchSessionToken();
+      data = await safeJson(tokenRes);
+    }
     _voiceSessionData = data; // store for dc.onopen callback
 
     if (tokenRes.status === 402) {
+      cleanupMediaResources(); // Mikro wurde schon geholt — freigeben
       cs.state = S.IDLE; // reset state for 402 handling
       const reason = data?.reason || "";
       const premiumActive = !!data?.is_premium;
@@ -7692,6 +7729,7 @@ async function startVoice(){
     renderTimer();
 
     if (remainingSeconds <= 0) {
+      cleanupMediaResources();
       track("time_limit_reached");
       window.location.href = "/pricing";
       return;
@@ -7730,16 +7768,6 @@ async function startVoice(){
       }
     };
 
-    track("mic_permission_requested");
-    track("session_lifecycle", { phase: "mic_requesting", runId: cs.runId });
-    const micPromise = navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
-    const micTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Mic timeout — no permission after 15s")), 15000));
-    stream = await Promise.race([micPromise, micTimeout]);
-    track("mic_permission_granted");
-    rememberMicGranted();
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
     // GA-WebRTC: DataChannel NACH addTrack erstellen, damit Audio in der
@@ -8519,7 +8547,13 @@ document.getElementById("backToLandingBtn")?.addEventListener("click", (e) => {
 //
 // If permissions.query upfront says "denied", we skip the auto-call and
 // show the overlay immediately. Everything else goes through startVoice().
-if (session?.user) {
+// Kein Auto-Connect hinter dem Abo-Overlay: der Versuch endete ohnehin mit
+// 402 → /pricing und hat dabei den Realtime-Lock verbraucht. Gleiches
+// Verhalten wie bisher (Weiterleitung zu /pricing), nur ohne /api/session.
+if (session?.user && _subscriptionGateActive) {
+  track("time_limit_reached", { reason: "no_active_subscription", is_premium: false, plan: null });
+  window.location.href = "/pricing";
+} else if (session?.user) {
   const micState = await getMicPermissionState();
   if (micState === "denied") {
     resetUI();
