@@ -49,9 +49,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "session_id (string) required" });
     }
 
-    // Sprache: aus chat_sessions ableiten, fallback "de"
+    // Sprache: vom Client (Voice: UI-Sprache) — Voice-Sessions haben keine
+    // chat_sessions-Zeile, dort griff bisher immer der Fallback "de".
+    // Overlay gibt es nur auf de/en → fr nutzt en (Sprach-Guard im Client).
+    // Sonst wie bisher: aus chat_sessions ableiten, fallback "de".
     let language = "de";
-    try {
+    const bodyLang = String(req.body?.language || "").toLowerCase();
+    if (["de", "en", "fr"].includes(bodyLang)) {
+      language = bodyLang === "de" ? "de" : "en";
+    } else try {
       const { data: cs } = await supabase
         .from("chat_sessions")
         .select("language")

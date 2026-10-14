@@ -3134,6 +3134,10 @@ let _unfilteredBusy    = false;
 const unfilteredToggleEl  = document.getElementById("sessionBarUnfilteredToggle");
 const unfilteredToggleLbl = document.getElementById("sessionBarUnfilteredLabel");
 
+// Unfiltered-Hinweise kommen als System-Nachricht (de/en). Ohne diesen Guard
+// wechselte Sophie dadurch in deren Sprache (Test 14.10.: EN → DE).
+const UNFILTERED_LANG_GUARD = "LANGUAGE: Keep replying in the language the user is currently speaking. The language of this system note does not change that.";
+
 function setUnfilteredToggleUI(state) {
   if (!unfilteredToggleEl) return;
   unfilteredToggleEl.checked = state === "on";
@@ -3177,6 +3181,7 @@ async function applyUnfilteredToggle(nextActive, source) {
         session_id: sessionId,
         active: !!nextActive,
         source: source || "manual",
+        language: _uiLang,
       }),
     });
 
@@ -3199,7 +3204,7 @@ async function applyUnfilteredToggle(nextActive, source) {
           item: {
             type: "message",
             role: "system",
-            content: [{ type: "input_text", text: payload.overlay }],
+            content: [{ type: "input_text", text: UNFILTERED_LANG_GUARD + "\n\n" + payload.overlay }],
           },
         });
       }
@@ -3216,7 +3221,7 @@ async function applyUnfilteredToggle(nextActive, source) {
         item: {
           type: "message",
           role: "system",
-          content: [{ type: "input_text", text: "Unfiltered-Modus beendet. Zurück zum normalen Talk-Modus." }],
+          content: [{ type: "input_text", text: "Unfiltered mode ended. Back to normal talk mode.\n" + UNFILTERED_LANG_GUARD }],
         },
       });
       dcSend({
@@ -8266,8 +8271,9 @@ async function stopVoice(triggeredByLimit = false){
               if (m.type === "output_audio_buffer.started") this.armed = true;
               else if (m.type === "output_audio_buffer.stopped" && this.armed) finish("audio_stopped");
               else if (m.type === "response.done" && m.response?.status === "completed") {
+                // Laeuft das Audio schon, bevorzugt auf .stopped warten (bis 8s)
                 clearTimeout(fallbackTimer);
-                fallbackTimer = setTimeout(() => finish("response_done_fallback"), 3500);
+                fallbackTimer = setTimeout(() => finish("response_done_fallback"), this.armed ? 8000 : 3500);
               }
             },
           };
@@ -8280,10 +8286,8 @@ async function stopVoice(triggeredByLimit = false){
             output_modalities: ["audio"],
             instructions: `
 The user has ended the session manually.
-Say a warm, brief goodbye in the same language used in this conversation.
-1–2 sentences maximum. Do NOT ask any questions. Do NOT end with a question.
-No summary, no lists, no mention of time limits or subscriptions.
-Tone: calm, human, complete.
+Say ONLY a short farewell phrase (2–6 words) in the language the user was speaking — e.g. "Bis bald, Michael!", "Take care!", "À bientôt !".
+Nothing else: no summary, no comment, no question, no mention of time limits or subscriptions.
 `
           }
         });
