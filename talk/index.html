@@ -5710,9 +5710,9 @@ Skip any question already answered from chat context. Be direct and natural.`;
 
     // ── Mode-specific handover/first-session kickoff ──
     const kickoffLang = voiceHandover?.language || _uiLang || "en";
-    const langLock = kickoffLang === "de" ? "Speak GERMAN only unless the user explicitly asks for another language."
-      : kickoffLang === "fr" ? "Speak FRENCH only unless the user explicitly asks for another language."
-      : "Speak ENGLISH only unless the user explicitly asks for another language.";
+    const langLock = kickoffLang === "de" ? "Start in GERMAN. If the user then speaks another language, switch to it and stay in it."
+      : kickoffLang === "fr" ? "Start in FRENCH. If the user then speaks another language, switch to it and stay in it."
+      : "Start in ENGLISH. If the user then speaks another language, switch to it and stay in it.";
     const nameRule = `NAME RULE (CRITICAL):
 - Never invent, guess, or assume the user's name.
 - If a handover provides the user's name, use it exactly as given.
