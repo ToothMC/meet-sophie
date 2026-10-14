@@ -396,8 +396,9 @@ export default async function handler(req, res) {
           user_id: user.id, event_name: "first_session_start",
           meta: { plan },
         }).then(() => {
-          // Mark as tracked
-          supabase.from("user_usage").update({ first_session_tracked: true }).eq("user_id", user.id);
+          // Mark as tracked. Returned so the chain actually executes the
+          // query builder (supabase-js only runs it when awaited/then'ed).
+          return supabase.from("user_usage").update({ first_session_tracked: true }).eq("user_id", user.id);
         }).catch(() => {});
       }
 
