@@ -7997,6 +7997,11 @@ async function startVoice(){
 
       // User tapped Start (or retry) and the browser still said no — real
       // denial. Forget the grant and show the overlay with help text.
+      // State + UI zuruecksetzen wie im Auto-Connect-Pfad: sonst bleibt
+      // cs.state auf STARTING, "Erneut versuchen" wird vom State-Guard
+      // geblockt und der Start-Button haengt auf "Verbinde …".
+      cs.state = S.IDLE;
+      resetUI();
       forgetMicGranted();
       showMicDeniedOverlay();
       return;
