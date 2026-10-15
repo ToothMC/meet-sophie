@@ -5,6 +5,7 @@ import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { DEFAULT_TEMPLATES, getDefaultTemplates } from '../../lib/report-templates.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 import { runRecapForSession } from '../../lib/memory-recap-core.js';
+import { ingestSessionKnowledge } from '../../lib/knowledge-core.js';
 
 function trackAdapterCost(response, userId, routingReason) {
   if (!response?.usage || !userId) return;
@@ -21,6 +22,17 @@ function trackAdapterCost(response, userId, routingReason) {
 }
 
 export const config = { maxDuration: 120 };
+
+// Cross-Mode Knowledge: write-only ("shadow"), never blocks or fails the report.
+async function ingestKnowledgeSafe(supabase, sessionId, userId, transcriptText, meetingStructured = null) {
+  if (!userId) return;
+  try {
+    const r = await ingestSessionKnowledge({ supabase, sessionId, userId, transcriptText, meetingStructured });
+    if (!r.ok) console.warn(`[report] knowledge ingest failed (non-critical):`, r.error);
+  } catch (e) {
+    console.warn(`[report] knowledge ingest threw (non-critical):`, e?.message);
+  }
+}
 
 const REPORT_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
@@ -413,6 +425,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
         // ── Extract structured data from report for Decision/Action/Open logs ──
         // Quick cheap call with GPT-4o-mini to parse the HTML report into JSON
         let meetingShortSummary = '';
+        let meetingStructuredData = null;
         try {
           const extractAdapter = getAdapter('openai');
           const extractResp = await extractAdapter.complete({
@@ -451,6 +464,7 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
           const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
           const structured = JSON.parse(jsonText);
           meetingShortSummary = String(structured.short_summary || '').trim();
+          meetingStructuredData = structured;
 
           // Find meeting_id linked to this session
           const { data: meetingRow } = await supabase.from('meetings')
@@ -507,6 +521,7 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
         } catch (recapErr) {
           console.error(`[report] meeting recap error (non-critical):`, recapErr?.message);
         }
+        await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, meetingStructuredData);
       } else {
         const { error: failErr } = await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
@@ -952,6 +967,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
           report_status_detail: isEN ? 'Sales pitch report generation failed' : isFR ? 'Génération du rapport pitch échouée' : 'Sales Pitch Report Generation fehlgeschlagen',
         }).eq('session_id', session_id);
       }
+      await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text);
       return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
     }
 
@@ -1576,6 +1592,7 @@ ${analysesBlock}`;
     await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
 
     console.log(`[report] Done: ${session_id} — ${reportHtml.length} chars HTML from ${analyses.length} providers`);
+    await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text);
     return res.status(200).json({ ok: true, status: 'done' });
 
   } catch (err) {
