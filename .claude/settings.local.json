@@ -133,7 +133,10 @@
       "Bash(awk '/^function _|^const [A-Z_]+ = `/{name=$0; n=0} /[äöüÄÖÜß]|\\\\b\\(Wenn|nicht|NIEMALS|Sage|Du |der User\\)\\\\b/{c[name]++} END{for\\(k in c\\) if\\(c[k]>3\\) print c[k]\"\\\\t\"k}' lib/sophie-core.js)",
       "mcp__7bc16912-1730-4a86-b956-78d05826954c__get_deployment",
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__execute_sql",
-      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration"
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration",
+      "Bash(node --check api/memory-update.js)",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(awk 'NR==1{s=$1;p=$1;next} $1==p+1{p=$1;next} {print s\"-\"p; s=$1;p=$1} END{print s\"-\"p}')"
     ]
   },
   "hooks": {
