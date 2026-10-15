@@ -124,7 +124,12 @@
       "Bash(cp /tmp/video-out/demo-meeting_de.mp4 video/demo-meeting_de.mp4)",
       "Bash(~/bin/ffmpeg -y -i video/hero-bg.mp4 -vf \"scale=1280:-2\" -frames:v 1 -q:v 5 /tmp/hero-poster.jpg -loglevel error)",
       "Bash(~/bin/ffmpeg -y -i video/hero-bg.mp4 -vf \"scale=1280:-2\" -frames:v 1 -q:v 75 /tmp/hero-poster.webp -loglevel error)",
-      "mcp__7bc16912-1730-4a86-b956-78d05826954c__get_runtime_logs"
+      "mcp__7bc16912-1730-4a86-b956-78d05826954c__get_runtime_logs",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node --input-type=module -e 'import\\(\"./lib/sophie-core.js\"\\).then\\(m=>console.log\\(Object.keys\\(m\\)\\)\\)')",
+      "mcp__7bc16912-1730-4a86-b956-78d05826954c__list_teams",
+      "mcp__7bc16912-1730-4a86-b956-78d05826954c__list_deployments",
+      "mcp__7bc16912-1730-4a86-b956-78d05826954c__get_access_to_vercel_url"
     ]
   },
   "hooks": {
