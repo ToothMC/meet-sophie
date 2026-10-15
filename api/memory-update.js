@@ -1845,6 +1845,9 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
           work_preferences: mergeJsonb(existingLtm?.work_preferences, null),
           recurring_topics: mergeArrays(existingLtm?.recurring_topics, sm.recurring_topics, 20),
           long_term_goals: mergeArrays(existingLtm?.long_term_goals, sm.long_term_goals, 15),
+          // Neue/wieder aufgegriffene Witze zuerst — die laengst nicht mehr
+          // genutzten fallen bei >8 raus.
+          running_jokes: mergeArrays(sm.running_jokes, existingLtm?.running_jokes, 8),
           updated_at: nowIso,
           last_condensed_at: nowIso,
         };
