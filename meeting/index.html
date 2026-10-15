@@ -1530,7 +1530,7 @@ async function _prefillFromParent(parentId, accessToken) {
   try {
     const headers = { "Content-Type": "application/json" };
     if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
-    const res = await fetch(`/api/meeting?action=detail&meeting_id=${encodeURIComponent(parentId)}`, { headers });
+    const res = await fetch(`/api/meeting?action=get&id=${encodeURIComponent(parentId)}`, { headers });
     if (!res.ok) return;
     const data = await res.json();
 

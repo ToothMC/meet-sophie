@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { DEFAULT_TEMPLATES, getDefaultTemplates } from '../../lib/report-templates.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
+import { runRecapForSession } from '../../lib/memory-recap-core.js';
 
 function trackAdapterCost(response, userId, routingReason) {
   if (!response?.usage || !userId) return;
@@ -411,6 +412,7 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
 
         // ── Extract structured data from report for Decision/Action/Open logs ──
         // Quick cheap call with GPT-4o-mini to parse the HTML report into JSON
+        let meetingShortSummary = '';
         try {
           const extractAdapter = getAdapter('openai');
           const extractResp = await extractAdapter.complete({
@@ -448,6 +450,7 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
           });
           const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
           const structured = JSON.parse(jsonText);
+          meetingShortSummary = String(structured.short_summary || '').trim();
 
           // Find meeting_id linked to this session
           const { data: meetingRow } = await supabase.from('meetings')
@@ -481,6 +484,28 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
         } catch (extractErr) {
           console.error(`[report] structured extraction failed (non-critical):`, extractErr?.message);
           // Non-critical — report is already saved, structured data is a bonus
+        }
+
+        // ── Make the meeting visible to the other modes (Tier N/K) ──
+        // /meeting sessions never pass through memory-update: no short_summary, no recap.
+        // Talk-page meetings already have both — short_summary is only filled when empty,
+        // and runRecapForSession returns the cached recap (idempotent).
+        try {
+          if (meetingShortSummary) {
+            await supabase.from('conversation_outputs')
+              .update({ short_summary: meetingShortSummary.slice(0, 300) })
+              .eq('session_id', session_id)
+              .or('short_summary.is.null,short_summary.eq.');
+          }
+          if (reportUserId) {
+            const recap = await runRecapForSession({
+              supabase, sessionId: session_id, userId: reportUserId, transcriptOverride: transcript_text,
+            });
+            if (!recap.ok) console.error(`[report] meeting recap failed (non-critical):`, recap.error);
+            else console.log(`[report] meeting recap ${recap.cached ? 'cached' : recap.skipped ? 'skipped:' + recap.skipped : 'written'}: ${session_id}`);
+          }
+        } catch (recapErr) {
+          console.error(`[report] meeting recap error (non-critical):`, recapErr?.message);
         }
       } else {
         const { error: failErr } = await supabase.from('conversation_outputs').update({

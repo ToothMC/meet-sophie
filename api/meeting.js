@@ -947,11 +947,22 @@ async function handleSummarize(req, res) {
 
     if (fullTranscript.trim().length > 10) {
       // Create a user_session so generate-report can link to it
+      // session_type/date/duration: without them the meeting was invisible to Tier N/K,
+      // recap and resume (all of which key on these columns).
+      const endedIso = meeting.ended_at || new Date().toISOString();
+      const durationSec = meeting.started_at
+        ? Math.max(0, Math.round((new Date(endedIso).getTime() - new Date(meeting.started_at).getTime()) / 1000))
+        : null;
       const { data: session } = await supabase.from("user_sessions").insert({
         user_id: user.id,
         session_mode: "meeting",
+        session_type: "meeting",
         status: "ended",
         title: meeting.title || "Meeting",
+        session_date: endedIso,
+        ...(meeting.started_at ? { started_at: meeting.started_at } : {}),
+        ended_at: endedIso,
+        ...(Number.isFinite(durationSec) ? { duration_seconds: durationSec } : {}),
       }).select("id").single();
 
       if (session?.id) {

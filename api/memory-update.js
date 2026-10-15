@@ -1169,7 +1169,7 @@ export default async function handler(req, res) {
         ok: true,
         skipped: true,
         reason: "No transcript",
-        session: emptySession || null,
+        session: null,
       });
     }
 
@@ -1985,7 +1985,9 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
         const stmRow = {
           user_id: user.id,
           conversation_id: memorySessionRef,
-          mode: modeMap[tier] || "assistant",
+          // sophie_mode enum has no "talk": Talk keeps the relationship tier, the
+          // other modes store their real session type (was always the tier before).
+          mode: ["meeting", "brainstorm", "sales_pitch"].includes(sessionType) ? sessionType : (modeMap[tier] || "assistant"),
           summary: clean(sm.session_summary || ss.short_summary).slice(0, 2000),
           open_topics: openTopics,
           pending_decisions: pendingDecisions,
