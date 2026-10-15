@@ -136,7 +136,8 @@
       "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__apply_migration",
       "Bash(node --check api/memory-update.js)",
       "Bash(awk -F: '{print $1}')",
-      "Bash(awk 'NR==1{s=$1;p=$1;next} $1==p+1{p=$1;next} {print s\"-\"p; s=$1;p=$1} END{print s\"-\"p}')"
+      "Bash(awk 'NR==1{s=$1;p=$1;next} $1==p+1{p=$1;next} {print s\"-\"p; s=$1;p=$1} END{print s\"-\"p}')",
+      "Bash(python3 -I - api/session.js)"
     ]
   },
   "hooks": {
