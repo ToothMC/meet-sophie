@@ -130,7 +130,9 @@
       "mcp__7bc16912-1730-4a86-b956-78d05826954c__list_teams",
       "mcp__7bc16912-1730-4a86-b956-78d05826954c__list_deployments",
       "mcp__7bc16912-1730-4a86-b956-78d05826954c__get_access_to_vercel_url",
-      "Bash(awk '/^function _|^const [A-Z_]+ = `/{name=$0; n=0} /[äöüÄÖÜß]|\\\\b\\(Wenn|nicht|NIEMALS|Sage|Du |der User\\)\\\\b/{c[name]++} END{for\\(k in c\\) if\\(c[k]>3\\) print c[k]\"\\\\t\"k}' lib/sophie-core.js)"
+      "Bash(awk '/^function _|^const [A-Z_]+ = `/{name=$0; n=0} /[äöüÄÖÜß]|\\\\b\\(Wenn|nicht|NIEMALS|Sage|Du |der User\\)\\\\b/{c[name]++} END{for\\(k in c\\) if\\(c[k]>3\\) print c[k]\"\\\\t\"k}' lib/sophie-core.js)",
+      "mcp__7bc16912-1730-4a86-b956-78d05826954c__get_deployment",
+      "mcp__0c8dd1a2-8458-4623-8048-9c38f096d53b__execute_sql"
     ]
   },
   "hooks": {
