@@ -3498,57 +3498,59 @@ try {
 
 // ── Voice Emotion Styles ──────────────────────────────────────────────────────
 // English prosody instructions, injected as session.update suffix when emotion
+// 15.10.2026: Atem-/Seufz-Hinweise TESTWEISE entfernt (Verdacht: metallischer
+// Klang). Vorherige Fassung: git show main:talk/index.html.
 // is detected. Each emotion has a POOL of variants — one is picked at random per
 // turn so Sophie's delivery stays varied (the same laugh / surprise / sigh
 // doesn't repeat verbatim across a long conversation).
 const _VOICE_STYLES = {
   neutral: [
-    "VOICE STYLE FOR THIS RESPONSE: Breathe naturally and audibly — a clear breath intake before you start, soft natural breathing between sentences. Sound fully human and alive.",
-    "VOICE STYLE FOR THIS RESPONSE: Soft and grounded — a quiet breath before you begin, even pacing, no rush. Let the words have space.",
-    "VOICE STYLE FOR THIS RESPONSE: Easy and lived-in — a small natural inhale, slight warmth in your tone, the rhythm of someone comfortable in the conversation."
+    "VOICE STYLE FOR THIS RESPONSE: Natural and relaxed — even pacing. Sound fully human and alive.",
+    "VOICE STYLE FOR THIS RESPONSE: Soft and grounded — even pacing, no rush. Let the words have space.",
+    "VOICE STYLE FOR THIS RESPONSE: Easy and lived-in — slight warmth in your tone, the rhythm of someone comfortable in the conversation."
   ],
   happy: [
-    "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright, real smile in your voice, slightly faster. An audible excited inhale before you begin.",
-    "VOICE STYLE FOR THIS RESPONSE: Quiet glow — soft smile in your voice, gentle warmth rather than burst, a contented breath before you start.",
-    "VOICE STYLE FOR THIS RESPONSE: Bubbly and energetic — quick, bright, a touch breathless, like you can barely contain it. Light fast inhale.",
-    "VOICE STYLE FOR THIS RESPONSE: Warm and amused — a small laugh-edge under the words, slight chuckle in the breath, easy joy."
+    "VOICE STYLE FOR THIS RESPONSE: Sound genuinely happy — warm, bright, real smile in your voice, slightly faster.",
+    "VOICE STYLE FOR THIS RESPONSE: Quiet glow — soft smile in your voice, gentle warmth rather than burst.",
+    "VOICE STYLE FOR THIS RESPONSE: Bubbly and energetic — quick, bright, like you can barely contain it.",
+    "VOICE STYLE FOR THIS RESPONSE: Warm and amused — a small laugh-edge under the words, slight chuckle, easy joy."
   ],
   laughing: [
-    "VOICE STYLE FOR THIS RESPONSE: Genuine belly laugh — let it crack through your voice, faster, contagious, breathless after. Take an audible breath before continuing.",
+    "VOICE STYLE FOR THIS RESPONSE: Genuine belly laugh — let it crack through your voice, faster, contagious.",
     "VOICE STYLE FOR THIS RESPONSE: Soft snort or giggle — a quick involuntary laugh-burst, then back to words still colored by it. Light and unguarded.",
     "VOICE STYLE FOR THIS RESPONSE: Dry chuckle — almost ironic, low and brief, a single 'huh' of amusement before the words. Knowing, not loud.",
-    "VOICE STYLE FOR THIS RESPONSE: Breath-laugh — laughter mostly exhaled, a soft 'pff' or 'haha' under your breath, words still smiling.",
-    "VOICE STYLE FOR THIS RESPONSE: Stifled amused laugh — like trying not to laugh and failing, voice catching, lighter and faster, audible breath after."
+    "VOICE STYLE FOR THIS RESPONSE: Soft laugh — a quiet 'pff' or 'haha', words still smiling.",
+    "VOICE STYLE FOR THIS RESPONSE: Stifled amused laugh — like trying not to laugh and failing, voice catching, lighter and faster."
   ],
   sad: [
-    "VOICE STYLE FOR THIS RESPONSE: Empathetic and tender — slower, softer, long gentle pauses. A slow soft breath between sentences. Warmth in every word.",
-    "VOICE STYLE FOR THIS RESPONSE: Quiet care — almost a near-whisper, very gentle pacing, small held breaths. Like you're sitting next to them, not across the room.",
-    "VOICE STYLE FOR THIS RESPONSE: Steady warmth — slower delivery, lower register, calm and grounded. A soft sigh before you begin. Hold the space."
+    "VOICE STYLE FOR THIS RESPONSE: Empathetic and tender — slower, softer, long gentle pauses. Warmth in every word.",
+    "VOICE STYLE FOR THIS RESPONSE: Quiet care — almost a near-whisper, very gentle pacing. Like you're sitting next to them, not across the room.",
+    "VOICE STYLE FOR THIS RESPONSE: Steady warmth — slower delivery, lower register, calm and grounded. Hold the space."
   ],
   surprised: [
-    "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch, more animated, lean into the amazement. Sharp audible inhale to start.",
-    "VOICE STYLE FOR THIS RESPONSE: Wide-eyed bright — fast and lifted, almost a small gasp before words, real wonder in the tone.",
-    "VOICE STYLE FOR THIS RESPONSE: Breathless wow — slower hushed amazement, a soft 'oh' or held breath before you continue. Quiet astonishment."
+    "VOICE STYLE FOR THIS RESPONSE: Sound genuinely surprised — wider pitch, more animated, lean into the amazement.",
+    "VOICE STYLE FOR THIS RESPONSE: Wide-eyed bright — fast and lifted, real wonder in the tone.",
+    "VOICE STYLE FOR THIS RESPONSE: Hushed wow — slower quiet amazement, a soft 'oh' before you continue. Quiet astonishment."
   ],
   angry: [
-    "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, clipped, strong emphasis on key words. A tight breath before you start.",
-    "VOICE STYLE FOR THIS RESPONSE: Cold and steady — lower register, controlled, slower than normal, every word weighted. Quiet exhale before you begin.",
-    "VOICE STYLE FOR THIS RESPONSE: Sharp dry edge — clipped and quick, sarcastic bite under the words. Short sharp inhale."
+    "VOICE STYLE FOR THIS RESPONSE: Sound noticeably more intense — sharper, clipped, strong emphasis on key words.",
+    "VOICE STYLE FOR THIS RESPONSE: Cold and steady — lower register, controlled, slower than normal, every word weighted.",
+    "VOICE STYLE FOR THIS RESPONSE: Sharp dry edge — clipped and quick, sarcastic bite under the words."
   ],
   skeptical: [
-    "VOICE STYLE FOR THIS RESPONSE: Measured and skeptical — slightly slower, drier tone, raised inflection on key words. A slow exhale or sigh before you begin.",
+    "VOICE STYLE FOR THIS RESPONSE: Measured and skeptical — slightly slower, drier tone, raised inflection on key words.",
     "VOICE STYLE FOR THIS RESPONSE: Dry raised brow — half-amused, half-doubtful, words slightly drawn out. A small 'mhm' or audible doubt before you continue.",
     "VOICE STYLE FOR THIS RESPONSE: Quiet pushback — lower register, slower pacing, weight on the word that doesn't add up. Calm but unconvinced."
   ],
   wink: [
-    "VOICE STYLE FOR THIS RESPONSE: Playfully knowing — light, teasing, warm mischief. An amused little breath before you start.",
+    "VOICE STYLE FOR THIS RESPONSE: Playfully knowing — light, teasing, warm mischief.",
     "VOICE STYLE FOR THIS RESPONSE: Sly and warm — soft chuckle hiding under the words, slight stretch on the joke-word, smiling delivery.",
     "VOICE STYLE FOR THIS RESPONSE: Cheeky lift — quick and light, a tiny laugh-catch in your voice, like you're enjoying the setup."
   ],
   thinking: [
-    "VOICE STYLE FOR THIS RESPONSE: Genuinely thoughtful — slower, softer, natural pauses as if truly reflecting. A soft 'Hmm...' with audible breath, then continue.",
+    "VOICE STYLE FOR THIS RESPONSE: Genuinely thoughtful — slower, softer, natural pauses as if truly reflecting. A soft 'Hmm...', then continue.",
     "VOICE STYLE FOR THIS RESPONSE: Reflective and quiet — drawn-out start, small 'oh' or murmur of consideration, careful pacing as you work through it.",
-    "VOICE STYLE FOR THIS RESPONSE: Curious and open — slower, lifting tone, a small wondering breath. Like the answer is forming as you speak."
+    "VOICE STYLE FOR THIS RESPONSE: Curious and open — slower, lifting tone. Like the answer is forming as you speak."
   ]
 };
 
