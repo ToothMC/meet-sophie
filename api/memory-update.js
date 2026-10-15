@@ -1508,6 +1508,7 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
             typical_conflicts: { type: "array", items: { type: "string" } },
             significant_developments: { type: "array", items: { type: "string" } },
             relationship_milestones: { type: "array", items: { type: "string" } },
+            running_jokes: { type: "array", items: { type: "string" } },
             session_summary: { type: "string" },
             open_topics: { type: "array", items: { type: "string" } },
             pending_decisions: { type: "array", items: { type: "string" } },
