@@ -1394,6 +1394,11 @@ export default async function handler(req, res) {
       "communication_style: How the user communicates (brief/verbose, formal/casual). " +
       "personal_patterns: Behavioral patterns observed (e.g. ‘tends to overthink decisions’). " +
       "significant_developments: Major life events worth remembering long-term. " +
+      "running_jokes: Running gags / inside jokes between Sophie and the user that came up or were picked up again in THIS session " +
+      "(a teasing nickname, a recurring silly detail, a slip that became a joke). Unlike PROFILE, use BOTH user and assistant messages — " +
+      "but only jokes the user actually played along with or laughed at. One short line each: the joke + what it refers to. " +
+      "If an existing running joke came up again, return it with EXACTLY the same wording as in the CURRENT list. " +
+      "Never invent jokes; return an empty array if there were none. Same language as the transcript. " +
       "session_summary: 1-2 sentence summary of THIS session. " +
       "open_topics/pending_decisions/next_steps: Unresolved items from this session. " +
       "importance_score: 0.0–1.0, how significant this session was (casual chat=0.2, major decision=0.9). " +
