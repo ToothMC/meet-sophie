@@ -1432,6 +1432,7 @@ recurring_topics: ${(existingLtm?.recurring_topics || []).join(", ")}
 long_term_goals: ${(existingLtm?.long_term_goals || []).join(", ")}
 personal_patterns: ${(existingLtm?.personal_patterns || []).join(", ")}
 significant_developments: ${(existingLtm?.significant_developments || []).join(", ")}
+running_jokes: ${(existingLtm?.running_jokes || []).join(" | ")}
 
 NEW transcript (includes USER + ASSISTANT; remember: only USER messages count):
 ${transcriptText}
