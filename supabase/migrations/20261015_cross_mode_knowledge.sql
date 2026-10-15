@@ -36,6 +36,8 @@ create table if not exists public.sophie_knowledge_items (
   source_ref         jsonb       not null default '{}'::jsonb,
   -- Idempotenz: z.B. meeting_summary:<id>:decision:<n>, pitch:<id>, recap:<session_id>
   idem_key           text        not null,
+  -- idem_keys von Kandidaten, die als Duplikat in dieses Item gemerged wurden
+  alias_keys         text[]      not null default '{}',
   embedding          extensions.vector(1536),
   search_tsv         tsvector    generated always as (
                        to_tsvector('simple', coalesce(topic, '') || ' ' || text)
@@ -55,6 +57,8 @@ create index if not exists sophie_knowledge_items_tsv_idx
   on public.sophie_knowledge_items using gin (search_tsv);
 create index if not exists sophie_knowledge_items_entities_idx
   on public.sophie_knowledge_items using gin (entity_refs);
+create index if not exists sophie_knowledge_items_alias_idx
+  on public.sophie_knowledge_items using gin (alias_keys);
 -- Bewusst KEIN HNSW: pro User wenige hundert Items -> exakte Suche nach
 -- user_id-Filter ist schnell und hat kein Filter-Recall-Problem.
 
