@@ -1517,7 +1517,7 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
           },
           required: ["communication_style", "recurring_topics", "long_term_goals", "personal_patterns",
                      "emotional_tones", "typical_conflicts", "significant_developments", "relationship_milestones",
-                     "session_summary", "open_topics", "pending_decisions", "next_steps", "importance_score"],
+                     "running_jokes", "session_summary", "open_topics", "pending_decisions", "next_steps", "importance_score"],
         },
       },
       required: ["profile", "relationship", "session", "structured_memory"],
