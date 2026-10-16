@@ -6987,10 +6987,14 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           showResearchIndicator();
 
           const toolHeaders = { "Content-Type": "application/json" };
+          try {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            if (authSession?.access_token) toolHeaders["Authorization"] = "Bearer " + authSession.access_token;
+          } catch (_) {}
           const toolRes = await fetch("/api/ai/tools", {
             method: "POST",
             headers: toolHeaders,
-            body: JSON.stringify({ tool: toolMap[msg.name], params: paramMap[msg.name], userId: session?.user?.id }),
+            body: JSON.stringify({ tool: toolMap[msg.name], params: paramMap[msg.name] }),
           });
 
           hideResearchIndicator();
