@@ -283,6 +283,28 @@ body{
   color:#5a4a40;
 }
 
+/* ---- CALENDAR NOTICES (Folgetermine, stumm) ---- */
+.msg.assistant.cal-notice{
+  border-left:3px solid #3b82f6;
+  background:#eff6ff;
+  font-size:13px;
+  color:#2a3a50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+}
+.cal-notice .cal-text{flex:1 1 180px}
+.cal-notice .cal-done{font-size:12px;color:#6b7280;flex-basis:100%}
+.cal-notice.undone .cal-text{text-decoration:line-through;color:#8a8a8a}
+.cal-undo-btn{
+  min-height:36px;padding:6px 14px;border-radius:8px;
+  border:1px solid #93c5fd;background:#fff;color:#1d4ed8;
+  font-size:13px;font-weight:600;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.cal-undo-btn:disabled{opacity:.5;cursor:default}
+@media (max-width: 600px) {
+  .cal-undo-btn{min-height:44px;padding:8px 16px;font-size:14px}
+}
+
 /* ---- FOLLOWUP DIFF ---- */
 .diff-section{margin-top:16px;border-top:1px solid #ede8e2;padding-top:14px}
 .diff-section h4{
@@ -886,6 +908,10 @@ let pendingBurstMessages = [];         // Queue for burst message persistence
 let isMeetingBurstActive = false;      // True while Sophie voice burst is live
 const LIVE_SEGMENT_MS = 60_000;        // 60s segments for live transcription
 const ANALYSIS_INTERVAL_MS = 10 * 60 * 1000; // 10 min hint analysis
+let scheduleInterval = null;           // 2-min Folgetermin-Check (Kalender)
+let lastScheduleSegmentIndex = -1;     // Checkpoint fuer schedule_check
+let scheduleCheckInProgress = false;   // Client-side guard
+const SCHEDULE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
 
 // ── Audio Safety Net State ──
 let _emergencyFlushed = false;         // Guard against double-persist on pagehide
@@ -1786,6 +1812,9 @@ async function loadMeeting(id) {
       appendSystemMsg(`[${n.note_type.toUpperCase()}] ${n.content}`);
     });
 
+    // Von Sophie eingetragene Folgetermine wieder anzeigen (mit Rückgängig)
+    loadCalendarItems(true);
+
     // Initialize IDB state for this meeting
     meetingPhase = meetingData.phase;
     if (MeetingStore.isAvailable()) {
@@ -2023,6 +2052,11 @@ async function transitionPhase(newPhase, source = "unknown") {
       if (analysisInterval) clearInterval(analysisInterval);
       analysisInterval = setInterval(() => runHintAnalysis(), ANALYSIS_INTERVAL_MS);
 
+      // ── Folgetermine: Kalender-Check alle 2 Min (stumm, nur mit Google-Kalender) ──
+      lastScheduleSegmentIndex = -1;
+      if (scheduleInterval) clearInterval(scheduleInterval);
+      scheduleInterval = setInterval(() => runScheduleCheck(), SCHEDULE_CHECK_INTERVAL_MS);
+
       // ── Guthabencheck: warn if low balance ──
       checkMeetingBalance();
     }
@@ -2041,6 +2075,7 @@ async function transitionPhase(newPhase, source = "unknown") {
 
       // Stop analysis timer
       if (analysisInterval) { clearInterval(analysisInterval); analysisInterval = null; }
+      if (scheduleInterval) { clearInterval(scheduleInterval); scheduleInterval = null; }
     }
 
     // Finalize billing when going to closed (if post was skipped or finalize didn't run)
@@ -2069,6 +2104,10 @@ async function transitionPhase(newPhase, source = "unknown") {
 
       // ── Hybrid: Run final analysis (guaranteed, waits instead of skip) ──
       await runHintAnalysis(true);
+
+      // ── Folgetermine: letzter Check (nicht blockierend — Report startet sofort) ──
+      if (scheduleInterval) { clearInterval(scheduleInterval); scheduleInterval = null; }
+      runScheduleCheck(true);
 
       // 1. Stop recording and get audio segments
       setSophieStatus(lang === "de" ? "Sophie erstellt den Report …" : "Sophie is creating the report …");
@@ -2459,6 +2498,7 @@ async function pollMeetingReport(sessionId) {
 
         meetingReportHtml = data.report_html;
         showMeetingReport(data.report_html);
+        refreshCalendarItemsAfterReport();
 
         // Mark completed + cleanup IDB (in own error-tolerant function)
         MeetingStore.saveState(meetingId, { meetingStatus: "report_completed", reportStatus: "done" })
@@ -3749,6 +3789,170 @@ async function runHintAnalysis(isFinal = false) {
   } finally {
     analysisInProgress = false;
   }
+}
+
+// ── Folgetermine: Konfliktprüfung + Kalender-Eintrag (stumm) ─────────────
+// Server: /api/meeting?action=schedule_check (lib/meeting-calendar.js).
+// Sophie spricht nie — nur kurze Karten im Chat, Eintrag mit Rückgängig-Button.
+const shownCalendarItems = new Set();
+const calendarCards = new Map(); // item id → card element
+
+const CAL_TEXTS = {
+  de: {
+    conflict: (slot, t) => `📅 ${slot} ist belegt: ${t}`,
+    added: (slot, t) => `📅 Eingetragen: ${slot} · ${t}`,
+    overlap: t => ` (überschneidet sich mit: ${t})`,
+    undo: "Rückgängig",
+    undone: "Rückgängig gemacht – Termin gelöscht.",
+    timeOpen: day => `📅 Folgetermin ${day}: Uhrzeit offen – nicht eingetragen.`,
+  },
+  en: {
+    conflict: (slot, t) => `📅 ${slot} is busy: ${t}`,
+    added: (slot, t) => `📅 Added: ${slot} · ${t}`,
+    overlap: t => ` (overlaps: ${t})`,
+    undo: "Undo",
+    undone: "Undone – event deleted.",
+    timeOpen: day => `📅 Follow-up ${day}: time open – not added.`,
+  },
+  fr: {
+    conflict: (slot, t) => `📅 ${slot} est occupé : ${t}`,
+    added: (slot, t) => `📅 Ajouté : ${slot} · ${t}`,
+    overlap: t => ` (chevauche : ${t})`,
+    undo: "Annuler",
+    undone: "Annulé – événement supprimé.",
+    timeOpen: day => `📅 Suivi ${day} : heure à définir – non ajouté.`,
+  },
+};
+
+function calTexts() { return CAL_TEXTS[lang] || CAL_TEXTS.en; }
+
+function calPad(n) { return String(n).padStart(2, "0"); }
+
+function calDayLabel(d) {
+  if (lang === "de") return `${["So","Mo","Di","Mi","Do","Fr","Sa"][d.getDay()]} ${calPad(d.getDate())}.${calPad(d.getMonth() + 1)}.`;
+  if (lang === "fr") return `${["dim.","lun.","mar.","mer.","jeu.","ven.","sam."][d.getDay()]} ${calPad(d.getDate())}/${calPad(d.getMonth() + 1)}`;
+  return `${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]} ${d.getDate()} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]}`;
+}
+
+function calTimeLabel(d) { return `${calPad(d.getHours())}:${calPad(d.getMinutes())}`; }
+
+function markCalendarCardReplaced(itemId) {
+  const card = calendarCards.get(itemId);
+  if (!card) return;
+  card.classList.add("undone");
+  const btn = card.querySelector(".cal-undo-btn");
+  if (btn) btn.remove();
+}
+
+function renderCalendarNotice(n) {
+  if (!n || !n.id) return;
+  if (n.replaced_id) markCalendarCardReplaced(n.replaced_id);
+  if (shownCalendarItems.has(n.id)) return;
+
+  const T = calTexts();
+  let text = "";
+  let withUndo = false;
+  if (n.kind === "check" && n.status === "conflict" && n.start_at) {
+    const s = new Date(n.start_at);
+    text = T.conflict(`${calDayLabel(s)} ${calTimeLabel(s)}`, n.conflict_title || "");
+  } else if (n.kind === "booking" && n.status === "created" && n.start_at) {
+    const s = new Date(n.start_at);
+    const e = n.end_at ? new Date(n.end_at) : null;
+    const slot = `${calDayLabel(s)} ${calTimeLabel(s)}${e ? "–" + calTimeLabel(e) : ""}`;
+    text = T.added(slot, n.event_title || "") + (n.conflict_title ? T.overlap(n.conflict_title) : "");
+    withUndo = true;
+  } else if (n.kind === "time_open" && n.slot_date) {
+    const [y, m, d] = n.slot_date.split("-").map(Number);
+    text = T.timeOpen(calDayLabel(new Date(y, m - 1, d)));
+  } else {
+    shownCalendarItems.add(n.id); // nichts anzuzeigen (frei, fehlgeschlagen, rückgängig)
+    return;
+  }
+  shownCalendarItems.add(n.id);
+
+  const card = document.createElement("div");
+  card.className = "msg assistant cal-notice";
+  const span = document.createElement("span");
+  span.className = "cal-text";
+  span.textContent = text; // Titel kommen aus Kalender/Meeting → nie als HTML
+  card.appendChild(span);
+
+  if (withUndo) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cal-undo-btn";
+    btn.textContent = T.undo;
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        const r = await api("calendar_undo", { item_id: n.id });
+        if (r?.ok) {
+          card.classList.add("undone");
+          btn.remove();
+          const done = document.createElement("span");
+          done.className = "cal-done";
+          done.textContent = T.undone;
+          card.appendChild(done);
+          return;
+        }
+      } catch (e) {
+        console.warn("[meeting-calendar] undo failed:", e.message);
+      }
+      btn.disabled = false;
+    });
+    card.appendChild(btn);
+  }
+
+  calendarCards.set(n.id, card);
+  chatArea.appendChild(card);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function runScheduleCheck(isFinal = false) {
+  if (!meetingId) return;
+  if (scheduleCheckInProgress) {
+    if (!isFinal) return;
+    // Letzter Check: laufenden abwarten statt überspringen (max 20s)
+    for (let i = 0; i < 40 && scheduleCheckInProgress; i++) await new Promise(r => setTimeout(r, 500));
+    if (scheduleCheckInProgress) return;
+  }
+  scheduleCheckInProgress = true;
+  try {
+    const data = await api("schedule_check", {
+      meeting_id: meetingId,
+      since_segment_index: lastScheduleSegmentIndex,
+      language: lang,
+    });
+    if (data?.next_segment_index != null) lastScheduleSegmentIndex = data.next_segment_index;
+    (data?.notices || []).forEach(renderCalendarNotice);
+  } catch (e) {
+    console.warn("[meeting-calendar] schedule_check failed:", e.message);
+  } finally {
+    scheduleCheckInProgress = false;
+  }
+}
+
+// Kalender-Items laden. initial=true (Meeting geöffnet): nur aktive Einträge
+// mit Rückgängig zeigen, ältere Hinweise nicht wiederholen.
+async function loadCalendarItems(initial = false) {
+  if (!meetingId) return;
+  try {
+    const data = await api("calendar_items", { meeting_id: meetingId });
+    for (const it of (data?.items || [])) {
+      if (initial && !(it.kind === "booking" && it.status === "created")) {
+        shownCalendarItems.add(it.id);
+        continue;
+      }
+      renderCalendarNotice(it);
+    }
+  } catch (e) {
+    console.warn("[meeting-calendar] load items failed:", e.message);
+  }
+}
+
+// Nach-Meeting-Pass läuft serverseitig nach dem Report → kurz nachladen
+function refreshCalendarItemsAfterReport() {
+  [0, 6000, 15000].forEach(ms => setTimeout(() => loadCalendarItems(false), ms));
 }
 
 // ── Balance Check before meeting start ──────────────────────────────────

@@ -8,6 +8,9 @@
 // ?action=message   — Chat-Nachricht im Meeting (phasenspezifisch)
 // ?action=summarize — Summary generieren (POST-Phase)
 // ?action=summary   — Summary abrufen
+// ?action=schedule_check — Folgetermine: Konfliktpruefung + direkter Kalender-Eintrag
+// ?action=calendar_items — Kalender-Items eines Meetings (fuer Rueckgaengig-Karten)
+// ?action=calendar_undo  — Von Sophie eingetragenen Termin wieder loeschen
 //
 // RLS contract for meeting_context / meeting_notes / meeting_summary:
 //   Direct client reads go through SELECT policies scoped by
@@ -27,6 +30,7 @@ import { getCalendarEventsForUser } from "../lib/calendar-fetch.js";
 import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
+import { runLiveScheduleCheck, loadMeetingCalendarItems, toNotice, undoBooking } from "../lib/meeting-calendar.js";
 import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
@@ -1597,6 +1601,100 @@ ${docText}`;
 // Main handler
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Action: schedule_check — Folgetermine erkennen, pruefen, eintragen
+// Kosten nur intern via trackCost (lib/meeting-calendar.js) — kein User-Billing.
+// ---------------------------------------------------------------------------
+
+async function handleScheduleCheck(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const err = envCheck(res);
+  if (err) return;
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const body = parseBody(req);
+  const { meeting_id } = body;
+  if (!meeting_id) return res.status(400).json({ error: "Missing meeting_id" });
+
+  const supabase = getSupabase();
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id, title, phase, started_at, created_at")
+    .eq("id", meeting_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+  if (meeting.phase !== "live" && meeting.phase !== "post") {
+    return res.status(200).json({ ok: true, skipped: true, reason: "not_live", notices: [] });
+  }
+
+  const { data: profile } = await supabase.from("user_profile")
+    .select("preferred_language")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const language = (profile?.preferred_language || body.language || "en").toLowerCase();
+
+  try {
+    const result = await runLiveScheduleCheck({
+      supabase,
+      userId: user.id,
+      meeting,
+      sinceIndex: Number.isInteger(body.since_segment_index) ? body.since_segment_index : -1,
+      tz: timeZoneFromRequest(req),
+      language,
+    });
+    return res.status(200).json({ ok: true, ...result });
+  } catch (e) {
+    // Nie das Meeting stoeren — Fehler nur loggen
+    console.error("[meeting-schedule] error:", e?.message);
+    return res.status(200).json({ ok: false, notices: [] });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Action: calendar_items — Kalender-Items eines Meetings
+// ---------------------------------------------------------------------------
+
+async function handleCalendarItems(req, res) {
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const meetingId = req.query?.meeting_id || parseBody(req).meeting_id;
+  if (!meetingId) return res.status(400).json({ error: "Missing meeting_id" });
+
+  const supabase = getSupabase();
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("id", meetingId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+
+  const items = await loadMeetingCalendarItems(supabase, meetingId);
+  return res.status(200).json({ ok: true, items: (items || []).map(i => toNotice(i)) });
+}
+
+// ---------------------------------------------------------------------------
+// Action: calendar_undo — Eingetragenen Folgetermin wieder loeschen
+// ---------------------------------------------------------------------------
+
+async function handleCalendarUndo(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  const { item_id } = parseBody(req);
+  if (!item_id) return res.status(400).json({ error: "Missing item_id" });
+
+  const result = await undoBooking({ supabase: getSupabase(), userId: user.id, itemId: item_id });
+  return res.status(result.ok ? 200 : 409).json(result);
+}
+
 export default async function handler(req, res) {
   const action = req.query?.action;
   switch (action) {
@@ -1612,6 +1710,9 @@ export default async function handler(req, res) {
     case "burst_message":    return handleBurstMessage(req, res);
     case "burst_cost":       return handleBurstCost(req, res);
     case "analyze_doc":      return handleAnalyzeDoc(req, res);
+    case "schedule_check":   return handleScheduleCheck(req, res);
+    case "calendar_items":   return handleCalendarItems(req, res);
+    case "calendar_undo":    return handleCalendarUndo(req, res);
     case "summarize":        return handleSummarize(req, res);
     case "summary":          return handleSummary(req, res);
     case "delete":           return handleDelete(req, res);
