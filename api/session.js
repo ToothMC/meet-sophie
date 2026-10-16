@@ -1,6 +1,7 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { buildDateBlock, timeZoneFromRequest, DATE_LIST_DAYS } from "../lib/date-context.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
 import { isFirstSessionTest, testModeLanguage } from "../lib/test-mode.js";
@@ -739,8 +740,9 @@ export default async function handler(req, res) {
       try {
         const { getCalendarEventsForUser } = await import("../lib/calendar-fetch.js");
         const calResult = await getCalendarEventsForUser(user.id, {
-          days: 7,
+          days: DATE_LIST_DAYS,
           language: preferredLanguage || 'de',
+          timeZone: timeZoneFromRequest(req),
         });
         if (calResult?.text) {
           calendarContext = "\n\n" + calResult.text;
@@ -1256,7 +1258,10 @@ VOICE EXPRESSIVENESS: Your voice must reflect your emotional state — clearly A
 Exaggerate slightly — it always sounds less than you think.
 === END ===` : "";
 
-    const fullPrompt = sophiePrompt + calendarContext + importedContext + burstContext + researchInstruction + voiceExpressionInstruction + startupGuard;
+    // Date facts (today + next 14 days with weekdays, user's time zone). After the stable
+    // prompt so the cached prefix stays identical; xi keeps its own minimal prompt.
+    const dateContext = sessionMode === "extra_intelligence" ? "" : "\n\n" + buildDateBlock(timeZoneFromRequest(req));
+    const fullPrompt = sophiePrompt + dateContext + calendarContext + importedContext + burstContext + researchInstruction + voiceExpressionInstruction + startupGuard;
 
     // ---------------------------
     // Realtime session create

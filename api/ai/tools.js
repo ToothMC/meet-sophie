@@ -47,7 +47,8 @@ export default async function handler(req, res) {
         if (!userId) { result = 'Kalender nicht verfuegbar (nicht angemeldet).'; break; }
         const { getCalendarEventsForUser } = await getCalendarModule();
         const calResult = await getCalendarEventsForUser(userId, {
-          days: params.days || 7,
+          days: params.days || 14,
+          timeZone: req.headers?.['x-sophie-timezone'] || params.timeZone || null,
           language: params.language || 'de',
           forceRefresh: !!params.forceRefresh,
         });

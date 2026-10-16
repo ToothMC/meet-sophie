@@ -330,6 +330,7 @@ async function handleStart(req, res) {
   // Build system prompt server-side (never sent to client)
   const { fullSystemPrompt, tier, isPremium, isFirstSession, profile } = await buildServerSystemPrompt({
     supabase, user, sessionMode, brainstormConfig, language: preferredLanguage, conversationPolicy,
+    timeZone: req.headers?.["x-sophie-timezone"] || null,
   });
 
   // Refine language from profile if not explicitly set in request
@@ -1118,6 +1119,7 @@ async function handleMessage(req, res) {
     brainstormConfig: session.brainstorm_config || null,
     language: session.language || "en",
     conversationPolicy: session.conversation_policy || null,
+    timeZone: req.headers?.["x-sophie-timezone"] || null,
   });
 
   // Council availability is a UX hint only — the real gate lives inside runCouncil.
