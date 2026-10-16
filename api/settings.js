@@ -741,6 +741,10 @@ Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der ve
           return res.status(500).json({ error: 'delete_failed', detail: mErr.message });
         }
       } else {
+        // Ownership first: conversation_outputs has no user_id, so without this check any
+        // logged-in user could delete another user's report by passing its session_id.
+        const { data: own } = await supabase.from('user_sessions').select('id').eq('id', session_id).eq('user_id', user.id).maybeSingle();
+        if (!own) return res.status(404).json({ error: 'Session not found' });
         const { error: coErr } = await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
         if (coErr) {
           console.error('[delete-report] conversation_outputs delete failed:', coErr);
