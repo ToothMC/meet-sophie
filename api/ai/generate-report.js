@@ -62,11 +62,10 @@ export default async function handler(req, res) {
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
 
-  // Who is calling? Report generation stays as before (separate auth fix pending), but
-  // everything that writes the request's transcript into SHARED MEMORY (knowledge items,
-  // meeting recap from transcript_text) only runs for the verified session owner —
-  // otherwise anyone knowing a session_id could plant fake "ideas" in another user's
-  // memory (final audit 16.10.2026).
+  // Auth: only the session owner may generate (and overwrite) its report. Before, anyone
+  // knowing a session_id could overwrite another user's report, meeting summary, pitch
+  // memory and recap (security fix 16.10.2026). All callers (talk report, pitch flow,
+  // meeting page) send the user's Bearer token.
   let callerId = null;
   try {
     const authHeader = req.headers?.authorization || '';
@@ -76,6 +75,20 @@ export default async function handler(req, res) {
       callerId = caller?.id || null;
     }
   } catch (_) {}
+  if (!callerId) return res.status(401).json({ error: 'Authentication required' });
+
+  // The session row can lag a few seconds behind (talk: memory-update writes it while the
+  // report is already triggered) — wait briefly instead of rejecting a legitimate report.
+  let ownerRow = null;
+  for (let attempt = 0; attempt < 8 && !ownerRow; attempt++) {
+    const { data } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
+    ownerRow = data || null;
+    if (!ownerRow) await new Promise((r) => setTimeout(r, 1500));
+  }
+  if (!ownerRow || ownerRow.user_id !== callerId) {
+    console.warn(`[report] rejected: ${ownerRow ? 'not the session owner' : 'session not found'} (${String(session_id).slice(0, 8)})`);
+    return res.status(404).json({ error: 'Session not found' });
+  }
 
   // Determine report language: user profile (truth) > explicit param (UI lang) > fallback "en"
   // body.language comes from localStorage (UI language) and can differ from the user's
