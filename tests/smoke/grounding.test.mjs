@@ -144,3 +144,34 @@ test("all pages send the browser time zone", () => {
     assert.match(src(page), /X-Sophie-Timezone|time_zone: \(\(\) =>/, page);
   }
 });
+
+// ── Live test 16.10.2026 (afternoon) ──
+import { searchHistoryInstruction, CALENDAR_EVERY_ENTRY_RULE, RECALL_SOURCE_RULE } from "../../lib/grounding-texts.js";
+
+test("own sessions go to recall_memory, not to the imported-chat search", () => {
+  assert.match(searchHistoryInstruction(true), /only the user's imported chats/);
+  assert.match(searchHistoryInstruction(true), /always use recall_memory/);
+  assert.doesNotMatch(searchHistoryInstruction(false), /recall_memory/); // users without shared memory
+  assert.match(src("api/session.js"), /searchHistoryInstruction\(recallEnabled\)/);
+  assert.match(src("talk/index.html"), /Search ONLY the user's imported chat history/);
+});
+
+test("a reminder in the calendar is not 'free time'", () => {
+  const w = wholeDayWindow(TZ, 14, NOW);
+  const text = formatCalendarContext([
+    { id: "t", title: "Tabletten nehmen", start: "2026-10-23T20:00:00+03:00", end: "2026-10-23T20:15:00+03:00", allDay: false },
+  ], "de", { ...w, tz: TZ });
+  assert.ok(text.includes(CALENDAR_EVERY_ENTRY_RULE));
+  assert.match(text, /Fri 23\.10\. 20:00-20:15: Tabletten nehmen/);
+});
+
+test("recall keeps sessions apart and never shows entries marked as wrong", () => {
+  const s = src("lib/knowledge-core.js");
+  assert.match(s, /RECALL_HEADER\.replace\("\{query\}", q\)\} \$\{RECALL_SOURCE_RULE\}/);
+  assert.match(s, /filter\(\(h\) => h\.status !== "dropped"\)/);
+  assert.match(RECALL_SOURCE_RULE, /say if a point comes from a different session/);
+});
+
+test("weather is only fetched for a place the user named", () => {
+  assert.match(src("talk/index.html"), /never call the tool with a guessed place/);
+});

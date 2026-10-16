@@ -6145,7 +6145,7 @@ function attachChannel(ch) {
         }, {
           type: "function",
           name: "search_history",
-          description: "Search through the user's imported conversation history from other AI assistants. Use when the user asks about previous conversations, past projects, what was discussed before, or wants to find specific information from their chat history. Returns matching conversation excerpts.",
+          description: "Search ONLY the user's imported chat history from other AI assistants (e.g. ChatGPT, Claude). Not for earlier sessions with you — for those use recall_memory if you have it.",
           parameters: {
             type: "object",
             properties: {
@@ -6160,7 +6160,7 @@ function attachChannel(ch) {
           parameters: {
             type: "object",
             properties: {
-              location: { type: "string", description: "City name or location (e.g. 'Berlin', 'New York', 'München')" }
+              location: { type: "string", description: "The place the user named for this question. If the user named none and you do not know where they are right now, ask first — never call the tool with a guessed place." }
             },
             required: ["location"]
           }

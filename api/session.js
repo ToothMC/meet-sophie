@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 import { knowledgeReadEnabled, loadCrossModeBlock, recallMemory, RECALL_TOOL, backfillUserKnowledge } from "../lib/knowledge-core.js";
 import { buildDateBlock, timeZoneFromRequest, DATE_LIST_DAYS } from "../lib/date-context.js";
-import { limitedToolsBlock, LOCATION_RULE } from "../lib/grounding-texts.js";
+import { limitedToolsBlock, LOCATION_RULE, searchHistoryInstruction } from "../lib/grounding-texts.js";
 import { voiceToolPlan } from "../lib/voice-tools.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
@@ -1158,9 +1158,7 @@ export default async function handler(req, res) {
       `Die Zahl der zustimmenden Berater ist kein Abstimmungsergebnis — bewerte Argumentqualität, Evidenz, Unsicherheit und ` +
       `mögliche Risiken. Du bist nicht verpflichtet, der Mehrheitsmeinung zu folgen. Du entscheidest, was du übernimmst, ` +
       `ablehnst, kombinierst oder ignorierst, und formulierst die Antwort selbst.` +
-      `\n\nSEARCH HISTORY: Du hast ein Tool namens "search_history". ` +
-      `Nutze es wenn der User nach früheren Gesprächen oder Projekten fragt. ` +
-      `Sage "Moment, ich schaue in deiner History nach..." und nutze dann das Tool.` +
+      `\n\n${searchHistoryInstruction(recallEnabled)}` +
       `\n\nWETTER: Du hast ein Tool namens "get_weather". ` +
       `Nutze es bei Fragen nach Wetter, Temperatur oder Outdoor-Bedingungen. ` +
       `Sage "Moment, ich schaue nach dem Wetter..." und nutze das Tool.` +
