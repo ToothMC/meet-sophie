@@ -34,6 +34,114 @@ async function ingestKnowledgeSafe(supabase, sessionId, userId, transcriptText, 
   }
 }
 
+// ── Sales Pitch: find the previous attempt of the SAME pitch ──
+// Comparison (Ghost-Bar + Delta) and versioning only make sense against an earlier attempt
+// of the same pitch. "Most recent pitch" compared unrelated pitches (2026-10-16: a pitch to a
+// carpenter inherited title + "+11 vs. v1" from a May pitch). Whether two pitches are the same
+// is decided by the AI from the pitch content — no keyword/title matching.
+// Returns { row, reason } or null (= first pitch on this topic, no comparison). Fails closed:
+// on any error there is no comparison rather than a wrong one.
+const PITCH_MATCH_PROVIDERS = [
+  { provider: 'openai', model: 'gpt-4o-mini', json: true },
+  { provider: 'google', model: 'gemini-2.5-flash', json: false },
+];
+
+async function findSamePitchPredecessor({ supabase, userId, sessionId, transcriptText }) {
+  if (!userId) return null;
+  const { data: rows, error } = await supabase.from('sophie_pitch_memory')
+    .select('id, conversation_id, topic, target_audience, pitch_type, score, scores_content, scores_delivery, strengths, weaknesses, version, created_at')
+    .eq('user_id', userId)
+    .neq('conversation_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  if (error) { console.error('[report] pitch match: candidate load failed:', error.message); return null; }
+
+  // Latest attempt per pitch chain (topic), demo pitches are Sophie's own, not the user's
+  const candidates = [];
+  const seenTopics = new Set();
+  for (const r of rows || []) {
+    if (r.pitch_type === 'demo') continue;
+    const key = (r.topic || '').trim();
+    if (seenTopics.has(key)) continue;
+    seenTopics.add(key);
+    candidates.push(r);
+    if (candidates.length >= 8) break;
+  }
+  if (!candidates.length) return null;
+
+  // The actual content of each earlier pitch (setup answers + pitch), as the AI's basis
+  const excerpts = {};
+  try {
+    const convIds = candidates.map(c => c.conversation_id).filter(Boolean);
+    if (convIds.length) {
+      const { data: msgs } = await supabase.from('conversation_messages')
+        .select('session_id, seq, role, text')
+        .in('session_id', convIds)
+        .order('seq', { ascending: true })
+        .limit(400);
+      for (const m of msgs || []) {
+        if (!m.text?.trim()) continue;
+        excerpts[m.session_id] = (excerpts[m.session_id] || '') + `[${m.role}]: ${m.text.trim()}\n`;
+      }
+    }
+  } catch (e) { console.warn('[report] pitch match: excerpt load failed (non-critical):', e?.message); }
+
+  const asList = v => (Array.isArray(v) ? v : []).slice(0, 3).map(x => typeof x === 'string' ? x : x?.text || '').filter(Boolean).join(' | ');
+  const candidateBlock = candidates.map((c, i) => {
+    const excerpt = (excerpts[c.conversation_id] || '').slice(0, 1500).trim();
+    return `[${i + 1}] Title: "${c.topic || 'Untitled'}" · ${String(c.created_at || '').slice(0, 10)}
+Audience (may be inaccurate): ${c.target_audience || 'unknown'}
+${excerpt ? `Transcript excerpt:\n${excerpt}` : `Strengths: ${asList(c.strengths) || '—'}\nWeaknesses: ${asList(c.weaknesses) || '—'}`}`;
+  }).join('\n\n');
+
+  const prompt = `A user practices sales pitches with a coach. Decide whether the CURRENT pitch is a new attempt of one of the user's EARLIER pitches — the same pitch practiced again — or a different pitch.
+
+SAME pitch = the same offer/product/idea, pitched for the same purpose to the same kind of audience. Rewording, a better structure, a different length or a more polished delivery still count as the same pitch.
+DIFFERENT pitch = a different offer/product/idea, OR the same product pitched to a fundamentally different audience or for a different goal (e.g. investors vs. end customers, a job interview vs. a product pitch).
+Judge from the content, not from the titles — earlier titles can be wrong. If you are not clearly convinced it is the same pitch, answer 0. A wrong comparison is worse than no comparison.
+
+CURRENT PITCH (transcript):
+${String(transcriptText || '').slice(0, 5000)}
+
+EARLIER PITCHES:
+${candidateBlock}
+
+Return ONLY JSON: {"match": <number of the earlier pitch that is the same pitch, or 0>, "reason": "<one short sentence>"}`;
+
+  for (const p of PITCH_MATCH_PROVIDERS) {
+    try {
+      const resp = await getAdapter(p.provider).complete({
+        messages: [{ role: 'user', content: prompt }],
+        model: p.model, maxTokens: 150, temperature: 0, ...(p.json ? { json: true } : {}),
+      });
+      trackAdapterCost(resp, userId, 'report-salespitch-match');
+      const jsonText = (resp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
+      const parsed = JSON.parse(jsonText);
+      const idx = Number(parsed.match);
+      const reason = String(parsed.reason || '').slice(0, 200);
+      if (Number.isInteger(idx) && idx >= 1 && idx <= candidates.length) {
+        return { row: candidates[idx - 1], reason };
+      }
+      console.log(`[report] pitch match: no same-topic predecessor among ${candidates.length} (${reason})`);
+      return null;
+    } catch (e) {
+      console.warn(`[report] pitch match via ${p.provider} failed:`, e?.message);
+    }
+  }
+  return null;
+}
+
+// Template placeholders ("string", "...") copied by the extractor must not be stored as data.
+function cleanExtractedText(v) {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  if (!s || /^(string|null|undefined|unknown|n\/a|none|-|—|\.\.\.|…)$/i.test(s) || /^<.*>$/.test(s)) return null;
+  return s.slice(0, 200);
+}
+
+const PITCH_TYPES = ['sales', 'investor', 'keynote', 'internal', 'self', 'other'];
+const GOAL_TYPES = ['buy', 'invest', 'approve', 'trust', 'understand', 'remember', 'decide'];
+
 const REPORT_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
   { provider: 'anthropic', model: 'claude-sonnet-4-6' },
@@ -544,21 +652,18 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
         .update({ report_progress: 30, report_status_detail: isEN ? 'Evaluating pitch...' : isFR ? 'Évaluation du pitch...' : 'Bewerte Pitch...' })
         .eq('session_id', session_id);
 
-      // Load previous pitch data for version comparison (if exists)
+      // Load the previous attempt of the SAME pitch for version comparison (if exists)
       let prevPitchContext = '';
+      let samePitchPrev = null;
       try {
-        const { data: sess } = await supabase.from('user_sessions').select('user_id').eq('id', session_id).maybeSingle();
-        if (sess?.user_id) {
-          // Find the most recent PREVIOUS pitch (exclude current session)
-          const { data: prevPitches } = await supabase.from('sophie_pitch_memory')
-            .select('topic, score, scores_content, scores_delivery, strengths, weaknesses, version, created_at')
-            .eq('user_id', sess.user_id)
-            .neq('conversation_id', session_id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (prevPitches?.length) {
-            const prev = prevPitches[0];
+        if (reportUserId) {
+          const match = await findSamePitchPredecessor({ supabase, userId: reportUserId, sessionId: session_id, transcriptText: transcript_text });
+          if (match) {
+            samePitchPrev = match.row;
+            console.log(`[report] ${session_id} — same pitch as "${match.row.topic}" v${match.row.version || 1} (${match.reason})`);
+          }
+          if (samePitchPrev) {
+            const prev = samePitchPrev;
             const pc = prev.scores_content || {};
             const pd = prev.scores_delivery || {};
             const prevLabel = isEN ? 'PREVIOUS PITCH' : isFR ? 'PITCH PRÉCÉDENT' : 'VORHERIGER PITCH';
@@ -884,16 +989,26 @@ ${isEN ? 'HTML STRUCTURE (keep design EXACTLY, only replace values + texts)' : i
           if (sess?.user_id) {
             const extractAdapter = getAdapter('openai');
             const extractResp = await extractAdapter.complete({
-              messages: [{ role: 'user', content: `Extract structured pitch scores from this HTML report.
+              messages: [{ role: 'user', content: `Extract structured pitch data from this HTML report and the pitch transcript.
 
+REPORT:
 ${reportHtml.slice(0, 10000)}
+
+TRANSCRIPT (setup answers + pitch):
+${String(transcript_text || '').slice(0, 3000)}
+
+FIELDS:
+- pitch_topic: short title of THIS pitch (the report title).
+- pitch_type: one of sales|investor|keynote|internal|self|other — "investor" only if the pitch is addressed to investors.
+- audience_type: who the speaker pitches to, as stated in the transcript (e.g. the answer to "who are you pitching to?"), in the transcript's language; null if not stated. Never guess.
+- goal_type: one of buy|invest|approve|trust|understand|remember|decide, or null if unclear.
 
 Return ONLY JSON:
 {
-  "pitch_topic": "string",
-  "pitch_type": "sales|investor|keynote|internal|self|other",
-  "audience_type": "string",
-  "goal_type": "buy|invest|approve|trust|understand|remember|decide",
+  "pitch_topic": "<title>",
+  "pitch_type": "<sales|investor|keynote|internal|self|other>",
+  "audience_type": "<audience or null>",
+  "goal_type": "<buy|invest|approve|trust|understand|remember|decide or null>",
   "scores_content": {"clarity":0,"problem_sharpness":0,"value_proposition":0,"structure":0,"differentiation":0,"credibility":0,"audience_fit":0},
   "scores_delivery": {"opening":0,"closing":0,"voice_rhythm":0,"rhetoric_language":0,"authenticity":0,"persuasiveness":0},
   "overall_score": 0.0,
@@ -916,21 +1031,21 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
               return Math.max(0, Math.min(100, Math.round(v)));
             })();
 
-            const { data: prevPitch } = await supabase.from('sophie_pitch_memory')
-              .select('id, version')
-              .eq('user_id', sess.user_id)
-              .eq('topic', pitchData.pitch_topic || reportTitle)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            // Version chain = the same-pitch predecessor the AI matched before the report was
+            // written (the one the comparison is based on). A follow-up keeps the chain's topic so
+            // the Pitch Journey groups it; without a match it is v1 of a new topic.
+            const audienceType = cleanExtractedText(pitchData.audience_type);
+            const pitchType = PITCH_TYPES.includes(pitchData.pitch_type) ? pitchData.pitch_type : 'other';
+            const goalType = GOAL_TYPES.includes(pitchData.goal_type) ? pitchData.goal_type : null;
+            const ownTopic = cleanExtractedText(pitchData.pitch_topic) || reportTitle;
 
             const pitchRow = {
               user_id: sess.user_id,
               conversation_id: session_id,
-              topic: pitchData.pitch_topic || reportTitle,
-              target_audience: pitchData.audience_type || null,
-              pitch_type: pitchData.pitch_type || 'other',
-              goal_type: pitchData.goal_type || null,
+              topic: samePitchPrev?.topic || ownTopic,
+              target_audience: audienceType,
+              pitch_type: pitchType,
+              goal_type: goalType,
               score: overall100,
               scores_content: pitchData.scores_content || null,
               scores_delivery: pitchData.scores_delivery || null,
@@ -938,8 +1053,8 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
               weaknesses: pitchData.weaknesses || [],
               recurring_errors: [],
               critical_objections: [],
-              version: prevPitch ? (prevPitch.version || 1) + 1 : 1,
-              parent_pitch_id: prevPitch?.id || null,
+              version: samePitchPrev ? (samePitchPrev.version || 1) + 1 : 1,
+              parent_pitch_id: samePitchPrev?.id || null,
             };
 
             const { error: pitchErr } = await supabase.from('sophie_pitch_memory').insert(pitchRow);
@@ -951,7 +1066,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
               await supabase.from('conversation_outputs').update({
                 structured_summary: {
                   summary: reportTitle,
-                  audience_type: pitchData.audience_type || "",
+                  audience_type: audienceType || "",
                   overall_score: overall100,
                   scores_content: pitchData.scores_content || {},
                   strongest_elements: pitchData.strengths || [],
