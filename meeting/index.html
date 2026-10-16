@@ -1365,7 +1365,7 @@ async function api(action, body = null, method = "POST") {
 
   const opts = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
   };
   if (accessToken) opts.headers.Authorization = `Bearer ${accessToken}`;
 
@@ -1530,7 +1530,7 @@ async function _prefillFromParent(parentId, accessToken) {
   try {
     const headers = { "Content-Type": "application/json" };
     if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
-    const res = await fetch(`/api/meeting?action=detail&meeting_id=${encodeURIComponent(parentId)}`, { headers });
+    const res = await fetch(`/api/meeting?action=get&id=${encodeURIComponent(parentId)}`, { headers });
     if (!res.ok) return;
     const data = await res.json();
 
@@ -2393,7 +2393,7 @@ async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
 
   // Fire generate-report (don't await — poll instead)
   await refreshAccessToken();
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
   if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
 
   fetch("/api/ai/generate-report", {
@@ -3692,6 +3692,7 @@ async function runHintAnalysis(isFinal = false) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
+        "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })(),
       },
       body: JSON.stringify({
         meeting_id: meetingId,
@@ -3780,6 +3781,33 @@ async function checkMeetingBalance() {
   } catch (e) {
     console.warn("[meeting-balance] Check failed:", e.message);
   }
+}
+
+// ── Shared memory: Sophie looks up earlier sessions (recall_memory tool) ──
+async function handleMeetingRecall(msg, authToken) {
+  const fail = "Memory search failed — tell the user you could not look it up right now.";
+  let resultText = fail;
+  try {
+    const args = JSON.parse(msg.arguments || "{}");
+    const res = await fetch("/api/session?action=recall", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}`, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
+      body: JSON.stringify({ query: args.query, mode: args.mode, person: args.person, since: args.since, until: args.until, session_mode: "meeting" }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      resultText = data.result || fail;
+      console.log(`[meeting-voice] recall: ${data.hits || 0} hit(s)`);
+    }
+  } catch (e) {
+    console.error("[meeting-voice] recall error:", e?.message);
+  }
+  try {
+    sophieVoiceDc?.send(JSON.stringify({ type: "conversation.item.create", item: {
+      type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ memory: resultText }),
+    }}));
+    sophieVoiceDc?.send(JSON.stringify({ type: "response.create" }));
+  } catch (_) {}
 }
 
 // ── Flush pending burst messages to server ───────────────────────────────
@@ -3967,6 +3995,8 @@ async function connectSophieVoice(phase = "live") {
     const sessionHeaders = {
       Authorization: `Bearer ${authToken}`,
       "X-Sophie-Session-Mode": "meeting",
+      "X-Sophie-Surface": "meeting-page", // explicit marker: tools differ from the Talk page
+      "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })(),
       "X-Sophie-Meeting-Id": meetingId || "",
       "X-Sophie-Meeting-Phase": phase,
     };
@@ -4043,6 +4073,9 @@ async function connectSophieVoice(phase = "live") {
               },
             },
           },
+          // Shared memory (recall_memory) — only when the server enabled it for this user
+          ...(Array.isArray(data?.knowledge_tools) && data.knowledge_tools.length
+            ? { tools: data.knowledge_tools, tool_choice: "auto" } : {}),
         },
       }));
 
@@ -4066,6 +4099,10 @@ async function connectSophieVoice(phase = "live") {
     sophieVoiceDc.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data);
+        if (msg?.type === "response.function_call_arguments.done" && msg?.name === "recall_memory") {
+          handleMeetingRecall(msg, authToken);
+          return;
+        }
         handleVoiceTranscriptEvent(msg);
       } catch (_) {}
     };

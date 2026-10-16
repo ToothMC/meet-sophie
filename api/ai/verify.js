@@ -6,6 +6,7 @@ import { verifyAnswer, LIMITS } from '../../lib/ai/fact-check.js';
 import { webSearch, groundedSearch } from './tools.js';
 import { trackCost, checkDailyBudget } from '../../lib/ai/cost-tracker.js';
 import { isSubscriptionActive } from '../../lib/billing-constants.js';
+import { germanToday, timeZoneFromRequest } from '../../lib/date-context.js';
 
 export const config = { maxDuration: 30 };
 
@@ -101,7 +102,7 @@ export default async function handler(req, res) {
   const costs = [];
   let result;
   try {
-    result = await verifyAnswer({ question, answer, search, onCost: e => costs.push(e) });
+    result = await verifyAnswer({ question, answer, search, onCost: e => costs.push(e), today: germanToday(timeZoneFromRequest(req)) });
   } catch (e) {
     console.error('[verify] failed:', e?.message?.slice(0, 200));
     await logAttempt(supabase, user.id, body.session_id, { skipped: 'failed', error: e?.message?.slice(0, 160) });

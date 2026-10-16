@@ -4884,7 +4884,7 @@
 
     async function callChatStream(payload) {
       const token = await getToken();
-      const headers = { "Content-Type": "application/json" };
+      const headers = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const res = await fetch("/api/chat?action=message&stream=1", {
@@ -5297,7 +5297,7 @@
       sessionEnded = true;
       // Use cached token — can't await async in beforeunload
       const token = _cachedToken;
-      const payloadObj = { session_id: sessionId, transcript: history };
+      const payloadObj = { session_id: sessionId, transcript: history, time_zone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
       // Pass token in body for sendBeacon (which can't set headers)
       if (token) payloadObj._token = token;
       const payload = JSON.stringify(payloadObj);

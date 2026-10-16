@@ -72,7 +72,8 @@ export default async function handler(req, res) {
         if (!userId) { result = 'Kalender nicht verfuegbar (nicht angemeldet).'; break; }
         const { getCalendarEventsForUser } = await getCalendarModule();
         const calResult = await getCalendarEventsForUser(userId, {
-          days: params.days || 7,
+          days: params.days || 14,
+          timeZone: req.headers?.['x-sophie-timezone'] || params.timeZone || null,
           language: params.language || 'de',
           forceRefresh: !!params.forceRefresh,
         });
@@ -82,7 +83,7 @@ export default async function handler(req, res) {
       case 'calendar_create': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
         const { calendarWrite: cwCreate } = await getCalendarModule();
-        const cr = await cwCreate(userId, 'create', params);
+        const cr = await cwCreate(userId, 'create', { ...params, timeZone: req.headers?.['x-sophie-timezone'] || null });
         result = cr.success
           ? `Termin erstellt: "${cr.event.title}" am ${cr.event.start}`
           : `Fehler beim Erstellen: ${cr.error}`;
@@ -91,7 +92,7 @@ export default async function handler(req, res) {
       case 'calendar_update': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
         const { calendarWrite: cwUpdate } = await getCalendarModule();
-        const ur = await cwUpdate(userId, 'update', params);
+        const ur = await cwUpdate(userId, 'update', { ...params, timeZone: req.headers?.['x-sophie-timezone'] || null });
         result = ur.success
           ? `Termin aktualisiert: "${ur.event.title}" — ${ur.event.start}`
           : `Fehler beim Aktualisieren: ${ur.error}`;

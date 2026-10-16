@@ -2341,7 +2341,7 @@ async function verifySophieAnswer(question, answer) {
     if (!authSession?.access_token) return;
     const res = await fetch("/api/ai/verify", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
       body: JSON.stringify({ question, answer, session_id: sessionId || null }),
     });
     if (!res.ok) return;
@@ -4357,6 +4357,30 @@ function getDatePrefix() {
   return `${year}-${month}-${day}`;
 }
 
+// Shared memory: bring earlier sessions into the shared memory (server batches of 3,
+// idempotent). At most once per day per browser, in the background.
+async function runKnowledgeBackfillOnce() {
+  const key = "sophie_knowledge_backfill_day";
+  const today = new Date().toISOString().slice(0, 10);
+  try { if (localStorage.getItem(key) === today) return; } catch (_) {}
+  for (let i = 0; i < 15; i++) {
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+      const r = await fetch("/api/session?action=knowledge_backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token },
+        body: "{}",
+      });
+      if (!r.ok) return;
+      const d = await r.json();
+      console.log(`[knowledge-backfill] processed ${d.processed || 0}, remaining ${d.remaining || 0}`);
+      if (!d.remaining) break;
+    } catch (_) { return; }
+  }
+  try { localStorage.setItem(key, today); } catch (_) {}
+}
+
 // Start report generation and poll progress
 async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
@@ -4382,7 +4406,7 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
       .map(m => `[${m.role}]: ${m.text}`)
       .join("\n");
 
-    const genHeaders = { "Content-Type": "application/json" };
+    const genHeaders = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
@@ -6121,7 +6145,7 @@ function attachChannel(ch) {
         }, {
           type: "function",
           name: "search_history",
-          description: "Search through the user's imported conversation history from other AI assistants. Use when the user asks about previous conversations, past projects, what was discussed before, or wants to find specific information from their chat history. Returns matching conversation excerpts.",
+          description: "Search ONLY the user's imported chat history from other AI assistants (e.g. ChatGPT, Claude). Not for earlier sessions with you — for those use recall_memory if you have it.",
           parameters: {
             type: "object",
             properties: {
@@ -6136,7 +6160,7 @@ function attachChannel(ch) {
           parameters: {
             type: "object",
             properties: {
-              location: { type: "string", description: "City name or location (e.g. 'Berlin', 'New York', 'München')" }
+              location: { type: "string", description: "The place the user named for this question. If the user named none and you do not know where they are right now, ask first — never call the tool with a guessed place." }
             },
             required: ["location"]
           }
@@ -6213,7 +6237,7 @@ function attachChannel(ch) {
           parameters: {
             type: "object",
             properties: {
-              days: { type: "number", description: "Number of days to look ahead (default: 7, max: 30)" }
+              days: { type: "number", description: "Number of whole days to return, counted from today (default: 14, max: 30)" }
             }
           }
         }, {
@@ -6235,8 +6259,8 @@ function attachChannel(ch) {
             type: "object",
             properties: {
               title:       { type: "string",  description: "Event title/summary" },
-              start:       { type: "string",  description: "Start datetime in ISO 8601 format with timezone offset, e.g. '2026-04-14T14:00:00+03:00'" },
-              end:         { type: "string",  description: "End datetime in ISO 8601 format with timezone offset, e.g. '2026-04-14T15:00:00+03:00'" },
+              start:       { type: "string",  description: "Start as local date and time in the user's time zone, without offset, e.g. '2026-10-23T10:00'. The system applies the user's time zone." },
+              end:         { type: "string",  description: "End as local date and time in the user's time zone, without offset, e.g. '2026-10-23T11:00'. The system applies the user's time zone." },
               description: { type: "string",  description: "Optional event description" },
               location:    { type: "string",  description: "Optional location" },
               allDay:      { type: "boolean", description: "True for all-day events" }
@@ -6252,8 +6276,8 @@ function attachChannel(ch) {
             properties: {
               eventId: { type: "string",  description: "The Google Calendar event ID from get_calendar_events" },
               title:   { type: "string",  description: "New title (only if changing)" },
-              start:   { type: "string",  description: "New start datetime ISO 8601 with timezone offset (only if changing)" },
-              end:     { type: "string",  description: "New end datetime ISO 8601 with timezone offset (only if changing)" },
+              start:   { type: "string",  description: "New start as local date and time in the user's time zone, without offset, e.g. '2026-10-23T10:00' (only if changing). The system applies the user's time zone." },
+              end:     { type: "string",  description: "New end as local date and time in the user's time zone, without offset, e.g. '2026-10-23T11:00' (only if changing). The system applies the user's time zone." },
               description: { type: "string", description: "New description (only if changing)" },
               location:    { type: "string", description: "New location (only if changing)" }
             },
@@ -6414,6 +6438,11 @@ function attachChannel(ch) {
         }];
         sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
+      }
+      // Shared memory: recall_memory in every mode that has tools (talk, pitch, brainstorm, meeting)
+      if (Array.isArray(window._knowledgeTools) && window._knowledgeTools.length && Array.isArray(sessionUpdate.session.tools)) {
+        sessionUpdate.session.tools = sessionUpdate.session.tools.concat(window._knowledgeTools);
+        if (!selectedVoiceMode) window._talkBaseTools = sessionUpdate.session.tools.slice();
       }
       try { dcSend(sessionUpdate); } catch (e) { console.error(`[${runId}] [dc] dcSend session.update failed:`, e); }
       console.log(`[${runId}] [dc] session.update sent — waiting for confirmation`);
@@ -6964,6 +6993,42 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         return;
       }
 
+      // ── Shared memory: recall_memory (meetings, pitches, brainstorms, talks) ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "recall_memory") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [recall] called`);
+          showResearchIndicator();
+          let resultText = "Memory search failed — tell the user you could not look it up right now.";
+          const { data: { session: authSession } } = await supabase.auth.getSession();
+          if (authSession?.access_token) {
+            const recallRes = await fetch("/api/session?action=recall", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
+              body: JSON.stringify({ query: args.query, mode: args.mode, person: args.person, since: args.since, until: args.until, session_mode: selectedVoiceMode || null }),
+            });
+            if (recallRes.ok) {
+              const data = await recallRes.json();
+              resultText = data.result || resultText;
+              console.log(`[${runId}] [recall] ${data.hits || 0} hit(s)`);
+            }
+          }
+          hideResearchIndicator();
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ memory: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          hideResearchIndicator();
+          console.error(`[${runId}] [recall] error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Memory search failed — tell the user you could not look it up right now." })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
       // ── Realtime Tools: Weather, Search, News ──
       if (msg?.type === "response.function_call_arguments.done" &&
           ["get_weather", "web_search", "get_news", "get_wikipedia", "get_flight_status", "get_airport_arrivals", "get_airport_departures", "get_calendar_events", "create_calendar_event", "update_calendar_event", "delete_calendar_event", "search_contacts", "search_emails", "read_email", "send_email", "search_places", "get_route"].includes(msg?.name)) {
@@ -6982,11 +7047,11 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
         try {
           const args = JSON.parse(msg.arguments || "{}");
           const toolMap = { get_weather: "weather", web_search: "search", get_news: "news", get_wikipedia: "wiki", get_flight_status: "flight", get_airport_arrivals: "arrivals", get_airport_departures: "departures", get_calendar_events: "calendar", create_calendar_event: "calendar_create", update_calendar_event: "calendar_update", delete_calendar_event: "calendar_delete", search_contacts: "contacts", search_emails: "gmail_search", read_email: "gmail_read", send_email: "gmail_send", search_places: "places", get_route: "route" };
-          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata }, get_calendar_events: { days: args.days || 7, language: _uiLang || "de" }, create_calendar_event: { title: args.title, start: args.start, end: args.end, description: args.description, location: args.location, allDay: args.allDay }, update_calendar_event: { eventId: args.eventId, title: args.title, start: args.start, end: args.end, description: args.description, location: args.location }, delete_calendar_event: { eventId: args.eventId }, search_contacts: { query: args.query, language: _uiLang || "de" }, search_emails: { query: args.query, maxResults: args.maxResults, language: _uiLang || "de" }, read_email: { messageId: args.messageId, language: _uiLang || "de" }, send_email: { to: args.to, subject: args.subject, body: args.body, cc: args.cc }, search_places: { query: args.query, location: args.location }, get_route: { origin: args.origin, destination: args.destination, mode: args.mode } };
+          const paramMap = { get_weather: { location: args.location }, web_search: { query: args.query }, get_news: { topic: args.topic }, get_wikipedia: { query: args.query }, get_flight_status: { flight_number: args.flight_number }, get_airport_arrivals: { airport_iata: args.airport_iata }, get_airport_departures: { airport_iata: args.airport_iata }, get_calendar_events: { days: args.days || 14, language: _uiLang || "de" }, create_calendar_event: { title: args.title, start: args.start, end: args.end, description: args.description, location: args.location, allDay: args.allDay }, update_calendar_event: { eventId: args.eventId, title: args.title, start: args.start, end: args.end, description: args.description, location: args.location }, delete_calendar_event: { eventId: args.eventId }, search_contacts: { query: args.query, language: _uiLang || "de" }, search_emails: { query: args.query, maxResults: args.maxResults, language: _uiLang || "de" }, read_email: { messageId: args.messageId, language: _uiLang || "de" }, send_email: { to: args.to, subject: args.subject, body: args.body, cc: args.cc }, search_places: { query: args.query, location: args.location }, get_route: { origin: args.origin, destination: args.destination, mode: args.mode } };
           console.log(`[${runId}] [tools] ${msg.name} called:`, JSON.stringify(args));
           showResearchIndicator();
 
-          const toolHeaders = { "Content-Type": "application/json" };
+          const toolHeaders = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
           try {
             const { data: { session: authSession } } = await supabase.auth.getSession();
             if (authSession?.access_token) toolHeaders["Authorization"] = "Bearer " + authSession.access_token;
@@ -7086,7 +7151,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
                 const memResp = await fetch("/api/memory-update", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
                   body: JSON.stringify({
                     transcript: cleaned,
                     seconds_used: wallclock,
@@ -7115,7 +7180,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
                 // Fire generate-report (don't await — runs 30-60s in background)
                 fetch("/api/ai/generate-report", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
                   body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch", language: _uiLang || "en" }),
                 }).catch(e => console.error("[report] bg generate fetch failed:", e?.message));
 
@@ -7718,6 +7783,7 @@ async function startVoice(){
     const fetchSessionToken = () => fetch("/api/session", {
       headers: {
         Authorization: `Bearer ${session.access_token}`,
+        "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })(),
         ...(handoverHeader ? { "X-Sophie-Handover": handoverHeader } : {}),
         ...(selectedVoiceMode ? { "X-Sophie-Session-Mode": selectedVoiceMode } : {}),
         ...(_resumeSessionId ? { "X-Sophie-Resume-Session": _resumeSessionId } : {}),
@@ -7818,6 +7884,9 @@ async function startVoice(){
     isPremium = !!data?.is_premium;
     plan = data?.plan || null;
     window._ecoMode = !!data?.eco_mode;
+    // Shared-memory tools (recall_memory) — only sent by the server when enabled for this user
+    window._knowledgeTools = Array.isArray(data?.knowledge_tools) ? data.knowledge_tools : [];
+    if (window._knowledgeTools.length) setTimeout(runKnowledgeBackfillOnce, 20000);
 
     // Plan-Cap fuer Balance-Balken. Bei Topups mindestens den tatsaechlichen Startwert nehmen.
     {
@@ -8444,7 +8513,7 @@ if (!hasRealConversation) {
       const { data: { session: authSess } } = await supabase.auth.getSession();
       if (authSess?.access_token) {
         memoryBody = {
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}`, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
           payload: {
             transcript: memPayload,
             seconds_used: durationSeconds,
@@ -8454,6 +8523,8 @@ if (!hasRealConversation) {
             session_mode: selectedVoiceMode || null,
             realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
             ui_language: _uiLang,
+            // false → no generate-report follows, so memory-update records cross-mode knowledge itself
+            report_enabled: !!reportEnabled,
           },
         };
       }
