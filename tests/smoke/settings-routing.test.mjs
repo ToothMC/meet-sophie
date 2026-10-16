@@ -33,11 +33,27 @@ test("every client call to /api/settings carries ?action= in the URL", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("deleting a report checks ownership before touching conversation_outputs", () => {
+test("deleting a report checks ownership and never deletes half-way", () => {
   const api = readFileSync(join(ROOT, "api/settings.js"), "utf8");
-  const block = api.slice(api.indexOf("if (action === 'delete-report')"));
-  const own = block.indexOf(".from('user_sessions').select('id').eq('id', session_id).eq('user_id', user.id)");
-  const del = block.indexOf("} else {");
-  const coDel = block.indexOf(".from('conversation_outputs').delete()", del);
-  assert.ok(own > del && own < coDel, "ownership check must come before deleting outputs");
+  const block = api.slice(api.indexOf("if (action === 'delete-report')"), api.indexOf("const { sourceId } = body;"));
+  // No separate report delete — user_sessions cascades to conversation_outputs
+  assert.doesNotMatch(block, /from\('conversation_outputs'\)\.delete\(\)/);
+  // Talk path: ownership check before the delete
+  const elseAt = block.indexOf("} else {");
+  const own = block.indexOf(".from('user_sessions').select('id').eq('id', session_id).eq('user_id', user.id)", elseAt);
+  const del = block.indexOf(".from('user_sessions').delete()", elseAt);
+  assert.ok(own > elseAt && own < del, "ownership check must come before the delete");
+  // Meeting path: meeting row before its session (FK without cascade, incident 16.10.2026)
+  const mDel = block.indexOf(".from('meetings').delete()");
+  const sDel = block.indexOf(".from('user_sessions').delete()");
+  assert.ok(mDel > 0 && mDel < sDel, "meeting must be deleted before its session");
+});
+
+test("meeting API deletes the meeting before its report session", () => {
+  const api = readFileSync(join(ROOT, "api/meeting.js"), "utf8");
+  const fn = api.slice(api.indexOf("async function handleDelete("));
+  const mDel = fn.indexOf('.from("meetings")\n    .delete()');
+  const sDel = fn.indexOf('.from("user_sessions").delete()');
+  assert.ok(mDel > 0 && sDel > mDel, "meeting first, then session");
+  assert.doesNotMatch(fn.slice(0, fn.indexOf("return res.status(200)")), /from\("conversation_outputs"\)\.delete\(\)/);
 });
