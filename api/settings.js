@@ -718,34 +718,33 @@ Schreibe NUR den optimierten Pitch-Text. Keine Einleitung, kein "Hier ist der ve
       const { session_id, source } = body;
       if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
 
+      // Order matters: meetings.session_id references user_sessions WITHOUT cascade, so the
+      // meeting row goes first. Deleting user_sessions then cascades to conversation_outputs,
+      // messages, memory etc. — no separate report delete that could succeed half-way
+      // (16.10.2026: report deleted, then FK error, meeting + session left behind).
       if (source === 'meeting') {
-        // Verify ownership before deleting
         const { data: mtg } = await supabase.from('meetings').select('id, session_id').eq('id', session_id).eq('user_id', user.id).maybeSingle();
         if (!mtg) return res.status(404).json({ error: 'Meeting not found' });
+        // Delete the meeting row first (cascades to context, notes, summary)
+        const { error: mErr } = await supabase.from('meetings').delete().eq('id', mtg.id).eq('user_id', user.id);
+        if (mErr) {
+          console.error('[delete-report] meetings delete failed:', mErr);
+          return res.status(500).json({ error: 'delete_failed', detail: mErr.message });
+        }
         if (mtg.session_id) {
-          const { error: coErr } = await supabase.from('conversation_outputs').delete().eq('session_id', mtg.session_id);
-          if (coErr) {
-            console.error('[delete-report] conversation_outputs delete failed:', coErr);
-            return res.status(500).json({ error: 'delete_failed', detail: coErr.message });
-          }
-          const { error: usErr } = await supabase.from('user_sessions').delete().eq('id', mtg.session_id);
+          const { error: usErr } = await supabase.from('user_sessions').delete().eq('id', mtg.session_id).eq('user_id', user.id);
           if (usErr) {
             console.error('[delete-report] user_sessions delete failed:', usErr);
             return res.status(500).json({ error: 'delete_failed', detail: usErr.message });
           }
         }
-        // Delete the meeting row (cascades to context, notes, summary)
-        const { error: mErr } = await supabase.from('meetings').delete().eq('id', session_id).eq('user_id', user.id);
-        if (mErr) {
-          console.error('[delete-report] meetings delete failed:', mErr);
-          return res.status(500).json({ error: 'delete_failed', detail: mErr.message });
-        }
       } else {
-        const { error: coErr } = await supabase.from('conversation_outputs').delete().eq('session_id', session_id);
-        if (coErr) {
-          console.error('[delete-report] conversation_outputs delete failed:', coErr);
-          return res.status(500).json({ error: 'delete_failed', detail: coErr.message });
-        }
+        // Ownership first: conversation_outputs has no user_id, so without this check any
+        // logged-in user could delete another user's report by passing its session_id.
+        const { data: own } = await supabase.from('user_sessions').select('id').eq('id', session_id).eq('user_id', user.id).maybeSingle();
+        if (!own) return res.status(404).json({ error: 'Session not found' });
+        // A meeting held on /meeting may still point at this session — unlink it first.
+        await supabase.from('meetings').update({ session_id: null }).eq('session_id', session_id).eq('user_id', user.id);
         const { error: usErr } = await supabase.from('user_sessions').delete().eq('id', session_id).eq('user_id', user.id);
         if (usErr) {
           console.error('[delete-report] user_sessions delete failed:', usErr);

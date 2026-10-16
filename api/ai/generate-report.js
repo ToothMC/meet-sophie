@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '../../lib/ai/adapters/index.js';
 import { DEFAULT_TEMPLATES, getDefaultTemplates } from '../../lib/report-templates.js';
 import { trackCost } from '../../lib/ai/cost-tracker.js';
+import { runRecapForSession } from '../../lib/memory-recap-core.js';
+import { ingestSessionKnowledge } from '../../lib/knowledge-core.js';
+import { localeToday, isoToday, timeZoneFromRequest } from '../../lib/date-context.js';
 
 function trackAdapterCost(response, userId, routingReason) {
   if (!response?.usage || !userId) return;
@@ -20,6 +23,21 @@ function trackAdapterCost(response, userId, routingReason) {
 }
 
 export const config = { maxDuration: 120 };
+
+// Cross-Mode Knowledge: write-only ("shadow"), never blocks or fails the report.
+async function ingestKnowledgeSafe(supabase, sessionId, userId, transcriptText, meetingStructured = null, callerId = null) {
+  if (!userId) return;
+  if (callerId !== userId) {
+    console.warn(`[report] knowledge ingest skipped: caller is not the session owner (${sessionId.slice(0, 8)})`);
+    return;
+  }
+  try {
+    const r = await ingestSessionKnowledge({ supabase, sessionId, userId, transcriptText, meetingStructured });
+    if (!r.ok) console.warn(`[report] knowledge ingest failed (non-critical):`, r.error);
+  } catch (e) {
+    console.warn(`[report] knowledge ingest threw (non-critical):`, e?.message);
+  }
+}
 
 const REPORT_PROVIDERS = [
   { provider: 'openai', model: 'gpt-4o-mini' },
@@ -43,6 +61,21 @@ export default async function handler(req, res) {
 
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
+
+  // Who is calling? Report generation stays as before (separate auth fix pending), but
+  // everything that writes the request's transcript into SHARED MEMORY (knowledge items,
+  // meeting recap from transcript_text) only runs for the verified session owner —
+  // otherwise anyone knowing a session_id could plant fake "ideas" in another user's
+  // memory (final audit 16.10.2026).
+  let callerId = null;
+  try {
+    const authHeader = req.headers?.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (token) {
+      const { data: { user: caller } } = await supabase.auth.getUser(token);
+      callerId = caller?.id || null;
+    }
+  } catch (_) {}
 
   // Determine report language: user profile (truth) > explicit param (UI lang) > fallback "en"
   // body.language comes from localStorage (UI language) and can differ from the user's
@@ -108,8 +141,11 @@ export default async function handler(req, res) {
   try {
     const modeHint = session_mode ? (isEN ? `Session mode: "${session_mode}".` : isFR ? `Mode de session : "${session_mode}".` : `Session-Modus: "${session_mode}".`) : '';
     const dateLocale = isEN ? 'en-US' : isFR ? 'fr-FR' : 'de-DE';
-    const todayDate = new Date().toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD — language-neutral
+    // In the USER's time zone (header from the browser), not the server's UTC — late in the
+    // evening the server date was already "tomorrow" for users east of UTC (audit 16.10.2026).
+    const userTz = timeZoneFromRequest(req);
+    const todayDate = localeToday(userTz, dateLocale);
+    const todayISO = isoToday(userTz); // YYYY-MM-DD — language-neutral
     const dateInstruction = meetingAutoLang
       ? `Today's date is ${todayISO}. Convert ALL relative time references ("next week", "morgen", "nächste Woche", "demain" etc.) to concrete dates, formatted in the date style appropriate for the detected language.`
       : isEN
@@ -411,6 +447,8 @@ ${meetingTemplate ? 'Antworte NUR mit dem ausgefüllten HTML. Behalte das exakte
 
         // ── Extract structured data from report for Decision/Action/Open logs ──
         // Quick cheap call with GPT-4o-mini to parse the HTML report into JSON
+        let meetingShortSummary = '';
+        let meetingStructuredData = null;
         try {
           const extractAdapter = getAdapter('openai');
           const extractResp = await extractAdapter.complete({
@@ -448,6 +486,8 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
           });
           const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
           const structured = JSON.parse(jsonText);
+          meetingShortSummary = String(structured.short_summary || '').trim();
+          meetingStructuredData = structured;
 
           // Find meeting_id linked to this session
           const { data: meetingRow } = await supabase.from('meetings')
@@ -500,6 +540,29 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
           console.error(`[report] structured extraction failed (non-critical):`, extractErr?.message);
           // Non-critical — report is already saved, structured data is a bonus
         }
+
+        // ── Make the meeting visible to the other modes (Tier N/K) ──
+        // /meeting sessions never pass through memory-update: no short_summary, no recap.
+        // Talk-page meetings already have both — short_summary is only filled when empty,
+        // and runRecapForSession returns the cached recap (idempotent).
+        try {
+          if (meetingShortSummary) {
+            await supabase.from('conversation_outputs')
+              .update({ short_summary: meetingShortSummary.slice(0, 300) })
+              .eq('session_id', session_id)
+              .or('short_summary.is.null,short_summary.eq.');
+          }
+          if (reportUserId && callerId === reportUserId) {
+            const recap = await runRecapForSession({
+              supabase, sessionId: session_id, userId: reportUserId, transcriptOverride: transcript_text,
+            });
+            if (!recap.ok) console.error(`[report] meeting recap failed (non-critical):`, recap.error);
+            else console.log(`[report] meeting recap ${recap.cached ? 'cached' : recap.skipped ? 'skipped:' + recap.skipped : 'written'}: ${session_id}`);
+          }
+        } catch (recapErr) {
+          console.error(`[report] meeting recap error (non-critical):`, recapErr?.message);
+        }
+        await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, meetingStructuredData, callerId);
       } else {
         const { error: failErr } = await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
@@ -884,6 +947,15 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
             });
             const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
             const pitchData = JSON.parse(jsonText);
+            // overall_score is requested on 1.0-5.0, but the model often copies the report's
+            // 0-100 value (e.g. 42 → 42*20 = 840 → violated sophie_pitch_memory_score_check,
+            // no pitch memory saved since 2026-05). Normalize whatever scale comes back to 0-100.
+            const overall100 = (() => {
+              const n = Number(pitchData.overall_score);
+              if (!Number.isFinite(n) || n <= 0) return 0;
+              const v = n <= 5 ? n * 20 : n <= 10 ? n * 10 : n;
+              return Math.max(0, Math.min(100, Math.round(v)));
+            })();
 
             const { data: prevPitch } = await supabase.from('sophie_pitch_memory')
               .select('id, version')
@@ -900,7 +972,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
               target_audience: pitchData.audience_type || null,
               pitch_type: pitchData.pitch_type || 'other',
               goal_type: pitchData.goal_type || null,
-              score: Math.round((pitchData.overall_score || 0) * 20),
+              score: overall100,
               scores_content: pitchData.scores_content || null,
               scores_delivery: pitchData.scores_delivery || null,
               strengths: pitchData.strengths || [],
@@ -921,7 +993,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
                 structured_summary: {
                   summary: reportTitle,
                   audience_type: pitchData.audience_type || "",
-                  overall_score: pitchData.overall_score ? Math.round(pitchData.overall_score * 20) : 0,
+                  overall_score: overall100,
                   scores_content: pitchData.scores_content || {},
                   strongest_elements: pitchData.strengths || [],
                   main_weaknesses: pitchData.weaknesses || [],
@@ -945,6 +1017,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
           report_status_detail: isEN ? 'Sales pitch report generation failed' : isFR ? 'Génération du rapport pitch échouée' : 'Sales Pitch Report Generation fehlgeschlagen',
         }).eq('session_id', session_id);
       }
+      await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, null, callerId);
       return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
     }
 
@@ -1569,6 +1642,7 @@ ${analysesBlock}`;
     await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
 
     console.log(`[report] Done: ${session_id} — ${reportHtml.length} chars HTML from ${analyses.length} providers`);
+    await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, null, callerId);
     return res.status(200).json({ ok: true, status: 'done' });
 
   } catch (err) {

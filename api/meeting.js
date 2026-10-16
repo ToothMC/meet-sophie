@@ -23,6 +23,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { knowledgeReadEnabled, loadCrossModeBlock, recallMemory, RECALL_CHAT_INSTRUCTION } from "../lib/knowledge-core.js";
+import { buildDateBlock, longToday, timeZoneFromRequest, DATE_LIST_DAYS } from "../lib/date-context.js";
+import { dateAnchorRule, LOCATION_RULE } from "../lib/grounding-texts.js";
+import { getCalendarEventsForUser } from "../lib/calendar-fetch.js";
 import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
@@ -632,8 +636,18 @@ async function handleMessage(req, res) {
     historyBlock ? `\n${historyBlock}` : null,
   ].filter(Boolean).join("\n");
 
+  let crossModeContext = null;
+  if (knowledgeReadEnabled(user)) {
+    try {
+      crossModeContext = await loadCrossModeBlock({ userId: user.id, sessionMode: "meeting", channel: "chat", topic: meetingContext });
+    } catch (e) {
+      console.warn("[meeting] cross-mode block failed:", e?.message);
+    }
+  }
+
   // Build system prompt with meeting-specific phase prompt
   const systemPrompt = buildSophiePrompt({
+    crossModeContext,
     tier,
     sessionMode: "meeting",
     meetingPhase: meeting.phase,
@@ -666,9 +680,23 @@ async function handleMessage(req, res) {
     `Antworte mit dem Tag ALLEIN. Du bekommst die Daten automatisch und antwortest dann basierend darauf.`;
 
   // Call OpenAI
+  // Grounding (audit 16.10.2026): date in the user's time zone, the calendar read-only
+  // (no calendar tool here), location rule, and recall for users with shared memory.
+  const tz = timeZoneFromRequest(req);
+  let calendarBlock = "";
+  try {
+    const cal = await getCalendarEventsForUser(user.id, { days: DATE_LIST_DAYS, timeZone: tz, withTool: false });
+    if (cal?.text) calendarBlock = "\n\n" + cal.text;
+  } catch (e) {
+    console.warn("[meeting] calendar context error:", e?.message);
+  }
+  const recallOn = knowledgeReadEnabled(user);
+  const groundingBlock = "\n\n" + buildDateBlock(tz) + calendarBlock + "\n\n" + LOCATION_RULE +
+    (recallOn ? "\n" + RECALL_CHAT_INSTRUCTION : "");
+
   const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
   const openaiMessages = [
-    { role: "system", content: systemPrompt + toolBlock },
+    { role: "system", content: systemPrompt + toolBlock + groundingBlock },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
@@ -705,12 +733,14 @@ async function handleMessage(req, res) {
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
   // Execute real-time tools if AI requested one
-  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|recall):([^\]]+)\]/);
   if (toolMatch) {
     const [, toolType, toolParam] = toolMatch;
     let toolData;
     try {
-      if (toolType === "weather") toolData = await getWeather(toolParam.trim());
+      if (toolType === "recall") {
+        toolData = recallOn ? (await recallMemory({ userId: user.id, query: toolParam.trim() })).text : null;
+      } else if (toolType === "weather") toolData = await getWeather(toolParam.trim());
       else if (toolType === "search") toolData = await webSearch(toolParam.trim());
       else if (toolType === "news") toolData = await getNews(toolParam.trim());
       else if (toolType === "wiki") toolData = await getWikipedia(toolParam.trim());
@@ -951,11 +981,22 @@ async function handleSummarize(req, res) {
 
     if (fullTranscript.trim().length > 10) {
       // Create a user_session so generate-report can link to it
+      // session_type/date/duration: without them the meeting was invisible to Tier N/K,
+      // recap and resume (all of which key on these columns).
+      const endedIso = meeting.ended_at || new Date().toISOString();
+      const durationSec = meeting.started_at
+        ? Math.max(0, Math.round((new Date(endedIso).getTime() - new Date(meeting.started_at).getTime()) / 1000))
+        : null;
       const { data: session } = await supabase.from("user_sessions").insert({
         user_id: user.id,
         session_mode: "meeting",
+        session_type: "meeting",
         status: "ended",
         title: meeting.title || "Meeting",
+        session_date: endedIso,
+        ...(meeting.started_at ? { started_at: meeting.started_at } : {}),
+        ended_at: endedIso,
+        ...(Number.isFinite(durationSec) ? { duration_seconds: durationSec } : {}),
       }).select("id").single();
 
       if (session?.id) {
@@ -1054,22 +1095,24 @@ async function handleDelete(req, res) {
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
-  // If meeting has a linked report session, clean up report data first
-  if (meeting.session_id) {
-    await supabase.from("conversation_outputs").delete().eq("session_id", meeting.session_id);
-    await supabase.from("user_sessions").delete().eq("id", meeting.session_id);
-  }
-
-  // Delete meeting (cascades to context, notes, summary via ON DELETE CASCADE)
-  // Children with parent_meeting_id will get SET NULL automatically
+  // Delete meeting FIRST (cascades to context, notes, summary; children with
+  // parent_meeting_id get SET NULL). meetings.session_id references user_sessions without
+  // cascade, so deleting the session first failed and left an orphan behind (16.10.2026).
   const { error } = await supabase
     .from("meetings")
     .delete()
-    .eq("id", meeting_id);
+    .eq("id", meeting_id)
+    .eq("user_id", user.id);
 
   if (error) {
     console.error("Meeting delete error:", error);
     return res.status(500).json({ error: "Failed to delete meeting" });
+  }
+
+  // Then the linked report session — cascades to conversation_outputs, messages, memory.
+  if (meeting.session_id) {
+    const { error: usErr } = await supabase.from("user_sessions").delete().eq("id", meeting.session_id).eq("user_id", user.id);
+    if (usErr) console.error("Meeting delete: report session cleanup failed:", usErr.message);
   }
 
   return res.status(200).json({ ok: true });
@@ -1191,6 +1234,8 @@ async function handleAnalyze(req, res) {
     `- TOO_BIG: overly ambitious plans without smallest test`,
     `- NOT_MEASURABLE: decisions without success criteria`,
     `- TOO_EARLY: premature detail before core validation`,
+    ``,
+    dateAnchorRule(longToday(timeZoneFromRequest(req)), timeZoneFromRequest(req)),
     ``,
     `Return JSON: {"decisions":[],"actions":[],"risks":[],"open_points":[],"hints":[{"type":"...","text":"..."}]}`,
     `Only include genuinely new items not already in MEETING STATE.`,

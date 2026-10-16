@@ -9,7 +9,10 @@ import { isSubscriptionActive } from "../lib/billing-constants.js";
 import { isFirstSessionTest } from "../lib/test-mode.js";
 import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from "../lib/memory-helpers.js";
 import { runRecapForSession } from "../lib/memory-recap-core.js";
+import { ingestSessionKnowledge } from "../lib/knowledge-core.js";
 import { cleanText, buildSessionTitle } from "../lib/session-title.js";
+import { longToday, timeZoneFromRequest } from "../lib/date-context.js";
+import { dateAnchorRule } from "../lib/grounding-texts.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
@@ -1169,7 +1172,7 @@ export default async function handler(req, res) {
         ok: true,
         skipped: true,
         reason: "No transcript",
-        session: emptySession || null,
+        session: null,
       });
     }
 
@@ -1535,7 +1538,8 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
       body: JSON.stringify({
         model: process.env.MEMORY_MODEL || "gpt-4o-mini",
         input: [
-          { role: "system", content: system },
+          // Date anchor: "bis Freitag" must be stored as an absolute date (grounding audit 16.10.2026)
+          { role: "system", content: system + "\n\n" + dateAnchorRule(longToday(timeZoneFromRequest(req)), timeZoneFromRequest(req)) },
           { role: "user", content: userMsg },
         ],
         temperature: 0.2,
@@ -1871,6 +1875,7 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
 
     // Check if session already exists in user_sessions (chat sessions created by /api/chat handleStart)
     const existingSessionId = body.session_id || null;
+    let knowledgeChannel = null; // "chat" for text-chat sessions (set below)
     let insertedSession;
 
     if (existingSessionId) {
@@ -1899,6 +1904,7 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
         // Now that memory-update knows the real mode, correct the type metadata.
         // Chat sessions (session_type='chat') were created by /api/chat handleStart with
         // the correct type — don't touch.
+        if (existing.session_type === "chat") knowledgeChannel = "chat";
         if (!existing.session_type || existing.session_type === "voice") {
           updateFields.session_type = sessionType;
           updateFields.session_mode = sessionMode || "voice";
@@ -1985,7 +1991,9 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
         const stmRow = {
           user_id: user.id,
           conversation_id: memorySessionRef,
-          mode: modeMap[tier] || "assistant",
+          // sophie_mode enum has no "talk": Talk keeps the relationship tier, the
+          // other modes store their real session type (was always the tier before).
+          mode: ["meeting", "brainstorm", "sales_pitch"].includes(sessionType) ? sessionType : (modeMap[tier] || "assistant"),
           summary: clean(sm.session_summary || ss.short_summary).slice(0, 2000),
           open_topics: openTopics,
           pending_decisions: pendingDecisions,
@@ -2071,6 +2079,25 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
 
     if (sessTranscriptFlagErr) {
       console.error("user_sessions has_transcript update failed:", sessTranscriptFlagErr);
+    }
+
+    // Cross-mode knowledge. Voice sessions WITH a report are ingested at the end of
+    // generate-report (runs in the background). Here only the cases where no report
+    // follows: text chat, and voice with the report toggle off. Non-fatal.
+    if (knowledgeChannel === "chat" || body.report_enabled === false) {
+      try {
+        const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+        const kr = await ingestSessionKnowledge({
+          supabase: serviceSupabase,
+          sessionId: insertedSession.id,
+          userId: user.id,
+          transcriptText,
+          channel: knowledgeChannel,
+        });
+        if (!kr.ok) console.warn("[memory-update] knowledge ingest failed:", kr.error);
+      } catch (e) {
+        console.warn("[memory-update] knowledge ingest threw:", e?.message || e);
+      }
     }
 
     return res.status(200).json({

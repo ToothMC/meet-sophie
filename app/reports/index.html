@@ -805,10 +805,12 @@
         const token = (await supabase.auth.getSession()).data?.session?.access_token;
         if (!token) { console.error("No auth token"); return false; }
         const source = item.type === "meeting" ? "meeting" : "talk";
-        const res = await fetch("/api/settings", {
+        // The settings API routes by ?action= in the URL — an action in the body alone
+        // fell through to "Missing sourceId" (400), so nothing in the history could be deleted.
+        const res = await fetch("/api/settings?action=delete-report", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-          body: JSON.stringify({ action: "delete-report", session_id: item.id, source }),
+          body: JSON.stringify({ session_id: item.id, source }),
         });
         if (!res.ok) {
           const txt = await res.text().catch(() => "");

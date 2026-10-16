@@ -16,6 +16,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { groundedSearch, webSearch, getWikipedia } from "../ai/tools.js";
 import { CURRENT_XI_PRIVACY_VERSION } from "../../lib/xi-constants.js";
+import { longToday, timeZoneFromRequest } from "../../lib/date-context.js";
+import { researchDateLine } from "../../lib/grounding-texts.js";
 
 const XI_ENABLED = String(process.env.EXTRA_INTELLIGENCE_ENABLED || "false").toLowerCase() === "true";
 
@@ -194,9 +196,11 @@ Frage: "Wie heisst der hoechste Berg?"  ->  "Der Mount Everest, 8849 Meter."
 Frage: "Wer hat 'Der Schwarm' geschrieben?"  ->  "Frank Schaetzing, 2004, Oeko-Thriller."
 Frage: "Kepler-22b?"  ->  "Exoplanet, ~620 Lichtjahre entfernt, potenziell bewohnbar."`;
 
+  // Date anchor: "who won yesterday" needs today's date (grounding audit 16.10.2026). Not user data.
+  const dateLine = researchDateLine(longToday(timeZoneFromRequest(req)));
   const condenseUser = isEN
-    ? `Query: "${query}"\n\nFacts:\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOne-sentence answer:`
-    : `Frage/Bezug: "${query}"\n\nFakten:\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nEin-Satz-Antwort:`;
+    ? `${dateLine}\n\nQuery: "${query}"\n\nFacts:\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOne-sentence answer:`
+    : `${dateLine}\n\nFrage/Bezug: "${query}"\n\nFakten:\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nEin-Satz-Antwort:`;
 
   let text = "";
   let condenseTokens = 0;

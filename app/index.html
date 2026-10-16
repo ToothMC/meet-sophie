@@ -1395,7 +1395,7 @@
     async function startChatSession() {
       if (chatSessionId) return;
       const token = await getToken();
-      const headers = { "Content-Type": "application/json" };
+      const headers = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/chat?action=start", {
         method: "POST",
@@ -1439,7 +1439,7 @@
         await startChatSession();
 
         const token = await getToken();
-        const headers = { "Content-Type": "application/json" };
+        const headers = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
         const res = await fetch("/api/chat?action=message&stream=1", {

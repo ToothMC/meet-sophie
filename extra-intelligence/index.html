@@ -1394,6 +1394,7 @@ async function handleFunctionCall(msg) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
+        "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })(),
       },
       // action=question_factual ist fuer den Shortcut-Prompt auf Backend-Seite ok
       body: JSON.stringify({ action: "question_factual", query, language: lang }),

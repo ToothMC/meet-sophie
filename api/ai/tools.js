@@ -9,6 +9,27 @@ async function getContactsModule() { return import('../../lib/contacts-fetch.js'
 async function getGmailModule() { return import('../../lib/gmail-fetch.js'); }
 async function getMapsModule() { return import('../../lib/maps-fetch.js'); }
 
+// Security fix: userId came unchecked from the request body — anyone could read/send
+// Gmail or change the calendar of any user by passing a foreign id. The user is now
+// derived ONLY from the Supabase bearer token. Public tools (weather, search, news,
+// wiki, flights, places, route) keep working without a token, as before.
+async function getUserIdFromToken(req) {
+  const h = req.headers?.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if (!token || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    return error || !user ? null : user.id;
+  } catch (e) {
+    console.warn('[tools] token check failed:', e?.message);
+    return null;
+  }
+}
+
+const USER_TOOLS = new Set(['calendar', 'calendar_create', 'calendar_update', 'calendar_delete', 'contacts', 'gmail_search', 'gmail_read', 'gmail_send']);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -16,8 +37,12 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body && typeof body === 'object' ? body : {};
 
-  const { tool, params, userId } = body;
+  const { tool, params } = body; // body.userId is ignored on purpose (see getUserIdFromToken)
   if (!tool || !params) return res.status(400).json({ error: 'Missing tool or params' });
+
+  // No valid token → userId stays null and the user tools answer "Nicht angemeldet" (200),
+  // so Sophie says so instead of falling back to "answer from your own knowledge".
+  const userId = USER_TOOLS.has(tool) ? await getUserIdFromToken(req) : null;
 
   try {
     let result;
@@ -47,7 +72,8 @@ export default async function handler(req, res) {
         if (!userId) { result = 'Kalender nicht verfuegbar (nicht angemeldet).'; break; }
         const { getCalendarEventsForUser } = await getCalendarModule();
         const calResult = await getCalendarEventsForUser(userId, {
-          days: params.days || 7,
+          days: params.days || 14,
+          timeZone: req.headers?.['x-sophie-timezone'] || params.timeZone || null,
           language: params.language || 'de',
           forceRefresh: !!params.forceRefresh,
         });
@@ -57,7 +83,7 @@ export default async function handler(req, res) {
       case 'calendar_create': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
         const { calendarWrite: cwCreate } = await getCalendarModule();
-        const cr = await cwCreate(userId, 'create', params);
+        const cr = await cwCreate(userId, 'create', { ...params, timeZone: req.headers?.['x-sophie-timezone'] || null });
         result = cr.success
           ? `Termin erstellt: "${cr.event.title}" am ${cr.event.start}`
           : `Fehler beim Erstellen: ${cr.error}`;
@@ -66,7 +92,7 @@ export default async function handler(req, res) {
       case 'calendar_update': {
         if (!userId) { result = 'Nicht angemeldet.'; break; }
         const { calendarWrite: cwUpdate } = await getCalendarModule();
-        const ur = await cwUpdate(userId, 'update', params);
+        const ur = await cwUpdate(userId, 'update', { ...params, timeZone: req.headers?.['x-sophie-timezone'] || null });
         result = ur.success
           ? `Termin aktualisiert: "${ur.event.title}" — ${ur.event.start}`
           : `Fehler beim Aktualisieren: ${ur.error}`;

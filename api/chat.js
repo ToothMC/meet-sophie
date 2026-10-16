@@ -18,6 +18,8 @@ import { getCouncilConfig, shouldRunCouncil } from "../lib/ai/council-config.js"
 import { deductTokens } from "../lib/token-deduct.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
 import { buildSearchContext } from "../lib/search-context.js";
+import { knowledgeReadEnabled, recallMemory, RECALL_CHAT_INSTRUCTION } from "../lib/knowledge-core.js";
+import { LOCATION_RULE } from "../lib/grounding-texts.js";
 import { TOKEN_COSTS, DEFAULT_FREE_TOKENS, isSubscriptionActive } from "../lib/billing-constants.js";
 
 function hashIp(ip) {
@@ -330,6 +332,7 @@ async function handleStart(req, res) {
   // Build system prompt server-side (never sent to client)
   const { fullSystemPrompt, tier, isPremium, isFirstSession, profile } = await buildServerSystemPrompt({
     supabase, user, sessionMode, brainstormConfig, language: preferredLanguage, conversationPolicy,
+    timeZone: req.headers?.["x-sophie-timezone"] || null,
   });
 
   // Refine language from profile if not explicitly set in request
@@ -457,7 +460,29 @@ function detectSearchIntent(userMessage) {
   return null;
 }
 
-async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}) {
+async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}, ctx = {}) {
+  // Shared memory: [TOOL:recall:...] — only for users with knowledge access (ctx.user)
+  const recallMatch = rawReply.match(/\[TOOL:recall:([^\]]+)\]/);
+  if (recallMatch) {
+    const cleanReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
+    if (!ctx.user || !knowledgeReadEnabled(ctx.user)) return { reply: cleanReply, toolUsed: false };
+    onStatus("recall");
+    const r = await recallMemory({ userId: ctx.user.id, query: recallMatch[1].trim() });
+    routerMessages.push({ role: "system", content: `${r.text}\n\nAnswer now based on this. No tool tag.` });
+    try {
+      const adapter = getAdapter(providerConfig.provider);
+      const retryResponse = await Promise.race([
+        adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.7 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+      ]);
+      const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+      return { reply: retryReply || cleanReply, toolUsed: !!retryReply, toolType: "recall", retryResponse };
+    } catch (e) {
+      console.error("[chat] recall retry error:", e?.message?.slice(0, 200));
+      return { reply: cleanReply || "Ich konnte gerade nicht in unseren früheren Gesprächen nachsehen.", toolUsed: false };
+    }
+  }
+
   const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
   if (!toolMatch) return { reply: rawReply, toolUsed: false };
 
@@ -597,6 +622,7 @@ async function executeCouncilIfRequested(rawReply, routerMessages, providerConfi
   let result = null;
   try {
     result = await runCouncil({
+      timeZone: opts?.timeZone || null,
       question: tag.question,
       context: buildCouncilContext(routerMessages),
       mode: "quick",
@@ -1118,6 +1144,7 @@ async function handleMessage(req, res) {
     brainstormConfig: session.brainstorm_config || null,
     language: session.language || "en",
     conversationPolicy: session.conversation_policy || null,
+    timeZone: req.headers?.["x-sophie-timezone"] || null,
   });
 
   // Council availability is a UX hint only — the real gate lives inside runCouncil.
@@ -1155,8 +1182,15 @@ async function handleMessage(req, res) {
     `Wenn die Frage rein persönlich oder reflektiv ist (keine Fakten nötig), antworte normal ohne Tag.`
   });
 
+  routerMessages.push({ role: "system", content: LOCATION_RULE });
+
   if (councilAvailable) {
     routerMessages.push({ role: "system", content: `${COUNCIL_TOOL_INSTRUCTION}\n\n${COUNCIL_RULE}` });
+  }
+
+  // Shared memory: look up earlier sessions (allowlist). Prompt text approved by Michael.
+  if (user && knowledgeReadEnabled(user)) {
+    routerMessages.push({ role: "system", content: RECALL_CHAT_INSTRUCTION });
   }
 
   // Determine user tier for routing
@@ -1448,6 +1482,7 @@ async function handleMessage(req, res) {
 
   // Council first: the tag must be the entire reply, and only one council per turn.
   const councilResult = await executeCouncilIfRequested(rawReply, routerMessages, decision.primary, {
+    timeZone: req.headers?.["x-sophie-timezone"] || null,
     supabase, userId: user?.id || null, sessionId: session_id,
     isEco: !!profile.eco_mode, tier: userTier, lang: sessionLang, onStatus: emitStatus,
   });
@@ -1473,7 +1508,7 @@ async function handleMessage(req, res) {
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = councilResult.councilUsed
     ? { reply: rawReply, toolUsed: false }
-    : await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
+    : await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus, { user });
   let searchSources = routerMessages._preSearchSources || null;
   // Always use tool result reply — covers success, fallback, and error paths
   if (toolResult.reply && toolResult.reply !== rawReply) {
@@ -1716,6 +1751,8 @@ async function handleEnd(req, res) {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          // sendBeacon cannot set headers → the landing page sends time_zone in the body
+          "X-Sophie-Timezone": req.headers?.["x-sophie-timezone"] || String(body?.time_zone || ""),
         },
         body: JSON.stringify({
           transcript,
