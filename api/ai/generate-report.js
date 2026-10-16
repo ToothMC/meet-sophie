@@ -906,6 +906,15 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
             });
             const jsonText = (extractResp.content || '').replace(/^```json?\n?/i, '').replace(/\n?```$/i, '').trim();
             const pitchData = JSON.parse(jsonText);
+            // overall_score is requested on 1.0-5.0, but the model often copies the report's
+            // 0-100 value (e.g. 42 → 42*20 = 840 → violated sophie_pitch_memory_score_check,
+            // no pitch memory saved since 2026-05). Normalize whatever scale comes back to 0-100.
+            const overall100 = (() => {
+              const n = Number(pitchData.overall_score);
+              if (!Number.isFinite(n) || n <= 0) return 0;
+              const v = n <= 5 ? n * 20 : n <= 10 ? n * 10 : n;
+              return Math.max(0, Math.min(100, Math.round(v)));
+            })();
 
             const { data: prevPitch } = await supabase.from('sophie_pitch_memory')
               .select('id, version')
@@ -922,7 +931,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
               target_audience: pitchData.audience_type || null,
               pitch_type: pitchData.pitch_type || 'other',
               goal_type: pitchData.goal_type || null,
-              score: Math.round((pitchData.overall_score || 0) * 20),
+              score: overall100,
               scores_content: pitchData.scores_content || null,
               scores_delivery: pitchData.scores_delivery || null,
               strengths: pitchData.strengths || [],
@@ -943,7 +952,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
                 structured_summary: {
                   summary: reportTitle,
                   audience_type: pitchData.audience_type || "",
-                  overall_score: pitchData.overall_score ? Math.round(pitchData.overall_score * 20) : 0,
+                  overall_score: overall100,
                   scores_content: pitchData.scores_content || {},
                   strongest_elements: pitchData.strengths || [],
                   main_weaknesses: pitchData.weaknesses || [],

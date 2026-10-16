@@ -8450,6 +8450,8 @@ if (!hasRealConversation) {
             session_mode: selectedVoiceMode || null,
             realtime_usage: realtimeUsage.response_count > 0 ? { ...realtimeUsage } : undefined,
             ui_language: _uiLang,
+            // false → no generate-report follows, so memory-update records cross-mode knowledge itself
+            report_enabled: !!reportEnabled,
           },
         };
       }
