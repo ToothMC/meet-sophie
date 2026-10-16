@@ -1,6 +1,7 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { knowledgeReadEnabled, loadCrossModeBlock } from "../lib/knowledge-core.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
 import { isFirstSessionTest, testModeLanguage } from "../lib/test-mode.js";
@@ -986,7 +987,28 @@ export default async function handler(req, res) {
       }
     }
 
+    // Shared memory across modes (Phase 4, allowlist). Topic modes search by their topic.
+    let crossModeContext = null;
+    if (!testFirstSession && !isFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user)) {
+      const tKnow = Date.now();
+      try {
+        crossModeContext = await loadCrossModeBlock({
+          userId: user.id,
+          sessionMode,
+          channel: "voice",
+          topic: sessionMode === "meeting" ? (meetingContext || "")
+            : sessionMode === "brainstorm" ? (brainstormConfig?.topic || "")
+            : sessionMode === "salespitch" ? (handover?.pitchTopic || "")
+            : "",
+        });
+      } catch (e) {
+        console.warn("[session] cross-mode block failed:", e?.message);
+      }
+      console.log("[session] cross-mode block", { ms: Date.now() - tKnow, chars: crossModeContext?.length || 0, mode: sessionMode || "talk" });
+    }
+
     const sophiePrompt = buildSophiePrompt({
+      crossModeContext,
       tier,
       sessionMode,
       meetingPhase: sessionMode === "meeting"

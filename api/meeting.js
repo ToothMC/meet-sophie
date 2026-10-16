@@ -20,6 +20,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
+import { knowledgeReadEnabled, loadCrossModeBlock } from "../lib/knowledge-core.js";
 import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
@@ -628,8 +629,18 @@ async function handleMessage(req, res) {
     historyBlock ? `\n${historyBlock}` : null,
   ].filter(Boolean).join("\n");
 
+  let crossModeContext = null;
+  if (knowledgeReadEnabled(user)) {
+    try {
+      crossModeContext = await loadCrossModeBlock({ userId: user.id, sessionMode: "meeting", channel: "chat", topic: meetingContext });
+    } catch (e) {
+      console.warn("[meeting] cross-mode block failed:", e?.message);
+    }
+  }
+
   // Build system prompt with meeting-specific phase prompt
   const systemPrompt = buildSophiePrompt({
+    crossModeContext,
     tier,
     sessionMode: "meeting",
     meetingPhase: meeting.phase,
