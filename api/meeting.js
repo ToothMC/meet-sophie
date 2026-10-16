@@ -20,7 +20,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
-import { knowledgeReadEnabled, loadCrossModeBlock } from "../lib/knowledge-core.js";
+import { knowledgeReadEnabled, loadCrossModeBlock, recallMemory, RECALL_CHAT_INSTRUCTION } from "../lib/knowledge-core.js";
+import { buildDateBlock, longToday, timeZoneFromRequest, DATE_LIST_DAYS } from "../lib/date-context.js";
+import { dateAnchorRule, LOCATION_RULE } from "../lib/grounding-texts.js";
+import { getCalendarEventsForUser } from "../lib/calendar-fetch.js";
 import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
@@ -673,9 +676,23 @@ async function handleMessage(req, res) {
     `Antworte mit dem Tag ALLEIN. Du bekommst die Daten automatisch und antwortest dann basierend darauf.`;
 
   // Call OpenAI
+  // Grounding (audit 16.10.2026): date in the user's time zone, the calendar read-only
+  // (no calendar tool here), location rule, and recall for users with shared memory.
+  const tz = timeZoneFromRequest(req);
+  let calendarBlock = "";
+  try {
+    const cal = await getCalendarEventsForUser(user.id, { days: DATE_LIST_DAYS, timeZone: tz, withTool: false });
+    if (cal?.text) calendarBlock = "\n\n" + cal.text;
+  } catch (e) {
+    console.warn("[meeting] calendar context error:", e?.message);
+  }
+  const recallOn = knowledgeReadEnabled(user);
+  const groundingBlock = "\n\n" + buildDateBlock(tz) + calendarBlock + "\n\n" + LOCATION_RULE +
+    (recallOn ? "\n" + RECALL_CHAT_INSTRUCTION : "");
+
   const openaiModel = process.env.OPENAI_CHAT_MODEL || "gpt-4o";
   const openaiMessages = [
-    { role: "system", content: systemPrompt + toolBlock },
+    { role: "system", content: systemPrompt + toolBlock + groundingBlock },
     ...messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => ({ role: m.role, content: String(m.content || "").slice(0, 4000) })),
@@ -712,12 +729,14 @@ async function handleMessage(req, res) {
   if (!rawReply) return res.status(502).json({ error: "Empty response from OpenAI" });
 
   // Execute real-time tools if AI requested one
-  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures):([^\]]+)\]/);
+  const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|recall):([^\]]+)\]/);
   if (toolMatch) {
     const [, toolType, toolParam] = toolMatch;
     let toolData;
     try {
-      if (toolType === "weather") toolData = await getWeather(toolParam.trim());
+      if (toolType === "recall") {
+        toolData = recallOn ? (await recallMemory({ userId: user.id, query: toolParam.trim() })).text : null;
+      } else if (toolType === "weather") toolData = await getWeather(toolParam.trim());
       else if (toolType === "search") toolData = await webSearch(toolParam.trim());
       else if (toolType === "news") toolData = await getNews(toolParam.trim());
       else if (toolType === "wiki") toolData = await getWikipedia(toolParam.trim());
@@ -1209,6 +1228,8 @@ async function handleAnalyze(req, res) {
     `- TOO_BIG: overly ambitious plans without smallest test`,
     `- NOT_MEASURABLE: decisions without success criteria`,
     `- TOO_EARLY: premature detail before core validation`,
+    ``,
+    dateAnchorRule(longToday(timeZoneFromRequest(req)), timeZoneFromRequest(req)),
     ``,
     `Return JSON: {"decisions":[],"actions":[],"risks":[],"open_points":[],"hints":[{"type":"...","text":"..."}]}`,
     `Only include genuinely new items not already in MEETING STATE.`,

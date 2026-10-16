@@ -13,7 +13,12 @@ const REDIRECT_URI      = `${process.env.BASE_URL}/api/oauth-google`;
 
 // Service → OAuth Scopes (User waehlt per Checkbox welche Services)
 const SERVICE_SCOPES = {
-  calendar: ['https://www.googleapis.com/auth/calendar.events'],
+  // calendarlist.readonly lets Sophie see ALL calendars (shared, family, subscribed), not just
+  // the main one. Must be added to the OAuth consent screen in Google Cloud first — then set
+  // GOOGLE_CALENDARLIST_SCOPE=1. Existing users get it when they reconnect Google.
+  calendar: process.env.GOOGLE_CALENDARLIST_SCOPE === '1'
+    ? ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly']
+    : ['https://www.googleapis.com/auth/calendar.events'],
   contacts: ['https://www.googleapis.com/auth/contacts.readonly', 'https://www.googleapis.com/auth/contacts.other.readonly'],
   email:    ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send'],
 };

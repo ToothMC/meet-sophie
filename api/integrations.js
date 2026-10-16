@@ -25,6 +25,7 @@ export default async function handler(req, res) {
   // Scope → Service Mapping (muss mit oauth-google.js SERVICE_SCOPES uebereinstimmen)
   const SCOPE_SERVICE_MAP = {
     'calendar.events': 'calendar',
+    'calendar.calendarlist.readonly': 'calendar',
     'contacts.readonly': 'contacts',
     'contacts.other.readonly': 'contacts',
     'gmail.readonly': 'email',

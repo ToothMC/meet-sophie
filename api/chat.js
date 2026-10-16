@@ -18,7 +18,8 @@ import { getCouncilConfig, shouldRunCouncil } from "../lib/ai/council-config.js"
 import { deductTokens } from "../lib/token-deduct.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
 import { buildSearchContext } from "../lib/search-context.js";
-import { knowledgeReadEnabled, recallMemory } from "../lib/knowledge-core.js";
+import { knowledgeReadEnabled, recallMemory, RECALL_CHAT_INSTRUCTION } from "../lib/knowledge-core.js";
+import { LOCATION_RULE } from "../lib/grounding-texts.js";
 import { TOKEN_COSTS, DEFAULT_FREE_TOKENS, isSubscriptionActive } from "../lib/billing-constants.js";
 
 function hashIp(ip) {
@@ -459,11 +460,6 @@ function detectSearchIntent(userMessage) {
   return null;
 }
 
-const RECALL_CHAT_INSTRUCTION =
-  `[TOOL:recall:<what to look for>] — look up the user's earlier sessions with you: meetings (protocol, decisions, action items), ` +
-  `sales pitches (score, feedback), brainstorms (ideas), talks and chats. Use it whenever the user asks about something from an ` +
-  `earlier session that is not in your context. Reply with the tag ALONE. If nothing is found, say so honestly — never guess.`;
-
 async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}, ctx = {}) {
   // Shared memory: [TOOL:recall:...] — only for users with knowledge access (ctx.user)
   const recallMatch = rawReply.match(/\[TOOL:recall:([^\]]+)\]/);
@@ -626,6 +622,7 @@ async function executeCouncilIfRequested(rawReply, routerMessages, providerConfi
   let result = null;
   try {
     result = await runCouncil({
+      timeZone: opts?.timeZone || null,
       question: tag.question,
       context: buildCouncilContext(routerMessages),
       mode: "quick",
@@ -1185,6 +1182,8 @@ async function handleMessage(req, res) {
     `Wenn die Frage rein persönlich oder reflektiv ist (keine Fakten nötig), antworte normal ohne Tag.`
   });
 
+  routerMessages.push({ role: "system", content: LOCATION_RULE });
+
   if (councilAvailable) {
     routerMessages.push({ role: "system", content: `${COUNCIL_TOOL_INSTRUCTION}\n\n${COUNCIL_RULE}` });
   }
@@ -1483,6 +1482,7 @@ async function handleMessage(req, res) {
 
   // Council first: the tag must be the entire reply, and only one council per turn.
   const councilResult = await executeCouncilIfRequested(rawReply, routerMessages, decision.primary, {
+    timeZone: req.headers?.["x-sophie-timezone"] || null,
     supabase, userId: user?.id || null, sessionId: session_id,
     isEco: !!profile.eco_mode, tier: userTier, lang: sessionLang, onStatus: emitStatus,
   });
@@ -1751,6 +1751,8 @@ async function handleEnd(req, res) {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          // sendBeacon cannot set headers → the landing page sends time_zone in the body
+          "X-Sophie-Timezone": req.headers?.["x-sophie-timezone"] || String(body?.time_zone || ""),
         },
         body: JSON.stringify({
           transcript,

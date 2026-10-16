@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
 import { knowledgeReadEnabled, loadCrossModeBlock, recallMemory, RECALL_TOOL, backfillUserKnowledge } from "../lib/knowledge-core.js";
 import { buildDateBlock, timeZoneFromRequest, DATE_LIST_DAYS } from "../lib/date-context.js";
+import { limitedToolsBlock, LOCATION_RULE } from "../lib/grounding-texts.js";
+import { voiceToolPlan } from "../lib/voice-tools.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
 import { isFirstSessionTest, testModeLanguage } from "../lib/test-mode.js";
@@ -211,6 +213,13 @@ export default async function handler(req, res) {
     // Session mode selected by user via UI before session start
     const rawSessionMode = String(req.headers["x-sophie-session-mode"] || "").toLowerCase().trim();
     const sessionMode = ["brainstorm", "meeting", "salespitch", "extra_intelligence"].includes(rawSessionMode) ? rawSessionMode : null;
+
+    // Which tools does the CLIENT really provide in this mode? (talk/index.html, meeting/index.html)
+    // The prompt must never promise more (grounding audit 16.10.2026: brainstorm/pitch/meeting were
+    // told "full access to the calendar" without having the tool).
+    const onMeetingPage = Object.prototype.hasOwnProperty.call(req.headers || {}, "x-sophie-meeting-id");
+    const recallEnabled = !testFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user);
+    const { hasFullTools, limitedTools } = voiceToolPlan({ onMeetingPage, sessionMode, pitchDemo: handover?.pitchDemo === true, recallEnabled });
     const meetingId = String(req.headers["x-sophie-meeting-id"] || "").trim() || null;
 
     // Extra-Intelligence (xi) feature-flag — fast fail bevor Subscription/Lock
@@ -767,6 +776,7 @@ export default async function handler(req, res) {
           days: DATE_LIST_DAYS,
           language: preferredLanguage || 'de',
           timeZone: timeZoneFromRequest(req),
+          withTool: hasFullTools,
         });
         if (calResult?.text) {
           calendarContext = "\n\n" + calResult.text;
@@ -1132,7 +1142,6 @@ export default async function handler(req, res) {
     // Brainstorm/Meeting only get send_chat_note, no research/weather/news tools
     // Normal conversation + Meeting: full tool set (Sophie answers questions live)
     // Brainstorm + Salespitch: only chat_note (focused facilitation, no web lookups)
-    const hasFullTools = !sessionMode || sessionMode === "meeting";
     const toolInstructions = hasFullTools ? `\n\nRAT EINBERUFEN: Du hast ein Tool namens "consult_council". ` +
       `Fehlt dir ein Fakt, den man nachschlagen kann, nutze web_search oder get_wikipedia — NICHT den Rat; ` +
       `deine Berater haben keine Tools und können nichts nachschlagen. Drei ratende Modelle ergeben keine Bestätigung. ` +
@@ -1173,7 +1182,7 @@ export default async function handler(req, res) {
 
     const hasContactsScope = (calIntResult?.data?.scopes || []).some(s => s.includes('contacts'));
 
-    const calendarToolInstruction = calIntResult?.data
+    const calendarToolInstruction = hasFullTools && calIntResult?.data
       ? `\n\nCALENDAR TOOLS: You have full access to the user's Google Calendar.` +
         `\n- get_calendar_events: Read upcoming events. Say "Moment, ich schaue in deinen Kalender..." The calendar context above shows current events, but use this tool for specific date queries.` +
         `\n- create_calendar_event: Create a new event. ALWAYS repeat the details back first: "Ich erstelle: [title] am [date] um [time]. Passt das?" Wait for confirmation before calling.` +
@@ -1182,7 +1191,7 @@ export default async function handler(req, res) {
         `\nIMPORTANT: For create/update, give date and time as the user's local time without offset (e.g. 2026-10-23T10:00). The system applies the user's time zone — never guess one.`
       : "";
 
-    const contactsToolInstruction = hasContactsScope
+    const contactsToolInstruction = hasFullTools && hasContactsScope
       ? `\n\nCONTACTS TOOL (search_contacts): You have access to the user's Google Contacts.` +
         `\n- Use when the user asks about a person's phone number, email, birthday, or organization.` +
         `\n- Say "Moment, ich schaue nach..." before calling.` +
@@ -1191,7 +1200,7 @@ export default async function handler(req, res) {
         `\n- Some contacts (e.g. imported from Outlook) may not be searchable via API. This is a known limitation. Be transparent about it.`
       : "";
 
-    const gmailToolInstruction = gmailIntResult?.data
+    const gmailToolInstruction = hasFullTools && gmailIntResult?.data
       ? `\n\nEMAIL TOOLS: You have access to the user's Gmail.` +
         `\n- search_emails: Search emails using Gmail syntax (is:unread, from:name, subject:topic, newer_than:7d). Returns list with message IDs.` +
         `\n- read_email: Read full email content. MUST call search_emails first to get the messageId.` +
@@ -1200,13 +1209,19 @@ export default async function handler(req, res) {
         `\nSay "Moment, ich schaue in deine Emails..." before searching.`
       : "";
 
-    const mapsToolInstruction = process.env.GOOGLE_MAPS_API_KEY
+    const mapsToolInstruction = hasFullTools && process.env.GOOGLE_MAPS_API_KEY
       ? `\n\nMAPS TOOLS: You have access to Google Maps.` +
         `\n- search_places: Find restaurants, shops, services, points of interest. Use when the user asks "find a good restaurant", "where is the nearest pharmacy", etc.` +
         `\n- get_route: Calculate travel time and distance. Use when the user asks "how long to get from A to B", "how far is it". Supports modes: DRIVE, WALK, BICYCLE, TRANSIT.`
       : "";
 
-    const researchInstruction = toolInstructions + calendarToolInstruction + contactsToolInstruction + gmailToolInstruction + mapsToolInstruction + chatInstruction;
+    // Talk: full tool set. Other modes: an honest list of what exists. xi keeps its own prompt.
+    // The chat panel (typed messages + send_chat_note) exists only on the Talk page.
+    const researchInstruction = sessionMode === "extra_intelligence" ? ""
+      : hasFullTools
+        ? toolInstructions + calendarToolInstruction + contactsToolInstruction + gmailToolInstruction + mapsToolInstruction + chatInstruction + "\n\n" + LOCATION_RULE
+        : "\n\n" + limitedToolsBlock(limitedTools) + (onMeetingPage ? "" : chatInstruction);
+
 
     // STARTUP RULE: The opening turn is handled by a separate response.create instruction from the frontend.
     // This block just tells the model not to self-generate a greeting from the system prompt alone.
@@ -1403,7 +1418,7 @@ Exaggerate slightly — it always sounds less than you think.
       preferred_language: preferredLanguage,
       is_first_session: isFirstSession,
       // Voice tools the client adds to the Realtime session (shared memory, allowlist)
-      knowledge_tools: (!testFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user)) ? [RECALL_TOOL] : [],
+      knowledge_tools: recallEnabled ? [RECALL_TOOL] : [],
 
       // Soft ending config for frontend
       soft_end_enabled: true,

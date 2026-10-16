@@ -1365,7 +1365,7 @@ async function api(action, body = null, method = "POST") {
 
   const opts = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
   };
   if (accessToken) opts.headers.Authorization = `Bearer ${accessToken}`;
 
@@ -2393,7 +2393,7 @@ async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
 
   // Fire generate-report (don't await — poll instead)
   await refreshAccessToken();
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
   if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
 
   fetch("/api/ai/generate-report", {
@@ -3692,6 +3692,7 @@ async function runHintAnalysis(isFinal = false) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
+        "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })(),
       },
       body: JSON.stringify({
         meeting_id: meetingId,

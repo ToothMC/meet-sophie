@@ -11,6 +11,8 @@ import { TIER_MEMORY_CONFIG, mergeArrays, mergeJsonb, filterLtmByDepth } from ".
 import { runRecapForSession } from "../lib/memory-recap-core.js";
 import { ingestSessionKnowledge } from "../lib/knowledge-core.js";
 import { cleanText, buildSessionTitle } from "../lib/session-title.js";
+import { longToday, timeZoneFromRequest } from "../lib/date-context.js";
+import { dateAnchorRule } from "../lib/grounding-texts.js";
 
 function hashIp(ip) {
   if (!ip) return "none";
@@ -1536,7 +1538,8 @@ You MUST write session_title, short_summary, session_summary, last_interaction_s
       body: JSON.stringify({
         model: process.env.MEMORY_MODEL || "gpt-4o-mini",
         input: [
-          { role: "system", content: system },
+          // Date anchor: "bis Freitag" must be stored as an absolute date (grounding audit 16.10.2026)
+          { role: "system", content: system + "\n\n" + dateAnchorRule(longToday(timeZoneFromRequest(req)), timeZoneFromRequest(req)) },
           { role: "user", content: userMsg },
         ],
         temperature: 0.2,

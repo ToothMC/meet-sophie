@@ -45,6 +45,7 @@ export default async function handler(req, res) {
   let result;
   try {
     result = await runCouncil({
+      timeZone: req.headers?.["x-sophie-timezone"] || null,
       question,
       context,
       mode: 'quick',

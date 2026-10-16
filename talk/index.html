@@ -4406,7 +4406,7 @@ async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
       .map(m => `[${m.role}]: ${m.text}`)
       .join("\n");
 
-    const genHeaders = { "Content-Type": "application/json" };
+    const genHeaders = { "Content-Type": "application/json", "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() };
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (authSession?.access_token) genHeaders["Authorization"] = "Bearer " + authSession.access_token;
@@ -7147,7 +7147,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
 
                 const memResp = await fetch("/api/memory-update", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
                   body: JSON.stringify({
                     transcript: cleaned,
                     seconds_used: wallclock,
@@ -7176,7 +7176,7 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
                 // Fire generate-report (don't await — runs 30-60s in background)
                 fetch("/api/ai/generate-report", {
                   method: "POST",
-                  headers: { "Content-Type": "application/json", "Authorization": authHeader },
+                  headers: { "Content-Type": "application/json", "Authorization": authHeader, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
                   body: JSON.stringify({ session_id: sid, transcript_text: transcriptText, session_mode: "salespitch", language: _uiLang || "en" }),
                 }).catch(e => console.error("[report] bg generate fetch failed:", e?.message));
 
@@ -8509,7 +8509,7 @@ if (!hasRealConversation) {
       const { data: { session: authSess } } = await supabase.auth.getSession();
       if (authSess?.access_token) {
         memoryBody = {
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authSess.access_token}`, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
           payload: {
             transcript: memPayload,
             seconds_used: durationSeconds,

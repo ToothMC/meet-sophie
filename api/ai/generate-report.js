@@ -6,6 +6,7 @@ import { DEFAULT_TEMPLATES, getDefaultTemplates } from '../../lib/report-templat
 import { trackCost } from '../../lib/ai/cost-tracker.js';
 import { runRecapForSession } from '../../lib/memory-recap-core.js';
 import { ingestSessionKnowledge } from '../../lib/knowledge-core.js';
+import { localeToday, isoToday, timeZoneFromRequest } from '../../lib/date-context.js';
 
 function trackAdapterCost(response, userId, routingReason) {
   if (!response?.usage || !userId) return;
@@ -121,8 +122,11 @@ export default async function handler(req, res) {
   try {
     const modeHint = session_mode ? (isEN ? `Session mode: "${session_mode}".` : isFR ? `Mode de session : "${session_mode}".` : `Session-Modus: "${session_mode}".`) : '';
     const dateLocale = isEN ? 'en-US' : isFR ? 'fr-FR' : 'de-DE';
-    const todayDate = new Date().toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const todayISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD — language-neutral
+    // In the USER's time zone (header from the browser), not the server's UTC — late in the
+    // evening the server date was already "tomorrow" for users east of UTC (audit 16.10.2026).
+    const userTz = timeZoneFromRequest(req);
+    const todayDate = localeToday(userTz, dateLocale);
+    const todayISO = isoToday(userTz); // YYYY-MM-DD — language-neutral
     const dateInstruction = meetingAutoLang
       ? `Today's date is ${todayISO}. Convert ALL relative time references ("next week", "morgen", "nächste Woche", "demain" etc.) to concrete dates, formatted in the date style appropriate for the detected language.`
       : isEN
