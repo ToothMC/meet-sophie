@@ -6259,8 +6259,8 @@ function attachChannel(ch) {
             type: "object",
             properties: {
               title:       { type: "string",  description: "Event title/summary" },
-              start:       { type: "string",  description: "Start datetime in ISO 8601 format with timezone offset, e.g. '2026-04-14T14:00:00+03:00'" },
-              end:         { type: "string",  description: "End datetime in ISO 8601 format with timezone offset, e.g. '2026-04-14T15:00:00+03:00'" },
+              start:       { type: "string",  description: "Start as local date and time in the user's time zone, without offset, e.g. '2026-10-23T10:00'. The system applies the user's time zone." },
+              end:         { type: "string",  description: "End as local date and time in the user's time zone, without offset, e.g. '2026-10-23T11:00'. The system applies the user's time zone." },
               description: { type: "string",  description: "Optional event description" },
               location:    { type: "string",  description: "Optional location" },
               allDay:      { type: "boolean", description: "True for all-day events" }
@@ -6276,8 +6276,8 @@ function attachChannel(ch) {
             properties: {
               eventId: { type: "string",  description: "The Google Calendar event ID from get_calendar_events" },
               title:   { type: "string",  description: "New title (only if changing)" },
-              start:   { type: "string",  description: "New start datetime ISO 8601 with timezone offset (only if changing)" },
-              end:     { type: "string",  description: "New end datetime ISO 8601 with timezone offset (only if changing)" },
+              start:   { type: "string",  description: "New start as local date and time in the user's time zone, without offset, e.g. '2026-10-23T10:00' (only if changing). The system applies the user's time zone." },
+              end:     { type: "string",  description: "New end as local date and time in the user's time zone, without offset, e.g. '2026-10-23T11:00' (only if changing). The system applies the user's time zone." },
               description: { type: "string", description: "New description (only if changing)" },
               location:    { type: "string", description: "New location (only if changing)" }
             },

@@ -50,3 +50,24 @@ test("time zone fallback and DST-safe midnight", () => {
   assert.equal(localMidnightUtc(2026, 10, 26, "Europe/Berlin").toISOString(), "2026-10-25T23:00:00.000Z");
   assert.equal(germanToday("Europe/Berlin", NOW), "Freitag, 16.10.2026");
 });
+
+// Regression for 2026-10-16 (2): Sophie wrote 10:00+02:00 for a user in Cyprus → 11:00 in
+// the calendar, then attributed the calendar time to the meeting protocol.
+import { toGoogleDateTime, addMinutesLocal, SOURCE_CONFLICT_RULE } from "../../lib/calendar-format.js";
+
+test("create/update use the user's time zone, model offsets are ignored", () => {
+  assert.deepEqual(toGoogleDateTime("2026-10-23T10:00", "Asia/Nicosia"), { dateTime: "2026-10-23T10:00:00", timeZone: "Asia/Nicosia" });
+  assert.deepEqual(toGoogleDateTime("2026-10-23T10:00:00+02:00", "Asia/Nicosia"), { dateTime: "2026-10-23T10:00:00", timeZone: "Asia/Nicosia" });
+  assert.equal(toGoogleDateTime("2026-10-23T10:00", ""), null); // no tz → caller keeps old behaviour
+  assert.deepEqual(addMinutesLocal({ dateTime: "2026-10-23T23:30:00", timeZone: "Asia/Nicosia" }, 60), { dateTime: "2026-10-24T00:30:00", timeZone: "Asia/Nicosia" });
+});
+
+test("calendar shows times in the user's time zone and carries the source rule", () => {
+  const now = new Date("2026-10-16T06:32:00Z");
+  const w = wholeDayWindow("Asia/Nicosia", 14, now);
+  const text = formatCalendarContext([
+    { id: "x", title: "Folgemeeting", start: "2026-10-23T10:00:00+02:00", end: "2026-10-23T11:00:00+02:00", allDay: false },
+  ], "de", { ...w, tz: "Asia/Nicosia" });
+  assert.match(text, /Fri 23\.10\. 11:00-12:00: Folgemeeting/); // truthful: that entry IS 11:00 in Cyprus
+  assert.ok(text.includes(SOURCE_CONFLICT_RULE));
+});
