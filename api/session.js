@@ -1,7 +1,7 @@
 // api/session.js
 import { createClient } from "@supabase/supabase-js";
 import { buildSophiePrompt, mapPlanToTier } from "../lib/sophie-core.js";
-import { knowledgeReadEnabled, loadCrossModeBlock } from "../lib/knowledge-core.js";
+import { knowledgeReadEnabled, loadCrossModeBlock, recallMemory, RECALL_TOOL, backfillUserKnowledge } from "../lib/knowledge-core.js";
 import { buildDateBlock, timeZoneFromRequest, DATE_LIST_DAYS } from "../lib/date-context.js";
 // calcBrainstormPhase not needed for voice — phases are embedded in prompt
 import { DEFAULT_FREE_TOKENS, SECONDS_PER_TOKEN, SECONDS_PER_TOKEN_ECO, isSubscriptionActive } from "../lib/billing-constants.js";
@@ -138,6 +138,29 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: insertErr.message });
       }
       return res.json({ ok: true, seq: nextSeq });
+    }
+
+    // ── Recall: Sophie schlaegt im gemeinsamen Gedaechtnis nach (Tool recall_memory) ──
+    if (action === 'recall' && req.method === 'POST') {
+      if (authErr || !user) return res.status(401).json({ error: "Invalid token" });
+      const b = req.body || {};
+      if (!knowledgeReadEnabled(user) || String(b.session_mode || "") === "extra_intelligence") {
+        return res.json({ result: "Memory search is not available.", hits: 0 });
+      }
+      const tRecall = Date.now();
+      const r = await recallMemory({ userId: user.id, query: b.query, mode: b.mode, person: b.person, since: b.since, until: b.until });
+      console.log("[recall]", { ms: Date.now() - tRecall, hits: r.hits, ok: r.ok, user: user.id.slice(0, 8) });
+      return res.json({ result: r.text, hits: r.hits });
+    }
+
+    // ── Backfill: fruehere Sessions des Users ins gemeinsame Gedaechtnis (Batch, idempotent) ──
+    if (action === 'knowledge_backfill' && req.method === 'POST') {
+      if (authErr || !user) return res.status(401).json({ error: "Invalid token" });
+      if (!knowledgeReadEnabled(user)) return res.json({ ok: true, remaining: 0, skipped: "not_enabled" });
+      const tBf = Date.now();
+      const r = await backfillUserKnowledge({ supabase, userId: user.id, days: 30 });
+      console.log("[knowledge-backfill]", { ms: Date.now() - tBf, user: user.id.slice(0, 8), processed: r.processed, remaining: r.remaining, results: r.results });
+      return res.json({ ok: r.ok, processed: r.processed || 0, remaining: r.remaining || 0 });
     }
 
     if (action === 'chat_notes' && req.method === 'GET') {
@@ -1379,6 +1402,8 @@ Exaggerate slightly — it always sounds less than you think.
       preferred_name: profile.preferred_name || profile.first_name || "",
       preferred_language: preferredLanguage,
       is_first_session: isFirstSession,
+      // Voice tools the client adds to the Realtime session (shared memory, allowlist)
+      knowledge_tools: (!testFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user)) ? [RECALL_TOOL] : [],
 
       // Soft ending config for frontend
       soft_end_enabled: true,

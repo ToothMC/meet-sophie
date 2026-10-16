@@ -3782,6 +3782,33 @@ async function checkMeetingBalance() {
   }
 }
 
+// ── Shared memory: Sophie looks up earlier sessions (recall_memory tool) ──
+async function handleMeetingRecall(msg, authToken) {
+  const fail = "Memory search failed — tell the user you could not look it up right now.";
+  let resultText = fail;
+  try {
+    const args = JSON.parse(msg.arguments || "{}");
+    const res = await fetch("/api/session?action=recall", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}`, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
+      body: JSON.stringify({ query: args.query, mode: args.mode, person: args.person, since: args.since, until: args.until, session_mode: "meeting" }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      resultText = data.result || fail;
+      console.log(`[meeting-voice] recall: ${data.hits || 0} hit(s)`);
+    }
+  } catch (e) {
+    console.error("[meeting-voice] recall error:", e?.message);
+  }
+  try {
+    sophieVoiceDc?.send(JSON.stringify({ type: "conversation.item.create", item: {
+      type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ memory: resultText }),
+    }}));
+    sophieVoiceDc?.send(JSON.stringify({ type: "response.create" }));
+  } catch (_) {}
+}
+
 // ── Flush pending burst messages to server ───────────────────────────────
 async function flushPendingBurstMessages() {
   if (pendingBurstMessages.length === 0) return;
@@ -4044,6 +4071,9 @@ async function connectSophieVoice(phase = "live") {
               },
             },
           },
+          // Shared memory (recall_memory) — only when the server enabled it for this user
+          ...(Array.isArray(data?.knowledge_tools) && data.knowledge_tools.length
+            ? { tools: data.knowledge_tools, tool_choice: "auto" } : {}),
         },
       }));
 
@@ -4067,6 +4097,10 @@ async function connectSophieVoice(phase = "live") {
     sophieVoiceDc.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data);
+        if (msg?.type === "response.function_call_arguments.done" && msg?.name === "recall_memory") {
+          handleMeetingRecall(msg, authToken);
+          return;
+        }
         handleVoiceTranscriptEvent(msg);
       } catch (_) {}
     };

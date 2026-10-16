@@ -18,6 +18,7 @@ import { getCouncilConfig, shouldRunCouncil } from "../lib/ai/council-config.js"
 import { deductTokens } from "../lib/token-deduct.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights, groundedSearch } from "./ai/tools.js";
 import { buildSearchContext } from "../lib/search-context.js";
+import { knowledgeReadEnabled, recallMemory } from "../lib/knowledge-core.js";
 import { TOKEN_COSTS, DEFAULT_FREE_TOKENS, isSubscriptionActive } from "../lib/billing-constants.js";
 
 function hashIp(ip) {
@@ -458,7 +459,34 @@ function detectSearchIntent(userMessage) {
   return null;
 }
 
-async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}) {
+const RECALL_CHAT_INSTRUCTION =
+  `[TOOL:recall:<what to look for>] — look up the user's earlier sessions with you: meetings (protocol, decisions, action items), ` +
+  `sales pitches (score, feedback), brainstorms (ideas), talks and chats. Use it whenever the user asks about something from an ` +
+  `earlier session that is not in your context. Reply with the tag ALONE. If nothing is found, say so honestly — never guess.`;
+
+async function executeToolIfNeeded(rawReply, routerMessages, providerConfig, onStatus = () => {}, ctx = {}) {
+  // Shared memory: [TOOL:recall:...] — only for users with knowledge access (ctx.user)
+  const recallMatch = rawReply.match(/\[TOOL:recall:([^\]]+)\]/);
+  if (recallMatch) {
+    const cleanReply = rawReply.replace(/\[TOOL:[^\]]+\]/g, "").trim();
+    if (!ctx.user || !knowledgeReadEnabled(ctx.user)) return { reply: cleanReply, toolUsed: false };
+    onStatus("recall");
+    const r = await recallMemory({ userId: ctx.user.id, query: recallMatch[1].trim() });
+    routerMessages.push({ role: "system", content: `${r.text}\n\nAnswer now based on this. No tool tag.` });
+    try {
+      const adapter = getAdapter(providerConfig.provider);
+      const retryResponse = await Promise.race([
+        adapter.complete({ messages: routerMessages, model: providerConfig.model, maxTokens: 1024, temperature: 0.7 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 12000)),
+      ]);
+      const retryReply = normalizeResponse(retryResponse.content || "", retryResponse.provider);
+      return { reply: retryReply || cleanReply, toolUsed: !!retryReply, toolType: "recall", retryResponse };
+    } catch (e) {
+      console.error("[chat] recall retry error:", e?.message?.slice(0, 200));
+      return { reply: cleanReply || "Ich konnte gerade nicht in unseren früheren Gesprächen nachsehen.", toolUsed: false };
+    }
+  }
+
   const toolMatch = rawReply.match(/\[TOOL:(weather|search|news|wiki|flight|arrivals|departures|grounded_search):([^\]]+)\]/);
   if (!toolMatch) return { reply: rawReply, toolUsed: false };
 
@@ -1161,6 +1189,11 @@ async function handleMessage(req, res) {
     routerMessages.push({ role: "system", content: `${COUNCIL_TOOL_INSTRUCTION}\n\n${COUNCIL_RULE}` });
   }
 
+  // Shared memory: look up earlier sessions (allowlist). Prompt text approved by Michael.
+  if (user && knowledgeReadEnabled(user)) {
+    routerMessages.push({ role: "system", content: RECALL_CHAT_INSTRUCTION });
+  }
+
   // Determine user tier for routing
   let userTier = "free";
   if (user) {
@@ -1475,7 +1508,7 @@ async function handleMessage(req, res) {
   // Tool-call detection: if AI responded with [TOOL:type:param], execute tool and re-query
   const toolResult = councilResult.councilUsed
     ? { reply: rawReply, toolUsed: false }
-    : await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus);
+    : await executeToolIfNeeded(rawReply, routerMessages, decision.primary, emitStatus, { user });
   let searchSources = routerMessages._preSearchSources || null;
   // Always use tool result reply — covers success, fallback, and error paths
   if (toolResult.reply && toolResult.reply !== rawReply) {

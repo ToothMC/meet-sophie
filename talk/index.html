@@ -4357,6 +4357,30 @@ function getDatePrefix() {
   return `${year}-${month}-${day}`;
 }
 
+// Shared memory: bring earlier sessions into the shared memory (server batches of 3,
+// idempotent). At most once per day per browser, in the background.
+async function runKnowledgeBackfillOnce() {
+  const key = "sophie_knowledge_backfill_day";
+  const today = new Date().toISOString().slice(0, 10);
+  try { if (localStorage.getItem(key) === today) return; } catch (_) {}
+  for (let i = 0; i < 15; i++) {
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+      const r = await fetch("/api/session?action=knowledge_backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token },
+        body: "{}",
+      });
+      if (!r.ok) return;
+      const d = await r.json();
+      console.log(`[knowledge-backfill] processed ${d.processed || 0}, remaining ${d.remaining || 0}`);
+      if (!d.remaining) break;
+    } catch (_) { return; }
+  }
+  try { localStorage.setItem(key, today); } catch (_) {}
+}
+
 // Start report generation and poll progress
 async function pollReportProgress(sessionId, transcriptLog, opts = {}) {
   if (!inlineReportProgress || !inlineReportProgressBar) return;
@@ -6415,6 +6439,11 @@ function attachChannel(ch) {
         sessionUpdate.session.tool_choice = "auto";
         updateModeIndicator(selectedVoiceMode);
       }
+      // Shared memory: recall_memory in every mode that has tools (talk, pitch, brainstorm, meeting)
+      if (Array.isArray(window._knowledgeTools) && window._knowledgeTools.length && Array.isArray(sessionUpdate.session.tools)) {
+        sessionUpdate.session.tools = sessionUpdate.session.tools.concat(window._knowledgeTools);
+        if (!selectedVoiceMode) window._talkBaseTools = sessionUpdate.session.tools.slice();
+      }
       try { dcSend(sessionUpdate); } catch (e) { console.error(`[${runId}] [dc] dcSend session.update failed:`, e); }
       console.log(`[${runId}] [dc] session.update sent — waiting for confirmation`);
       const updatedSession = await waitForSessionUpdated(3000);
@@ -6958,6 +6987,42 @@ No second question. No method monologue. No "Hey" or "Hi" before.`;
           console.error(`[${runId}] [search] error:`, e);
           dcSend({ type: "conversation.item.create", item: {
             type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Search failed" })
+          }});
+          dcSend({ type: "response.create" });
+        }
+        return;
+      }
+
+      // ── Shared memory: recall_memory (meetings, pitches, brainstorms, talks) ──
+      if (msg?.type === "response.function_call_arguments.done" && msg?.name === "recall_memory") {
+        try {
+          const args = JSON.parse(msg.arguments || "{}");
+          console.log(`[${runId}] [recall] called`);
+          showResearchIndicator();
+          let resultText = "Memory search failed — tell the user you could not look it up right now.";
+          const { data: { session: authSession } } = await supabase.auth.getSession();
+          if (authSession?.access_token) {
+            const recallRes = await fetch("/api/session?action=recall", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + authSession.access_token, "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })() },
+              body: JSON.stringify({ query: args.query, mode: args.mode, person: args.person, since: args.since, until: args.until, session_mode: selectedVoiceMode || null }),
+            });
+            if (recallRes.ok) {
+              const data = await recallRes.json();
+              resultText = data.result || resultText;
+              console.log(`[${runId}] [recall] ${data.hits || 0} hit(s)`);
+            }
+          }
+          hideResearchIndicator();
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ memory: resultText })
+          }});
+          dcSend({ type: "response.create" });
+        } catch (e) {
+          hideResearchIndicator();
+          console.error(`[${runId}] [recall] error:`, e);
+          dcSend({ type: "conversation.item.create", item: {
+            type: "function_call_output", call_id: msg.call_id, output: JSON.stringify({ error: "Memory search failed — tell the user you could not look it up right now." })
           }});
           dcSend({ type: "response.create" });
         }
@@ -7815,6 +7880,9 @@ async function startVoice(){
     isPremium = !!data?.is_premium;
     plan = data?.plan || null;
     window._ecoMode = !!data?.eco_mode;
+    // Shared-memory tools (recall_memory) — only sent by the server when enabled for this user
+    window._knowledgeTools = Array.isArray(data?.knowledge_tools) ? data.knowledge_tools : [];
+    if (window._knowledgeTools.length) setTimeout(runKnowledgeBackfillOnce, 20000);
 
     // Plan-Cap fuer Balance-Balken. Bei Topups mindestens den tatsaechlichen Startwert nehmen.
     {
