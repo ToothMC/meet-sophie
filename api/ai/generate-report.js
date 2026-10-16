@@ -25,8 +25,12 @@ function trackAdapterCost(response, userId, routingReason) {
 export const config = { maxDuration: 120 };
 
 // Cross-Mode Knowledge: write-only ("shadow"), never blocks or fails the report.
-async function ingestKnowledgeSafe(supabase, sessionId, userId, transcriptText, meetingStructured = null) {
+async function ingestKnowledgeSafe(supabase, sessionId, userId, transcriptText, meetingStructured = null, callerId = null) {
   if (!userId) return;
+  if (callerId !== userId) {
+    console.warn(`[report] knowledge ingest skipped: caller is not the session owner (${sessionId.slice(0, 8)})`);
+    return;
+  }
   try {
     const r = await ingestSessionKnowledge({ supabase, sessionId, userId, transcriptText, meetingStructured });
     if (!r.ok) console.warn(`[report] knowledge ingest failed (non-critical):`, r.error);
@@ -57,6 +61,21 @@ export default async function handler(req, res) {
 
   const { session_id, transcript_text, session_mode } = body;
   if (!session_id || !transcript_text) return res.status(400).json({ error: 'Missing session_id or transcript_text' });
+
+  // Who is calling? Report generation stays as before (separate auth fix pending), but
+  // everything that writes the request's transcript into SHARED MEMORY (knowledge items,
+  // meeting recap from transcript_text) only runs for the verified session owner —
+  // otherwise anyone knowing a session_id could plant fake "ideas" in another user's
+  // memory (final audit 16.10.2026).
+  let callerId = null;
+  try {
+    const authHeader = req.headers?.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (token) {
+      const { data: { user: caller } } = await supabase.auth.getUser(token);
+      callerId = caller?.id || null;
+    }
+  } catch (_) {}
 
   // Determine report language: user profile (truth) > explicit param (UI lang) > fallback "en"
   // body.language comes from localStorage (UI language) and can differ from the user's
@@ -515,7 +534,7 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
               .eq('session_id', session_id)
               .or('short_summary.is.null,short_summary.eq.');
           }
-          if (reportUserId) {
+          if (reportUserId && callerId === reportUserId) {
             const recap = await runRecapForSession({
               supabase, sessionId: session_id, userId: reportUserId, transcriptOverride: transcript_text,
             });
@@ -525,7 +544,7 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
         } catch (recapErr) {
           console.error(`[report] meeting recap error (non-critical):`, recapErr?.message);
         }
-        await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, meetingStructuredData);
+        await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, meetingStructuredData, callerId);
       } else {
         const { error: failErr } = await supabase.from('conversation_outputs').update({
           report_status: 'failed', report_progress: 100,
@@ -980,7 +999,7 @@ Scores are 1.0-5.0. Extract exact values from the report.` }],
           report_status_detail: isEN ? 'Sales pitch report generation failed' : isFR ? 'Génération du rapport pitch échouée' : 'Sales Pitch Report Generation fehlgeschlagen',
         }).eq('session_id', session_id);
       }
-      await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text);
+      await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, null, callerId);
       return res.status(200).json({ ok: true, status: reportHtml ? 'done' : 'failed' });
     }
 
@@ -1605,7 +1624,7 @@ ${analysesBlock}`;
     await supabase.from('user_sessions').update({ has_output: true }).eq('id', session_id);
 
     console.log(`[report] Done: ${session_id} — ${reportHtml.length} chars HTML from ${analyses.length} providers`);
-    await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text);
+    await ingestKnowledgeSafe(supabase, session_id, reportUserId, transcript_text, null, callerId);
     return res.status(200).json({ ok: true, status: 'done' });
 
   } catch (err) {

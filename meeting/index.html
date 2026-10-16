@@ -3995,6 +3995,7 @@ async function connectSophieVoice(phase = "live") {
     const sessionHeaders = {
       Authorization: `Bearer ${authToken}`,
       "X-Sophie-Session-Mode": "meeting",
+      "X-Sophie-Surface": "meeting-page", // explicit marker: tools differ from the Talk page
       "X-Sophie-Timezone": (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; } })(),
       "X-Sophie-Meeting-Id": meetingId || "",
       "X-Sophie-Meeting-Phase": phase,

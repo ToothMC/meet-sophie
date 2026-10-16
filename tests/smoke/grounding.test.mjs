@@ -175,3 +175,34 @@ test("recall keeps sessions apart and never shows entries marked as wrong", () =
 test("weather is only fetched for a place the user named", () => {
   assert.match(src("talk/index.html"), /never call the tool with a guessed place/);
 });
+
+// ── Final audit 16.10.2026 ──
+test("shared memory is only written for the verified session owner", () => {
+  const s = src("api/ai/generate-report.js");
+  assert.match(s, /if \(callerId !== userId\) \{/);
+  assert.equal((s.match(/await ingestKnowledgeSafe\([^)]*callerId\)/g) || []).length, 3);
+  assert.match(s, /if \(reportUserId && callerId === reportUserId\) \{\s*const recap = await runRecapForSession/);
+});
+
+test("a failed calendar fetch never becomes 'no events'", () => {
+  const s = src("lib/calendar-fetch.js");
+  assert.match(s, /failed: true, status: res\.status/);
+  assert.match(s, /if \(primary\.failed\) \{/);
+  assert.match(s, /if \(primaryFailed \|\| failedCount === calendars\.length\)/);
+});
+
+test("meeting page is recognised by an explicit marker", () => {
+  assert.match(src("meeting/index.html"), /"X-Sophie-Surface": "meeting-page"/);
+  assert.match(src("api/session.js"), /\["x-sophie-surface"\] \|\| ""\) === "meeting-page"/);
+});
+
+test("talk loads the shared-memory block in parallel with the other session loads", () => {
+  assert.match(src("api/session.js"), /const earlyCrossModePromise = \(!sessionMode && recallEnabled\)/);
+});
+
+test("knowledge costs are awaited and STM keys follow the text", () => {
+  const s = src("lib/knowledge-core.js");
+  assert.match(s, /await track\(userId, EMBED_MODEL/);
+  assert.match(s, /await track\(userId, VALIDATE_MODEL/);
+  assert.match(s, /idem_key: `stm:\$\{sessionId\}:\$\{field\}:\$\{textKey\(text\)\}`/);
+});

@@ -217,9 +217,20 @@ export default async function handler(req, res) {
     // Which tools does the CLIENT really provide in this mode? (talk/index.html, meeting/index.html)
     // The prompt must never promise more (grounding audit 16.10.2026: brainstorm/pitch/meeting were
     // told "full access to the calendar" without having the tool).
-    const onMeetingPage = Object.prototype.hasOwnProperty.call(req.headers || {}, "x-sophie-meeting-id");
+    const onMeetingPage = String(req.headers?.["x-sophie-surface"] || "") === "meeting-page"
+      || Object.prototype.hasOwnProperty.call(req.headers || {}, "x-sophie-meeting-id"); // legacy clients
     const recallEnabled = !testFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user);
     const { hasFullTools, limitedTools } = voiceToolPlan({ onMeetingPage, sessionMode, pitchDemo: handover?.pitchDemo === true, recallEnabled });
+    // Talk has no topic → start the shared-memory block now, in parallel with the other
+    // loads, instead of after them (final audit: +150–400 ms at session start). Topic modes
+    // (meeting/brainstorm/pitch) need their topic first and load it later.
+    const tKnowStart = Date.now();
+    const earlyCrossModePromise = (!sessionMode && recallEnabled)
+      ? loadCrossModeBlock({ userId: user.id, sessionMode: null, channel: "voice" }).catch((e) => {
+          console.warn("[session] cross-mode block failed:", e?.message);
+          return null;
+        })
+      : null;
     const meetingId = String(req.headers["x-sophie-meeting-id"] || "").trim() || null;
 
     // Extra-Intelligence (xi) feature-flag — fast fail bevor Subscription/Lock
@@ -1024,7 +1035,11 @@ export default async function handler(req, res) {
 
     // Shared memory across modes (Phase 4, allowlist). Topic modes search by their topic.
     let crossModeContext = null;
-    if (!testFirstSession && !isFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user)) {
+    if (earlyCrossModePromise) {
+      const early = await earlyCrossModePromise;
+      crossModeContext = isFirstSession ? null : early;
+      console.log("[session] cross-mode block", { ms: Date.now() - tKnowStart, chars: crossModeContext?.length || 0, mode: "talk", parallel: true });
+    } else if (!testFirstSession && !isFirstSession && sessionMode !== "extra_intelligence" && knowledgeReadEnabled(user)) {
       const tKnow = Date.now();
       try {
         crossModeContext = await loadCrossModeBlock({
