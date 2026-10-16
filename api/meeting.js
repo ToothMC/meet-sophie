@@ -30,7 +30,7 @@ import { getCalendarEventsForUser } from "../lib/calendar-fetch.js";
 import { TOKEN_COSTS, isSubscriptionActive } from "../lib/billing-constants.js";
 import { trackCost } from "../lib/ai/cost-tracker.js";
 import { getWeather, webSearch, getNews, getWikipedia, getFlightStatus, getAirportFlights } from "./ai/tools.js";
-import { runLiveScheduleCheck, loadMeetingCalendarItems, toNotice, undoBooking, resolveTimeZone } from "../lib/meeting-calendar.js";
+import { runLiveScheduleCheck, loadMeetingCalendarItems, toNotice, undoBooking } from "../lib/meeting-calendar.js";
 import mammoth from "mammoth";
 
 // ---------------------------------------------------------------------------
@@ -1643,7 +1643,7 @@ async function handleScheduleCheck(req, res) {
       userId: user.id,
       meeting,
       sinceIndex: Number.isInteger(body.since_segment_index) ? body.since_segment_index : -1,
-      tz: resolveTimeZone(body.timezone),
+      tz: timeZoneFromRequest(req),
       language,
     });
     return res.status(200).json({ ok: true, ...result });

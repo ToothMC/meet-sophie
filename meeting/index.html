@@ -2443,7 +2443,6 @@ async function triggerAndPollMeetingReport(sessionId, backendTranscript) {
       transcript_text: fullTranscript,
       session_mode: "meeting",
       language: lang || "de",
-      timezone: calTimeZone(),
     }),
   }).catch(e => console.error("[meeting-report] generate fetch failed:", e?.message));
 
@@ -3827,10 +3826,6 @@ const CAL_TEXTS = {
 
 function calTexts() { return CAL_TEXTS[lang] || CAL_TEXTS.en; }
 
-function calTimeZone() {
-  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { return ""; }
-}
-
 function calPad(n) { return String(n).padStart(2, "0"); }
 
 function calDayLabel(d) {
@@ -3926,7 +3921,6 @@ async function runScheduleCheck(isFinal = false) {
     const data = await api("schedule_check", {
       meeting_id: meetingId,
       since_segment_index: lastScheduleSegmentIndex,
-      timezone: calTimeZone(),
       language: lang,
     });
     if (data?.next_segment_index != null) lastScheduleSegmentIndex = data.next_segment_index;

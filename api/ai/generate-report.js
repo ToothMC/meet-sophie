@@ -522,13 +522,13 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
             // und live noch nichts eingetragen wurde (gleiche Idempotenz-Keys → nie doppelt).
             if (structured.next_meeting && reportUserId) {
               try {
-                const { runPostMeetingScheduleCheck, resolveTimeZone } = await import('../../lib/meeting-calendar.js');
+                const { runPostMeetingScheduleCheck } = await import('../../lib/meeting-calendar.js');
                 await runPostMeetingScheduleCheck({
                   supabase,
                   userId: reportUserId,
                   meetingId: meetingRow.id,
                   transcriptText: transcript_text,
-                  tz: resolveTimeZone(body.timezone),
+                  tz: userTz, // Header X-Sophie-Timezone
                   language: reportLang,
                 });
               } catch (calErr) {
