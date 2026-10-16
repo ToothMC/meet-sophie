@@ -477,6 +477,24 @@ ${isEN ? 'RULES' : isFR ? 'RÈGLES' : 'REGELN'}:
               await supabase.from('meetings').update({ title: structured.short_summary.slice(0, 60) }).eq('id', meetingRow.id);
               console.log(`[report] Meeting title set (was empty): "${structured.short_summary.slice(0, 60)}"`);
             }
+
+            // Folgetermin-Fallback: nur wenn der Report einen naechsten Termin nennt
+            // und live noch nichts eingetragen wurde (gleiche Idempotenz-Keys → nie doppelt).
+            if (structured.next_meeting && reportUserId) {
+              try {
+                const { runPostMeetingScheduleCheck, resolveTimeZone } = await import('../../lib/meeting-calendar.js');
+                await runPostMeetingScheduleCheck({
+                  supabase,
+                  userId: reportUserId,
+                  meetingId: meetingRow.id,
+                  transcriptText: transcript_text,
+                  tz: resolveTimeZone(body.timezone),
+                  language: reportLang,
+                });
+              } catch (calErr) {
+                console.error(`[report] follow-up calendar pass failed (non-critical):`, calErr?.message);
+              }
+            }
           }
         } catch (extractErr) {
           console.error(`[report] structured extraction failed (non-critical):`, extractErr?.message);
