@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildDateBlock, wholeDayWindow, resolveTimeZone, localMidnightUtc, germanToday } from "../../lib/date-context.js";
-import { formatCalendarContext } from "../../lib/calendar-fetch.js";
+import { formatCalendarContext } from "../../lib/calendar-format.js";
 
 const NOW = new Date("2026-10-16T07:32:00Z"); // Friday 09:32 in Berlin
 
