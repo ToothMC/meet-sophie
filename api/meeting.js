@@ -1050,22 +1050,24 @@ async function handleDelete(req, res) {
     .maybeSingle();
   if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
-  // If meeting has a linked report session, clean up report data first
-  if (meeting.session_id) {
-    await supabase.from("conversation_outputs").delete().eq("session_id", meeting.session_id);
-    await supabase.from("user_sessions").delete().eq("id", meeting.session_id);
-  }
-
-  // Delete meeting (cascades to context, notes, summary via ON DELETE CASCADE)
-  // Children with parent_meeting_id will get SET NULL automatically
+  // Delete meeting FIRST (cascades to context, notes, summary; children with
+  // parent_meeting_id get SET NULL). meetings.session_id references user_sessions without
+  // cascade, so deleting the session first failed and left an orphan behind (16.10.2026).
   const { error } = await supabase
     .from("meetings")
     .delete()
-    .eq("id", meeting_id);
+    .eq("id", meeting_id)
+    .eq("user_id", user.id);
 
   if (error) {
     console.error("Meeting delete error:", error);
     return res.status(500).json({ error: "Failed to delete meeting" });
+  }
+
+  // Then the linked report session — cascades to conversation_outputs, messages, memory.
+  if (meeting.session_id) {
+    const { error: usErr } = await supabase.from("user_sessions").delete().eq("id", meeting.session_id).eq("user_id", user.id);
+    if (usErr) console.error("Meeting delete: report session cleanup failed:", usErr.message);
   }
 
   return res.status(200).json({ ok: true });
