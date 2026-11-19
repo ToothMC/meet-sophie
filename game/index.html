@@ -48,8 +48,15 @@
     .consent.show { display: flex; }
     .consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 
-    details.dev { margin-top: 16px; color: var(--muted); font-size: 13px; }
-    details.dev select { margin-left: 8px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
+    .voice-row { margin-top: 18px; }
+    .voice-label { color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin: 0 2px 8px; }
+    .voices { display: flex; flex-wrap: wrap; gap: 8px; }
+    .voice { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px; border-radius: 12px;
+      border: 1px solid var(--line); background: var(--panel); color: var(--fg); font-size: 15px; font-weight: 600; cursor: pointer; }
+    .voice small { color: var(--muted); font-size: 11px; font-weight: 500; }
+    .voice[aria-checked="true"] { border-color: var(--accent); background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--panel); }
+    .voice[aria-checked="true"] small { color: var(--accent); }
+    .voice-now { color: var(--muted); }
 
     .primary { width: 100%; margin-top: 20px; padding: 16px; border-radius: 14px; border: none; background: var(--accent);
       color: #1a1205; font-weight: 700; font-size: 17px; cursor: pointer; }
@@ -115,21 +122,16 @@
         <input type="checkbox" id="consent" />
         <span>Alle Anwesenden sind einverstanden, dass Sophie zuhört und sich ungefragt einmischen darf.</span>
       </label>
-      <details class="dev">
-        <summary>Testeinstellungen</summary>
-        <label>Stimme
-          <select id="voice">
-            <option value="shimmer">shimmer (Sophie)</option>
-            <option value="marin">marin</option>
-            <option value="nuri">nuri (DE)</option>
-            <option value="juni">juni (DE)</option>
-            <option value="flitz">flitz (DE)</option>
-            <option value="coral">coral</option>
-            <option value="sage">sage</option>
-            <option value="verse">verse</option>
-          </select>
-        </label>
-      </details>
+      <div class="voice-row">
+        <div class="voice-label">Stimme</div>
+        <div class="voices" id="voices" role="radiogroup" aria-label="Stimme">
+          <button class="voice" role="radio" data-voice="nuri">Nuri<small>Deutsch</small></button>
+          <button class="voice" role="radio" data-voice="juni">Juni<small>Deutsch</small></button>
+          <button class="voice" role="radio" data-voice="flitz">Flitz<small>Deutsch</small></button>
+          <button class="voice" role="radio" data-voice="shimmer">Shimmer<small>Sophie · EN</small></button>
+          <button class="voice" role="radio" data-voice="marin">Marin<small>EN</small></button>
+        </div>
+      </div>
       <button class="primary" id="start">Spieleabend starten</button>
       <div class="error" id="setup-error" role="alert"></div>
     </section>
@@ -192,7 +194,24 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const lang = ["de", "en", "fr"].includes(params.get("lang")) ? params.get("lang")
   : ((navigator.language || "de").slice(0, 2) === "en" ? "en" : (navigator.language || "de").slice(0, 2) === "fr" ? "fr" : "de");
-if (params.get("voice")) $("voice").value = params.get("voice");
+// ── Stimme: Schalter auf dem Startscreen, Wahl wird gemerkt. ──
+// Bei GPT-Live haengt die Sprache an der Stimme und ist nach dem Start fix.
+const VOICES = [...document.querySelectorAll("#voices .voice")].map((b) => b.dataset.voice);
+let voice = (() => {
+  const fromUrl = params.get("voice");
+  if (VOICES.includes(fromUrl)) return fromUrl;
+  try { const saved = localStorage.getItem("sophie_game_voice"); if (VOICES.includes(saved)) return saved; } catch {}
+  return "shimmer";
+})();
+function renderVoices() {
+  document.querySelectorAll("#voices .voice").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.voice === voice)));
+}
+document.querySelectorAll("#voices .voice").forEach((b) => b.addEventListener("click", () => {
+  voice = b.dataset.voice;
+  try { localStorage.setItem("sophie_game_voice", voice); } catch {}
+  renderVoices();
+}));
+renderVoices();
 
 // ── State ──
 let mode = "surprise";
@@ -335,7 +354,7 @@ async function startGame() {
   live = new SophieLive({
     startUrl: "/api/game?action=start",
     getAuthToken: async () => (await supabase.auth.getSession()).data.session?.access_token || accessToken,
-    startBody: { mode, lang, voice: $("voice").value },
+    startBody: { mode, lang, voice },
     onToolCall,
     onRemoteStream: (stream) => startVisualizer(stream),
     onTranscript: ({ role, text, final }) => {
@@ -349,7 +368,7 @@ async function startGame() {
     },
     onState: (state, info) => {
       if (state === "ready") {
-        $("live-state").textContent = "Sophie ist dabei";
+        $("live-state").textContent = `Sophie ist dabei · Stimme ${voice.charAt(0).toUpperCase()}${voice.slice(1)}`;
         startedAt = Date.now();
         startElapsed();
         requestWakeLock();
@@ -451,7 +470,7 @@ function buildEndPayload({ compact = false } = {}) {
   return {
     session_id: live?.sessionId || null,
     mode,
-    voice: $("voice").value,
+    voice,
     seconds: usage.seconds || secondsSinceStart(),
     backend_usage: usage.backend,
     // keepalive-Requests sind auf 64 KB begrenzt -> beim Schliessen kuerzen.
