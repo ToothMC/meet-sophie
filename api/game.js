@@ -19,7 +19,8 @@ import {
   GAME_TOOLS,
   GAME_MODES,
   GAME_VOICES,
-  DEFAULT_GAME_VOICE,
+  GAME_HOSTS,
+  resolveHost,
 } from "../lib/game/prompt.js";
 
 const LIVE_MODEL = "gpt-live-1";
@@ -82,7 +83,9 @@ async function handleStart(req, res, supabase, user) {
   if (!sdp || sdp.length > MAX_SDP_BYTES || !sdp.startsWith("v=")) return res.status(400).json({ error: "invalid_sdp" });
   const mode = GAME_MODES.includes(body.mode) ? body.mode : "surprise";
   const lang = ["de", "en", "fr"].includes(body.lang) ? body.lang : "de";
-  const voice = GAME_VOICES.includes(body.voice) ? body.voice : DEFAULT_GAME_VOICE;
+  // Spielleiter waehlt die Stimme passend zur Sprache; ?voice= nur als Test-Override.
+  const host = resolveHost(body.host);
+  const voice = GAME_VOICES.includes(body.voice) ? body.voice : GAME_HOSTS[host].voices[lang];
 
   // Doppelstart-Schutz (zweiter Tab / Doppel-Tap), gleiche RPC wie /api/session.
   const lockResult = await supabase.rpc("acquire_realtime_lock", { p_user_id: user.id, p_ttl_seconds: SESSION_LOCK_TTL_SECONDS });
@@ -94,7 +97,7 @@ async function handleStart(req, res, supabase, user) {
   const payload = {
     session: {
       model: LIVE_MODEL,
-      instructions: buildGameInstructions({ mode, lang }),
+      instructions: buildGameInstructions({ mode, lang, host }),
       audio: { output: { voice } },
       delegation: {
         type: "responses",
@@ -124,8 +127,8 @@ async function handleStart(req, res, supabase, user) {
     console.error("[game] live session create failed", r.status, JSON.stringify(data?.error || data).slice(0, 500));
     return res.status(502).json({ error: "live_session_failed", status: r.status, detail: data?.error?.message || null });
   }
-  console.log("[game] live session", data?.session?.id, "mode", mode, "voice", voice, "ms", Date.now() - t0);
-  return res.status(200).json({ sdp: data.transport.sdp, session_id: data?.session?.id || null, mode, voice, lang });
+  console.log("[game] live session", data?.session?.id, "mode", mode, "host", host, "voice", voice, "ms", Date.now() - t0);
+  return res.status(200).json({ sdp: data.transport.sdp, session_id: data?.session?.id || null, mode, host, host_name: GAME_HOSTS[host].name, voice, lang });
 }
 
 function clampStr(s, n) {
@@ -194,6 +197,7 @@ async function handleEnd(req, res, supabase, user) {
       session_id: sessionId,
       meta: {
         mode,
+        host: GAME_HOSTS[body.host] ? body.host : null,
         voice: clampStr(body.voice, 30) || null,
         seconds,
         cost_usd: costUsd,
