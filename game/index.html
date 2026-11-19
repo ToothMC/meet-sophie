@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Game Night — Sophie</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0a10;
+      --panel: #15131d;
+      --line: #2a2636;
+      --fg: #f1eff7;
+      --muted: #918ca3;
+      --accent: #f59e0b;
+      --accent-soft: rgba(245, 158, 11, 0.16);
+      --ok: #4ade80;
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; background: var(--bg); color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+    button { font: inherit; }
+
+    .topbar { display: flex; justify-content: space-between; align-items: center;
+      padding: calc(12px + env(safe-area-inset-top)) 16px 12px; }
+    .topbar a { color: var(--muted); text-decoration: none; font-size: 14px; }
+    .badge { padding: 3px 10px; font-size: 11px; background: var(--accent-soft); color: var(--accent);
+      border-radius: 999px; letter-spacing: .1em; text-transform: uppercase; }
+
+    main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); }
+    h1 { font-size: 28px; margin: 8px 0 4px; letter-spacing: -.02em; }
+    p.lead { color: var(--muted); margin: 0 0 20px; line-height: 1.5; font-size: 15px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .modes { display: grid; gap: 10px; }
+    .mode { text-align: left; background: var(--panel); border: 1px solid var(--line); color: var(--fg);
+      border-radius: 14px; padding: 14px 16px; cursor: pointer; }
+    .mode strong { display: block; font-size: 16px; margin-bottom: 3px; }
+    .mode span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .mode[aria-pressed="true"] { border-color: var(--accent); background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--panel); }
+
+    .consent { display: none; gap: 10px; align-items: flex-start; margin: 14px 2px 0; color: var(--fg); font-size: 14px; line-height: 1.4; }
+    .consent.show { display: flex; }
+    .consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+
+    details.dev { margin-top: 16px; color: var(--muted); font-size: 13px; }
+    details.dev select { margin-left: 8px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
+
+    .primary { width: 100%; margin-top: 20px; padding: 16px; border-radius: 14px; border: none; background: var(--accent);
+      color: #1a1205; font-weight: 700; font-size: 17px; cursor: pointer; }
+    .primary:disabled { opacity: .45; cursor: default; }
+    .secondary { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+    .error { color: var(--danger); font-size: 14px; margin-top: 12px; min-height: 1em; }
+
+    /* Live */
+    .status { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .wave { display: flex; align-items: center; justify-content: center; gap: 5px; height: 64px; margin: 6px 0 10px; }
+    .wave i { width: 6px; height: 8px; border-radius: 3px; background: var(--accent); opacity: .85; transition: height .08s linear; }
+    .caption { min-height: 3.2em; font-size: 16px; line-height: 1.45; text-align: center; color: var(--fg); margin: 0 0 14px; }
+    .caption.user { color: var(--muted); font-style: italic; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+    .card h2 { margin: 0 0 4px; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .game-name { font-size: 18px; font-weight: 700; }
+    .game-rules { color: var(--muted); font-size: 14px; margin-top: 3px; line-height: 1.4; }
+    .scores { list-style: none; margin: 0; padding: 0; }
+    .scores li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 16px; }
+    .scores li:last-child { border-bottom: none; }
+    .scores li.lead strong::after { content: " 👑"; }
+    .scores li.flash { animation: flash .9s ease; }
+    @keyframes flash { 0% { background: var(--accent-soft); } 100% { background: transparent; } }
+    .empty { color: var(--muted); font-size: 14px; }
+    .live-actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 14px; }
+    .laugh { padding: 18px; border-radius: 14px; border: none; background: var(--accent-soft); color: var(--accent); font-size: 18px; font-weight: 700; cursor: pointer; }
+    .laugh:active { transform: scale(.98); }
+    .stop { padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; }
+
+    /* End */
+    .stars { display: flex; justify-content: center; gap: 8px; margin: 18px 0 6px; }
+    .stars button { font-size: 34px; background: none; border: none; cursor: pointer; filter: grayscale(1) opacity(.5); }
+    .stars button.on { filter: none; }
+    .summary { color: var(--muted); font-size: 14px; text-align: center; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/app/" id="back">← Sophie</a>
+    <span class="badge">Game Night · Prototyp</span>
+  </div>
+
+  <main>
+    <!-- Setup -->
+    <section class="screen active" id="screen-setup">
+      <h1>Game Night Unleashed</h1>
+      <p class="lead">Sophie moderiert euren Spieleabend. Trocken, frech, gnadenlos fair. Wählt, wie ihr spielen wollt.</p>
+      <div class="modes" role="group" aria-label="Spielmodus">
+        <button class="mode" data-mode="surprise" aria-pressed="true">
+          <strong>Überrasch mich</strong>
+          <span>Sophie fragt kurz nach euch und sucht selbst ein passendes Spiel aus.</span>
+        </button>
+        <button class="mode" data-mode="idea" aria-pressed="false">
+          <strong>Wir haben eine Idee</strong>
+          <span>Ihr nennt Wünsche, Sophie baut daraus ein Spiel.</span>
+        </button>
+        <button class="mode" data-mode="freeplay" aria-pressed="false">
+          <strong>Freies Reinquatschen</strong>
+          <span>Ihr spielt euer Ding, Sophie hört zu und mischt sich gelegentlich ein.</span>
+        </button>
+      </div>
+      <label class="consent" id="consent-row">
+        <input type="checkbox" id="consent" />
+        <span>Alle Anwesenden sind einverstanden, dass Sophie zuhört und sich ungefragt einmischen darf.</span>
+      </label>
+      <details class="dev">
+        <summary>Testeinstellungen</summary>
+        <label>Stimme
+          <select id="voice">
+            <option value="shimmer">shimmer (Sophie)</option>
+            <option value="marin">marin</option>
+            <option value="nuri">nuri (DE)</option>
+            <option value="juni">juni (DE)</option>
+            <option value="flitz">flitz (DE)</option>
+            <option value="coral">coral</option>
+            <option value="sage">sage</option>
+            <option value="verse">verse</option>
+          </select>
+        </label>
+      </details>
+      <button class="primary" id="start">Spieleabend starten</button>
+      <div class="error" id="setup-error" role="alert"></div>
+    </section>
+
+    <!-- Live -->
+    <section class="screen" id="screen-live">
+      <div class="status"><span id="live-state">Verbinde …</span><span id="elapsed">0:00</span></div>
+      <div class="wave" id="wave" aria-hidden="true"></div>
+      <p class="caption" id="caption" aria-live="polite"></p>
+      <div class="card">
+        <h2>Spiel</h2>
+        <div class="game-name" id="game-name">Noch keins</div>
+        <div class="game-rules" id="game-rules"></div>
+        <div class="game-rules" id="game-round"></div>
+      </div>
+      <div class="card">
+        <h2>Punkte</h2>
+        <ul class="scores" id="scores"></ul>
+        <div class="empty" id="scores-empty">Sophie trägt die Spieler ein, sobald sie eure Namen kennt.</div>
+      </div>
+      <div class="live-actions">
+        <button class="laugh" id="laugh">😂 Lacher</button>
+        <button class="stop" id="stop">Beenden</button>
+      </div>
+    </section>
+
+    <!-- End -->
+    <section class="screen" id="screen-end">
+      <h1>Und? Wie war Sophie?</h1>
+      <p class="summary" id="end-summary"></p>
+      <div class="stars" id="stars" role="group" aria-label="Bewertung">
+        <button data-r="1" aria-label="1 Stern">⭐</button>
+        <button data-r="2" aria-label="2 Sterne">⭐</button>
+        <button data-r="3" aria-label="3 Sterne">⭐</button>
+        <button data-r="4" aria-label="4 Sterne">⭐</button>
+        <button data-r="5" aria-label="5 Sterne">⭐</button>
+      </div>
+      <button class="primary" id="send-rating" disabled>Bewertung senden</button>
+      <div style="height:10px"></div>
+      <button class="secondary" id="again">Neue Runde</button>
+      <div class="error" id="end-error" role="alert"></div>
+    </section>
+  </main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { SophieLive } from "/lib/sophie-live.js?v=1";
+
+const SUPABASE_URL = "https://ohzfojsbmzinpxhcynpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oemZvanNibXppbnB4aGN5bnB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Mzc1MjcsImV4cCI6MjA4NzAxMzUyN30.7eGSeEvOCj9vMqFJj9C0SR8DiiYygbFUvpQ8rIVEc0I";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { data: { session } } = await supabase.auth.getSession();
+if (!session?.user) { window.location.href = "/login"; }
+// Token synchron vorhalten: pagehide-Requests duerfen nicht erst auf getSession() warten.
+let accessToken = session?.access_token || null;
+supabase.auth.onAuthStateChange((_evt, s) => { if (s?.access_token) accessToken = s.access_token; });
+
+const MAX_SESSION_MS = 45 * 60 * 1000;
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const lang = ["de", "en", "fr"].includes(params.get("lang")) ? params.get("lang")
+  : ((navigator.language || "de").slice(0, 2) === "en" ? "en" : (navigator.language || "de").slice(0, 2) === "fr" ? "fr" : "de");
+if (params.get("voice")) $("voice").value = params.get("voice");
+
+// ── State ──
+let mode = "surprise";
+let live = null;
+let startedAt = 0;
+let elapsedTimer = null;
+let wakeLock = null;
+let ended = false;
+let endPayloadSent = false;
+let rating = null;
+const transcript = [];      // {role, text, t}
+const laughs = [];          // {t, last_sophie}
+let lastSophieLine = "";
+const game = { name: null, rules: null, rounds: 0, round: 1, over: false, winner: null };
+const scores = new Map();   // displayName -> points
+
+// ── Setup UI ──
+document.querySelectorAll(".mode").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    mode = btn.dataset.mode;
+    document.querySelectorAll(".mode").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+    $("consent-row").classList.toggle("show", mode === "freeplay");
+    updateStartEnabled();
+  });
+});
+$("consent").addEventListener("change", updateStartEnabled);
+function updateStartEnabled() {
+  $("start").disabled = mode === "freeplay" && !$("consent").checked;
+}
+
+function show(screen) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === `screen-${screen}`));
+}
+
+// ── Visualizer ──
+const bars = Array.from({ length: 18 }, () => { const i = document.createElement("i"); $("wave").appendChild(i); return i; });
+let analyser = null, rafId = null, audioCtx = null;
+function startVisualizer(stream) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 64;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      bars.forEach((b, i) => { b.style.height = `${8 + (data[i + 1] || 0) / 255 * 56}px`; });
+      rafId = requestAnimationFrame(tick);
+    };
+    tick();
+  } catch (e) { console.warn("[game] visualizer", e); }
+}
+function stopVisualizer() {
+  cancelAnimationFrame(rafId);
+  bars.forEach((b) => { b.style.height = "8px"; });
+}
+
+// ── Scoreboard ──
+function findPlayer(name) {
+  const n = String(name || "").trim();
+  if (!n) return null;
+  for (const k of scores.keys()) if (k.toLowerCase() === n.toLowerCase()) return k;
+  return null;
+}
+function renderScores(flashName) {
+  const ul = $("scores");
+  ul.innerHTML = "";
+  const entries = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+  const top = entries.length && entries[0][1] > 0 ? entries[0][1] : null;
+  for (const [name, pts] of entries) {
+    const li = document.createElement("li");
+    const s = document.createElement("strong"); s.textContent = name;
+    const p = document.createElement("span"); p.textContent = String(pts);
+    li.append(s, p);
+    if (top !== null && pts === top) li.classList.add("lead");
+    if (flashName && name === flashName) li.classList.add("flash");
+    ul.appendChild(li);
+  }
+  $("scores-empty").style.display = entries.length ? "none" : "block";
+}
+function renderGame() {
+  $("game-name").textContent = game.name || "Noch keins";
+  $("game-rules").textContent = game.rules || "";
+  $("game-round").textContent = game.name
+    ? (game.over ? `Beendet${game.winner ? ` · Sieger: ${game.winner}` : ""}` : `Runde ${game.round}${game.rounds ? ` von ${game.rounds}` : ""}`)
+    : "";
+}
+
+// ── Tools (Delegation → Client) ──
+async function onToolCall(name, args) {
+  switch (name) {
+    case "set_game":
+      game.name = String(args.name || "").slice(0, 80) || game.name;
+      game.rules = String(args.rules_summary || "").slice(0, 240);
+      game.rounds = Math.max(0, Math.min(99, parseInt(args.rounds, 10) || 0));
+      game.round = 1; game.over = false; game.winner = null;
+      renderGame();
+      return { ok: true };
+    case "add_players": {
+      const names = Array.isArray(args.names) ? args.names : [];
+      for (const raw of names.slice(0, 20)) {
+        const n = String(raw || "").trim().slice(0, 40);
+        if (n && !findPlayer(n)) scores.set(n, 0);
+      }
+      renderScores();
+      return { ok: true, players: [...scores.keys()] };
+    }
+    case "update_score": {
+      const raw = String(args.player || "").trim().slice(0, 40);
+      if (!raw) return { ok: false, error: "missing_player" };
+      const key = findPlayer(raw) || raw;
+      const delta = Math.max(-100, Math.min(100, parseInt(args.delta, 10) || 0));
+      scores.set(key, (scores.get(key) || 0) + delta);
+      renderScores(key);
+      return { ok: true, player: key, score: scores.get(key) };
+    }
+    case "next_round":
+      game.round += 1;
+      renderGame();
+      return { ok: true, round: game.round };
+    case "end_game":
+      game.over = true;
+      game.winner = String(args.winner || "").slice(0, 40) || null;
+      renderGame();
+      return { ok: true, final_scores: Object.fromEntries(scores) };
+    default:
+      return { ok: false, error: "unknown_tool" };
+  }
+}
+
+// ── Start ──
+$("start").addEventListener("click", startGame);
+async function startGame() {
+  $("setup-error").textContent = "";
+  $("start").disabled = true;
+  resetState();
+  show("live");
+  $("live-state").textContent = "Verbinde …";
+  live = new SophieLive({
+    startUrl: "/api/game?action=start",
+    getAuthToken: async () => (await supabase.auth.getSession()).data.session?.access_token || accessToken,
+    startBody: { mode, lang, voice: $("voice").value },
+    onToolCall,
+    onRemoteStream: (stream) => startVisualizer(stream),
+    onTranscript: ({ role, text, final }) => {
+      const cap = $("caption");
+      cap.textContent = text;
+      cap.classList.toggle("user", role === "user");
+      if (final) {
+        transcript.push({ role, text, t: secondsSinceStart() });
+        if (role === "assistant") lastSophieLine = text;
+      }
+    },
+    onState: (state, info) => {
+      if (state === "ready") {
+        $("live-state").textContent = "Sophie ist dabei";
+        startedAt = Date.now();
+        startElapsed();
+        requestWakeLock();
+      }
+      if (state === "closed") finishGame(info?.reason);
+    },
+    onConnectionIssue: () => { $("live-state").textContent = "Verbindung wackelt …"; },
+    onError: (e) => console.warn("[game] live error", e),
+  });
+  try {
+    await live.start();
+  } catch (e) {
+    console.warn("[game] start failed", e);
+    const msg = e?.status === 403 ? "Game Night ist gerade nur für Testzugänge freigeschaltet."
+      : e?.status === 429 ? "Sophie ist schon in einem anderen Gespräch. Bitte andere Tabs schließen."
+      : e?.name === "NotAllowedError" ? "Ohne Mikrofon kann Sophie nicht mitspielen. Bitte Zugriff erlauben."
+      : "Sophie konnte nicht starten. Bitte nochmal versuchen.";
+    ended = true;
+    show("setup");
+    $("setup-error").textContent = msg;
+    updateStartEnabled();
+  }
+}
+
+function resetState() {
+  ended = false; endPayloadSent = false; rating = null; startedAt = 0;
+  transcript.length = 0; laughs.length = 0; lastSophieLine = "";
+  Object.assign(game, { name: null, rules: null, rounds: 0, round: 1, over: false, winner: null });
+  scores.clear();
+  renderScores(); renderGame();
+  $("caption").textContent = "";
+  $("elapsed").textContent = "0:00";
+}
+
+function secondsSinceStart() {
+  return startedAt ? Math.round((Date.now() - startedAt) / 100) / 10 : 0;
+}
+function startElapsed() {
+  clearInterval(elapsedTimer);
+  elapsedTimer = setInterval(() => {
+    const ms = Date.now() - startedAt;
+    const s = Math.floor(ms / 1000);
+    $("elapsed").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    if (ms >= MAX_SESSION_MS) live?.close();
+  }, 1000);
+}
+
+async function requestWakeLock() {
+  try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && live?.state === "ready") requestWakeLock();
+});
+
+// ── Lacher ──
+$("laugh").addEventListener("click", () => {
+  if (!startedAt) return;
+  laughs.push({ t: secondsSinceStart(), last_sophie: lastSophieLine });
+  const b = $("laugh");
+  b.textContent = `😂 ${laughs.length}`;
+  setTimeout(() => { b.textContent = "😂 Lacher"; }, 900);
+});
+
+// ── Ende ──
+$("stop").addEventListener("click", async () => {
+  $("stop").disabled = true;
+  $("live-state").textContent = "Beende …";
+  await live?.close();
+});
+
+function finishGame(reason) {
+  if (ended) return;
+  ended = true;
+  if (!startedAt) {
+    // Session kam nie zustande (Start-Fehler wird im catch von startGame genauer gemeldet).
+    clearInterval(elapsedTimer);
+    stopVisualizer();
+    show("setup");
+    $("setup-error").textContent = "Verbindung abgebrochen. Bitte nochmal starten.";
+    updateStartEnabled();
+    return;
+  }
+  clearInterval(elapsedTimer);
+  stopVisualizer();
+  try { wakeLock?.release(); } catch {}
+  wakeLock = null;
+  $("stop").disabled = false;
+  const usage = live?.getUsage() || { seconds: 0 };
+  const mins = Math.max(1, Math.round((usage.seconds || secondsSinceStart()) / 60));
+  $("end-summary").textContent = `${mins} Min. gespielt · ${laughs.length} Lacher markiert${game.winner ? ` · Sieger: ${game.winner}` : ""}`;
+  document.querySelectorAll("#stars button").forEach((b) => b.classList.remove("on"));
+  $("send-rating").disabled = true;
+  show("end");
+  console.log("[game] closed", reason, usage);
+}
+
+function buildEndPayload({ compact = false } = {}) {
+  const usage = live?.getUsage() || { seconds: 0, backend: {} };
+  return {
+    session_id: live?.sessionId || null,
+    mode,
+    voice: $("voice").value,
+    seconds: usage.seconds || secondsSinceStart(),
+    backend_usage: usage.backend,
+    // keepalive-Requests sind auf 64 KB begrenzt -> beim Schliessen kuerzen.
+    transcript: compact ? transcript.slice(-60).map((t) => ({ ...t, text: t.text.slice(0, 300) })) : transcript,
+    laughs: compact ? laughs.slice(-60) : laughs,
+    rating,
+    game: { name: game.name, rounds: game.round },
+    scores: Object.fromEntries(scores),
+  };
+}
+async function sendEnd({ keepalive = false } = {}) {
+  if (endPayloadSent || !startedAt) return true;
+  try {
+    const r = await fetch("/api/game?action=end", {
+      method: "POST",
+      keepalive,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(buildEndPayload({ compact: keepalive })),
+    });
+    if (r.ok) endPayloadSent = true;
+    return r.ok;
+  } catch { return false; }
+}
+
+document.querySelectorAll("#stars button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    rating = parseInt(btn.dataset.r, 10);
+    document.querySelectorAll("#stars button").forEach((b) => b.classList.toggle("on", parseInt(b.dataset.r, 10) <= rating));
+    $("send-rating").disabled = false;
+  });
+});
+$("send-rating").addEventListener("click", async () => {
+  $("send-rating").disabled = true;
+  const ok = await sendEnd();
+  $("end-error").textContent = ok ? "" : "Senden fehlgeschlagen. Bitte nochmal tippen.";
+  if (ok) $("send-rating").textContent = "Danke!";
+  else $("send-rating").disabled = false;
+});
+$("again").addEventListener("click", async () => {
+  await sendEnd(); // ohne Bewertung, falls nicht gesendet
+  $("send-rating").textContent = "Bewertung senden";
+  show("setup");
+  updateStartEnabled();
+});
+
+// Tab/App geschlossen: Session beenden, Auswertung ohne Bewertung retten.
+window.addEventListener("pagehide", () => {
+  if (live && live.state === "ready") { try { live.send({ type: "session.close" }); } catch {} }
+  if (startedAt && !endPayloadSent) sendEnd({ keepalive: true });
+});
+</script>
+</body>
+</html>
