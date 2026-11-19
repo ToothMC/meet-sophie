@@ -135,6 +135,22 @@ function clampStr(s, n) {
   return String(s ?? "").slice(0, n);
 }
 
+// Diagnose-Zaehler vom Client (welche Live-Events kamen an) — nur Zahlen/Flags.
+function sanitizeDebug(d) {
+  if (!d || typeof d !== "object") return null;
+  const counts = {};
+  if (d.event_counts && typeof d.event_counts === "object") {
+    for (const [k, v] of Object.entries(d.event_counts).slice(0, 60)) counts[clampStr(k, 60)] = Math.max(0, Number(v) || 0);
+  }
+  return {
+    started: d.started === true,
+    delegations: Math.max(0, Number(d.delegations) || 0),
+    tool_calls: Math.max(0, Number(d.tool_calls) || 0),
+    errors: (Array.isArray(d.errors) ? d.errors : []).slice(0, 10).map((e) => clampStr(e, 200)),
+    event_counts: counts,
+  };
+}
+
 async function handleEnd(req, res, supabase, user) {
   const body = req.body || {};
   const sessionId = clampStr(body.session_id, 120) || null;
@@ -191,11 +207,15 @@ async function handleEnd(req, res, supabase, user) {
       .slice(-200)
       .map((l) => ({ t: Number(l?.t) || null, last_sophie: clampStr(l?.last_sophie, 400) }));
     const rating = Number.isInteger(body.rating) && body.rating >= 1 && body.rating <= 5 ? body.rating : null;
-    await supabase.from("analytics_events").insert({
+    // analytics_events.session_id ist uuid -> die Live-Session-ID ("live_...")
+    // gehoert in meta, sonst schlaegt der Insert still fehl.
+    const debug = sanitizeDebug(body.debug);
+    const { error: insertErr } = await supabase.from("analytics_events").insert({
       user_id: user.id,
       event_name: "game_test_session",
-      session_id: sessionId,
       meta: {
+        live_session_id: sessionId,
+        debug,
         mode,
         host: GAME_HOSTS[body.host] ? body.host : null,
         voice: clampStr(body.voice, 30) || null,
@@ -209,6 +229,7 @@ async function handleEnd(req, res, supabase, user) {
         turns: transcript,
       },
     });
+    if (insertErr) console.warn("[game] analytics insert error", insertErr.message);
   } catch (e) {
     console.warn("[game] analytics insert failed", e?.message || e);
   }

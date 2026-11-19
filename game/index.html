@@ -103,33 +103,30 @@
     <!-- Setup -->
     <section class="screen active" id="screen-setup">
       <h1>Game Night Unleashed</h1>
-      <p class="lead">Sophie moderiert euren Spieleabend. Trocken, frech, gnadenlos fair. Wählt, wie ihr spielen wollt.</p>
+      <p class="lead"><span class="host-name">Sophie</span> moderiert euren Spieleabend. Trocken, frech, gnadenlos fair. Wählt, wie ihr spielen wollt.</p>
       <div class="modes" role="group" aria-label="Spielmodus">
         <button class="mode" data-mode="surprise" aria-pressed="true">
           <strong>Überrasch mich</strong>
-          <span>Sophie fragt kurz nach euch und sucht selbst ein passendes Spiel aus.</span>
+          <span><span class="host-name">Sophie</span> fragt kurz nach euch und sucht selbst ein passendes Spiel aus.</span>
         </button>
         <button class="mode" data-mode="idea" aria-pressed="false">
           <strong>Wir haben eine Idee</strong>
-          <span>Ihr nennt Wünsche, Sophie baut daraus ein Spiel.</span>
+          <span>Ihr nennt Wünsche, <span class="host-name">Sophie</span> baut daraus ein Spiel.</span>
         </button>
         <button class="mode" data-mode="freeplay" aria-pressed="false">
           <strong>Freies Reinquatschen</strong>
-          <span>Ihr spielt euer Ding, Sophie hört zu und mischt sich gelegentlich ein.</span>
+          <span>Ihr spielt euer Ding, <span class="host-name">Sophie</span> hört zu und mischt sich gelegentlich ein.</span>
         </button>
       </div>
       <label class="consent" id="consent-row">
         <input type="checkbox" id="consent" />
-        <span>Alle Anwesenden sind einverstanden, dass Sophie zuhört und sich ungefragt einmischen darf.</span>
+        <span>Alle Anwesenden sind einverstanden, dass <span class="host-name">Sophie</span> zuhört und sich ungefragt einmischen darf.</span>
       </label>
       <div class="voice-row">
-        <div class="voice-label">Stimme</div>
-        <div class="voices" id="voices" role="radiogroup" aria-label="Stimme">
-          <button class="voice" role="radio" data-voice="nuri">Nuri<small>Deutsch</small></button>
-          <button class="voice" role="radio" data-voice="juni">Juni<small>Deutsch</small></button>
-          <button class="voice" role="radio" data-voice="flitz">Flitz<small>Deutsch</small></button>
-          <button class="voice" role="radio" data-voice="shimmer">Shimmer<small>Sophie · EN</small></button>
-          <button class="voice" role="radio" data-voice="marin">Marin<small>EN</small></button>
+        <div class="voice-label">Spielleitung</div>
+        <div class="voices" id="hosts" role="radiogroup" aria-label="Spielleitung">
+          <button class="voice" role="radio" data-host="female">Weiblich<small>Sophie · Stimme Juni</small></button>
+          <button class="voice" role="radio" data-host="male">Männlich<small>Noah · Stimme Flitz</small></button>
         </div>
       </div>
       <button class="primary" id="start">Spieleabend starten</button>
@@ -150,7 +147,7 @@
       <div class="card">
         <h2>Punkte</h2>
         <ul class="scores" id="scores"></ul>
-        <div class="empty" id="scores-empty">Sophie trägt die Spieler ein, sobald sie eure Namen kennt.</div>
+        <div class="empty" id="scores-empty"><span class="host-name">Sophie</span> trägt die Spieler ein, sobald <span class="host-pron">sie</span> eure Namen kennt.</div>
       </div>
       <div class="live-actions">
         <button class="laugh" id="laugh">😂 Lacher</button>
@@ -160,7 +157,7 @@
 
     <!-- End -->
     <section class="screen" id="screen-end">
-      <h1>Und? Wie war Sophie?</h1>
+      <h1>Und? Wie war <span class="host-name">Sophie</span>?</h1>
       <p class="summary" id="end-summary"></p>
       <div class="stars" id="stars" role="group" aria-label="Bewertung">
         <button data-r="1" aria-label="1 Stern">⭐</button>
@@ -194,24 +191,27 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const lang = ["de", "en", "fr"].includes(params.get("lang")) ? params.get("lang")
   : ((navigator.language || "de").slice(0, 2) === "en" ? "en" : (navigator.language || "de").slice(0, 2) === "fr" ? "fr" : "de");
-// ── Stimme: Schalter auf dem Startscreen, Wahl wird gemerkt. ──
-// Bei GPT-Live haengt die Sprache an der Stimme und ist nach dem Start fix.
-const VOICES = [...document.querySelectorAll("#voices .voice")].map((b) => b.dataset.voice);
-let voice = (() => {
-  const fromUrl = params.get("voice");
-  if (VOICES.includes(fromUrl)) return fromUrl;
-  try { const saved = localStorage.getItem("sophie_game_voice"); if (VOICES.includes(saved)) return saved; } catch {}
-  return "shimmer";
+// ── Spielleitung: weiblich (Sophie, Stimme Juni) / maennlich (Noah, Stimme Flitz). ──
+// Die Stimme waehlt der Server passend zur Sprache; ?voice= bleibt als Test-Override.
+const HOSTS = { female: { name: "Sophie", pron: "sie" }, male: { name: "Noah", pron: "er" } };
+const voiceOverride = params.get("voice") || null;
+let host = (() => {
+  if (HOSTS[params.get("host")]) return params.get("host");
+  try { const saved = localStorage.getItem("sophie_game_host"); if (HOSTS[saved]) return saved; } catch {}
+  return "female";
 })();
-function renderVoices() {
-  document.querySelectorAll("#voices .voice").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.voice === voice)));
+const hostName = () => HOSTS[host].name;
+function renderHost() {
+  document.querySelectorAll("#hosts .voice").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.host === host)));
+  document.querySelectorAll(".host-name").forEach((el) => { el.textContent = hostName(); });
+  document.querySelectorAll(".host-pron").forEach((el) => { el.textContent = HOSTS[host].pron; });
 }
-document.querySelectorAll("#voices .voice").forEach((b) => b.addEventListener("click", () => {
-  voice = b.dataset.voice;
-  try { localStorage.setItem("sophie_game_voice", voice); } catch {}
-  renderVoices();
+document.querySelectorAll("#hosts .voice").forEach((b) => b.addEventListener("click", () => {
+  host = b.dataset.host;
+  try { localStorage.setItem("sophie_game_host", host); } catch {}
+  renderHost();
 }));
-renderVoices();
+renderHost();
 
 // ── State ──
 let mode = "surprise";
@@ -354,7 +354,7 @@ async function startGame() {
   live = new SophieLive({
     startUrl: "/api/game?action=start",
     getAuthToken: async () => (await supabase.auth.getSession()).data.session?.access_token || accessToken,
-    startBody: { mode, lang, voice },
+    startBody: { mode, lang, host, ...(voiceOverride ? { voice: voiceOverride } : {}) },
     onToolCall,
     onRemoteStream: (stream) => startVisualizer(stream),
     onTranscript: ({ role, text, final }) => {
@@ -368,7 +368,7 @@ async function startGame() {
     },
     onState: (state, info) => {
       if (state === "ready") {
-        $("live-state").textContent = `Sophie ist dabei · Stimme ${voice.charAt(0).toUpperCase()}${voice.slice(1)}`;
+        $("live-state").textContent = `${hostName()} ist dabei`;
         startedAt = Date.now();
         startElapsed();
         requestWakeLock();
@@ -383,9 +383,9 @@ async function startGame() {
   } catch (e) {
     console.warn("[game] start failed", e);
     const msg = e?.status === 403 ? "Game Night ist gerade nur für Testzugänge freigeschaltet."
-      : e?.status === 429 ? "Sophie ist schon in einem anderen Gespräch. Bitte andere Tabs schließen."
-      : e?.name === "NotAllowedError" ? "Ohne Mikrofon kann Sophie nicht mitspielen. Bitte Zugriff erlauben."
-      : "Sophie konnte nicht starten. Bitte nochmal versuchen.";
+      : e?.status === 429 ? `${hostName()} ist schon in einem anderen Gespräch. Bitte andere Tabs schließen.`
+      : e?.name === "NotAllowedError" ? `Ohne Mikrofon kann ${hostName()} nicht mitspielen. Bitte Zugriff erlauben.`
+      : `${hostName()} konnte nicht starten. Bitte nochmal versuchen.`;
     ended = true;
     show("setup");
     $("setup-error").textContent = msg;
@@ -470,7 +470,8 @@ function buildEndPayload({ compact = false } = {}) {
   return {
     session_id: live?.sessionId || null,
     mode,
-    voice,
+    host,
+    voice: voiceOverride,
     seconds: usage.seconds || secondsSinceStart(),
     backend_usage: usage.backend,
     // keepalive-Requests sind auf 64 KB begrenzt -> beim Schliessen kuerzen.
